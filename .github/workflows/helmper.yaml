@@ -33,26 +33,25 @@ jobs:
           timeout 60 bash -c 'until curl -f http://localhost:8887/healthz 2>/dev/null; do echo "Waiting for Trivy..."; sleep 2; done'
           echo "Trivy server is ready"
 
+      - name: Set up Helm
+        uses: azure/setup-helm@fe7b79cd5ee1e45176fcad797de68ecaf3ca4814
+        with:
+          version: latest
+
+      - name: Install Helmper Plugin
+        run: |
+          set -e
+          echo "Installing Helmper as Helm plugin..."
+          helm plugin install https://github.com/ChristofferNissen/helmper
+          
+          echo "Verifying installation..."
+          helm helmper --help
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349
         with:
           driver-opts: network=host
           buildkitd-flags: --debug
-
-      - name: Start BuildKit daemon
-        run: |
-          export BUILDKIT_HOST=$(docker buildx inspect --bootstrap | grep -oP 'Endpoint: \K.*')
-          echo "BUILDKIT_ADDR=tcp://0.0.0.0:8888" >> $GITHUB_ENV
-          docker buildx version
-
-      - name: Install Helmper
-        run: |
-          VERSION=$(curl -Lso /dev/null -w %{url_effective} https://github.com/christoffernissen/helmper/releases/latest | grep -o '[^/]*$')
-          echo "Installing Helmper version: $VERSION"
-          curl -LO "https://github.com/christoffernissen/helmper/releases/download/$VERSION/helmper-linux-amd64"
-          chmod +x helmper-linux-amd64
-          sudo mv helmper-linux-amd64 /usr/local/bin/helmper
-          helmper --help
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da
@@ -69,7 +68,7 @@ jobs:
           COSIGN_EXPERIMENTAL: "1"
         run: |
           echo "=== Running Helmper with keyless signing ==="
-          helmper --f helmper.yaml
+          helm helmper --f helmper.yaml
           echo "=== Helmper completed successfully ==="
 
       - name: Upload Vulnerability Reports
