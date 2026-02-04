@@ -21,17 +21,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Manual Trivy Setup
+        uses: aquasecurity/setup-trivy@v0.2.5
+        with:
+          cache: true
+          version: v0.69.0
 
       - name: Start Trivy Server
         run: |
-          docker run -d \
-            --name trivy-server \
-            -p 8887:8887 \
-            ghcr.io/aquasecurity/trivy:0.69.0 \
-            server --listen=0.0.0.0:8887
-          
-          timeout 60 bash -c 'until curl -f http://localhost:8887/healthz 2>/dev/null; do echo "Waiting for Trivy..."; sleep 2; done'
-          echo "Trivy server is ready"
+          trivy server --listen=0.0.0.0:8887 &
 
       - name: Install Helmper
         run: |
@@ -69,14 +67,17 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Wait for Trivy Server to be Ready
+        run: |
+          timeout 60 bash -c 'until curl -f http://localhost:8887/healthz 2>/dev/null; do echo "Waiting for Trivy..."; sleep 2; done'
+          echo "Trivy server is ready"
 
       - name: Run Helmper
         env:
           COSIGN_EXPERIMENTAL: "1"
         run: |
-          echo "=== Running Helmper with keyless signing ==="
-          helmper --f helmper.yaml
-          echo "=== Helmper completed successfully ==="
+          helmper
 
       - name: Upload Vulnerability Reports
         if: always()
