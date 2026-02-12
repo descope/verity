@@ -30,7 +30,7 @@ type WrapperChart struct {
 //
 // Returns the wrapper chart version that was created.
 func CreateWrapperChart(dep Dependency, results []*PatchResult, outputDir, registry string) (string, error) {
-	chartName := dep.Name + "-verity"
+	chartName := dep.Name
 	chartDir := filepath.Join(outputDir, chartName)
 
 	if err := os.MkdirAll(chartDir, 0o755); err != nil {
@@ -47,7 +47,7 @@ func CreateWrapperChart(dep Dependency, results []*PatchResult, outputDir, regis
 
 	// Create Chart.yaml
 	// Version format: {upstream-version}-{patch-level}
-	// Example: prometheus 25.8.0 → prometheus-verity 25.8.0-0
+	// Example: prometheus 25.8.0 → prometheus 25.8.0-0
 	// Patch level auto-increments when republishing the same upstream version
 	wrapper := WrapperChart{
 		Name:         chartName,
@@ -239,7 +239,7 @@ func copyFile(src, dst string) error {
 // Returns 0 if no existing versions found or on error.
 func getNextPatchLevel(registry, chartName, upstreamVersion string) int {
 	// OCI chart reference: {registry}/charts/{chartname}
-	// Example: ghcr.io/descope/charts/prometheus-verity
+	// Example: ghcr.io/<org>/charts/prometheus
 	chartRef := fmt.Sprintf("%s/charts/%s", registry, chartName)
 
 	// List all tags for this chart

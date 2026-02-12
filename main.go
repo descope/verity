@@ -9,12 +9,11 @@ import (
 	"path/filepath"
 
 	"github.com/descope/verity/internal"
-	"gopkg.in/yaml.v3"
 )
 
 func main() {
 	chartFile := flag.String("chart", "Chart.yaml", "path to Chart.yaml")
-	outputDir := flag.String("output", "charts", "output directory for per-chart image values")
+	outputDir := flag.String("output", "charts", "output directory for wrapper charts")
 	patch := flag.Bool("patch", false, "scan and patch images with Trivy + Copa")
 	registry := flag.String("registry", "", "target registry for patched images (e.g. ghcr.io/descope)")
 	buildkitAddr := flag.String("buildkit-addr", "", "BuildKit address for Copa (e.g. docker-container://buildkitd)")
@@ -45,17 +44,7 @@ func main() {
 			log.Fatalf("Failed to scan %s: %v", dep.Name, err)
 		}
 
-		outDir := filepath.Join(*outputDir, dep.Name)
-		if err := os.MkdirAll(outDir, 0o755); err != nil {
-			log.Fatalf("Failed to create %s: %v", outDir, err)
-		}
-
-		outFile := filepath.Join(outDir, "values.yaml")
-		if err := writeImagesFile(outFile, images); err != nil {
-			log.Fatalf("Failed to write %s: %v", outFile, err)
-		}
-
-		fmt.Printf("  Found %d images → %s\n", len(images), outFile)
+		fmt.Printf("  Found %d images\n", len(images))
 		for _, img := range images {
 			fmt.Printf("    %s  (%s)\n", img.Reference(), img.Path)
 		}
@@ -107,18 +96,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Failed to create wrapper chart: %v", err)
 		}
-		fmt.Printf("\n  Wrapper chart → %s/%s-verity (%s)\n", *outputDir, dep.Name, version)
+		fmt.Printf("\n  Wrapper chart → %s/%s (%s)\n", *outputDir, dep.Name, version)
 	}
 }
 
-type imagesFile struct {
-	Images []internal.Image `yaml:"images"`
-}
-
-func writeImagesFile(path string, images []internal.Image) error {
-	data, err := yaml.Marshal(&imagesFile{Images: images})
-	if err != nil {
-		return fmt.Errorf("marshaling images: %w", err)
-	}
-	return os.WriteFile(path, data, 0o644)
-}

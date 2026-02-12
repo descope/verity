@@ -52,19 +52,12 @@ jobs:
           ./verity -chart Chart.yaml -output charts \
             -patch \
             -registry ghcr.io/${{ github.repository_owner }} \
-            -buildkit-addr docker-container://${{ steps.buildx.outputs.name }} \
+            -buildkit-addr docker-container://buildx_buildkit_${{ steps.buildx.outputs.name }}0 \
             -report-dir /tmp/trivy-reports
 
       - name: Check for changes
         id: check-changes
-        run: |
-          if git diff --quiet charts/; then
-            echo "changes=false" >> $GITHUB_OUTPUT
-            echo "No new patches needed"
-          else
-            echo "changes=true" >> $GITHUB_OUTPUT
-            echo "New patches available"
-          fi
+        run: ./.github/scripts/check-chart-changes.sh
 
       - name: Create Pull Request
         if: steps.check-changes.outputs.changes == 'true'
@@ -84,8 +77,6 @@ jobs:
 
             ### Reports
             Trivy vulnerability reports are attached to the workflow run.
-
-            🤖 Automated by scheduled vulnerability scanning
           branch: security/scheduled-patch-${{ github.run_number }}
           delete-branch: true
           labels: |

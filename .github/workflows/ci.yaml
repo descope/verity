@@ -12,6 +12,18 @@ permissions:
   packages: write
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: actionlint
+        uses: reviewdog/action-actionlint@e58ee9d111489c31395fbe4857b0be6e7635dbda # v1
+
+      - name: shellcheck
+        run: shellcheck .github/scripts/*.sh
+
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -49,18 +61,7 @@ jobs:
         run: go build -o verity .
 
       - name: Scan charts for images
-        run: ./verity -chart Chart.yaml -output charts
-
-      - name: Show discovered images
-        run: |
-          echo "=== Discovered Images ==="
-          cat charts/*/values.yaml
-
-      - name: Upload scan results
-        uses: actions/upload-artifact@v6
-        with:
-          name: scan-results
-          path: charts/*/values.yaml
+        run: ./verity -chart Chart.yaml
 
   patch:
     name: Validate Patching
@@ -109,7 +110,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: wrapper-charts
-          path: charts/*-verity/
+          path: charts/*/Chart.yaml
 
       - name: Upload vulnerability reports
         if: always()

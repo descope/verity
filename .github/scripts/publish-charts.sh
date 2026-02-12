@@ -21,11 +21,12 @@ echo "Registry: ${REGISTRY}/${ORG}/charts"
 echo ""
 
 published=0
-for chart_dir in "${CHARTS_DIR}"/charts/*-verity; do
-  if [ ! -d "$chart_dir" ]; then
+for chart_yaml in "${CHARTS_DIR}"/charts/*/Chart.yaml; do
+  if [ ! -f "$chart_yaml" ]; then
     continue
   fi
 
+  chart_dir=$(dirname "$chart_yaml")
   chart_name=$(basename "$chart_dir")
   echo "Publishing ${chart_name}..."
 
@@ -38,19 +39,19 @@ for chart_dir in "${CHARTS_DIR}"/charts/*-verity; do
   helm package "${chart_dir}" --destination /tmp/helm-packages
 
   # Get chart version
-  version=$(yq eval '.version' "${chart_dir}/Chart.yaml")
+  version=$(yq eval '.version' "${chart_yaml}")
 
   # Push to registry
   echo "  Pushing to ${REGISTRY}/${ORG}/charts/${chart_name}:${version}..."
   helm push "/tmp/helm-packages/${chart_name}-${version}.tgz" "oci://${REGISTRY}/${ORG}/charts"
 
-  echo "✅ Published ${chart_name}:${version}"
+  echo "Published ${chart_name}:${version}"
   echo ""
   published=$((published + 1))
 done
 
 if [ $published -eq 0 ]; then
-  echo "⚠️  No wrapper charts found to publish"
+  echo "No wrapper charts found to publish"
 else
-  echo "✅ Successfully published ${published} chart(s)"
+  echo "Successfully published ${published} chart(s)"
 fi

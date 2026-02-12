@@ -1,0 +1,48 @@
+name: Add Chart from Issue
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  add-chart:
+    name: Add Chart to Chart.yaml
+    runs-on: ubuntu-latest
+    if: contains(github.event.issue.labels.*.name, 'new-chart')
+    steps:
+      - name: Decode the GitHub App Private Key
+        id: decode
+        run: |
+          private_key=$(echo "${{ secrets.RELEASE_APP_PEM }}" | base64 -d | awk 'BEGIN {ORS="\\n"} {print}' | head -c -2) &> /dev/null
+          echo "::add-mask::$private_key"
+          echo "private-key=$private_key" >> "$GITHUB_OUTPUT"
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ steps.decode.outputs.private-key }}
+
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Parse issue form
+        id: parse
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: ./.github/scripts/parse-issue-form.sh
+
+      - name: Add chart and create PR
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          CHART_NAME: ${{ steps.parse.outputs.name }}
+          CHART_VERSION: ${{ steps.parse.outputs.version }}
+          CHART_REPOSITORY: ${{ steps.parse.outputs.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: ./.github/scripts/add-chart-dependency.sh

@@ -254,7 +254,7 @@ func TestCreateWrapperChart(t *testing.T) {
 		t.Errorf("Expected version '25.8.0-0', got %s", version)
 	}
 
-	chartDir := filepath.Join(tmpDir, "prometheus-verity")
+	chartDir := filepath.Join(tmpDir, "prometheus")
 
 	// Check Chart.yaml exists and has correct content
 	chartYamlPath := filepath.Join(chartDir, "Chart.yaml")
@@ -272,8 +272,8 @@ func TestCreateWrapperChart(t *testing.T) {
 		t.Fatalf("Failed to parse Chart.yaml: %v", err)
 	}
 
-	if chart["name"] != "prometheus-verity" {
-		t.Errorf("Expected name 'prometheus-verity', got %v", chart["name"])
+	if chart["name"] != "prometheus" {
+		t.Errorf("Expected name 'prometheus', got %v", chart["name"])
 	}
 
 	if chart["apiVersion"] != "v2" {
@@ -384,7 +384,7 @@ func TestGetNextPatchLevel(t *testing.T) {
 		{
 			name:            "no existing versions",
 			registry:        "ghcr.io/descope",
-			chartName:       "prometheus-verity",
+			chartName:       "prometheus",
 			upstreamVersion: "25.8.0",
 			mockTags:        []string{},
 			want:            0,
@@ -392,7 +392,7 @@ func TestGetNextPatchLevel(t *testing.T) {
 		{
 			name:            "existing version 0",
 			registry:        "ghcr.io/descope",
-			chartName:       "prometheus-verity",
+			chartName:       "prometheus",
 			upstreamVersion: "25.8.0",
 			mockTags:        []string{"25.8.0-0"},
 			want:            1,
@@ -400,7 +400,7 @@ func TestGetNextPatchLevel(t *testing.T) {
 		{
 			name:            "multiple versions",
 			registry:        "ghcr.io/descope",
-			chartName:       "prometheus-verity",
+			chartName:       "prometheus",
 			upstreamVersion: "25.8.0",
 			mockTags:        []string{"25.8.0-0", "25.8.0-1", "25.8.0-2"},
 			want:            3,
@@ -408,7 +408,7 @@ func TestGetNextPatchLevel(t *testing.T) {
 		{
 			name:            "different upstream versions mixed",
 			registry:        "ghcr.io/descope",
-			chartName:       "prometheus-verity",
+			chartName:       "prometheus",
 			upstreamVersion: "25.8.0",
 			mockTags:        []string{"25.7.0-0", "25.8.0-0", "25.8.0-1", "25.9.0-0"},
 			want:            2,
@@ -416,7 +416,7 @@ func TestGetNextPatchLevel(t *testing.T) {
 		{
 			name:            "non-sequential patch levels",
 			registry:        "ghcr.io/descope",
-			chartName:       "prometheus-verity",
+			chartName:       "prometheus",
 			upstreamVersion: "25.8.0",
 			mockTags:        []string{"25.8.0-0", "25.8.0-2", "25.8.0-5"},
 			want:            6,

@@ -24,15 +24,16 @@ Self-maintained registry of security-patched Helm charts.
 EOF
 
 found_charts=false
-for chart_dir in "${CHARTS_DIR}"/charts/*-verity; do
-  if [ ! -d "$chart_dir" ]; then
+for chart_yaml in "${CHARTS_DIR}"/charts/*/Chart.yaml; do
+  if [ ! -f "$chart_yaml" ]; then
     continue
   fi
 
   found_charts=true
+  chart_dir=$(dirname "$chart_yaml")
   chart_name=$(basename "$chart_dir")
-  version=$(yq eval '.version' "${chart_dir}/Chart.yaml")
-  description=$(yq eval '.description' "${chart_dir}/Chart.yaml")
+  version=$(yq eval '.version' "${chart_yaml}")
+  description=$(yq eval '.description' "${chart_yaml}")
 
   cat >> "$OUTPUT_FILE" << EOF
 ### ${chart_name}
@@ -48,8 +49,8 @@ done
 
 if [ "$found_charts" = false ]; then
   echo "No charts found" >> "$OUTPUT_FILE"
-  echo "⚠️  No wrapper charts found"
+  echo "No wrapper charts found"
 else
-  echo "✅ Chart index generated: $OUTPUT_FILE"
+  echo "Chart index generated: $OUTPUT_FILE"
   cat "$OUTPUT_FILE"
 fi
