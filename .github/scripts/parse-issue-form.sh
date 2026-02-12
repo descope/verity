@@ -9,7 +9,7 @@ set -euo pipefail
 
 get_field() {
   local label="$1"
-  echo "${ISSUE_BODY}" | sed -n "/### ${label}/,/### /p" | sed '1d;/^### /d' | grep -v '^$' | head -1 | xargs
+  printf '%s\n' "${ISSUE_BODY}" | sed -n "/### ${label}/,/### /p" | sed '1d;/^### /d;/^$/d' | head -1 | xargs
 }
 
 NAME=$(get_field "Chart name")

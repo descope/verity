@@ -11,7 +11,8 @@ set -euo pipefail
 : "${ISSUE_NUMBER:?ISSUE_NUMBER is required}"
 
 # Check for duplicate
-if yq e ".\"${IMAGE_NAME}\"" values.yaml 2>/dev/null | grep -q repository; then
+export IMAGE_NAME IMAGE_REPOSITORY IMAGE_TAG IMAGE_REGISTRY
+if yq e '.[strenv(IMAGE_NAME)]' values.yaml 2>/dev/null | grep -q repository; then
   echo "Image ${IMAGE_NAME} already exists in values.yaml"
   gh issue comment "${ISSUE_NUMBER}" \
     --body "Image **${IMAGE_NAME}** already exists in values.yaml. Closing as duplicate."
@@ -20,7 +21,6 @@ if yq e ".\"${IMAGE_NAME}\"" values.yaml 2>/dev/null | grep -q repository; then
 fi
 
 # Add image entry using env vars to avoid injection
-export IMAGE_NAME IMAGE_REPOSITORY IMAGE_TAG IMAGE_REGISTRY
 yq e '.[strenv(IMAGE_NAME)].image.registry = strenv(IMAGE_REGISTRY) |
       .[strenv(IMAGE_NAME)].image.repository = strenv(IMAGE_REPOSITORY) |
       .[strenv(IMAGE_NAME)].image.tag = strenv(IMAGE_TAG)' -i values.yaml
