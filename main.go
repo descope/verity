@@ -13,6 +13,7 @@ import (
 
 func main() {
 	chartFile := flag.String("chart", "Chart.yaml", "path to Chart.yaml")
+	imagesFile := flag.String("images", "", "path to standalone images values.yaml")
 	outputDir := flag.String("output", "charts", "output directory for wrapper charts")
 	patch := flag.Bool("patch", false, "scan and patch images with Trivy + Copa")
 	registry := flag.String("registry", "", "target registry for patched images (e.g. ghcr.io/descope)")
@@ -97,6 +98,59 @@ func main() {
 			log.Fatalf("Failed to create wrapper chart: %v", err)
 		}
 		fmt.Printf("\n  Wrapper chart → %s/%s (%s)\n", *outputDir, dep.Name, version)
+	}
+
+	// Process standalone images from values file
+	if *imagesFile != "" {
+		images, err := internal.ParseImagesFile(*imagesFile)
+		if err != nil {
+			log.Fatalf("Failed to parse images file %s: %v", *imagesFile, err)
+		}
+
+		if len(images) > 0 {
+			fmt.Printf("\nStandalone images from %s:\n", *imagesFile)
+			fmt.Printf("  Found %d images\n", len(images))
+			for _, img := range images {
+				fmt.Printf("    %s  (%s)\n", img.Reference(), img.Path)
+			}
+
+			if *patch {
+				rDir := *reportDir
+				if rDir == "" {
+					rDir = filepath.Join(tmpDir, "reports")
+				}
+				if err := os.MkdirAll(rDir, 0o755); err != nil {
+					log.Fatalf("Failed to create report dir: %v", err)
+				}
+
+				opts := internal.PatchOptions{
+					TargetRegistry: *registry,
+					BuildKitAddr:   *buildkitAddr,
+					ReportDir:      rDir,
+					WorkDir:        tmpDir,
+				}
+
+				failed := 0
+				ctx := context.Background()
+				for _, img := range images {
+					fmt.Printf("\n  Patching %s ...\n", img.Reference())
+					r := internal.PatchImage(ctx, img, opts)
+
+					if r.Error != nil {
+						fmt.Printf("    ERROR: %v\n", r.Error)
+						failed++
+					} else if r.Skipped {
+						fmt.Printf("    No patchable OS vulnerabilities, skipped\n")
+					} else {
+						fmt.Printf("    Patched → %s  (%d vulns fixed)\n", r.Patched.Reference(), r.VulnCount)
+					}
+				}
+
+				if failed > 0 {
+					log.Fatalf("  %d standalone image(s) failed to patch", failed)
+				}
+			}
+		}
 	}
 }
 

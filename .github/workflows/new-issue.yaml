@@ -1,4 +1,4 @@
-name: Add Chart from Issue
+name: Handle New Issue
 
 on:
   issues:
@@ -40,3 +40,35 @@ jobs:
           CHART_REPOSITORY: ${{ steps.parse.outputs.repository }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: ./.github/scripts/add-chart-dependency.sh
+
+  add-image:
+    name: Add Image to values.yaml
+    runs-on: ubuntu-latest
+    if: contains(github.event.issue.labels.*.name, 'new-image')
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PEM }}
+
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Parse issue form
+        id: parse
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: ./.github/scripts/parse-image-issue-form.sh
+
+      - name: Add image and create PR
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          IMAGE_NAME: ${{ steps.parse.outputs.name }}
+          IMAGE_REPOSITORY: ${{ steps.parse.outputs.repository }}
+          IMAGE_TAG: ${{ steps.parse.outputs.tag }}
+          IMAGE_REGISTRY: ${{ steps.parse.outputs.registry }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: ./.github/scripts/add-standalone-image.sh

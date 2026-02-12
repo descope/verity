@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -143,5 +145,78 @@ func TestFindImagesWithEmptyTag(t *testing.T) {
 	}
 	if !refs["registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.10.1"] {
 		t.Errorf("expected image with tag from appVersion (no v prefix): got %v", refs)
+	}
+}
+
+func TestParseImagesFile(t *testing.T) {
+	content := `
+nginx:
+  image:
+    registry: docker.io
+    repository: library/nginx
+    tag: "1.25.0"
+redis:
+  image:
+    registry: docker.io
+    repository: library/redis
+    tag: "7.2.0"
+postgres:
+  image:
+    registry: docker.io
+    repository: library/postgres
+    tag: "16.1"
+`
+	dir := t.TempDir()
+	path := filepath.Join(dir, "values.yaml")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	images, err := ParseImagesFile(path)
+	if err != nil {
+		t.Fatalf("ParseImagesFile() error: %v", err)
+	}
+
+	if len(images) != 3 {
+		t.Fatalf("expected 3 images, got %d", len(images))
+	}
+
+	refs := map[string]bool{}
+	for _, img := range images {
+		refs[img.Reference()] = true
+	}
+
+	expected := []string{
+		"docker.io/library/nginx:1.25.0",
+		"docker.io/library/redis:7.2.0",
+		"docker.io/library/postgres:16.1",
+	}
+	for _, e := range expected {
+		if !refs[e] {
+			t.Errorf("expected image %q not found in %v", e, refs)
+		}
+	}
+}
+
+func TestParseImagesFileEmpty(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "values.yaml")
+	if err := os.WriteFile(path, []byte("# empty\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	images, err := ParseImagesFile(path)
+	if err != nil {
+		t.Fatalf("ParseImagesFile() error: %v", err)
+	}
+	if len(images) != 0 {
+		t.Errorf("expected 0 images from empty file, got %d", len(images))
+	}
+}
+
+func TestParseImagesFileMissing(t *testing.T) {
+	_, err := ParseImagesFile("/nonexistent/values.yaml")
+	if err == nil {
+		t.Error("expected error for missing file, got nil")
 	}
 }

@@ -42,9 +42,6 @@ func ParseChartFile(path string) (*ChartFile, error) {
 	if err := yaml.Unmarshal(data, &cf); err != nil {
 		return nil, fmt.Errorf("parsing %s: %w", path, err)
 	}
-	if len(cf.Dependencies) == 0 {
-		return nil, fmt.Errorf("no dependencies found in %s", path)
-	}
 	return &cf, nil
 }
 

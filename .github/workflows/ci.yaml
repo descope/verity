@@ -61,7 +61,7 @@ jobs:
         run: go build -o verity .
 
       - name: Scan charts for images
-        run: ./verity -chart Chart.yaml
+        run: ./verity -chart Chart.yaml -images values.yaml
 
   patch:
     name: Validate Patching
@@ -98,7 +98,7 @@ jobs:
 
       - name: Patch images and create wrapper charts
         run: |
-          ./verity -chart Chart.yaml -output charts \
+          ./verity -chart Chart.yaml -images values.yaml -output charts \
             -patch \
             -buildkit-addr docker-container://buildx_buildkit_${{ steps.buildx.outputs.name }}0 \
             -report-dir /tmp/trivy-reports

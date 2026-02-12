@@ -2,8 +2,10 @@ package internal
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
+	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 )
@@ -26,6 +28,23 @@ func (img Image) Reference() string {
 		ref = ref + ":" + img.Tag
 	}
 	return ref
+}
+
+// ParseImagesFile reads a YAML file of helm-values style image definitions
+// and returns all container image references found.
+func ParseImagesFile(path string) ([]Image, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading %s: %w", path, err)
+	}
+	var values map[string]interface{}
+	if err := yaml.Unmarshal(data, &values); err != nil {
+		return nil, fmt.Errorf("parsing %s: %w", path, err)
+	}
+	if len(values) == 0 {
+		return nil, nil
+	}
+	return dedup(findImages(values, "", "")), nil
 }
 
 // ScanForImages loads a chart directory and finds all container image references.
