@@ -34,7 +34,7 @@ func TestFindImages(t *testing.T) {
 		},
 	}
 
-	images := findImages(values, "")
+	images := findImages(values, "", "")
 
 	if len(images) < 3 {
 		t.Fatalf("expected at least 3 images, got %d", len(images))
@@ -105,5 +105,43 @@ func TestLooksLikeImage(t *testing.T) {
 		if looksLikeImage(s) {
 			t.Errorf("looksLikeImage(%q) should be false", s)
 		}
+	}
+}
+
+func TestFindImagesWithEmptyTag(t *testing.T) {
+	values := map[string]interface{}{
+		"server": map[string]interface{}{
+			"image": map[string]interface{}{
+				"repository": "quay.io/prometheus/prometheus",
+				"tag":        "",
+			},
+		},
+		"kube-state-metrics": map[string]interface{}{
+			"image": map[string]interface{}{
+				"registry":   "registry.k8s.io",
+				"repository": "kube-state-metrics/kube-state-metrics",
+				"tag":        "",
+			},
+		},
+	}
+
+	// Test with appVersion that has "v" prefix
+	images := findImages(values, "", "v2.48.0")
+	refs := map[string]bool{}
+	for _, img := range images {
+		refs[img.Reference()] = true
+	}
+	if !refs["quay.io/prometheus/prometheus:v2.48.0"] {
+		t.Errorf("expected image with tag from appVersion (v prefix): got %v", refs)
+	}
+
+	// Test with appVersion without "v" prefix
+	images = findImages(values, "", "2.10.1")
+	refs = map[string]bool{}
+	for _, img := range images {
+		refs[img.Reference()] = true
+	}
+	if !refs["registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.10.1"] {
+		t.Errorf("expected image with tag from appVersion (no v prefix): got %v", refs)
 	}
 }

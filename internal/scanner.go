@@ -41,7 +41,7 @@ func scanChart(ch *chart.Chart, prefix string) []Image {
 	var images []Image
 
 	if ch.Values != nil {
-		images = append(images, findImages(ch.Values, prefix)...)
+		images = append(images, findImages(ch.Values, prefix, ch.Metadata.AppVersion)...)
 	}
 
 	for _, dep := range ch.Dependencies() {
@@ -51,10 +51,19 @@ func scanChart(ch *chart.Chart, prefix string) []Image {
 	return images
 }
 
-func findImages(values map[string]interface{}, prefix string) []Image {
+func findImages(values map[string]interface{}, prefix, appVersion string) []Image {
 	var images []Image
 	walk(values, prefix, "", func(path string, img Image) {
 		img.Path = path
+		// If tag is empty and appVersion is available, use "v" + appVersion
+		if img.Tag == "" && appVersion != "" {
+			// Check if appVersion already has "v" prefix
+			if strings.HasPrefix(appVersion, "v") {
+				img.Tag = appVersion
+			} else {
+				img.Tag = "v" + appVersion
+			}
+		}
 		images = append(images, img)
 	})
 	return images
