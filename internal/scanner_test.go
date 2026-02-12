@@ -137,14 +137,14 @@ func TestFindImagesWithEmptyTag(t *testing.T) {
 		t.Errorf("expected image with tag from appVersion (v prefix): got %v", refs)
 	}
 
-	// Test with appVersion without "v" prefix
+	// Test with appVersion without "v" prefix — should be used as-is
 	images = findImages(values, "", "2.10.1")
 	refs = map[string]bool{}
 	for _, img := range images {
 		refs[img.Reference()] = true
 	}
-	if !refs["registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.10.1"] {
-		t.Errorf("expected image with tag from appVersion (no v prefix): got %v", refs)
+	if !refs["registry.k8s.io/kube-state-metrics/kube-state-metrics:2.10.1"] {
+		t.Errorf("expected image with tag from appVersion (as-is): got %v", refs)
 	}
 }
 

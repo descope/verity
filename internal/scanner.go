@@ -74,14 +74,9 @@ func findImages(values map[string]interface{}, prefix, appVersion string) []Imag
 	var images []Image
 	walk(values, prefix, "", func(path string, img Image) {
 		img.Path = path
-		// If tag is empty and appVersion is available, use "v" + appVersion
+		// If tag is empty and appVersion is available, use it as-is
 		if img.Tag == "" && appVersion != "" {
-			// Check if appVersion already has "v" prefix
-			if strings.HasPrefix(appVersion, "v") {
-				img.Tag = appVersion
-			} else {
-				img.Tag = "v" + appVersion
-			}
+			img.Tag = appVersion
 		}
 		images = append(images, img)
 	})
