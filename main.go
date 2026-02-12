@@ -103,7 +103,7 @@ func main() {
 		}
 
 		// Create a wrapper chart that subcharts the original with patched images
-		if err := internal.CreateWrapperChart(dep, results, *outputDir); err != nil {
+		if err := internal.CreateWrapperChart(dep, results, *outputDir, *registry); err != nil {
 			log.Fatalf("Failed to create wrapper chart: %v", err)
 		}
 		fmt.Printf("\n  Wrapper chart → %s/%s-verity\n", *outputDir, dep.Name)

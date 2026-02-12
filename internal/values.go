@@ -5,8 +5,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 
+	"github.com/google/go-containerregistry/pkg/crane"
 	"gopkg.in/yaml.v3"
 )
 
@@ -21,7 +24,10 @@ type WrapperChart struct {
 // CreateWrapperChart creates a complete Helm chart directory that subcharts the original
 // with patched image values. This allows users to install the wrapper chart and get
 // patched images while still being able to customize all original chart values.
-func CreateWrapperChart(dep Dependency, results []*PatchResult, outputDir string) error {
+//
+// If registry is provided, it queries for existing wrapper chart versions to auto-increment
+// the patch level. Otherwise, defaults to patch level 0.
+func CreateWrapperChart(dep Dependency, results []*PatchResult, outputDir, registry string) error {
 	chartName := dep.Name + "-verity"
 	chartDir := filepath.Join(outputDir, chartName)
 
@@ -29,13 +35,21 @@ func CreateWrapperChart(dep Dependency, results []*PatchResult, outputDir string
 		return fmt.Errorf("creating chart directory: %w", err)
 	}
 
+	// Determine patch level by querying registry for existing versions
+	patchLevel := 0
+	if registry != "" {
+		patchLevel = getNextPatchLevel(registry, chartName, dep.Version)
+	}
+
+	version := fmt.Sprintf("%s-%d", dep.Version, patchLevel)
+
 	// Create Chart.yaml
 	// Version format: {upstream-version}-{patch-level}
 	// Example: prometheus 25.8.0 → prometheus-verity 25.8.0-0
-	// Patch level increments when new security patches are applied to the same upstream version
+	// Patch level auto-increments when republishing the same upstream version
 	wrapper := WrapperChart{
 		Name:         chartName,
-		Version:      dep.Version + "-0",
+		Version:      version,
 		Description:  fmt.Sprintf("%s with Copa-patched container images", dep.Name),
 		Dependencies: []Dependency{dep},
 	}
@@ -216,4 +230,44 @@ func copyFile(src, dst string) error {
 	}
 
 	return destFile.Sync()
+}
+
+// getNextPatchLevel queries the OCI registry for existing wrapper chart versions
+// and returns the next patch level for the given upstream version.
+// Returns 0 if no existing versions found or on error.
+func getNextPatchLevel(registry, chartName, upstreamVersion string) int {
+	// OCI chart reference: {registry}/charts/{chartname}
+	// Example: ghcr.io/descope/charts/prometheus-verity
+	chartRef := fmt.Sprintf("%s/charts/%s", registry, chartName)
+
+	// List all tags for this chart
+	tags, err := crane.ListTags(chartRef)
+	if err != nil {
+		// If chart doesn't exist yet or error, start at patch level 0
+		return 0
+	}
+
+	// Find all tags matching this upstream version pattern: {version}-{patch}
+	// Example: 25.8.0-0, 25.8.0-1, 25.8.0-2
+	prefix := upstreamVersion + "-"
+	var patchLevels []int
+
+	for _, tag := range tags {
+		if strings.HasPrefix(tag, prefix) {
+			// Extract patch level from tag
+			patchStr := strings.TrimPrefix(tag, prefix)
+			if patch, err := strconv.Atoi(patchStr); err == nil {
+				patchLevels = append(patchLevels, patch)
+			}
+		}
+	}
+
+	if len(patchLevels) == 0 {
+		// No existing versions for this upstream version, start at 0
+		return 0
+	}
+
+	// Find highest patch level and increment
+	sort.Ints(patchLevels)
+	return patchLevels[len(patchLevels)-1] + 1
 }

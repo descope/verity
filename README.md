@@ -93,8 +93,8 @@ prometheus 25.9.0 → prometheus-verity 25.9.0-0 (chart update, reset)
 
 **When versions change:**
 - **Chart Update (Renovate):** Base version changes, patch level resets to `-0`
-- **New CVEs (Scheduled Scan):** Patch level increments (future enhancement)
-- **Manual Patch:** Patch level increments
+- **New CVEs (Scheduled Scan):** Patch level auto-increments (queries registry for existing versions)
+- **Manual Patch:** Patch level auto-increments (if registry is specified)
 
 This keeps the relationship to upstream charts clear while tracking security updates independently.
 
