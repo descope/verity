@@ -8,6 +8,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/crane"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
 
 // PatchOptions configures the patching pipeline.
@@ -21,6 +25,9 @@ type PatchOptions struct {
 
 	// ReportDir is where Trivy JSON reports are written.
 	ReportDir string
+
+	// WorkDir is a temporary directory for storing OCI image layouts.
+	WorkDir string
 }
 
 // PatchResult holds the outcome of patching a single image.
@@ -39,15 +46,16 @@ func PatchImage(ctx context.Context, img Image, opts PatchOptions) *PatchResult 
 	result := &PatchResult{Original: img}
 	ref := img.Reference()
 
-	// 0. Pull the image so Trivy and Copa can access it locally.
-	if err := dockerPull(ctx, ref); err != nil {
+	// 0. Pull image via go-containerregistry and save as OCI layout for Trivy.
+	ociDir := filepath.Join(opts.WorkDir, "oci", sanitize(ref))
+	if err := pullAndSaveOCI(ctx, ref, ociDir); err != nil {
 		result.Error = fmt.Errorf("pulling %s: %w", ref, err)
 		return result
 	}
 
-	// 1. Scan with Trivy.
+	// 1. Scan the OCI layout with Trivy.
 	reportPath := filepath.Join(opts.ReportDir, sanitize(ref)+".json")
-	if err := trivyScan(ctx, ref, reportPath); err != nil {
+	if err := trivyScan(ctx, ociDir, reportPath); err != nil {
 		result.Error = fmt.Errorf("scanning %s: %w", ref, err)
 		return result
 	}
@@ -99,30 +107,43 @@ func PatchImage(ctx context.Context, img Image, opts PatchOptions) *PatchResult 
 	return result
 }
 
-// dockerPull pulls an image into the local Docker daemon.
-func dockerPull(ctx context.Context, imageRef string) error {
-	cmd := exec.CommandContext(ctx, "docker", "pull", imageRef)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("docker pull %s: %w", imageRef, err)
+// pullAndSaveOCI pulls an image from a registry using go-containerregistry
+// and saves it as an OCI layout directory for offline scanning.
+func pullAndSaveOCI(ctx context.Context, imageRef, ociDir string) error {
+	opts := []crane.Option{
+		crane.WithAuthFromKeychain(authn.DefaultKeychain),
+		crane.WithContext(ctx),
+		crane.WithPlatform(&v1.Platform{OS: "linux", Architecture: "amd64"}),
+	}
+
+	fmt.Printf("    Pulling %s ...\n", imageRef)
+	img, err := crane.Pull(imageRef, opts...)
+	if err != nil {
+		return fmt.Errorf("pulling %s: %w", imageRef, err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(ociDir), 0o755); err != nil {
+		return err
+	}
+	if err := crane.SaveOCI(img, ociDir); err != nil {
+		return fmt.Errorf("saving OCI layout for %s: %w", imageRef, err)
 	}
 	return nil
 }
 
-// trivyScan runs the trivy CLI to scan an image for OS vulnerabilities.
-func trivyScan(ctx context.Context, imageRef, reportPath string) error {
+// trivyScan runs the trivy CLI to scan an OCI image layout for OS vulnerabilities.
+func trivyScan(ctx context.Context, ociDir, reportPath string) error {
 	cmd := exec.CommandContext(ctx, "trivy", "image",
+		"--input", ociDir,
 		"--vuln-type", "os",
 		"--ignore-unfixed",
 		"--format", "json",
 		"--output", reportPath,
-		imageRef,
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("trivy image %s: %w", imageRef, err)
+		return fmt.Errorf("trivy scan %s: %w", ociDir, err)
 	}
 	return nil
 }

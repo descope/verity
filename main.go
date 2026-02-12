@@ -77,6 +77,7 @@ func main() {
 			TargetRegistry: *registry,
 			BuildKitAddr:   *buildkitAddr,
 			ReportDir:      rDir,
+			WorkDir:        tmpDir,
 		}
 
 		var results []*internal.PatchResult
