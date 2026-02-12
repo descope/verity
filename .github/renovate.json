@@ -1,0 +1,100 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "customManagers:dockerfileVersions",
+    ":semanticCommits",
+    ":dependencyDashboard"
+  ],
+  "labels": ["dependencies"],
+  "rangeStrategy": "pin",
+  "separateMajorMinor": true,
+  "separateMultipleMajor": true,
+  "packageRules": [
+    {
+      "description": "Helm chart dependencies in Chart.yaml",
+      "matchManagers": ["helmv3"],
+      "matchFileNames": ["Chart.yaml"],
+      "labels": ["helm", "dependencies"],
+      "groupName": "helm charts",
+      "commitMessageTopic": "{{depName}} chart",
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "charts"
+    },
+    {
+      "description": "Go dependencies",
+      "matchManagers": ["gomod"],
+      "labels": ["go", "dependencies"],
+      "groupName": "go dependencies",
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "deps"
+    },
+    {
+      "description": "GitHub Actions",
+      "matchManagers": ["github-actions"],
+      "labels": ["github-actions", "dependencies"],
+      "groupName": "github actions",
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "ci"
+    },
+    {
+      "description": "Docker images in workflows",
+      "matchManagers": ["regex"],
+      "matchFileNames": [".github/workflows/**"],
+      "labels": ["docker", "dependencies"],
+      "groupName": "workflow docker images",
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "ci"
+    },
+    {
+      "description": "Automerge non-major Go updates",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash"
+    },
+    {
+      "description": "Automerge patch GitHub Actions updates",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash"
+    }
+  ],
+  "customManagers": [
+    {
+      "description": "Update BuildKit version in CI workflows",
+      "customType": "regex",
+      "fileMatch": ["\\.github/workflows/.+\\.ya?ml$"],
+      "matchStrings": [
+        "moby/buildkit:v(?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "moby/buildkit",
+      "versioningTemplate": "docker"
+    },
+    {
+      "description": "Update tool versions in mise.toml",
+      "customType": "regex",
+      "fileMatch": ["^mise\\.toml$"],
+      "matchStrings": [
+        "(?<depName>\\S+)\\s*=\\s*\"(?<currentValue>\\S+)\""
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "{{#if (equals depName 'go')}}golang/go{{else if (equals depName 'golangci-lint')}}golangci/golangci-lint{{else}}{{{depName}}}{{/if}}",
+      "versioningTemplate": "semver"
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"],
+    "automerge": true,
+    "schedule": ["at any time"]
+  },
+  "timezone": "UTC",
+  "schedule": ["before 4am on Monday"],
+  "prConcurrentLimit": 3,
+  "prCreation": "immediate"
+}
