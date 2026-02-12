@@ -4,17 +4,6 @@ Reusable scripts for GitHub Actions workflows. All scripts follow bash best prac
 
 ## Installation Scripts
 
-### install-trivy.sh
-Installs the latest version of Trivy vulnerability scanner.
-
-```bash
-./.github/scripts/install-trivy.sh
-```
-
-**Used by:** ci.yaml, scheduled-scan.yaml, patch-on-pr.yaml
-
----
-
 ### install-copa.sh
 Installs the latest version of Copa (Project Copacetic) from GitHub releases.
 
@@ -23,6 +12,8 @@ Installs the latest version of Copa (Project Copacetic) from GitHub releases.
 ```
 
 **Used by:** ci.yaml, scheduled-scan.yaml, patch-on-pr.yaml
+
+**Note:** Trivy installation now uses the official `aquasecurity/setup-trivy` GitHub Action instead of a custom script.
 
 ---
 

@@ -3,6 +3,7 @@ package internal
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -183,6 +184,24 @@ func TestCountFixable(t *testing.T) {
 func TestCreateWrapperChart(t *testing.T) {
 	tmpDir := t.TempDir()
 
+	// Create dummy trivy reports
+	reportsDir := filepath.Join(tmpDir, "test-reports")
+	if err := os.MkdirAll(reportsDir, 0o755); err != nil {
+		t.Fatalf("Failed to create reports dir: %v", err)
+	}
+
+	report1Path := filepath.Join(reportsDir, "prometheus.json")
+	report1Data := []byte(`{"Results":[{"Vulnerabilities":[{"VulnerabilityID":"CVE-2023-1234","FixedVersion":"1.2.3"}]}]}`)
+	if err := os.WriteFile(report1Path, report1Data, 0o644); err != nil {
+		t.Fatalf("Failed to write report1: %v", err)
+	}
+
+	report2Path := filepath.Join(reportsDir, "alertmanager.json")
+	report2Data := []byte(`{"Results":[{"Vulnerabilities":[{"VulnerabilityID":"CVE-2023-5678","FixedVersion":"2.3.4"}]}]}`)
+	if err := os.WriteFile(report2Path, report2Data, 0o644); err != nil {
+		t.Fatalf("Failed to write report2: %v", err)
+	}
+
 	dep := Dependency{
 		Name:       "prometheus",
 		Version:    "25.8.0",
@@ -202,9 +221,10 @@ func TestCreateWrapperChart(t *testing.T) {
 				Repository: "prometheus",
 				Tag:        "v2.48.0-patched",
 			},
-			Skipped:   false,
-			Error:     nil,
-			VulnCount: 5,
+			Skipped:    false,
+			Error:      nil,
+			VulnCount:  5,
+			ReportPath: report1Path,
 		},
 		{
 			Original: Image{
@@ -218,9 +238,10 @@ func TestCreateWrapperChart(t *testing.T) {
 				Repository: "alertmanager",
 				Tag:        "v0.26.0-patched",
 			},
-			Skipped:   false,
-			Error:     nil,
-			VulnCount: 3,
+			Skipped:    false,
+			Error:      nil,
+			VulnCount:  3,
+			ReportPath: report2Path,
 		},
 	}
 
@@ -316,5 +337,28 @@ func TestCreateWrapperChart(t *testing.T) {
 	helmignorePath := filepath.Join(chartDir, ".helmignore")
 	if _, err := os.Stat(helmignorePath); err != nil {
 		t.Errorf(".helmignore not found: %v", err)
+	}
+
+	// Check reports/ directory exists with copied reports
+	reportsDir2 := filepath.Join(chartDir, "reports")
+	if _, err := os.Stat(reportsDir2); err != nil {
+		t.Errorf("reports/ directory not found: %v", err)
+	}
+
+	// Check that both reports were copied
+	if _, err := os.Stat(filepath.Join(reportsDir2, "prometheus.json")); err != nil {
+		t.Errorf("prometheus.json report not found: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(reportsDir2, "alertmanager.json")); err != nil {
+		t.Errorf("alertmanager.json report not found: %v", err)
+	}
+
+	// Verify report content is correct
+	reportData, err := os.ReadFile(filepath.Join(reportsDir2, "prometheus.json"))
+	if err != nil {
+		t.Fatalf("Failed to read copied report: %v", err)
+	}
+	if !strings.Contains(string(reportData), "CVE-2023-1234") {
+		t.Errorf("Report content incorrect, expected CVE-2023-1234")
 	}
 }

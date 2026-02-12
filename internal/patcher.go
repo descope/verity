@@ -32,11 +32,12 @@ type PatchOptions struct {
 
 // PatchResult holds the outcome of patching a single image.
 type PatchResult struct {
-	Original  Image
-	Patched   Image
-	VulnCount int
-	Skipped   bool
-	Error     error
+	Original   Image
+	Patched    Image
+	VulnCount  int
+	Skipped    bool
+	Error      error
+	ReportPath string // Path to Trivy JSON report
 }
 
 // PatchImage scans an image for OS vulnerabilities using Trivy,
@@ -55,6 +56,7 @@ func PatchImage(ctx context.Context, img Image, opts PatchOptions) *PatchResult 
 
 	// 1. Scan the OCI layout with Trivy.
 	reportPath := filepath.Join(opts.ReportDir, sanitize(ref)+".json")
+	result.ReportPath = reportPath
 	if err := trivyScan(ctx, ociDir, reportPath); err != nil {
 		result.Error = fmt.Errorf("scanning %s: %w", ref, err)
 		return result

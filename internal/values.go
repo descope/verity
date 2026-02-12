@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,6 +57,24 @@ func CreateWrapperChart(dep Dependency, results []*PatchResult, outputDir string
 `
 	if err := os.WriteFile(filepath.Join(chartDir, ".helmignore"), []byte(helmignore), 0o644); err != nil {
 		return fmt.Errorf("writing .helmignore: %w", err)
+	}
+
+	// Create reports/ directory and copy Trivy JSON reports
+	reportsDir := filepath.Join(chartDir, "reports")
+	if err := os.MkdirAll(reportsDir, 0o755); err != nil {
+		return fmt.Errorf("creating reports directory: %w", err)
+	}
+
+	for _, r := range results {
+		// Copy the trivy report even if patching was skipped or failed
+		// This provides transparency about all scanned images
+		if r.ReportPath != "" {
+			reportName := filepath.Base(r.ReportPath)
+			destPath := filepath.Join(reportsDir, reportName)
+			if err := copyFile(r.ReportPath, destPath); err != nil {
+				return fmt.Errorf("copying report %s: %w", reportName, err)
+			}
+		}
 	}
 
 	return nil
@@ -173,4 +192,25 @@ func setImageAtPath(root map[string]interface{}, dotPath string, img Image) {
 	if img.Tag != "" {
 		current["tag"] = img.Tag
 	}
+}
+
+// copyFile copies a file from src to dst.
+func copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	if _, err := io.Copy(destFile, sourceFile); err != nil {
+		return err
+	}
+
+	return destFile.Sync()
 }

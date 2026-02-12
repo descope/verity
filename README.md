@@ -59,6 +59,7 @@ charts/
     Chart.yaml    # Depends on original prometheus chart
     values.yaml   # Patched images (namespaced)
     .helmignore
+    reports/      # Trivy vulnerability reports (JSON)
 ```
 
 **Example values.yaml:**
