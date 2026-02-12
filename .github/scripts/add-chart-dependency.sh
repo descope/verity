@@ -9,6 +9,12 @@ set -euo pipefail
 : "${CHART_REPOSITORY:?CHART_REPOSITORY is required}"
 : "${ISSUE_NUMBER:?ISSUE_NUMBER is required}"
 
+# Normalize repository URL: prepend https:// if no protocol specified
+if [[ ! "${CHART_REPOSITORY}" =~ ^(oci|https?):// ]]; then
+  CHART_REPOSITORY="https://${CHART_REPOSITORY}"
+  echo "Normalized repository URL to: ${CHART_REPOSITORY}"
+fi
+
 # Check for duplicate
 if yq e ".dependencies[] | select(.name == strenv(CHART_NAME))" Chart.yaml | grep -q name; then
   echo "Chart ${CHART_NAME} already exists in Chart.yaml"
