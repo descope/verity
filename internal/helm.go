@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/action"
@@ -98,7 +99,8 @@ func helmPull(dep Dependency, destDir string) (string, error) {
 
 // downloadTarball fetches a .tgz URL and extracts it into destDir.
 func downloadTarball(url, chartName, destDir string) (string, error) {
-	resp, err := http.Get(url)
+	client := &http.Client{Timeout: 5 * time.Minute}
+	resp, err := client.Get(url)
 	if err != nil {
 		return "", fmt.Errorf("fetching %s: %w", url, err)
 	}
