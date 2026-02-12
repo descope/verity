@@ -21,8 +21,10 @@ if [ -z "${NAME}" ] || [ -z "${VERSION}" ] || [ -z "${REPOSITORY}" ]; then
   exit 1
 fi
 
-echo "name=${NAME}" >> "$GITHUB_OUTPUT"
-echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-echo "repository=${REPOSITORY}" >> "$GITHUB_OUTPUT"
+{
+  echo "name=${NAME}"
+  echo "version=${VERSION}"
+  echo "repository=${REPOSITORY}"
+} >> "$GITHUB_OUTPUT"
 
 echo "Parsed: ${NAME}@${VERSION} from ${REPOSITORY}"
