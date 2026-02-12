@@ -57,16 +57,9 @@ jobs:
       - name: Build verity
         run: go build -o verity .
 
-      - name: Scan charts for images
-        run: ./verity -chart Chart.yaml -output charts
-
       - name: Install Trivy
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: image
-          image-ref: alpine:3.18
-          exit-code: "0"
-          # This step installs the Trivy binary; the actual scans happen below.
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
       - name: Install Copa
         run: |
@@ -74,13 +67,11 @@ jobs:
           curl -fsSL -o copa.tar.gz "https://github.com/project-copacetic/copacetic/releases/download/v${COPA_VERSION}/copa_${COPA_VERSION}_linux_amd64.tar.gz"
           tar -xzf copa.tar.gz copa
           sudo mv copa /usr/local/bin/
-          copa --version
 
       - name: Start BuildKit
         run: |
           docker run --detach --privileged --name buildkitd \
             --entrypoint buildkitd --rm "moby/buildkit:latest"
-          # Wait for BuildKit to be ready
           for i in $(seq 1 30); do
             if docker exec buildkitd buildctl debug workers >/dev/null 2>&1; then
               echo "BuildKit ready"
@@ -89,90 +80,18 @@ jobs:
             sleep 1
           done
 
-      - name: Patch images with Copa
+      - name: Patch images
         run: |
-          set -euo pipefail
-          failed=0
-          patched=0
-          skipped=0
-
-          while IFS= read -r line; do
-            registry=$(echo "$line" | yq -r '.registry // ""')
-            repository=$(echo "$line" | yq -r '.repository')
-            tag=$(echo "$line" | yq -r '.tag // "latest"')
-
-            if [ -n "$registry" ]; then
-              ref="${registry}/${repository}:${tag}"
-            else
-              ref="${repository}:${tag}"
-            fi
-
-            echo "::group::Processing ${ref}"
-
-            # Pull the image
-            if ! docker pull "$ref"; then
-              echo "::warning::Failed to pull ${ref}, skipping"
-              skipped=$((skipped + 1))
-              echo "::endgroup::"
-              continue
-            fi
-
-            # Scan with Trivy
-            report="/tmp/$(echo "$ref" | tr '/:' '_').json"
-            trivy image --vuln-type os --ignore-unfixed -f json -o "$report" "$ref" || true
-
-            # Check if there are patchable vulnerabilities
-            vuln_count=$(jq '[.Results[]?.Vulnerabilities // [] | .[] | select(.FixedVersion != "")] | length' "$report" 2>/dev/null || echo "0")
-            echo "Found ${vuln_count} patchable OS vulnerabilities in ${ref}"
-
-            if [ "$vuln_count" -eq 0 ]; then
-              echo "No patchable vulnerabilities, skipping Copa"
-              skipped=$((skipped + 1))
-              echo "::endgroup::"
-              continue
-            fi
-
-            # Patch with Copa
-            if copa patch \
-              --image "$ref" \
-              --report "$report" \
-              --tag "${tag}-patched" \
-              --addr docker-container://buildkitd \
-              --timeout 10m; then
-
-              # Verify the patch reduced vulnerabilities
-              patched_ref="${ref%-*}:${tag}-patched"
-              if [ -n "$registry" ]; then
-                patched_ref="${registry}/${repository}:${tag}-patched"
-              else
-                patched_ref="${repository}:${tag}-patched"
-              fi
-              echo "Patched image: ${patched_ref}"
-              trivy image --vuln-type os --ignore-unfixed "$patched_ref" || true
-              patched=$((patched + 1))
-            else
-              echo "::error::Copa failed to patch ${ref}"
-              failed=$((failed + 1))
-            fi
-
-            echo "::endgroup::"
-          done < <(yq -o=json -I=0 '.images[]' charts/*/values.yaml)
-
-          echo ""
-          echo "=== Summary ==="
-          echo "Patched: ${patched}"
-          echo "Skipped: ${skipped} (no patchable vulns or pull failed)"
-          echo "Failed:  ${failed}"
-
-          if [ "$failed" -ne 0 ]; then
-            exit 1
-          fi
+          ./verity -chart Chart.yaml -output charts \
+            -patch \
+            -buildkit-addr docker-container://buildkitd \
+            -report-dir /tmp/trivy-reports
 
       - name: Upload vulnerability reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: trivy-reports
-          path: /tmp/*.json
+          path: /tmp/trivy-reports/*.json
           retention-days: 30
 
