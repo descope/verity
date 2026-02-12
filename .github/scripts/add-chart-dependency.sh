@@ -10,7 +10,7 @@ set -euo pipefail
 : "${ISSUE_NUMBER:?ISSUE_NUMBER is required}"
 
 # Check for duplicate
-if yq e ".dependencies[] | select(.name == \"${CHART_NAME}\")" Chart.yaml | grep -q name; then
+if yq e ".dependencies[] | select(.name == strenv(CHART_NAME))" Chart.yaml | grep -q name; then
   echo "Chart ${CHART_NAME} already exists in Chart.yaml"
   gh issue comment "${ISSUE_NUMBER}" \
     --body "Chart **${CHART_NAME}** already exists in Chart.yaml. Closing as duplicate."
@@ -18,11 +18,14 @@ if yq e ".dependencies[] | select(.name == \"${CHART_NAME}\")" Chart.yaml | grep
   exit 0
 fi
 
-# Add chart dependency
-yq e ".dependencies += [{\"name\": \"${CHART_NAME}\", \"version\": \"${CHART_VERSION}\", \"repository\": \"${CHART_REPOSITORY}\"}]" -i Chart.yaml
+# Add chart dependency using env vars to avoid injection
+export CHART_NAME CHART_VERSION CHART_REPOSITORY
+yq e '.dependencies += [{"name": strenv(CHART_NAME), "version": strenv(CHART_VERSION), "repository": strenv(CHART_REPOSITORY)}]' -i Chart.yaml
 
-# Create PR
-BRANCH="add-chart/${CHART_NAME}"
+# Sanitize branch name
+SAFE_NAME=$(echo "${CHART_NAME}" | tr -cs '[:alnum:]-' '-' | sed 's/^-//;s/-$//')
+BRANCH="add-chart/${SAFE_NAME}"
+
 git config user.name "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
 git checkout -b "${BRANCH}"

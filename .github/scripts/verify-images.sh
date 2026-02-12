@@ -32,7 +32,7 @@ for chart_yaml in "${CHARTS_DIR}"/charts/*/Chart.yaml; do
   echo "Checking images from ${chart_name}..."
 
   # Extract image references from values.yaml (values are namespaced under chart name)
-  yq eval ".${chart_name}" "${values_file}" -o json 2>/dev/null | \
+  yq eval ".[\"${chart_name}\"]" "${values_file}" -o json 2>/dev/null | \
   jq -r '.. | objects | select(has("registry") and has("repository") and has("tag")) |
          "\(.registry)/\(.repository):\(.tag)"' | \
   while read -r image; do

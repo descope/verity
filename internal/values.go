@@ -239,7 +239,7 @@ func copyFile(src, dst string) error {
 // Returns 0 if no existing versions found or on error.
 func getNextPatchLevel(registry, chartName, upstreamVersion string) int {
 	// OCI chart reference: {registry}/charts/{chartname}
-	// Example: ghcr.io/verity/charts/prometheus
+	// Example: ghcr.io/<org>/charts/prometheus
 	chartRef := fmt.Sprintf("%s/charts/%s", registry, chartName)
 
 	// List all tags for this chart
