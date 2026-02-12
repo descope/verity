@@ -23,66 +23,15 @@ jobs:
 
       - name: Parse issue form
         id: parse
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const body = context.payload.issue.body;
-            const get = (label) => {
-              const re = new RegExp(`### ${label}\\s*\\n\\s*(.+)`);
-              const m = body.match(re);
-              return m ? m[1].trim() : '';
-            };
-            const name = get('Chart name');
-            const version = get('Chart version');
-            const repository = get('Chart repository');
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: ./.github/scripts/parse-issue-form.sh
 
-            if (!name || !version || !repository) {
-              core.setFailed('Missing required fields in issue body');
-              return;
-            }
-
-            core.setOutput('name', name);
-            core.setOutput('version', version);
-            core.setOutput('repository', repository);
-
-      - name: Check for duplicate
-        id: check
-        run: |
-          if yq e ".dependencies[] | select(.name == \"${{ steps.parse.outputs.name }}\")" Chart.yaml | grep -q name; then
-            echo "duplicate=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "duplicate=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Add chart dependency
-        if: steps.check.outputs.duplicate == 'false'
-        run: |
-          yq e '.dependencies += [{"name": "${{ steps.parse.outputs.name }}", "version": "${{ steps.parse.outputs.version }}", "repository": "${{ steps.parse.outputs.repository }}"}]' -i Chart.yaml
-
-      - name: Create Pull Request
-        if: steps.check.outputs.duplicate == 'false'
+      - name: Add chart and create PR
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          BRANCH="add-chart/${{ steps.parse.outputs.name }}"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BRANCH"
-          git add Chart.yaml
-          git commit -m "feat: add ${{ steps.parse.outputs.name }} chart dependency"
-          git push -u origin "$BRANCH"
-          gh pr create \
-            --title "Add ${{ steps.parse.outputs.name }} chart" \
-            --body "Adds ${{ steps.parse.outputs.name }}@${{ steps.parse.outputs.version }} from \`${{ steps.parse.outputs.repository }}\`.
-
-          Closes #${{ github.event.issue.number }}" \
-            --label new-chart
-
-      - name: Comment if duplicate
-        if: steps.check.outputs.duplicate == 'true'
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          gh issue comment ${{ github.event.issue.number }} \
-            --body "Chart **${{ steps.parse.outputs.name }}** already exists in Chart.yaml. Closing as duplicate."
-          gh issue close ${{ github.event.issue.number }}
+          CHART_NAME: ${{ steps.parse.outputs.name }}
+          CHART_VERSION: ${{ steps.parse.outputs.version }}
+          CHART_REPOSITORY: ${{ steps.parse.outputs.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: ./.github/scripts/add-chart-dependency.sh

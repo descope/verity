@@ -12,6 +12,18 @@ permissions:
   packages: write
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: actionlint
+        uses: reviewdog/action-actionlint@v1
+
+      - name: shellcheck
+        run: shellcheck .github/scripts/*.sh
+
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
