@@ -34,6 +34,9 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+
       - name: Build verity
         run: go build -o verity .
 
@@ -54,6 +57,9 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+
       - name: Build verity
         run: go build -o verity .
 
@@ -71,7 +77,7 @@ jobs:
       - name: Start BuildKit
         run: |
           docker run --detach --privileged --name buildkitd \
-            --entrypoint buildkitd --rm "moby/buildkit:latest"
+            --entrypoint buildkitd --rm "moby/buildkit:v0.19.0"
           for i in $(seq 1 30); do
             if docker exec buildkitd buildctl debug workers >/dev/null 2>&1; then
               echo "BuildKit ready"
