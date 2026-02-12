@@ -24,19 +24,20 @@ Workflows use the **official** `docker/setup-buildx-action@v3` instead of a cust
 This action:
 - Sets up Docker Buildx (which uses BuildKit)
 - Doesn't require privileged mode
-- Creates a builder accessible at `docker-container://buildx_buildkit_default`
+- Creates a builder with an auto-generated name (accessible via action output)
 - Automatically maintained by Docker
 
 **Example workflow usage:**
 ```yaml
 - name: Set up Docker Buildx
+  id: buildx
   uses: docker/setup-buildx-action@v3
 
 - name: Run Copa patching
   run: |
     ./verity -chart Chart.yaml -output charts \
       -patch \
-      -buildkit-addr docker-container://buildx_buildkit_default
+      -buildkit-addr docker-container://${{ steps.buildx.outputs.name }}
 ```
 
 ---

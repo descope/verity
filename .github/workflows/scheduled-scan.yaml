@@ -33,6 +33,7 @@ jobs:
         run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
 
       - name: Set up Docker Buildx
+        id: buildx
         uses: docker/setup-buildx-action@v3.12.0
 
       - name: Build verity
@@ -51,7 +52,7 @@ jobs:
           ./verity -chart Chart.yaml -output charts \
             -patch \
             -registry ghcr.io/${{ github.repository_owner }} \
-            -buildkit-addr docker-container://buildx_buildkit_default \
+            -buildkit-addr docker-container://${{ steps.buildx.outputs.name }} \
             -report-dir /tmp/trivy-reports
 
       - name: Check for changes
