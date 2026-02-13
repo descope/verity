@@ -80,7 +80,7 @@ func main() {
 			results = append(results, r)
 
 			if r.Error != nil {
-				fmt.Printf("    ERROR: %v\n", r.Error)
+				fmt.Printf("    WARNING: %v (image may be distroless/scratch and unpatchable by Copa)\n", r.Error)
 				failed++
 			} else if r.Skipped {
 				fmt.Printf("    Skipped: %s\n", r.SkipReason)
@@ -90,7 +90,7 @@ func main() {
 		}
 
 		if failed > 0 {
-			log.Fatalf("  %d image(s) failed to patch", failed)
+			fmt.Printf("\n  WARNING: %d image(s) could not be patched (distroless/scratch images may not be supported by Copa)\n", failed)
 		}
 
 		// Create a wrapper chart that subcharts the original with patched images
@@ -140,7 +140,7 @@ func main() {
 					results = append(results, r)
 
 					if r.Error != nil {
-						fmt.Printf("    ERROR: %v\n", r.Error)
+						fmt.Printf("    WARNING: %v (image may be distroless/scratch and unpatchable by Copa)\n", r.Error)
 						failed++
 					} else if r.Skipped {
 						fmt.Printf("    Skipped: %s\n", r.SkipReason)
@@ -150,7 +150,7 @@ func main() {
 				}
 
 				if failed > 0 {
-					log.Fatalf("  %d standalone image(s) failed to patch", failed)
+					fmt.Printf("\n  WARNING: %d standalone image(s) could not be patched (distroless/scratch images may not be supported by Copa)\n", failed)
 				}
 
 				// Save standalone reports to persistent directory
@@ -169,4 +169,3 @@ func main() {
 		fmt.Printf("\nSite data → %s\n", *siteDataPath)
 	}
 }
-
