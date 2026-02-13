@@ -21,7 +21,7 @@ if [ -d "reports" ]; then
 fi
 # Also stage regenerated site catalog if it exists
 if [ -f "site/src/data/catalog.json" ]; then
-  git add -f site/src/data/catalog.json
+  git add site/src/data/catalog.json
 fi
 git commit -m "chore: patch images for updated chart versions
 
