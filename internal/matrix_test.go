@@ -337,6 +337,31 @@ func TestAssembleResults(t *testing.T) {
 	}
 }
 
+func TestBuildPatchResultsMissingResult(t *testing.T) {
+	images := []ImageDiscovery{
+		{Registry: "docker.io", Repository: "library/nginx", Tag: "1.25", Path: "image"},
+	}
+
+	// Empty result map — no patch result for this image.
+	resultMap := map[string]*SinglePatchResult{}
+	reportsDir := t.TempDir()
+
+	results := buildPatchResults(images, resultMap, reportsDir)
+
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if !results[0].Skipped {
+		t.Error("expected missing result to be marked as Skipped")
+	}
+	if results[0].SkipReason != "no patch result for image" {
+		t.Errorf("unexpected skip reason: %q", results[0].SkipReason)
+	}
+	if results[0].Patched.Repository != "" {
+		t.Error("expected empty Patched image for missing result")
+	}
+}
+
 func TestImageDiscoveryReference(t *testing.T) {
 	d := ImageDiscovery{Registry: "quay.io", Repository: "prom/prom", Tag: "v1"}
 	if got := d.reference(); got != "quay.io/prom/prom:v1" {

@@ -35,6 +35,17 @@ func main() {
 	scan := flag.Bool("scan", false, "scan charts for images without patching (dry run)")
 	flag.Parse()
 
+	// Validate mutual exclusivity of mode flags.
+	modeCount := 0
+	for _, set := range []bool{*discover, *patchSingle, *assemble, *scan, *siteDataPath != ""} {
+		if set {
+			modeCount++
+		}
+	}
+	if modeCount > 1 {
+		log.Fatal("Only one mode flag may be specified at a time (-discover, -patch-single, -assemble, -scan, -site-data)")
+	}
+
 	switch {
 	case *discover:
 		runDiscover(*chartFile, *imagesFile, *discoverDir)

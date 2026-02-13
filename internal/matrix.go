@@ -289,12 +289,19 @@ func loadResults(dir string) (map[string]*SinglePatchResult, error) {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 			continue
 		}
-		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		filename := filepath.Join(dir, e.Name())
+		data, err := os.ReadFile(filename)
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: cannot read result file %s: %v\n", e.Name(), err)
 			continue
 		}
 		var r SinglePatchResult
 		if err := json.Unmarshal(data, &r); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: cannot parse result file %s: %v\n", e.Name(), err)
+			continue
+		}
+		if r.ImageRef == "" {
+			fmt.Fprintf(os.Stderr, "Warning: result file %s has empty ImageRef, skipping\n", e.Name())
 			continue
 		}
 		m[r.ImageRef] = &r
@@ -319,34 +326,41 @@ func buildPatchResults(images []ImageDiscovery, resultMap map[string]*SinglePatc
 
 		pr := &PatchResult{Original: img}
 
-		if r, ok := resultMap[ref]; ok {
-			if r.Error != "" {
-				pr.Error = fmt.Errorf("%s", r.Error)
-			} else if r.Skipped {
-				pr.Skipped = true
-				pr.SkipReason = r.SkipReason
-				if r.PatchedRepository != "" {
-					pr.Patched = Image{
-						Registry:   r.PatchedRegistry,
-						Repository: r.PatchedRepository,
-						Tag:        r.PatchedTag,
-					}
-				}
-			} else {
-				pr.VulnCount = r.VulnCount
+		r, ok := resultMap[ref]
+		if !ok || r == nil {
+			// No patch result produced (matrix job may have failed).
+			pr.Skipped = true
+			pr.SkipReason = "no patch result for image"
+			results = append(results, pr)
+			continue
+		}
+
+		if r.Error != "" {
+			pr.Error = fmt.Errorf("%s", r.Error)
+		} else if r.Skipped {
+			pr.Skipped = true
+			pr.SkipReason = r.SkipReason
+			if r.PatchedRepository != "" {
 				pr.Patched = Image{
 					Registry:   r.PatchedRegistry,
 					Repository: r.PatchedRepository,
 					Tag:        r.PatchedTag,
 				}
 			}
-
-			// Look for trivy report by sanitized original ref.
-			reportPath := filepath.Join(reportsDir, sanitize(ref)+".json")
-			if _, err := os.Stat(reportPath); err == nil {
-				pr.ReportPath = reportPath
-				pr.UpstreamReportPath = reportPath
+		} else {
+			pr.VulnCount = r.VulnCount
+			pr.Patched = Image{
+				Registry:   r.PatchedRegistry,
+				Repository: r.PatchedRepository,
+				Tag:        r.PatchedTag,
 			}
+		}
+
+		// Look for trivy report by sanitized original ref.
+		reportPath := filepath.Join(reportsDir, sanitize(ref)+".json")
+		if _, err := os.Stat(reportPath); err == nil {
+			pr.ReportPath = reportPath
+			pr.UpstreamReportPath = reportPath
 		}
 
 		results = append(results, pr)
