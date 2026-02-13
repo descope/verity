@@ -115,6 +115,39 @@ func SaveOverrides(results []*PatchResult, dir string) error {
 	return os.WriteFile(filepath.Join(dir, "overrides.json"), data, 0o644)
 }
 
+// SaveImagePaths writes a mapping of sanitized image ref → Helm values path
+// so that site data generation can populate valuesPath even for unpatched images.
+func SaveImagePaths(results []*PatchResult, dir string) error {
+	paths := make(map[string]string)
+	for _, r := range results {
+		if r.Original.Path != "" {
+			key := sanitize(r.Original.Reference())
+			paths[key] = r.Original.Path
+		}
+	}
+	if len(paths) == 0 {
+		return nil
+	}
+	data, err := json.MarshalIndent(paths, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, "paths.json"), data, 0o644)
+}
+
+// loadImagePaths reads a paths.json file and returns the mapping.
+func loadImagePaths(dir string) map[string]string {
+	data, err := os.ReadFile(filepath.Join(dir, "paths.json"))
+	if err != nil {
+		return nil
+	}
+	var paths map[string]string
+	if err := json.Unmarshal(data, &paths); err != nil {
+		return nil
+	}
+	return paths
+}
+
 // loadOverrides reads an overrides.json file and returns the mapping.
 func loadOverrides(dir string) map[string]string {
 	data, err := os.ReadFile(filepath.Join(dir, "overrides.json"))
@@ -237,7 +270,8 @@ func parseWrapperChart(chartsDir, name, registry string) (SiteChart, error) {
 	// Discover reports and match to images
 	reportsDir := filepath.Join(chartDir, "reports")
 	overrides := loadOverrides(chartDir)
-	images, err := matchReportsToImages(reportsDir, patchedImages, overrides, registry, name)
+	imagePaths := loadImagePaths(chartDir)
+	images, err := matchReportsToImages(reportsDir, patchedImages, overrides, imagePaths, registry, name)
 	if err != nil {
 		return SiteChart{}, fmt.Errorf("matching reports: %w", err)
 	}
@@ -320,7 +354,7 @@ func collectPatchedImages(node any, path string, result map[string]patchedImageI
 
 // matchReportsToImages reads Trivy JSON reports from the reports directory
 // and creates SiteImage entries for each one.
-func matchReportsToImages(reportsDir string, patchedImages map[string]patchedImageInfo, overrides map[string]string, registry, chartName string) ([]SiteImage, error) {
+func matchReportsToImages(reportsDir string, patchedImages map[string]patchedImageInfo, overrides, imagePaths map[string]string, registry, chartName string) ([]SiteImage, error) {
 	entries, err := os.ReadDir(reportsDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -349,8 +383,11 @@ func matchReportsToImages(reportsDir string, patchedImages map[string]patchedIma
 		// Build patched ref
 		patchedRef := buildPatchedRef(originalRef, registry)
 
-		// Find values path from patched images map
+		// Find values path from patched images map, falling back to paths.json
 		valuesPath := findValuesPath(originalRef, patchedImages)
+		if valuesPath == "" && imagePaths != nil {
+			valuesPath = imagePaths[sanitizedName]
+		}
 
 		img := buildSiteImage(sanitizedName, originalRef, patchedRef, valuesPath, chartName, report)
 		if ov, ok := overrides[sanitizedName]; ok {

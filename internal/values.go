@@ -106,6 +106,11 @@ func CreateWrapperChart(dep Dependency, results []*PatchResult, outputDir, regis
 		return "", fmt.Errorf("saving overrides: %w", err)
 	}
 
+	// Save image paths so site data can populate valuesPath for all images.
+	if err := SaveImagePaths(results, chartDir); err != nil {
+		return "", fmt.Errorf("saving image paths: %w", err)
+	}
+
 	return version, nil
 }
 
