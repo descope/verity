@@ -27,6 +27,21 @@ func main() {
 		log.Fatalf("Failed to parse %s: %v", *chartFile, err)
 	}
 
+	// Parse image tag overrides (e.g. distroless-libc → debian) from the images file.
+	var overrides []internal.ImageOverride
+	if *imagesFile != "" {
+		overrides, err = internal.ParseOverrides(*imagesFile)
+		if err != nil {
+			log.Fatalf("Failed to parse overrides from %s: %v", *imagesFile, err)
+		}
+		if len(overrides) > 0 {
+			fmt.Printf("Loaded %d image override(s)\n", len(overrides))
+			for _, o := range overrides {
+				fmt.Printf("  %s: %q → %q\n", o.Repository, o.From, o.To)
+			}
+		}
+	}
+
 	tmpDir, err := os.MkdirTemp("", "verity-")
 	if err != nil {
 		log.Fatalf("Failed to create temp dir: %v", err)
@@ -45,6 +60,9 @@ func main() {
 		if err != nil {
 			log.Fatalf("Failed to scan %s: %v", dep.Name, err)
 		}
+
+		// Apply image overrides before patching (e.g. swap distroless tags for Copa-compatible ones).
+		images = internal.ApplyOverrides(images, overrides)
 
 		fmt.Printf("  Found %d images\n", len(images))
 		for _, img := range images {
@@ -80,7 +98,7 @@ func main() {
 			results = append(results, r)
 
 			if r.Error != nil {
-				fmt.Printf("    WARNING: %v (image may be distroless/scratch and unpatchable by Copa)\n", r.Error)
+				fmt.Printf("    ERROR: %v\n", r.Error)
 				failed++
 			} else if r.Skipped {
 				fmt.Printf("    Skipped: %s\n", r.SkipReason)
@@ -90,7 +108,7 @@ func main() {
 		}
 
 		if failed > 0 {
-			fmt.Printf("\n  WARNING: %d image(s) could not be patched (distroless/scratch images may not be supported by Copa)\n", failed)
+			log.Fatalf("  %d image(s) failed to patch", failed)
 		}
 
 		// Create a wrapper chart that subcharts the original with patched images
@@ -140,7 +158,7 @@ func main() {
 					results = append(results, r)
 
 					if r.Error != nil {
-						fmt.Printf("    WARNING: %v (image may be distroless/scratch and unpatchable by Copa)\n", r.Error)
+						fmt.Printf("    ERROR: %v\n", r.Error)
 						failed++
 					} else if r.Skipped {
 						fmt.Printf("    Skipped: %s\n", r.SkipReason)
@@ -150,7 +168,7 @@ func main() {
 				}
 
 				if failed > 0 {
-					fmt.Printf("\n  WARNING: %d standalone image(s) could not be patched (distroless/scratch images may not be supported by Copa)\n", failed)
+					log.Fatalf("  %d standalone image(s) failed to patch", failed)
 				}
 
 				// Save standalone reports to persistent directory
