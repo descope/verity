@@ -74,9 +74,29 @@ func main() {
 	}
 }
 
+// parseOverridesFromFile loads image tag overrides from the images file, if present.
+func parseOverridesFromFile(imagesFile string) []internal.ImageOverride {
+	if imagesFile == "" {
+		return nil
+	}
+	overrides, err := internal.ParseOverrides(imagesFile)
+	if err != nil {
+		log.Fatalf("Failed to parse overrides from %s: %v", imagesFile, err)
+	}
+	if len(overrides) > 0 {
+		fmt.Printf("Loaded %d image override(s)\n", len(overrides))
+		for _, o := range overrides {
+			fmt.Printf("  %s: %q → %q\n", o.Repository, o.From, o.To)
+		}
+	}
+	return overrides
+}
+
 // runDiscover scans charts and standalone images, then writes a manifest
 // and a GitHub Actions matrix JSON to discoverDir.
 func runDiscover(chartFile, imagesFile, discoverDir string) {
+	overrides := parseOverridesFromFile(imagesFile)
+
 	tmpDir, err := os.MkdirTemp("", "verity-discover-")
 	if err != nil {
 		log.Fatalf("Failed to create temp dir: %v", err)
@@ -88,6 +108,12 @@ func runDiscover(chartFile, imagesFile, discoverDir string) {
 		log.Fatalf("Discovery failed: %v", err)
 	}
 
+	// Apply image tag overrides (e.g. distroless → debian) so the matrix
+	// contains Copa-compatible refs.
+	if len(overrides) > 0 {
+		applyOverridesToManifest(manifest, overrides)
+	}
+
 	matrix := internal.GenerateMatrix(manifest)
 
 	if err := internal.WriteDiscoveryOutput(manifest, matrix, discoverDir); err != nil {
@@ -97,6 +123,40 @@ func runDiscover(chartFile, imagesFile, discoverDir string) {
 	fmt.Printf("\nDiscovery complete: %d unique images\n", len(matrix.Include))
 	fmt.Printf("  Manifest → %s/manifest.json\n", discoverDir)
 	fmt.Printf("  Matrix   → %s/matrix.json\n", discoverDir)
+}
+
+// applyOverridesToManifest applies image tag overrides to all images in a manifest.
+func applyOverridesToManifest(manifest *internal.DiscoveryManifest, overrides []internal.ImageOverride) {
+	for i, ch := range manifest.Charts {
+		images := make([]internal.Image, len(ch.Images))
+		for j, d := range ch.Images {
+			images[j] = internal.Image{
+				Registry:   d.Registry,
+				Repository: d.Repository,
+				Tag:        d.Tag,
+				Path:       d.Path,
+			}
+		}
+		images = internal.ApplyOverrides(images, overrides)
+		for j, img := range images {
+			manifest.Charts[i].Images[j].Tag = img.Tag
+		}
+	}
+	if len(manifest.Standalone) > 0 {
+		images := make([]internal.Image, len(manifest.Standalone))
+		for j, d := range manifest.Standalone {
+			images[j] = internal.Image{
+				Registry:   d.Registry,
+				Repository: d.Repository,
+				Tag:        d.Tag,
+				Path:       d.Path,
+			}
+		}
+		images = internal.ApplyOverrides(images, overrides)
+		for j, img := range images {
+			manifest.Standalone[j].Tag = img.Tag
+		}
+	}
 }
 
 // runPatchSingle patches a single image and writes the result. Designed
@@ -174,6 +234,8 @@ func runSiteData(outputDir, imagesFile, registry, siteDataPath string) {
 // runScan is a lightweight dry-run mode that lists all images found
 // in charts and standalone values without patching anything.
 func runScan(chartFile, imagesFile string) {
+	overrides := parseOverridesFromFile(imagesFile)
+
 	tmpDir, err := os.MkdirTemp("", "verity-scan-")
 	if err != nil {
 		log.Fatalf("Failed to create temp dir: %v", err)
@@ -199,6 +261,9 @@ func runScan(chartFile, imagesFile string) {
 			log.Fatalf("Failed to scan %s: %v", dep.Name, err)
 		}
 
+		images = internal.ApplyOverrides(images, overrides)
+
+		fmt.Printf("  Found %d images\n", len(images))
 		for _, img := range images {
 			fmt.Printf("  %s  (%s)\n", img.Reference(), img.Path)
 		}

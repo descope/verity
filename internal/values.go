@@ -101,6 +101,11 @@ func CreateWrapperChart(dep Dependency, results []*PatchResult, outputDir, regis
 		}
 	}
 
+	// Save override metadata for site data generation.
+	if err := SaveOverrides(results, chartDir); err != nil {
+		return "", fmt.Errorf("saving overrides: %w", err)
+	}
+
 	return version, nil
 }
 
@@ -162,7 +167,23 @@ func GenerateNamespacedValuesOverride(chartName string, results []*PatchResult, 
 	if err != nil {
 		return fmt.Errorf("marshaling values override: %w", err)
 	}
-	return os.WriteFile(path, data, 0o644)
+
+	// Build comment header noting any image overrides applied.
+	var header string
+	for _, r := range results {
+		if r.OverriddenFrom != "" && r.Error == nil && !r.Skipped {
+			header += fmt.Sprintf("# NOTE: %s was overridden from %q to %q for Copa compatibility\n",
+				r.Original.Repository, r.OverriddenFrom, r.Original.Tag)
+		}
+	}
+
+	var out []byte
+	if header != "" {
+		out = append([]byte(header), data...)
+	} else {
+		out = data
+	}
+	return os.WriteFile(path, out, 0o644)
 }
 
 // GenerateValuesOverride builds a Helm values override file that remaps

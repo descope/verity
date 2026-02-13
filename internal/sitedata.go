@@ -47,6 +47,7 @@ type SiteImage struct {
 	PatchedRef      string      `json:"patchedRef"`
 	ValuesPath      string      `json:"valuesPath"`
 	OS              string      `json:"os"`
+	OverriddenFrom  string      `json:"overriddenFrom,omitempty"`
 	VulnSummary     VulnSummary `json:"vulnSummary"`
 	Vulnerabilities []SiteVuln  `json:"vulnerabilities"`
 	ChartName       string      `json:"chartName,omitempty"`
@@ -92,6 +93,39 @@ type trivyVulnFull struct {
 	FixedVersion     string `json:"FixedVersion"`
 	Severity         string `json:"Severity"`
 	Title            string `json:"Title"`
+}
+
+// SaveOverrides writes a mapping of sanitized image ref → original tag
+// to an overrides.json file in the given directory.
+func SaveOverrides(results []*PatchResult, dir string) error {
+	overrides := make(map[string]string)
+	for _, r := range results {
+		if r.OverriddenFrom != "" {
+			key := sanitize(r.Original.Reference())
+			overrides[key] = r.OverriddenFrom
+		}
+	}
+	if len(overrides) == 0 {
+		return nil
+	}
+	data, err := json.MarshalIndent(overrides, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, "overrides.json"), data, 0o644)
+}
+
+// loadOverrides reads an overrides.json file and returns the mapping.
+func loadOverrides(dir string) map[string]string {
+	data, err := os.ReadFile(filepath.Join(dir, "overrides.json"))
+	if err != nil {
+		return nil
+	}
+	var overrides map[string]string
+	if err := json.Unmarshal(data, &overrides); err != nil {
+		return nil
+	}
+	return overrides
 }
 
 // GenerateSiteData walks the charts directory and standalone images file
@@ -202,7 +236,8 @@ func parseWrapperChart(chartsDir, name, registry string) (SiteChart, error) {
 
 	// Discover reports and match to images
 	reportsDir := filepath.Join(chartDir, "reports")
-	images, err := matchReportsToImages(reportsDir, patchedImages, registry, name)
+	overrides := loadOverrides(chartDir)
+	images, err := matchReportsToImages(reportsDir, patchedImages, overrides, registry, name)
 	if err != nil {
 		return SiteChart{}, fmt.Errorf("matching reports: %w", err)
 	}
@@ -285,7 +320,7 @@ func collectPatchedImages(node any, path string, result map[string]patchedImageI
 
 // matchReportsToImages reads Trivy JSON reports from the reports directory
 // and creates SiteImage entries for each one.
-func matchReportsToImages(reportsDir string, patchedImages map[string]patchedImageInfo, registry, chartName string) ([]SiteImage, error) {
+func matchReportsToImages(reportsDir string, patchedImages map[string]patchedImageInfo, overrides map[string]string, registry, chartName string) ([]SiteImage, error) {
 	entries, err := os.ReadDir(reportsDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -318,6 +353,9 @@ func matchReportsToImages(reportsDir string, patchedImages map[string]patchedIma
 		valuesPath := findValuesPath(originalRef, patchedImages)
 
 		img := buildSiteImage(sanitizedName, originalRef, patchedRef, valuesPath, chartName, report)
+		if ov, ok := overrides[sanitizedName]; ok {
+			img.OverriddenFrom = ov
+		}
 		images = append(images, img)
 	}
 
@@ -490,6 +528,12 @@ func SaveStandaloneReports(results []*PatchResult, reportsDir string) error {
 			return fmt.Errorf("copying report for %s: %w", r.Original.Reference(), err)
 		}
 	}
+
+	// Save override metadata for site data generation.
+	if err := SaveOverrides(results, reportsDir); err != nil {
+		return fmt.Errorf("saving overrides: %w", err)
+	}
+
 	return nil
 }
 
@@ -500,6 +544,8 @@ func discoverStandaloneImages(imagesFile, reportsDir, registry string) ([]SiteIm
 	if err != nil {
 		return nil, err
 	}
+
+	overrides := loadOverrides(reportsDir)
 
 	var siteImages []SiteImage
 	for _, img := range images {
@@ -525,6 +571,9 @@ func discoverStandaloneImages(imagesFile, reportsDir, registry string) ([]SiteIm
 					SeverityCounts: make(map[string]int),
 				},
 			}
+		}
+		if ov, ok := overrides[sanitizedRef]; ok {
+			si.OverriddenFrom = ov
 		}
 		siteImages = append(siteImages, si)
 	}

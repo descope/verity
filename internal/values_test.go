@@ -449,6 +449,88 @@ func TestCreateWrapperChart(t *testing.T) {
 	}
 }
 
+func TestGenerateNamespacedValuesOverride_OverrideComment(t *testing.T) {
+	results := []*PatchResult{
+		{
+			Original: Image{
+				Repository: "timberio/vector",
+				Tag:        "0.46.1-debian",
+				Path:       "vector.image",
+			},
+			Patched: Image{
+				Registry:   "ghcr.io/descope",
+				Repository: "timberio/vector",
+				Tag:        "0.46.1-debian-patched",
+			},
+			VulnCount:      2,
+			OverriddenFrom: "0.46.1-distroless-libc",
+		},
+		{
+			Original: Image{
+				Repository: "victoriametrics/victoria-logs",
+				Tag:        "v1.0.0-victorialogs",
+				Path:       "server.image",
+			},
+			Patched: Image{
+				Registry:   "ghcr.io/descope",
+				Repository: "victoriametrics/victoria-logs",
+				Tag:        "v1.0.0-victorialogs-patched",
+			},
+			VulnCount: 3,
+		},
+	}
+
+	dir := t.TempDir()
+	outFile := filepath.Join(dir, "values.yaml")
+
+	if err := GenerateNamespacedValuesOverride("victoria-logs-single", results, outFile); err != nil {
+		t.Fatalf("GenerateNamespacedValuesOverride() error: %v", err)
+	}
+
+	data, err := os.ReadFile(outFile)
+	if err != nil {
+		t.Fatalf("reading output: %v", err)
+	}
+
+	content := string(data)
+
+	// Should have override comment for vector (overridden)
+	if !strings.Contains(content, "# NOTE: timberio/vector was overridden") {
+		t.Error("expected override comment for timberio/vector")
+	}
+	if !strings.Contains(content, "distroless-libc") {
+		t.Error("expected original tag in override comment")
+	}
+
+	// Should NOT have override comment for victoria-logs (not overridden)
+	if strings.Contains(content, "victoriametrics/victoria-logs was overridden") {
+		t.Error("should not have override comment for non-overridden image")
+	}
+
+	// Should still be valid YAML after stripping comments
+	var values map[string]interface{}
+	if err := yaml.Unmarshal(data, &values); err != nil {
+		t.Fatalf("output should be valid YAML: %v", err)
+	}
+
+	// Check the actual values are correct
+	vls, ok := values["victoria-logs-single"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected victoria-logs-single namespace")
+	}
+	vec, ok := vls["vector"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected vector key")
+	}
+	vecImg, ok := vec["image"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected vector.image key")
+	}
+	if vecImg["tag"] != "0.46.1-debian-patched" {
+		t.Errorf("expected tag 0.46.1-debian-patched, got %v", vecImg["tag"])
+	}
+}
+
 func TestGetNextPatchLevel(t *testing.T) {
 	tests := []struct {
 		name            string

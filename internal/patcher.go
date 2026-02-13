@@ -40,6 +40,7 @@ type PatchResult struct {
 	Error              error
 	ReportPath         string // Path to Trivy JSON report (may be patched image scan)
 	UpstreamReportPath string // Path to Trivy JSON report of the original upstream image
+	OverriddenFrom     string // Original tag before override (empty if not overridden)
 }
 
 // PatchImage scans an image for OS vulnerabilities using Trivy,
