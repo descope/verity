@@ -69,6 +69,17 @@ const parentChart = image.chartName
     </div>
   </div>
 
+  {image.overriddenFrom && (
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+      <div class="text-xs text-amber-700 uppercase tracking-wide font-medium mb-1">Tag Override</div>
+      <p class="text-sm text-amber-900">
+        Original tag <code class="bg-amber-100 px-1 rounded">{image.overriddenFrom}</code> was overridden
+        to <code class="bg-amber-100 px-1 rounded">{image.originalRef.split(':').pop()}</code> because
+        the original image uses a distroless/scratch base that Copa cannot patch.
+      </p>
+    </div>
+  )}
+
   <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-8">
     <div class="text-xs text-green-700 uppercase tracking-wide font-medium mb-1">Patched Image</div>
     <div class="font-mono text-sm break-all text-green-900">{image.patchedRef}</div>

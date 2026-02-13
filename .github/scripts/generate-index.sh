@@ -35,6 +35,13 @@ for chart_yaml in "${CHARTS_DIR}"/charts/*/Chart.yaml; do
   version=$(yq eval '.version' "${chart_yaml}")
   description=$(yq eval '.description' "${chart_yaml}")
 
+  # Check for image overrides noted in values.yaml
+  overrides=""
+  values_file="${chart_dir}/values.yaml"
+  if [ -f "$values_file" ]; then
+    overrides=$(grep '^# NOTE:.*overridden' "$values_file" | sed 's/^# NOTE: //' || true)
+  fi
+
   cat >> "$OUTPUT_FILE" << EOF
 ### ${chart_name}
 
@@ -45,6 +52,16 @@ helm install my-release oci://${REGISTRY}/${ORG}/charts/${chart_name} --version 
 \`\`\`
 
 EOF
+
+  if [ -n "$overrides" ]; then
+    echo "> **Image overrides applied:**" >> "$OUTPUT_FILE"
+    echo ">" >> "$OUTPUT_FILE"
+    echo "$overrides" | while IFS= read -r line; do
+      echo "> - ${line}" >> "$OUTPUT_FILE"
+    done
+    echo "" >> "$OUTPUT_FILE"
+  fi
+
 done
 
 if [ "$found_charts" = false ]; then

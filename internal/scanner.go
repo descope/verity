@@ -247,3 +247,80 @@ func dedup(images []Image) []Image {
 	}
 	return result
 }
+
+// ImageOverride specifies a tag replacement for images matching a repository.
+// When an image's repository matches, the From substring in the tag is replaced with To.
+type ImageOverride struct {
+	Repository string // image repository to match (e.g. "timberio/vector")
+	From       string // substring to replace in the tag
+	To         string // replacement string
+}
+
+// ParseOverrides reads the "overrides" section from a YAML values file.
+// The expected format:
+//
+//	overrides:
+//	  timberio/vector:
+//	    from: "distroless-libc"
+//	    to: "debian"
+func ParseOverrides(path string) ([]ImageOverride, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading %s: %w", path, err)
+	}
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return nil, fmt.Errorf("parsing %s: %w", path, err)
+	}
+
+	ovr, ok := raw["overrides"]
+	if !ok {
+		return nil, nil
+	}
+	ovrMap, ok := ovr.(map[string]interface{})
+	if !ok {
+		return nil, nil
+	}
+
+	var overrides []ImageOverride
+	for repo, v := range ovrMap {
+		m, ok := v.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		from, _ := m["from"].(string)
+		to, _ := m["to"].(string)
+		if from == "" {
+			continue
+		}
+		overrides = append(overrides, ImageOverride{
+			Repository: repo,
+			From:       from,
+			To:         to,
+		})
+	}
+	return overrides, nil
+}
+
+// ApplyOverrides applies tag replacements to images matching override rules.
+// Returns the modified image list.
+func ApplyOverrides(images []Image, overrides []ImageOverride) []Image {
+	if len(overrides) == 0 {
+		return images
+	}
+
+	result := make([]Image, len(images))
+	for i, img := range images {
+		result[i] = img
+		for _, o := range overrides {
+			// Match by repository, with or without registry prefix
+			if img.Repository == o.Repository ||
+				(img.Registry != "" && img.Registry+"/"+img.Repository == o.Repository) {
+				if img.Tag != "" && strings.Contains(img.Tag, o.From) {
+					result[i].Tag = strings.Replace(img.Tag, o.From, o.To, 1)
+				}
+			}
+		}
+	}
+	return result
+}

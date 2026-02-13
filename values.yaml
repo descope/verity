@@ -1,6 +1,14 @@
 # Standalone container images to patch with Copa.
 # Renovate automatically picks up this file (helm-values manager).
 
+# Image tag overrides for Copa-incompatible variants.
+# Copa cannot patch distroless Alpine or scratch images.
+# Use overrides to swap unpatchable variants with Copa-compatible ones.
+overrides:
+  timberio/vector:
+    from: "distroless-libc"
+    to: "debian"
+
 redis-exporter:
   image:
     registry: quay.io

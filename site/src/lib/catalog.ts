@@ -21,6 +21,7 @@ export interface SiteImage {
   patchedRef: string;
   valuesPath: string;
   os: string;
+  overriddenFrom?: string;
   vulnSummary: VulnSummary;
   vulnerabilities: SiteVuln[];
   chartName?: string;

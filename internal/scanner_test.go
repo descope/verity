@@ -265,3 +265,132 @@ func TestParseImagesFileMissing(t *testing.T) {
 		t.Error("expected error for missing file, got nil")
 	}
 }
+
+func TestParseOverrides(t *testing.T) {
+	content := `
+overrides:
+  timberio/vector:
+    from: "distroless-libc"
+    to: "debian"
+  some/image:
+    from: "scratch"
+    to: "alpine"
+
+nginx:
+  image:
+    registry: docker.io
+    repository: library/nginx
+    tag: "1.25.0"
+`
+	dir := t.TempDir()
+	path := filepath.Join(dir, "values.yaml")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	overrides, err := ParseOverrides(path)
+	if err != nil {
+		t.Fatalf("ParseOverrides() error: %v", err)
+	}
+
+	if len(overrides) != 2 {
+		t.Fatalf("expected 2 overrides, got %d", len(overrides))
+	}
+
+	found := map[string]ImageOverride{}
+	for _, o := range overrides {
+		found[o.Repository] = o
+	}
+
+	vec, ok := found["timberio/vector"]
+	if !ok {
+		t.Fatal("expected override for timberio/vector")
+	}
+	if vec.From != "distroless-libc" || vec.To != "debian" {
+		t.Errorf("unexpected vector override: %+v", vec)
+	}
+
+	// Verify images are still parsed correctly alongside overrides
+	images, err := ParseImagesFile(path)
+	if err != nil {
+		t.Fatalf("ParseImagesFile() error: %v", err)
+	}
+	if len(images) != 1 {
+		t.Errorf("expected 1 image (nginx), got %d", len(images))
+	}
+}
+
+func TestParseOverridesNoSection(t *testing.T) {
+	content := `
+nginx:
+  image:
+    registry: docker.io
+    repository: library/nginx
+    tag: "1.25.0"
+`
+	dir := t.TempDir()
+	path := filepath.Join(dir, "values.yaml")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	overrides, err := ParseOverrides(path)
+	if err != nil {
+		t.Fatalf("ParseOverrides() error: %v", err)
+	}
+	if len(overrides) != 0 {
+		t.Errorf("expected 0 overrides when no section, got %d", len(overrides))
+	}
+}
+
+func TestApplyOverrides(t *testing.T) {
+	images := []Image{
+		{Repository: "timberio/vector", Tag: "0.46.1-distroless-libc", Path: "vector.image"},
+		{Registry: "docker.io", Repository: "library/nginx", Tag: "1.25.0", Path: "nginx.image"},
+		{Repository: "victoriametrics/victoria-logs", Tag: "v1.0.0-victorialogs", Path: "server.image"},
+	}
+
+	overrides := []ImageOverride{
+		{Repository: "timberio/vector", From: "distroless-libc", To: "debian"},
+	}
+
+	result := ApplyOverrides(images, overrides)
+
+	if result[0].Tag != "0.46.1-debian" {
+		t.Errorf("expected vector tag 0.46.1-debian, got %s", result[0].Tag)
+	}
+	if result[1].Tag != "1.25.0" {
+		t.Errorf("nginx tag should be unchanged, got %s", result[1].Tag)
+	}
+	if result[2].Tag != "v1.0.0-victorialogs" {
+		t.Errorf("victoria-logs tag should be unchanged, got %s", result[2].Tag)
+	}
+}
+
+func TestApplyOverridesWithRegistry(t *testing.T) {
+	images := []Image{
+		{Registry: "docker.io", Repository: "timberio/vector", Tag: "0.46.1-distroless-libc", Path: "vector.image"},
+	}
+
+	overrides := []ImageOverride{
+		{Repository: "docker.io/timberio/vector", From: "distroless-libc", To: "debian"},
+	}
+
+	result := ApplyOverrides(images, overrides)
+
+	if result[0].Tag != "0.46.1-debian" {
+		t.Errorf("expected vector tag 0.46.1-debian, got %s", result[0].Tag)
+	}
+}
+
+func TestApplyOverridesEmpty(t *testing.T) {
+	images := []Image{
+		{Repository: "nginx", Tag: "1.25.0"},
+	}
+
+	result := ApplyOverrides(images, nil)
+
+	if result[0].Tag != "1.25.0" {
+		t.Errorf("expected unchanged tag, got %s", result[0].Tag)
+	}
+}
