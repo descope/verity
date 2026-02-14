@@ -277,6 +277,7 @@ func discoverRegistryVersions(chartName, skipVersion, repository, registry strin
 
 		tmpDir, err := os.MkdirTemp("", "verity-version-")
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not create temp directory for %s:%s: %v\n", chartName, tag, err)
 			continue
 		}
 
@@ -323,7 +324,7 @@ func listChartTags(registry, chartName string) ([]string, error) {
 	chartRef := fmt.Sprintf("%s/charts/%s", registry, chartName)
 	tags, err := crane.ListTags(chartRef)
 	if err != nil {
-		return nil, nil
+		return nil, fmt.Errorf("listing tags with crane for %s: %w", chartRef, err)
 	}
 	return tags, nil
 }
@@ -346,44 +347,63 @@ func listGitHubPackageTags(registry, chartName string) ([]string, error) {
 
 	// Package name in API uses %2F for slashes: "charts/prometheus" → "charts%2Fprometheus"
 	packageName := "charts%2F" + chartName
-	url := fmt.Sprintf("https://api.github.com/orgs/%s/packages/container/%s/versions?per_page=100", org, packageName)
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Accept", "application/vnd.github+json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GitHub API returned %d", resp.StatusCode)
-	}
-
-	var versions []struct {
-		Metadata struct {
-			Container struct {
-				Tags []string `json:"tags"`
-			} `json:"container"`
-		} `json:"metadata"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&versions); err != nil {
-		return nil, err
-	}
+	baseURL := fmt.Sprintf("https://api.github.com/orgs/%s/packages/container/%s/versions", org, packageName)
 
 	var tags []string
-	for _, v := range versions {
-		for _, tag := range v.Metadata.Container.Tags {
-			if isVersionTag(tag) {
-				tags = append(tags, tag)
+	perPage := 100
+	page := 1
+
+	for {
+		url := fmt.Sprintf("%s?per_page=%d&page=%d", baseURL, perPage, page)
+
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Accept", "application/vnd.github+json")
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return nil, fmt.Errorf("GitHub API returned %d", resp.StatusCode)
+		}
+
+		var pageVersions []struct {
+			Metadata struct {
+				Container struct {
+					Tags []string `json:"tags"`
+				} `json:"container"`
+			} `json:"metadata"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&pageVersions); err != nil {
+			resp.Body.Close()
+			return nil, err
+		}
+		resp.Body.Close()
+
+		if len(pageVersions) == 0 {
+			break
+		}
+
+		for _, v := range pageVersions {
+			for _, tag := range v.Metadata.Container.Tags {
+				if isVersionTag(tag) {
+					tags = append(tags, tag)
+				}
 			}
 		}
+
+		if len(pageVersions) < perPage {
+			break
+		}
+		page++
 	}
+
 	return tags, nil
 }
 
@@ -860,28 +880,36 @@ func pullStandaloneReports(registry string) (string, error) {
 			os.RemoveAll(tmpDir)
 			return "", fmt.Errorf("decompressing layer: %w", err)
 		}
-		tr := tar.NewReader(rc)
-		for {
-			hdr, err := tr.Next()
-			if err != nil {
-				break
+		err = func() error {
+			defer rc.Close()
+			tr := tar.NewReader(rc)
+			for {
+				hdr, err := tr.Next()
+				if err != nil {
+					break
+				}
+				if hdr.Typeflag != tar.TypeReg {
+					continue
+				}
+				// Sanitize the file name to prevent Zip Slip (path traversal).
+				clean := filepath.Base(hdr.Name)
+				if clean == "." || clean == ".." {
+					continue
+				}
+				data, err := io.ReadAll(tr)
+				if err != nil {
+					return fmt.Errorf("reading %s from tar: %w", hdr.Name, err)
+				}
+				if err := os.WriteFile(filepath.Join(tmpDir, clean), data, 0o644); err != nil {
+					return err
+				}
 			}
-			if hdr.Typeflag != tar.TypeReg {
-				continue
-			}
-			data, err := io.ReadAll(tr)
-			if err != nil {
-				rc.Close()
-				os.RemoveAll(tmpDir)
-				return "", fmt.Errorf("reading %s from tar: %w", hdr.Name, err)
-			}
-			if err := os.WriteFile(filepath.Join(tmpDir, hdr.Name), data, 0o644); err != nil {
-				rc.Close()
-				os.RemoveAll(tmpDir)
-				return "", err
-			}
+			return nil
+		}()
+		if err != nil {
+			os.RemoveAll(tmpDir)
+			return "", err
 		}
-		rc.Close()
 	}
 
 	return tmpDir, nil
