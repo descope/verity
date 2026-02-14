@@ -358,7 +358,7 @@ func listGitHubPackageTags(registry, chartName string) ([]string, error) {
 	}
 
 	// Extract org (and optional sub-path) from registry:
-	//   "quay.io/verity"         → org="verity", prefix=""
+	//   "ghcr.io/org"            → org="org", prefix=""
 	//   "ghcr.io/org/sub"        → org="org", prefix="sub%2F"
 	parts := strings.Split(registry, "/")
 	if len(parts) < 2 {

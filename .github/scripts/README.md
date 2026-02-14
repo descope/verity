@@ -75,7 +75,7 @@ Publishes wrapper charts to OCI registry.
 
 **Arguments:**
 - `charts-dir` - Directory containing charts/ folder
-- `registry` - OCI registry (e.g., ghcr.io)
+- `registry` - OCI registry (e.g., quay.io)
 - `org` - Organization name
 
 **Example:**
@@ -101,7 +101,7 @@ Verifies patched images exist in the registry.
 
 **Arguments:**
 - `charts-dir` - Directory containing charts/ folder
-- `registry` - Docker registry (e.g., ghcr.io)
+- `registry` - Docker registry (e.g., quay.io)
 - `org` - Organization name
 
 **Example:**
@@ -128,7 +128,7 @@ Generates a markdown index of published charts.
 **Arguments:**
 - `charts-dir` - Directory containing charts/ folder
 - `output-file` - Path to output markdown file
-- `registry` - OCI registry (e.g., ghcr.io)
+- `registry` - OCI registry (e.g., quay.io)
 - `org` - Organization name
 
 **Example:**

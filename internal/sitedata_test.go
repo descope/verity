@@ -433,8 +433,8 @@ func TestComputeSummaryMultipleVersions(t *testing.T) {
 }
 
 func TestDiscoverRegistryVersions(t *testing.T) {
-	if os.Getenv("GITHUB_TOKEN") == "" {
-		t.Skip("GITHUB_TOKEN not set")
+	if os.Getenv("CI") == "" {
+		t.Skip("skipping registry test outside CI")
 	}
 
 	// Discover all versions except the "local" one (28.9.1-4).
@@ -505,8 +505,8 @@ func TestDiscoverRegistryVersions(t *testing.T) {
 }
 
 func TestDiscoverRegistryVersionsNonExistent(t *testing.T) {
-	if os.Getenv("GITHUB_TOKEN") == "" {
-		t.Skip("GITHUB_TOKEN not set")
+	if os.Getenv("CI") == "" {
+		t.Skip("skipping registry test outside CI")
 	}
 
 	// Non-existent chart should return empty, not error.

@@ -210,7 +210,7 @@ Track additional version patterns:
 2. Renovate immediately creates PR
 3. automerge: true → Auto-merges after CI passes
 4. Merged to main
-5. publish.yaml pushes updated images to GHCR
+5. publish.yaml pushes updated images to Quay.io
 ```
 
 ### Scenario 3: BuildKit Update

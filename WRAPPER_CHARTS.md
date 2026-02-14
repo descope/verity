@@ -4,7 +4,7 @@ When running verity in patch mode (`-patch`), it creates wrapper charts that mak
 
 ## How It Works
 
-For each dependency in your Chart.yaml, verity creates a wrapper chart with the naming pattern `<chart-name>-verity`. This wrapper chart:
+For each dependency in your Chart.yaml, verity creates a wrapper chart named after the dependency (e.g. `prometheus`). This wrapper chart:
 
 1. **Subcharts the original chart** - The wrapper declares the original chart as a dependency
 2. **Provides patched images** - Values are pre-configured to use Copa-patched images
@@ -33,7 +33,7 @@ Creates this structure:
 
 ```
 charts/
-  prometheus-verity/
+  prometheus/
     Chart.yaml          # Wrapper chart that depends on prometheus
     values.yaml         # Patched image references
     .helmignore        # Standard Helm ignore patterns
@@ -43,7 +43,7 @@ charts/
 
 ```yaml
 apiVersion: v2
-name: prometheus-verity
+name: prometheus
 description: prometheus with Copa-patched container images
 type: application
 version: 1.0.0
@@ -75,8 +75,8 @@ prometheus:
 ### Install with default patched images
 
 ```bash
-helm dependency build charts/prometheus-verity/
-helm install my-prometheus charts/prometheus-verity/
+helm dependency build charts/prometheus/
+helm install my-prometheus charts/prometheus/
 ```
 
 ### Install with custom values
@@ -97,8 +97,8 @@ prometheus:
 The patched images from the wrapper chart's values.yaml will be merged with your custom values:
 
 ```bash
-helm dependency build charts/prometheus-verity/
-helm install my-prometheus charts/prometheus-verity/ -f my-values.yaml
+helm dependency build charts/prometheus/
+helm install my-prometheus charts/prometheus/ -f my-values.yaml
 ```
 
 ### How Value Merging Works
@@ -106,7 +106,7 @@ helm install my-prometheus charts/prometheus-verity/ -f my-values.yaml
 Helm merges values in this order (later overrides earlier):
 
 1. Default values from prometheus chart
-2. **Patched image values from prometheus-verity/values.yaml**
+2. **Patched image values from prometheus/values.yaml**
 3. Your custom values from `-f my-values.yaml`
 
 This means:
@@ -135,19 +135,19 @@ You can package and publish wrapper charts to your OCI registry:
 
 ```bash
 # Build dependencies
-helm dependency build charts/prometheus-verity/
+helm dependency build charts/prometheus/
 
 # Package the chart
-helm package charts/prometheus-verity/
+helm package charts/prometheus/
 
 # Push to your registry
-helm push prometheus-verity-1.0.0.tgz oci://quay.io/verity/charts
+helm push prometheus-1.0.0.tgz oci://quay.io/verity/charts
 ```
 
 Then users can install directly from your registry:
 
 ```bash
-helm install my-prometheus oci://quay.io/verity/charts/prometheus-verity --version 1.0.0
+helm install my-prometheus oci://quay.io/verity/charts/prometheus --version 1.0.0
 ```
 
 ### Overriding Patched Images

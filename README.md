@@ -29,7 +29,7 @@ helm install my-prometheus \
 # Scan and patch with Copa
 ./verity -chart Chart.yaml -output charts \
   -patch \
-  -registry ghcr.io/your-org \
+  -registry quay.io/your-org \
   -buildkit-addr docker-container://buildkitd
 ```
 
@@ -46,7 +46,7 @@ Chart.yaml Dependencies
         ↓
   Wrapper Charts Created
         ↓
-  Published to GHCR
+  Published to Quay.io
 ```
 
 ### What Gets Created
@@ -55,7 +55,7 @@ For each chart dependency, verity creates a wrapper chart:
 
 ```
 charts/
-  prometheus-verity/
+  prometheus/
     Chart.yaml    # Depends on original prometheus chart
     values.yaml   # Patched images (namespaced)
     .helmignore
@@ -85,10 +85,10 @@ Wrapper chart versions mirror the upstream chart version with a patch level suff
 
 **Examples:**
 ```
-prometheus 25.8.0 → prometheus-verity 25.8.0-0 (initial patch)
-                 → prometheus-verity 25.8.0-1 (new CVEs found)
-                 → prometheus-verity 25.8.0-2 (more patches)
-prometheus 25.9.0 → prometheus-verity 25.9.0-0 (chart update, reset)
+prometheus 25.8.0 → prometheus 25.8.0-0 (initial patch)
+                 → prometheus 25.8.0-1 (new CVEs found)
+                 → prometheus 25.8.0-2 (more patches)
+prometheus 25.9.0 → prometheus 25.9.0-0 (chart update, reset)
 ```
 
 **When versions change:**
@@ -113,7 +113,7 @@ Verity is **fully automated** with GitHub Actions:
 - Commits to same PR
 - Ready to merge!
 
-### 3️⃣ Publish to GHCR (On Merge)
+### 3️⃣ Publish to Quay.io (On Merge)
 - Wrapper charts published to OCI registry
 - Patched images verified
 - Chart index generated
@@ -160,7 +160,7 @@ See [WORKFLOWS.md](WORKFLOWS.md) for details.
 └──────┬─────────┘
        ↓
 ┌─────────────┐
-│ publish.yaml│ Pushes to GHCR
+│ publish.yaml│ Pushes to Quay.io
 └─────────────┘
 ```
 
@@ -186,7 +186,7 @@ Renovate and workflows handle the rest.
 ### Configuration
 
 **Registry:**
-Set via `-registry` flag or let it default to `ghcr.io/<org>`.
+Set via `-registry` flag (e.g. `quay.io/your-org`).
 
 **Scan Schedule:**
 Edit `.github/workflows/scheduled-scan.yaml`:
@@ -234,7 +234,7 @@ Options:
   -patch
         Enable patching with Trivy + Copa
   -registry string
-        Target registry for patched images (e.g. ghcr.io/org)
+        Target registry for patched images (e.g. quay.io/org)
   -buildkit-addr string
         BuildKit address (e.g. docker-container://buildkitd)
   -report-dir string
@@ -250,13 +250,13 @@ Options:
 # Scan and patch
 ./verity -chart Chart.yaml -output ./charts \
   -patch \
-  -registry ghcr.io/myorg \
+  -registry quay.io/myorg \
   -buildkit-addr docker-container://buildkitd
 
 # With custom report directory
 ./verity -chart Chart.yaml -output ./charts \
   -patch \
-  -registry ghcr.io/myorg \
+  -registry quay.io/myorg \
   -buildkit-addr docker-container://buildkitd \
   -report-dir ./reports
 ```
@@ -288,7 +288,7 @@ docker run -d --privileged --name buildkitd \
 # Run verity with patching
 ./verity -chart Chart.yaml -output /tmp/test-charts \
   -patch \
-  -registry ghcr.io/test \
+  -registry quay.io/test \
   -buildkit-addr docker-container://buildkitd
 
 # Cleanup

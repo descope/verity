@@ -28,7 +28,15 @@ for chart_yaml in "${CHARTS_DIR}"/charts/*/Chart.yaml; do
 
   chart_dir=$(dirname "$chart_yaml")
   chart_name=$(basename "$chart_dir")
-  echo "Publishing ${chart_name}..."
+  version=$(yq eval '.version' "${chart_yaml}")
+  echo "Publishing ${chart_name} ${version}..."
+
+  # Skip if this version already exists in OCI (avoid overwriting
+  # packages published by the scan workflow which include reports).
+  if helm show chart "oci://${REGISTRY}/${ORG}/charts/${chart_name}" --version "${version}" &>/dev/null; then
+    echo "  Version ${version} already exists in OCI, skipping"
+    continue
+  fi
 
   # Build dependencies
   echo "  Building dependencies..."
@@ -37,16 +45,6 @@ for chart_yaml in "${CHARTS_DIR}"/charts/*/Chart.yaml; do
   # Package chart
   echo "  Packaging chart..."
   helm package "${chart_dir}" --destination /tmp/helm-packages
-
-  # Get chart version
-  version=$(yq eval '.version' "${chart_yaml}")
-
-  # Skip if this version already exists in OCI (avoid overwriting
-  # packages published by the scan workflow which include reports).
-  if helm show chart "oci://${REGISTRY}/${ORG}/charts/${chart_name}" --version "${version}" &>/dev/null; then
-    echo "  Version ${version} already exists in OCI, skipping"
-    continue
-  fi
 
   # Push to registry
   echo "  Pushing to ${REGISTRY}/${ORG}/charts/${chart_name}:${version}..."
