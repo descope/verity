@@ -13,13 +13,13 @@ set -euo pipefail
 #
 # Examples:
 #   # Verify all wrapper charts and their images
-#   ./verify-artifacts.sh ghcr.io/descope
+#   ./verify-artifacts.sh quay.io/verity
 #
 #   # Verify a specific image
-#   ./verify-artifacts.sh ghcr.io/descope grafana/grafana:11.6.0-patched
+#   ./verify-artifacts.sh quay.io/verity grafana/grafana:11.6.0-patched
 #
 #   # Verify a specific chart
-#   ./verify-artifacts.sh ghcr.io/descope charts/prometheus:28.9.1-5
+#   ./verify-artifacts.sh quay.io/verity charts/prometheus:28.9.1-5
 
 REGISTRY_ORG="${1:-}"
 ARTIFACT="${2:-}"
@@ -29,9 +29,9 @@ if [ -z "$REGISTRY_ORG" ]; then
   echo "Usage: $0 <registry/org> [artifact-ref]"
   echo ""
   echo "Examples:"
-  echo "  $0 ghcr.io/descope"
-  echo "  $0 ghcr.io/descope grafana/grafana:11.6.0-patched"
-  echo "  $0 ghcr.io/descope charts/prometheus:28.9.1-5"
+  echo "  $0 quay.io/verity"
+  echo "  $0 quay.io/verity grafana/grafana:11.6.0-patched"
+  echo "  $0 quay.io/verity charts/prometheus:28.9.1-5"
   exit 1
 fi
 

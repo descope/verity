@@ -500,8 +500,8 @@ func TestDiscoverRegistryVersions(t *testing.T) {
 	charts, err := discoverRegistryVersions(
 		"prometheus",
 		"28.9.1-4",
-		"oci://ghcr.io/descope/verity/charts",
-		"ghcr.io/descope/verity",
+		"oci://quay.io/verity/charts",
+		"quay.io/verity",
 	)
 	if err != nil {
 		t.Fatalf("discoverRegistryVersions failed: %v", err)
@@ -572,8 +572,8 @@ func TestDiscoverRegistryVersionsNonExistent(t *testing.T) {
 	charts, err := discoverRegistryVersions(
 		"nonexistent-chart-xyz",
 		"1.0.0",
-		"oci://ghcr.io/descope/verity/charts",
-		"ghcr.io/descope/verity",
+		"oci://quay.io/verity/charts",
+		"quay.io/verity",
 	)
 	if err != nil {
 		t.Fatalf("expected nil error, got: %v", err)

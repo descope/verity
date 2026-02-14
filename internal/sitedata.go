@@ -358,8 +358,8 @@ func listGitHubPackageTags(registry, chartName string) ([]string, error) {
 	}
 
 	// Extract org (and optional sub-path) from registry:
-	//   "ghcr.io/descope"        → org="descope", prefix=""
-	//   "ghcr.io/descope/verity" → org="descope", prefix="verity%2F"
+	//   "quay.io/verity"         → org="verity", prefix=""
+	//   "ghcr.io/org/sub"        → org="org", prefix="sub%2F"
 	parts := strings.Split(registry, "/")
 	if len(parts) < 2 {
 		return nil, fmt.Errorf("cannot extract org from registry %q", registry)

@@ -2,7 +2,7 @@
 import CopyButton from './CopyButton.astro';
 
 interface Props {
-  /** Full artifact reference, e.g. ghcr.io/descope/verity/grafana/grafana:11.6.0-patched */
+  /** Full artifact reference, e.g. quay.io/verity/grafana/grafana:11.6.0-patched */
   artifactRef: string;
   /** 'image' shows SBOM badge; 'chart' omits it */
   kind: 'image' | 'chart';
@@ -11,8 +11,8 @@ interface Props {
 const { artifactRef, kind } = Astro.props;
 const base = import.meta.env.BASE_URL;
 
-// Extract owner from ref: ghcr.io/descope/... → descope
-const owner = artifactRef.split('/')[1] || 'descope';
+// GitHub owner/repo for attestation verification.
+const owner = 'descope';
 const repo = 'verity';
 
 const cosignCmd = `cosign verify \\\n  --certificate-identity-regexp "https://github.com/${owner}/${repo}/.github/workflows/" \\\n  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \\\n  ${artifactRef}`;

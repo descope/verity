@@ -16,7 +16,7 @@ import (
 
 // PatchOptions configures the patching pipeline.
 type PatchOptions struct {
-	// TargetRegistry is the registry to push patched images to (e.g. "ghcr.io/descope").
+	// TargetRegistry is the registry to push patched images to (e.g. "quay.io/verity").
 	// If empty, patched images are left in the local Docker daemon only.
 	TargetRegistry string
 
