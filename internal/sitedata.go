@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/go-containerregistry/pkg/crane"
 	"gopkg.in/yaml.v3"
 )
 
@@ -202,6 +203,8 @@ func GenerateSiteData(chartsDir, imagesFile, reportsDir, registry, outputPath st
 }
 
 // discoverCharts walks chartsDir/*/Chart.yaml to find wrapper charts.
+// When a registry is provided, it also discovers previously published
+// versions from the OCI registry so the site can show per-version pages.
 func discoverCharts(chartsDir, registry string) ([]SiteChart, error) {
 	entries, err := os.ReadDir(chartsDir)
 	if err != nil {
@@ -222,16 +225,81 @@ func discoverCharts(chartsDir, registry string) ([]SiteChart, error) {
 			continue
 		}
 
+		// Parse the local (current) chart version.
 		chart, err := parseWrapperChart(chartsDir, entry.Name(), registry)
 		if err != nil {
 			return nil, fmt.Errorf("parsing chart %s: %w", entry.Name(), err)
 		}
 		charts = append(charts, chart)
+
+		// Discover previously published versions from the OCI registry.
+		if registry != "" {
+			historical, err := discoverRegistryVersions(entry.Name(), chart.Version, chart.Repository, registry)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not discover registry versions for %s: %v\n", entry.Name(), err)
+			}
+			charts = append(charts, historical...)
+		}
 	}
 
 	sort.Slice(charts, func(i, j int) bool {
-		return charts[i].Name < charts[j].Name
+		if charts[i].Name != charts[j].Name {
+			return charts[i].Name < charts[j].Name
+		}
+		return charts[i].Version > charts[j].Version
 	})
+	return charts, nil
+}
+
+// discoverRegistryVersions queries the OCI registry for all published
+// versions of a chart, pulls each one (except the local version which
+// is already parsed), and returns SiteChart entries with full data.
+func discoverRegistryVersions(chartName, localVersion, repository, registry string) ([]SiteChart, error) {
+	chartRef := fmt.Sprintf("%s/charts/%s", registry, chartName)
+	tags, err := crane.ListTags(chartRef)
+	if err != nil {
+		// Chart may not exist in the registry yet.
+		return nil, nil
+	}
+
+	var charts []SiteChart
+	for _, tag := range tags {
+		if tag == localVersion {
+			continue // already parsed from local directory
+		}
+
+		tmpDir, err := os.MkdirTemp("", "verity-version-")
+		if err != nil {
+			continue
+		}
+
+		repo := repository
+		if repo == "" {
+			repo = fmt.Sprintf("oci://%s/charts", registry)
+		}
+		dep := Dependency{
+			Name:       chartName,
+			Version:    tag,
+			Repository: repo,
+		}
+
+		_, dlErr := DownloadChart(dep, tmpDir)
+		if dlErr != nil {
+			os.RemoveAll(tmpDir)
+			fmt.Fprintf(os.Stderr, "Warning: could not pull %s:%s: %v\n", chartName, tag, dlErr)
+			continue
+		}
+
+		chart, parseErr := parseWrapperChart(tmpDir, chartName, registry)
+		os.RemoveAll(tmpDir)
+		if parseErr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not parse %s:%s: %v\n", chartName, tag, parseErr)
+			continue
+		}
+
+		charts = append(charts, chart)
+	}
+
 	return charts, nil
 }
 
@@ -275,6 +343,21 @@ func parseWrapperChart(chartsDir, name, registry string) (SiteChart, error) {
 	if err != nil {
 		return SiteChart{}, fmt.Errorf("matching reports: %w", err)
 	}
+
+	// Filter to only images belonging to this chart version.
+	// paths.json records the canonical set of images for the current build;
+	// the reports directory may also contain leftover reports from older
+	// versions that should not appear on this version's page.
+	if len(imagePaths) > 0 {
+		filtered := make([]SiteImage, 0, len(imagePaths))
+		for _, img := range images {
+			if _, ok := imagePaths[img.ID]; ok {
+				filtered = append(filtered, img)
+			}
+		}
+		images = filtered
+	}
+
 	chart.Images = images
 
 	return chart, nil
@@ -620,17 +703,18 @@ func discoverStandaloneImages(imagesFile, reportsDir, registry string) ([]SiteIm
 
 // computeSummary aggregates stats across all charts and standalone images.
 func computeSummary(charts []SiteChart, standalone []SiteImage) SiteSummary {
-	summary := SiteSummary{
-		TotalCharts: len(charts),
-	}
+	chartNames := make(map[string]bool)
+	summary := SiteSummary{}
 
 	for _, c := range charts {
+		chartNames[c.Name] = true
 		summary.TotalImages += len(c.Images)
 		for _, img := range c.Images {
 			summary.TotalVulns += img.VulnSummary.Total
 			summary.FixableVulns += img.VulnSummary.Fixable
 		}
 	}
+	summary.TotalCharts = len(chartNames)
 
 	summary.TotalImages += len(standalone)
 	for _, img := range standalone {

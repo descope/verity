@@ -421,3 +421,46 @@ func TestComputeSummary(t *testing.T) {
 		t.Errorf("expected 4 fixable, got %d", summary.FixableVulns)
 	}
 }
+
+func TestComputeSummaryMultipleVersions(t *testing.T) {
+	// Multiple chart entries with the same name (different versions)
+	// should count as 1 unique chart.
+	charts := []SiteChart{
+		{
+			Name:    "prometheus",
+			Version: "28.9.1-5",
+			Images: []SiteImage{
+				{VulnSummary: VulnSummary{Total: 4, Fixable: 4, SeverityCounts: map[string]int{"UNKNOWN": 4}}},
+			},
+		},
+		{
+			Name:    "prometheus",
+			Version: "28.9.1-4",
+			Images: []SiteImage{
+				{VulnSummary: VulnSummary{Total: 2, Fixable: 2, SeverityCounts: map[string]int{"HIGH": 2}}},
+			},
+		},
+		{
+			Name:    "victoria-logs-single",
+			Version: "0.11.24-1",
+			Images: []SiteImage{
+				{VulnSummary: VulnSummary{Total: 1, Fixable: 0, SeverityCounts: map[string]int{"LOW": 1}}},
+			},
+		},
+	}
+
+	summary := computeSummary(charts, nil)
+
+	if summary.TotalCharts != 2 {
+		t.Errorf("expected 2 unique charts, got %d", summary.TotalCharts)
+	}
+	if summary.TotalImages != 3 {
+		t.Errorf("expected 3 images, got %d", summary.TotalImages)
+	}
+	if summary.TotalVulns != 7 {
+		t.Errorf("expected 7 vulns, got %d", summary.TotalVulns)
+	}
+	if summary.FixableVulns != 6 {
+		t.Errorf("expected 6 fixable, got %d", summary.FixableVulns)
+	}
+}
