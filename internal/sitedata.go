@@ -534,35 +534,41 @@ func parseWrapperChart(chartsDir, name, registry string) (SiteChart, error) {
 	// create stub entries to show which images are patched (with 0 vulnerabilities).
 	// This handles the case where OCI packages lack reports/ (gitignored by design).
 	if len(images) == 0 && (len(imagePaths) > 0 || len(patchedImages) > 0) {
-		// First choice: use paths.json (has accurate original refs).
+		// First choice: use paths.json (has sanitized ID → values path mapping).
 		if len(imagePaths) > 0 {
 			images = make([]SiteImage, 0, len(imagePaths))
-			for id, originalRef := range imagePaths {
-				// Find the patched ref from patchedImages.
+			for id, valuesPath := range imagePaths {
+				// Reconstruct original ref from sanitized ID (same as matchReportsToImages).
+				originalRef := unsanitize(id)
+
+				// Find or build the patched ref.
 				patchedRef := ""
-				valuesPath := ""
 				if info, ok := patchedImages[id]; ok {
 					patchedRef = fmt.Sprintf("%s/%s:%s", info.Registry, info.Repository, info.Tag)
-					valuesPath = info.ValuesPath
+				} else {
+					// Build patched ref from original ref.
+					patchedRef = buildPatchedRef(originalRef, registry)
 				}
+
 				images = append(images, SiteImage{
 					ID:              id,
-					OriginalRef:     originalRef,
+					OriginalRef:     originalRef, // Reconstructed from sanitized ID
 					PatchedRef:      patchedRef,
-					ValuesPath:      valuesPath,
+					ValuesPath:      valuesPath, // From paths.json (not original ref!)
 					VulnSummary:     VulnSummary{SeverityCounts: make(map[string]int)},
 					Vulnerabilities: []SiteVuln{},
 					ChartName:       name,
 				})
 			}
 		} else if len(patchedImages) > 0 {
-			// Fallback: use patchedImages (may not have accurate original refs).
+			// Fallback: use patchedImages (reconstruct original refs from sanitized IDs).
 			images = make([]SiteImage, 0, len(patchedImages))
 			for id, info := range patchedImages {
+				originalRef := unsanitize(id)
 				patchedRef := fmt.Sprintf("%s/%s:%s", info.Registry, info.Repository, info.Tag)
 				images = append(images, SiteImage{
 					ID:              id,
-					OriginalRef:     "", // Unknown without paths.json
+					OriginalRef:     originalRef, // Reconstructed from sanitized ID
 					PatchedRef:      patchedRef,
 					ValuesPath:      info.ValuesPath,
 					VulnSummary:     VulnSummary{SeverityCounts: make(map[string]int)},
@@ -571,6 +577,14 @@ func parseWrapperChart(chartsDir, name, registry string) (SiteChart, error) {
 				})
 			}
 		}
+
+		// Ensure deterministic ordering of stub images for stable catalog output.
+		sort.Slice(images, func(i, j int) bool {
+			if images[i].OriginalRef == images[j].OriginalRef {
+				return images[i].ID < images[j].ID
+			}
+			return images[i].OriginalRef < images[j].OriginalRef
+		})
 	}
 
 	chart.Images = images

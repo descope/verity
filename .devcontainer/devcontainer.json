@@ -1,25 +1,18 @@
 {
-  "name": "Verity",
-  "build": {
-    "dockerfile": "Dockerfile",
-    "context": ".."
-  },
-  "remoteUser": "vscode",
+  "name": "mise",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
+    "ghcr.io/devcontainers-extra/features/mise:1": {}
   },
-  "postCreateCommand": "mise trust && mise install && cd site && npm install",
   "customizations": {
     "vscode": {
       "extensions": [
         "golang.go",
-        "astro-build.astro-vscode"
-      ],
-      "settings": {
-        "go.toolsManagement.autoUpdate": false
-      }
+        "astro-build.astro-vscode",
+        "hverlin.mise-vscode",
+        "tamasfe.even-better-toml"
+      ]
     }
-  }
+  },
+  "postCreateCommand": "mise trust && mise install && cd site && npm install"
 }
