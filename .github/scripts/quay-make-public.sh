@@ -15,12 +15,15 @@ if [ -z "$TOKEN" ]; then
   exit 0
 fi
 
+# URL-encode the repo name (replace / with %2F) for repos like "charts/prometheus".
+ENCODED_REPO="${REPO//\//%2F}"
+
 HTTP_CODE=$(curl -s -o /tmp/quay-visibility-response -w "%{http_code}" \
   -X POST \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"visibility": "public"}' \
-  "https://quay.io/api/v1/repository/${NAMESPACE}/${REPO}/changevisibility")
+  "https://quay.io/api/v1/repository/${NAMESPACE}/${ENCODED_REPO}/changevisibility")
 
 case "$HTTP_CODE" in
   200)

@@ -433,6 +433,10 @@ func TestComputeSummaryMultipleVersions(t *testing.T) {
 }
 
 func TestDiscoverRegistryVersions(t *testing.T) {
+	if os.Getenv("RUN_INTEGRATION_TESTS") == "" {
+		t.Skip("skipping integration test; set RUN_INTEGRATION_TESTS=1 to enable")
+	}
+
 	// Discover all versions except the "local" one (28.9.1-4).
 	charts, err := discoverRegistryVersions(
 		"prometheus",
@@ -502,6 +506,10 @@ func TestDiscoverRegistryVersions(t *testing.T) {
 }
 
 func TestDiscoverRegistryVersionsNonExistent(t *testing.T) {
+	if os.Getenv("RUN_INTEGRATION_TESTS") == "" {
+		t.Skip("skipping integration test; set RUN_INTEGRATION_TESTS=1 to enable")
+	}
+
 	// Non-existent chart should return empty, not error.
 	charts, err := discoverRegistryVersions(
 		"nonexistent-chart-xyz",

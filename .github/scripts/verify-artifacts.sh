@@ -19,7 +19,7 @@ set -euo pipefail
 #   ./verify-artifacts.sh quay.io/verity grafana/grafana:11.6.0-patched
 #
 #   # Verify a specific chart
-#   ./verify-artifacts.sh quay.io/verity charts/prometheus:28.9.1-0
+#   ./verify-artifacts.sh quay.io/verity charts/prometheus:28.9.1-4
 
 REGISTRY_ORG="${1:-}"
 ARTIFACT="${2:-}"
@@ -31,7 +31,7 @@ if [ -z "$REGISTRY_ORG" ]; then
   echo "Examples:"
   echo "  $0 quay.io/verity"
   echo "  $0 quay.io/verity grafana/grafana:11.6.0-patched"
-  echo "  $0 quay.io/verity charts/prometheus:28.9.1-0"
+  echo "  $0 quay.io/verity charts/prometheus:28.9.1-4"
   exit 1
 fi
 
@@ -85,7 +85,7 @@ else
   echo ""
   echo "Examples:"
   echo "  $0 ${REGISTRY_ORG} grafana/grafana:11.6.0-patched"
-  echo "  $0 ${REGISTRY_ORG} charts/prometheus:28.9.1-0"
+  echo "  $0 ${REGISTRY_ORG} charts/prometheus:28.9.1-4"
   exit 0
 fi
 

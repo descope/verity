@@ -343,12 +343,18 @@ func listChartTags(registry, chartName string) ([]string, error) {
 	chartRef := fmt.Sprintf("%s/charts/%s", registry, chartName)
 	tags, err := crane.ListTags(chartRef)
 	if err != nil {
-		// Quay.io returns UNAUTHORIZED for repos that don't exist
-		// (to avoid leaking repo names). Treat as empty.
 		errMsg := err.Error()
-		if strings.Contains(errMsg, "UNAUTHORIZED") ||
-			strings.Contains(errMsg, "NAME_UNKNOWN") ||
+		// Treat explicit "not found" signals as empty (repo doesn't exist yet).
+		if strings.Contains(errMsg, "NAME_UNKNOWN") ||
+			strings.Contains(errMsg, "NOT_FOUND") ||
 			strings.Contains(errMsg, "404") {
+			return nil, nil
+		}
+		// Quay.io returns UNAUTHORIZED for repos that don't exist (to prevent
+		// repo enumeration). Treat as empty but warn — this can also indicate
+		// real auth/config issues (expired credentials, private repo).
+		if strings.Contains(errMsg, "UNAUTHORIZED") {
+			fmt.Fprintf(os.Stderr, "Warning: UNAUTHORIZED listing tags for %s (repo may not exist or credentials may be missing)\n", chartRef)
 			return nil, nil
 		}
 		return nil, fmt.Errorf("listing tags with crane for %s: %w", chartRef, err)
