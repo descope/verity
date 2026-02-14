@@ -269,7 +269,10 @@ func discoverRegistryVersions(chartName, skipVersion, repository, registry strin
 		return nil, err
 	}
 
+	const maxConsecutiveFailures = 5
+
 	var charts []SiteChart
+	var consecutiveFailures int
 	for _, tag := range tags {
 		if skipVersion != "" && tag == skipVersion {
 			continue
@@ -278,6 +281,11 @@ func discoverRegistryVersions(chartName, skipVersion, repository, registry strin
 		tmpDir, err := os.MkdirTemp("", "verity-version-")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: could not create temp directory for %s:%s: %v\n", chartName, tag, err)
+			consecutiveFailures++
+			if consecutiveFailures >= maxConsecutiveFailures {
+				fmt.Fprintf(os.Stderr, "Warning: %d consecutive failures for %s, stopping version discovery\n", consecutiveFailures, chartName)
+				break
+			}
 			continue
 		}
 
@@ -291,6 +299,11 @@ func discoverRegistryVersions(chartName, skipVersion, repository, registry strin
 		if dlErr != nil {
 			os.RemoveAll(tmpDir)
 			fmt.Fprintf(os.Stderr, "Warning: could not pull %s:%s: %v\n", chartName, tag, dlErr)
+			consecutiveFailures++
+			if consecutiveFailures >= maxConsecutiveFailures {
+				fmt.Fprintf(os.Stderr, "Warning: %d consecutive failures for %s, stopping version discovery\n", consecutiveFailures, chartName)
+				break
+			}
 			continue
 		}
 
@@ -298,9 +311,15 @@ func discoverRegistryVersions(chartName, skipVersion, repository, registry strin
 		os.RemoveAll(tmpDir)
 		if parseErr != nil {
 			fmt.Fprintf(os.Stderr, "Warning: could not parse %s:%s: %v\n", chartName, tag, parseErr)
+			consecutiveFailures++
+			if consecutiveFailures >= maxConsecutiveFailures {
+				fmt.Fprintf(os.Stderr, "Warning: %d consecutive failures for %s, stopping version discovery\n", consecutiveFailures, chartName)
+				break
+			}
 			continue
 		}
 
+		consecutiveFailures = 0
 		charts = append(charts, chart)
 	}
 
@@ -897,8 +916,9 @@ func pullStandaloneReports(registry string) (string, error) {
 					continue
 				}
 				dest := filepath.Join(tmpDir, clean)
-				// Verify the resolved path is inside tmpDir.
-				if !strings.HasPrefix(dest, filepath.Clean(tmpDir)+string(os.PathSeparator)) {
+				// Verify the resolved path is inside tmpDir using filepath.Rel.
+				rel, err := filepath.Rel(tmpDir, dest)
+				if err != nil || strings.HasPrefix(rel, "..") {
 					continue
 				}
 				data, err := io.ReadAll(tr)
