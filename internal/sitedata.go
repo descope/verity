@@ -343,6 +343,14 @@ func listChartTags(registry, chartName string) ([]string, error) {
 	chartRef := fmt.Sprintf("%s/charts/%s", registry, chartName)
 	tags, err := crane.ListTags(chartRef)
 	if err != nil {
+		// Quay.io returns UNAUTHORIZED for repos that don't exist
+		// (to avoid leaking repo names). Treat as empty.
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "UNAUTHORIZED") ||
+			strings.Contains(errMsg, "NAME_UNKNOWN") ||
+			strings.Contains(errMsg, "404") {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("listing tags with crane for %s: %w", chartRef, err)
 	}
 	return tags, nil
