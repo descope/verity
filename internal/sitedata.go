@@ -378,9 +378,25 @@ func listGitHubPackageTags(registry, chartName string) ([]string, error) {
 
 	var tags []string
 	for _, v := range versions {
-		tags = append(tags, v.Metadata.Container.Tags...)
+		for _, tag := range v.Metadata.Container.Tags {
+			if isVersionTag(tag) {
+				tags = append(tags, tag)
+			}
+		}
 	}
 	return tags, nil
+}
+
+// isVersionTag returns true if a tag looks like a chart version
+// (e.g. "28.9.1-5") rather than a cosign signature or digest tag.
+func isVersionTag(tag string) bool {
+	if strings.HasSuffix(tag, ".sig") || strings.HasSuffix(tag, ".att") {
+		return false
+	}
+	if strings.HasPrefix(tag, "sha256-") {
+		return false
+	}
+	return true
 }
 
 // parseWrapperChart reads a wrapper chart's metadata, values, and reports.
