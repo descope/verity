@@ -1,8 +1,10 @@
 # Verity
 
-**Self-maintaining registry of security-patched Helm charts**
+## Self-maintaining registry of security-patched Helm charts
 
-Verity automatically scans Helm chart dependencies for container image vulnerabilities, patches them using [Copa](https://github.com/project-copacetic/copacetic), and publishes wrapper charts that make it easy to consume patched images while maintaining full chart customization.
+Verity automatically scans Helm chart dependencies for container image vulnerabilities, patches them using
+[Copa](https://github.com/project-copacetic/copacetic), and publishes wrapper charts that make it easy to
+consume patched images while maintaining full chart customization.
 
 ## Quick Start
 
@@ -35,7 +37,7 @@ helm install my-prometheus \
 
 ## How It Works
 
-```
+```text
 Chart.yaml Dependencies
         ↓
   Scan for Images (verity)
@@ -53,7 +55,7 @@ Chart.yaml Dependencies
 
 For each chart dependency, verity creates a wrapper chart:
 
-```
+```text
 charts/
   prometheus/
     Chart.yaml    # Depends on original prometheus chart
@@ -63,6 +65,7 @@ charts/
 ```
 
 **Example values.yaml:**
+
 ```yaml
 prometheus:
   server:
@@ -84,7 +87,8 @@ Wrapper chart versions mirror the upstream chart version with a patch level suff
 **Format:** `{upstream-version}-{patch-level}`
 
 **Examples:**
-```
+
+```text
 prometheus 25.8.0 → prometheus 25.8.0-0 (initial patch)
                  → prometheus 25.8.0-1 (new CVEs found)
                  → prometheus 25.8.0-2 (more patches)
@@ -92,6 +96,7 @@ prometheus 25.9.0 → prometheus 25.9.0-0 (chart update, reset)
 ```
 
 **When versions change:**
+
 - **Chart Update (Renovate):** Base version changes, patch level resets to `-0`
 - **New CVEs (Scheduled Scan):** Patch level auto-increments (queries registry for existing versions)
 - **Manual Patch:** Patch level auto-increments (if registry is specified)
@@ -103,17 +108,20 @@ This keeps the relationship to upstream charts clear while tracking security upd
 Verity is **fully automated** with GitHub Actions:
 
 ### 1️⃣ Scheduled Scans (Daily)
+
 - Scans for new vulnerabilities
 - Creates PR if patches available
 - Runs daily at 2 AM UTC
 
 ### 2️⃣ Auto-Patch on Updates (Renovate)
+
 - Renovate bumps chart version
 - Workflow auto-patches images
 - Commits to same PR
 - Ready to merge!
 
 ### 3️⃣ Publish to Quay.io (On Merge)
+
 - Wrapper charts published to OCI registry
 - Patched images verified
 - Chart index generated
@@ -123,12 +131,14 @@ See [WORKFLOWS.md](WORKFLOWS.md) for details.
 ## Benefits
 
 ### For Chart Maintainers
+
 ✅ Security patches without forking upstream
 ✅ Update chart versions independently
 ✅ Automated vulnerability monitoring
 ✅ Publish to your own registry
 
 ### For Chart Consumers
+
 ✅ Drop-in replacements for original charts
 ✅ All customization options preserved
 ✅ Transparent security patching
@@ -146,7 +156,7 @@ See [WORKFLOWS.md](WORKFLOWS.md) for details.
 
 ### Workflow System
 
-```
+```text
 ┌──────────────┐
 │  Renovate    │ Updates Chart.yaml
 └──────┬───────┘
@@ -171,6 +181,7 @@ Plus scheduled scans for continuous monitoring.
 ### Add Charts to Monitor
 
 Edit `Chart.yaml`:
+
 ```yaml
 dependencies:
   - name: prometheus
@@ -190,6 +201,7 @@ Set via `-registry` flag (e.g. `quay.io/your-org`).
 
 **Scan Schedule:**
 Edit `.github/workflows/scheduled-scan.yaml`:
+
 ```yaml
 schedule:
   - cron: '0 2 * * *'  # Daily at 2 AM UTC
@@ -223,7 +235,7 @@ docker run --rm -v $(pwd):/workspace \
 
 ## CLI Reference
 
-```
+```text
 verity [options]
 
 Options:
@@ -306,6 +318,7 @@ docker stop buildkitd && docker rm buildkitd
 ### Vulnerability Scanning
 
 Every patch run includes:
+
 - Trivy JSON reports (attached to workflow runs)
 - CVE details and CVSS scores
 - Fixable vs unfixable vulnerabilities
@@ -313,6 +326,7 @@ Every patch run includes:
 ### Image Trust
 
 Patched images are:
+
 1. Built from official upstream images
 2. Scanned with Trivy (open source)
 3. Patched with Copa (Microsoft, open source)
@@ -322,6 +336,7 @@ Patched images are:
 ### Supply Chain
 
 Verify patches yourself:
+
 ```bash
 # Pull patched image
 docker pull quay.io/verity/prometheus:v2.48.0-patched
@@ -340,7 +355,8 @@ A: Copa patches OS-level packages (apt, yum, apk). It cannot patch application v
 A: No. Only vulnerabilities with available package updates. Some images may have unfixable CVEs.
 
 **Q: Can I use my existing Chart values?**
-A: Yes! Wrapper charts support all original chart values. Just namespace them under the chart name (or use them as-is, Helm handles it).
+A: Yes! Wrapper charts support all original chart values. Just namespace them under the chart name
+(or use them as-is, Helm handles it).
 
 **Q: What if I don't want to auto-merge security updates?**
 A: Edit `.github/renovate.json` and set `automerge: false` for vulnerability alerts.
@@ -372,4 +388,4 @@ A: Yes! Verity is a standalone CLI tool. Run it manually or integrate with any C
 
 ---
 
-**Built with ❤️ to make Kubernetes more secure**
+## Built with ❤️ to make Kubernetes more secure

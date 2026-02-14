@@ -5,6 +5,7 @@ This repository uses Renovate to automatically update dependencies and trigger t
 ## What Gets Updated
 
 ### 1. Helm Charts (Chart.yaml)
+
 ```yaml
 dependencies:
   - name: prometheus
@@ -12,33 +13,40 @@ dependencies:
 ```
 
 **When updated:**
+
 - Renovate creates PR with version bump
 - `patch-on-pr.yaml` workflow triggers automatically
 - Patched wrapper charts committed to the same PR
 - PR is complete with patched images, ready to merge
 
 ### 2. Go Dependencies (go.mod)
+
 - Security vulnerabilities auto-merge
 - Minor/patch updates auto-merge
 - Major updates require manual review
 
 ### 3. GitHub Actions
+
 - Patch updates auto-merge
 - Minor/major updates require review
 
 ### 4. Docker Images in Workflows
+
 Custom manager tracks:
+
 - `moby/buildkit:v0.19.0` in CI workflows
 - Automatically updates to latest stable version
 
 ### 5. Tool Versions (mise.toml)
+
 Custom manager tracks:
+
 - Go version
 - golangci-lint version
 
 ## Workflow Integration
 
-```
+```text
 Renovate detects update
         ↓
 Creates PR (Chart.yaml updated)
@@ -53,23 +61,28 @@ Ready to merge!
 ## Configuration Highlights
 
 ### Grouping
+
 - All Helm charts grouped together in one PR
 - Go dependencies grouped together
 - GitHub Actions grouped together
 - Reduces PR noise
 
 ### Scheduling
+
 - Runs before 4am UTC on Mondays
 - Security updates run immediately
 - Max 3 concurrent PRs to avoid overwhelming CI
 
 ### Auto-merge
+
 ✅ Auto-merged:
+
 - Go minor/patch updates
 - GitHub Actions patch updates
 - Security vulnerability fixes
 
 ⚠️ Requires review:
+
 - Helm chart updates (need to verify patching works)
 - Major version updates
 - Breaking changes
@@ -77,6 +90,7 @@ Ready to merge!
 ## Labels
 
 PRs are automatically labeled:
+
 - `dependencies` - All dependency updates
 - `helm` - Helm chart updates
 - `go` - Go dependency updates
@@ -86,7 +100,7 @@ PRs are automatically labeled:
 
 ## Enabling Renovate
 
-### For GitHub.com repositories:
+### For GitHub.com repositories
 
 1. **Install Renovate App:**
    - Visit https://github.com/apps/renovate
@@ -97,9 +111,10 @@ PRs are automatically labeled:
    - Repository Settings → Security → Dependency graph
    - Enable Dependabot alerts
 
-### For Self-Hosted:
+### For Self-Hosted
 
 Run Renovate as a cron job or GitHub Action:
+
 ```yaml
 # .github/workflows/renovate.yaml
 name: Renovate
@@ -120,6 +135,7 @@ jobs:
 ## Testing Renovate Config
 
 Validate configuration:
+
 ```bash
 # Using Renovate CLI
 npm install -g renovate
@@ -130,6 +146,7 @@ renovate-config-validator .github/renovate.json
 ```
 
 Dry-run:
+
 ```bash
 LOG_LEVEL=debug renovate --dry-run --platform=github your-org/verity
 ```
@@ -139,6 +156,7 @@ LOG_LEVEL=debug renovate --dry-run --platform=github your-org/verity
 ### Change Schedule
 
 Edit `.github/renovate.json`:
+
 ```json
 {
   "schedule": ["every weekend"]
@@ -146,6 +164,7 @@ Edit `.github/renovate.json`:
 ```
 
 Common schedules:
+
 - `["at any time"]` - No schedule restrictions
 - `["after 6pm"]` - Only after hours
 - `["every weekday"]` - Monday-Friday
@@ -153,6 +172,7 @@ Common schedules:
 ### Disable Auto-merge
 
 Remove automerge rules:
+
 ```json
 {
   "packageRules": [
@@ -168,6 +188,7 @@ Remove automerge rules:
 ### Add More Custom Managers
 
 Track additional version patterns:
+
 ```json
 {
   "customManagers": [
@@ -187,7 +208,7 @@ Track additional version patterns:
 
 ### Scenario 1: Helm Chart Update
 
-```
+```text
 1. Monday 4am UTC - Renovate checks for updates
 2. Finds prometheus 25.8.0 → 25.9.0
 3. Creates PR updating Chart.yaml
@@ -205,7 +226,7 @@ Track additional version patterns:
 
 ### Scenario 2: Security Vulnerability
 
-```
+```text
 1. New CVE published
 2. Renovate immediately creates PR
 3. automerge: true → Auto-merges after CI passes
@@ -215,7 +236,7 @@ Track additional version patterns:
 
 ### Scenario 3: BuildKit Update
 
-```
+```text
 1. moby/buildkit v0.19.0 → v0.20.0
 2. Renovate updates .github/workflows/ci.yaml
 3. PR created for review
@@ -225,6 +246,7 @@ Track additional version patterns:
 ## Dependency Dashboard
 
 Renovate creates a Dependency Dashboard issue tracking:
+
 - Pending updates
 - Rate-limited PRs
 - Errors encountered
@@ -237,6 +259,7 @@ Find it in Issues → Dependency Dashboard
 ### Renovate not creating PRs
 
 Check:
+
 1. Renovate app is installed and has access
 2. PR limit not reached (default: 3 concurrent)
 3. Schedule allows updates now
@@ -245,6 +268,7 @@ Check:
 ### PRs not auto-merging
 
 Verify:
+
 1. Branch protection allows auto-merge
 2. CI passes successfully
 3. Update matches automerge rules
@@ -253,6 +277,7 @@ Verify:
 ### Custom manager not working
 
 Debug:
+
 ```bash
 renovate --dry-run --log-level=debug
 ```

@@ -167,7 +167,6 @@ jobs:
           registry=$(jq -r '.patched_registry // empty' "$result_file")
           repo=$(jq -r '.patched_repository // empty' "$result_file")
           tag=$(jq -r '.patched_tag // empty' "$result_file")
-          skipped=$(jq -r '.skipped' "$result_file")
           err=$(jq -r '.error // empty' "$result_file")
 
           if [ -z "$registry" ] || [ -z "$repo" ] || [ -z "$tag" ]; then
@@ -182,10 +181,12 @@ jobs:
           image="${registry}/${repo}"
           image_with_tag="${image}:${tag}"
           digest=$(crane digest "$image_with_tag")
-          echo "image=${image}" >> "$GITHUB_OUTPUT"
-          echo "image_with_tag=${image_with_tag}" >> "$GITHUB_OUTPUT"
-          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
-          echo "has_image=true" >> "$GITHUB_OUTPUT"
+          {
+            echo "image=${image}"
+            echo "image_with_tag=${image_with_tag}"
+            echo "digest=${digest}"
+            echo "has_image=true"
+          } >> "$GITHUB_OUTPUT"
           echo "Resolved ${image_with_tag} → ${digest}"
 
       - name: Sign image with cosign
@@ -282,8 +283,8 @@ jobs:
             find "$artifact_dir" -name '*.json' -path '*/reports/*' -exec cp -n {} .verity/reports/ \; 2>/dev/null || true
           done
 
-          echo "Results: $(ls .verity/results/ 2>/dev/null | wc -l) files"
-          echo "Reports: $(ls .verity/reports/ 2>/dev/null | wc -l) files"
+          echo "Results: $(find .verity/results/ -maxdepth 1 -type f 2>/dev/null | wc -l) files"
+          echo "Reports: $(find .verity/reports/ -maxdepth 1 -type f 2>/dev/null | wc -l) files"
 
       - name: Assemble wrapper charts
         run: |

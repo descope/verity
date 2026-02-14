@@ -1,6 +1,7 @@
 # Contributing to Verity
 
-Thank you for contributing to Verity! This guide will help you set up your development environment and understand our quality standards.
+Thank you for contributing to Verity! This guide will help you set up your development environment and understand
+our quality standards.
 
 ## Development Setup
 
@@ -115,6 +116,7 @@ RUN_INTEGRATION_TESTS=1 go test ./...
 ### PR Description
 
 Include:
+
 - **Problem**: What issue does this solve?
 - **Solution**: How does it solve it?
 - **Testing**: How did you test the changes?
@@ -123,7 +125,8 @@ Include:
 ### Commit Messages
 
 Follow conventional commits:
-```
+
+```text
 feat: add new feature
 fix: fix a bug
 chore: update dependencies

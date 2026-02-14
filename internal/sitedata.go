@@ -297,7 +297,7 @@ func discoverRegistryVersions(chartName, skipVersion, repository, registry strin
 
 		_, dlErr := DownloadChart(dep, tmpDir)
 		if dlErr != nil {
-			os.RemoveAll(tmpDir)
+			_ = os.RemoveAll(tmpDir)
 			fmt.Fprintf(os.Stderr, "Warning: could not pull %s:%s: %v\n", chartName, tag, dlErr)
 			consecutiveFailures++
 			if consecutiveFailures >= maxConsecutiveFailures {
@@ -308,7 +308,7 @@ func discoverRegistryVersions(chartName, skipVersion, repository, registry strin
 		}
 
 		chart, parseErr := parseWrapperChart(tmpDir, chartName, registry)
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir)
 		if parseErr != nil {
 			fmt.Fprintf(os.Stderr, "Warning: could not parse %s:%s: %v\n", chartName, tag, parseErr)
 			consecutiveFailures++
@@ -407,7 +407,7 @@ func listGitHubPackageTags(registry, chartName string) ([]string, error) {
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			return nil, fmt.Errorf("GitHub API returned %d", resp.StatusCode)
 		}
 
@@ -419,10 +419,10 @@ func listGitHubPackageTags(registry, chartName string) ([]string, error) {
 			} `json:"metadata"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&pageVersions); err != nil {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			return nil, err
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		if len(pageVersions) == 0 {
 			break
@@ -632,8 +632,6 @@ func collectPatchedImages(node any, path string, result map[string]patchedImageI
 			reg, _ := stringVal(m, "registry")
 			// Reconstruct original ref: strip registry prefix and -patched suffix
 			origTag := strings.TrimSuffix(tag, "-patched")
-			origRepo := repo
-			origReg := reg
 			// The patched image registry is the verity registry;
 			// the original registry we reconstruct from the report filename
 			info := patchedImageInfo{
@@ -643,11 +641,7 @@ func collectPatchedImages(node any, path string, result map[string]patchedImageI
 				ValuesPath: path,
 			}
 			// Key by what sanitize(originalRef) would produce
-			origRef := origRepo
-			if origReg != "" {
-				// Original registry is unknown here; we'll match by repo+tag
-			}
-			_ = origRef
+			// Original registry is unknown here; we'll match by repo+tag
 			// Use repo + original tag as key for matching
 			key := repo + ":" + origTag
 			result[key] = info
@@ -931,7 +925,9 @@ func PushStandaloneReports(reportsDir, registry string) error {
 		return err
 	}
 
-	layer, err := tarball.LayerFromReader(&buf)
+	layer, err := tarball.LayerFromOpener(func() (io.ReadCloser, error) {
+		return io.NopCloser(bytes.NewReader(buf.Bytes())), nil
+	})
 	if err != nil {
 		return fmt.Errorf("creating OCI layer: %w", err)
 	}
@@ -965,18 +961,22 @@ func pullStandaloneReports(registry string) (string, error) {
 
 	layers, err := img.Layers()
 	if err != nil {
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir)
 		return "", fmt.Errorf("reading layers: %w", err)
 	}
 
 	for _, layer := range layers {
 		rc, err := layer.Uncompressed()
 		if err != nil {
-			os.RemoveAll(tmpDir)
+			_ = os.RemoveAll(tmpDir)
 			return "", fmt.Errorf("decompressing layer: %w", err)
 		}
 		err = func() error {
-			defer rc.Close()
+			defer func() {
+				if err := rc.Close(); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to close layer reader: %v\n", err)
+				}
+			}()
 			tr := tar.NewReader(rc)
 			for {
 				hdr, err := tr.Next()
@@ -1008,7 +1008,7 @@ func pullStandaloneReports(registry string) (string, error) {
 			return nil
 		}()
 		if err != nil {
-			os.RemoveAll(tmpDir)
+			_ = os.RemoveAll(tmpDir)
 			return "", err
 		}
 	}
@@ -1032,7 +1032,11 @@ func discoverStandaloneImages(imagesFile, registry string) ([]SiteImage, error) 
 			fmt.Fprintf(os.Stderr, "Warning: could not pull standalone reports from OCI: %v\n", err)
 		} else {
 			reportsDir = dir
-			defer os.RemoveAll(dir)
+			defer func() {
+				if err := os.RemoveAll(dir); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to clean up temp dir: %v\n", err)
+				}
+			}()
 		}
 	}
 

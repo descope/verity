@@ -1,10 +1,12 @@
 # Wrapper Charts
 
-When running verity in patch mode (`-patch`), it creates wrapper charts that make it easy for users to consume your patched images while maintaining full customization capabilities.
+When running verity in patch mode (`-patch`), it creates wrapper charts that make it easy for users to consume
+your patched images while maintaining full customization capabilities.
 
 ## How It Works
 
-For each dependency in your Chart.yaml, verity creates a wrapper chart named after the dependency (e.g. `prometheus`). This wrapper chart:
+For each dependency in your Chart.yaml, verity creates a wrapper chart named after the dependency
+(e.g. `prometheus`). This wrapper chart:
 
 1. **Subcharts the original chart** - The wrapper declares the original chart as a dependency
 2. **Provides patched images** - Values are pre-configured to use Copa-patched images
@@ -31,7 +33,7 @@ Running verity with patching:
 
 Creates this structure:
 
-```
+```text
 charts/
   prometheus/
     Chart.yaml          # Wrapper chart that depends on prometheus
@@ -110,6 +112,7 @@ Helm merges values in this order (later overrides earlier):
 3. Your custom values from `-f my-values.yaml`
 
 This means:
+
 - ✅ You get patched images automatically
 - ✅ You can customize any prometheus setting
 - ✅ You can even override patched images if needed
@@ -117,11 +120,13 @@ This means:
 ## Benefits
 
 ### For Chart Maintainers
+
 - Provide security-patched images without forking upstream charts
 - Update to new chart versions independently of patching
 - Publish wrapper charts to your own registry
 
 ### For Chart Consumers
+
 - Drop-in replacement for original charts
 - Same customization options as original
 - Transparent security patching

@@ -90,12 +90,7 @@ func DiscoverImages(chartFile, imagesFile, tmpDir string) (*DiscoveryManifest, e
 			Repository: dep.Repository,
 		}
 		for _, img := range images {
-			cd.Images = append(cd.Images, ImageDiscovery{
-				Registry:   img.Registry,
-				Repository: img.Repository,
-				Tag:        img.Tag,
-				Path:       img.Path,
-			})
+			cd.Images = append(cd.Images, ImageDiscovery(img))
 		}
 		fmt.Printf("  Found %d images\n", len(images))
 		manifest.Charts = append(manifest.Charts, cd)
@@ -107,12 +102,7 @@ func DiscoverImages(chartFile, imagesFile, tmpDir string) (*DiscoveryManifest, e
 			return nil, fmt.Errorf("parsing %s: %w", imagesFile, err)
 		}
 		for _, img := range images {
-			manifest.Standalone = append(manifest.Standalone, ImageDiscovery{
-				Registry:   img.Registry,
-				Repository: img.Repository,
-				Tag:        img.Tag,
-				Path:       img.Path,
-			})
+			manifest.Standalone = append(manifest.Standalone, ImageDiscovery(img))
 		}
 		fmt.Printf("Standalone: %d images\n", len(images))
 	}
@@ -319,12 +309,7 @@ func buildPatchResults(images []ImageDiscovery, resultMap map[string]*SinglePatc
 	var results []*PatchResult
 
 	for _, imgDisc := range images {
-		img := Image{
-			Registry:   imgDisc.Registry,
-			Repository: imgDisc.Repository,
-			Tag:        imgDisc.Tag,
-			Path:       imgDisc.Path,
-		}
+		img := Image(imgDisc)
 		ref := img.Reference()
 
 		pr := &PatchResult{Original: img}

@@ -1,10 +1,11 @@
 # Workflow Architecture
 
-Verity uses a matrix-based workflow system to scan, patch, and publish security-hardened Helm charts in parallel across GitHub Actions runners.
+Verity uses a matrix-based workflow system to scan, patch, and publish security-hardened Helm charts in parallel
+across GitHub Actions runners.
 
 ## Overview
 
-```
+```text
 ┌─────────────────┐
 │   Chart.yaml    │  ← Renovate updates versions
 │   values.yaml   │  ← Renovate updates image tags
@@ -75,6 +76,7 @@ Verity operates in distinct modes, each designed for a specific phase of the pip
 **Purpose:** Validate code changes
 
 **Jobs:**
+
 - **Lint** - actionlint + shellcheck
 - **Unit Tests** - Run Go tests
 - **Scan** - Discover images in Chart.yaml dependencies (dry run)
@@ -88,23 +90,27 @@ Verity operates in distinct modes, each designed for a specific phase of the pip
 **Purpose:** Automatically patch images when Renovate updates chart versions or image tags
 
 **Jobs:**
+
 1. **Discover** - Lightweight: scans charts, outputs matrix JSON and manifest
 2. **Patch** (matrix) - Each image gets its own runner: pull → trivy → copa → push
 3. **Assemble** - Collects results, creates wrapper charts, commits to PR
 
-**Why matrix?** GitHub runners are small (2 vCPU, 7GB RAM). Pulling, scanning, and patching a container image is resource-intensive. Matrix jobs give each image a fresh runner with full resources and run in parallel.
+**Why matrix?** GitHub runners are small (2 vCPU, 7GB RAM). Pulling, scanning, and patching a container image is
+resource-intensive. Matrix jobs give each image a fresh runner with full resources and run in parallel.
 
 ---
 
 ### 3. Scheduled Scan (`scheduled-scan.yaml`)
 
 **Triggers:**
+
 - Cron: Daily at 2 AM UTC
 - Manual: `workflow_dispatch`
 
 **Purpose:** Continuously monitor for new vulnerabilities
 
-**Jobs:** Same 3-job matrix pattern as `patch-matrix.yaml`, but the assemble step creates a PR instead of committing to an existing branch.
+**Jobs:** Same 3-job matrix pattern as `patch-matrix.yaml`, but the assemble step creates a PR instead of
+committing to an existing branch.
 
 ---
 
@@ -115,6 +121,7 @@ Verity operates in distinct modes, each designed for a specific phase of the pip
 **Purpose:** Publish wrapper charts and verify patched images in Quay.io
 
 **Flow:**
+
 1. Package and push wrapper charts to OCI registry
 2. Verify all patched images exist
 3. Generate site catalog and deploy to GitHub Pages
@@ -125,7 +132,7 @@ Verity operates in distinct modes, each designed for a specific phase of the pip
 
 ### Scenario 1: Renovate Updates Chart Version
 
-```
+```text
 1. Renovate opens PR: Chart.yaml updated (prometheus 28.9.1 → 29.0.0)
    ↓
 2. patch-matrix.yaml triggers
@@ -143,7 +150,7 @@ Verity operates in distinct modes, each designed for a specific phase of the pip
 
 ### Scenario 2: New CVE Discovered
 
-```
+```text
 1. Scheduled scan runs nightly
    ↓
 2. Discover finds all images → matrix
@@ -161,7 +168,7 @@ Verity operates in distinct modes, each designed for a specific phase of the pip
 
 ## Data Flow Between Jobs
 
-```
+```text
 Discover ──► .verity/manifest.json   (artifact: verity-manifest)
          ──► matrix JSON             (output: matrix)
 
@@ -202,6 +209,7 @@ strategy:
 ### Scheduled Scan Frequency
 
 Edit `.github/workflows/scheduled-scan.yaml`:
+
 ```yaml
 on:
   schedule:
@@ -212,7 +220,8 @@ on:
 
 ### Matrix job fails for one image
 
-Other images continue due to `fail-fast: false`. The assemble job still runs and creates wrapper charts using the successful results. Check the failed job's logs for details.
+Other images continue due to `fail-fast: false`. The assemble job still runs and creates wrapper charts using
+the successful results. Check the failed job's logs for details.
 
 ### Discover step finds 0 images
 
