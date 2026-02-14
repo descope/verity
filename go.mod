@@ -6,6 +6,7 @@ require (
 	github.com/google/go-containerregistry v0.20.7
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.20.0
+	helm.sh/helm/v4 v4.1.1
 )
 
 require (
