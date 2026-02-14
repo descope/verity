@@ -94,7 +94,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
-      fail-fast: false
+      fail-fast: true  # Fail entire workflow if ANY image fails to patch
     steps:
       - uses: actions/checkout@v6
         with:
@@ -234,7 +234,8 @@ jobs:
   assemble:
     name: Assemble Wrapper Charts
     needs: [discover, patch]
-    if: always() && needs.discover.outputs.has_images == 'true' && needs.patch.result != 'cancelled'
+    # Only run if ALL patch jobs succeeded - prevents data loss from failed patches
+    if: needs.discover.outputs.has_images == 'true' && needs.patch.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
