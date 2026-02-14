@@ -17,16 +17,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v6
+      - name: Install mise
+        uses: jdx/mise-action@f8dfbcc150159126838e44b882bf34bd98fd90f3 # v2.1.0
         with:
-          go-version-file: go.mod
-          cache: false # golangci-lint has its own cache
+          install: true
+          cache: true
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@0f925f2d8fadad24098b0a31c92e03f09224dd5e # v6.2.0
-        with:
-          version: latest
-          args: --timeout=5m
+        run: golangci-lint run --timeout=5m
 
   actionlint:
     name: Workflow Lint
@@ -34,11 +32,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Run actionlint
-        uses: reviewdog/action-actionlint@7eeec1dd160c2301eb28e1568721837d084558ad # v1.57.0
+      - name: Install mise
+        uses: jdx/mise-action@f8dfbcc150159126838e44b882bf34bd98fd90f3 # v2.1.0
         with:
-          fail_on_error: true
-          filter_mode: nofilter
+          install: true
+          cache: true
+
+      - name: Run actionlint
+        run: actionlint
 
   yaml-lint:
     name: YAML Lint
@@ -46,12 +47,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Run yamllint
-        uses: ibiqlik/action-yamllint@2576378a8e339169678f9939646ee3ee325e845c # v3.1.1
+      - name: Install mise
+        uses: jdx/mise-action@f8dfbcc150159126838e44b882bf34bd98fd90f3 # v2.1.0
         with:
-          config_file: .yamllint.yml
-          file_or_dir: .
-          strict: true
+          install: true
+          cache: true
+
+      - name: Run yamllint
+        run: yamllint -c .yamllint.yml .
 
   shellcheck:
     name: Shell Script Lint
@@ -59,8 +62,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Run ShellCheck
-        uses: ludeeus/action-shellcheck@00b27aa7cb85167568cb48a3838b75f4265f2bca # 2.0.0
+      - name: Install mise
+        uses: jdx/mise-action@f8dfbcc150159126838e44b882bf34bd98fd90f3 # v2.1.0
         with:
-          scandir: './.github/scripts'
-          severity: warning
+          install: true
+          cache: true
+
+      - name: Run ShellCheck
+        run: shellcheck .github/scripts/*.sh
