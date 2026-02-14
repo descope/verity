@@ -34,10 +34,13 @@ for chart_yaml in "${CHARTS_DIR}"/charts/*/Chart.yaml; do
   echo "Signing ${chart_name}:${version}..."
 
   # Resolve the OCI artifact digest
-  digest=$(crane digest "${oci_ref}:${version}" 2>/dev/null || true)
+  if ! digest=$(crane digest "${oci_ref}:${version}"); then
+    echo "  ERROR: Could not resolve digest for ${oci_ref}:${version}"
+    exit 1
+  fi
   if [ -z "$digest" ]; then
-    echo "  WARNING: Could not resolve digest for ${oci_ref}:${version}, skipping"
-    continue
+    echo "  ERROR: Empty digest for ${oci_ref}:${version}"
+    exit 1
   fi
 
   echo "  Digest: ${digest}"

@@ -127,7 +127,10 @@ jobs:
             -result-dir .verity/results
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
+
+      - name: Install crane
+        run: go install github.com/google/go-containerregistry/cmd/crane@latest
 
       - name: Get patched image digest
         id: digest
@@ -178,7 +181,7 @@ jobs:
         if: steps.digest.outputs.has_image == 'true'
         run: |
           trivy image --format cyclonedx --output .verity/sbom.cdx.json \
-            "${{ steps.digest.outputs.image_with_tag }}"
+            "${{ steps.digest.outputs.image }}@${{ steps.digest.outputs.digest }}"
 
       - name: Attest SBOM
         if: steps.digest.outputs.has_image == 'true'

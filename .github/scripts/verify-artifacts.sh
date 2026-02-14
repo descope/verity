@@ -50,12 +50,16 @@ verify_image() {
   fi
   echo "  Digest: ${digest}"
 
+  # Build immutable digest reference for verification
+  local image="${ref%%:*}"
+  local digest_ref="${image}@${digest}"
+
   # Verify cosign signature
   echo "  Checking cosign signature..."
   if cosign verify \
-    --certificate-identity-regexp "https://github.com/${OWNER}/" \
+    --certificate-identity-regexp "https://github.com/${OWNER}/verity/.github/workflows/" \
     --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-    "${ref}" >/dev/null 2>&1; then
+    "${digest_ref}" >/dev/null 2>&1; then
     echo "  Cosign signature: VERIFIED"
   else
     echo "  Cosign signature: FAILED"
@@ -64,7 +68,7 @@ verify_image() {
 
   # Verify GitHub build provenance attestation
   echo "  Checking build provenance..."
-  if gh attestation verify "oci://${ref}" --owner "$OWNER" 2>/dev/null; then
+  if gh attestation verify "oci://${digest_ref}" --owner "$OWNER" 2>/dev/null; then
     echo "  Build provenance: VERIFIED"
   else
     echo "  Build provenance: NOT FOUND or FAILED"
