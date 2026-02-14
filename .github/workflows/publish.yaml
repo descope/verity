@@ -1,4 +1,4 @@
-name: Publish to GHCR
+name: Publish to Quay.io
 
 on:
   push:
@@ -25,28 +25,36 @@ jobs:
       - name: Build verity
         run: go build -o verity .
 
-      - name: Login to GHCR (Docker)
-        uses: docker/login-action@v3.7.0
+      - name: Login to Quay.io (Docker)
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
 
-      - name: Login to GHCR (Helm)
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+      - name: Login to Quay.io (Helm)
+        run: echo "${{ secrets.QUAY_PASSWORD }}" | helm registry login quay.io --username "${{ secrets.QUAY_USERNAME }}" --password-stdin
 
       - name: Publish wrapper charts
-        run: ./.github/scripts/publish-charts.sh . ghcr.io ${{ github.repository_owner }}
+        env:
+          QUAY_API_TOKEN: ${{ secrets.QUAY_API_TOKEN }}
+        run: ./.github/scripts/publish-charts.sh . quay.io verity
 
       - name: Push standalone reports to OCI
         if: hashFiles('reports/*.json') != ''
         run: |
           ./verity -push-standalone-reports \
             -reports-dir reports \
-            -registry ghcr.io/${{ github.repository_owner }}
+            -registry quay.io/verity
+
+      - name: Ensure standalone-reports repo is public
+        if: hashFiles('reports/*.json') != ''
+        env:
+          QUAY_API_TOKEN: ${{ secrets.QUAY_API_TOKEN }}
+        run: ./.github/scripts/quay-make-public.sh verity standalone-reports || true
 
       - name: Verify patched images
-        run: ./.github/scripts/verify-images.sh . ghcr.io ${{ github.repository_owner }}
+        run: ./.github/scripts/verify-images.sh . quay.io verity
 
       - name: Install crane
         uses: imjasonh/setup-crane@31b88efe9de28ae0ffa220711af4b60be9435f6e # v0.4
@@ -55,10 +63,10 @@ jobs:
         uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
 
       - name: Sign charts
-        run: ./.github/scripts/sign-charts.sh . ghcr.io ${{ github.repository_owner }}
+        run: ./.github/scripts/sign-charts.sh . quay.io verity
 
       - name: Generate chart index
-        run: ./.github/scripts/generate-index.sh . /tmp/index.md ghcr.io ${{ github.repository_owner }}
+        run: ./.github/scripts/generate-index.sh . /tmp/index.md quay.io verity
 
       - name: Upload chart index
         if: always()
@@ -71,7 +79,7 @@ jobs:
       - name: Generate site data
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./verity -site-data site/src/data/catalog.json -images values.yaml -registry ghcr.io/${{ github.repository_owner }}
+        run: ./verity -site-data site/src/data/catalog.json -images values.yaml -registry quay.io/verity
 
       - name: Setup Node.js
         uses: actions/setup-node@v6

@@ -16,7 +16,7 @@ permissions:
   attestations: write
 
 env:
-  REGISTRY: ghcr.io/${{ github.repository_owner }}
+  REGISTRY: quay.io/verity
 
 jobs:
   # ── Job 1: Discover images ─────────────────────────────────────────
@@ -39,8 +39,8 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Login to GHCR (Helm)
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+      - name: Login to Quay.io (Helm)
+        run: echo "${{ secrets.QUAY_PASSWORD }}" | helm registry login quay.io --username "${{ secrets.QUAY_USERNAME }}" --password-stdin
 
       - name: Build verity
         run: go build -o verity .
@@ -92,12 +92,12 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Login to GHCR (Docker)
+      - name: Login to Quay.io (Docker)
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
 
       - name: Set up Docker Buildx
         id: buildx
@@ -125,6 +125,17 @@ jobs:
             -buildkit-addr "docker-container://buildx_buildkit_${{ steps.buildx.outputs.name }}0" \
             -report-dir .verity/reports \
             -result-dir .verity/results
+
+      - name: Ensure Quay.io repo is public
+        if: always()
+        env:
+          QUAY_API_TOKEN: ${{ secrets.QUAY_API_TOKEN }}
+        run: |
+          result_file=$(find .verity/results -name '*.json' -print -quit 2>/dev/null)
+          [ -z "$result_file" ] && exit 0
+          repo=$(jq -r '.patched_repository // empty' "$result_file")
+          [ -z "$repo" ] && exit 0
+          ./.github/scripts/quay-make-public.sh verity "$repo" || true
 
       - name: Install cosign
         uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
@@ -167,7 +178,12 @@ jobs:
 
       - name: Sign image with cosign
         if: steps.digest.outputs.has_image == 'true'
-        run: cosign sign --yes "${{ steps.digest.outputs.image }}@${{ steps.digest.outputs.digest }}"
+        env:
+          QUAY_USERNAME: ${{ secrets.QUAY_USERNAME }}
+          QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
+        run: |
+          cosign login quay.io -u "$QUAY_USERNAME" -p "$QUAY_PASSWORD"
+          cosign sign --yes "${{ steps.digest.outputs.image }}@${{ steps.digest.outputs.digest }}"
 
       - name: Attest build provenance
         if: steps.digest.outputs.has_image == 'true'
@@ -220,15 +236,15 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Login to GHCR (Docker)
+      - name: Login to Quay.io (Docker)
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
 
-      - name: Login to GHCR (Helm)
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+      - name: Login to Quay.io (Helm)
+        run: echo "${{ secrets.QUAY_PASSWORD }}" | helm registry login quay.io --username "${{ secrets.QUAY_USERNAME }}" --password-stdin
 
       - name: Build verity
         run: go build -o verity .

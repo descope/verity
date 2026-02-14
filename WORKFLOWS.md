@@ -30,7 +30,7 @@ Verity uses a matrix-based workflow system to scan, patch, and publish security-
                        │
                        ▼
             ┌──────────────────────┐
-            │  Publish to GHCR     │
+            │  Publish to Quay.io  │
             │  - Charts (OCI)      │
             │  - Images (Docker)   │
             └──────────────────────┘
@@ -46,7 +46,7 @@ Verity operates in distinct modes, each designed for a specific phase of the pip
 
 # Patch single image: run in a matrix job
 ./verity -patch-single -image "quay.io/prometheus/prometheus:v3.9.1" \
-  -registry ghcr.io/descope \
+  -registry quay.io/verity \
   -buildkit-addr docker-container://buildkitd \
   -report-dir .verity/reports \
   -result-dir .verity/results
@@ -57,13 +57,13 @@ Verity operates in distinct modes, each designed for a specific phase of the pip
   -results-dir .verity/results \
   -reports-dir .verity/reports \
   -output charts \
-  -registry ghcr.io/descope
+  -registry quay.io/verity
 
 # Scan: list images without patching (dry run)
 ./verity -scan -chart Chart.yaml -images values.yaml
 
 # Site data: generate catalog JSON from existing charts
-./verity -site-data site/src/data/catalog.json -images values.yaml -registry ghcr.io/descope
+./verity -site-data site/src/data/catalog.json -images values.yaml -registry quay.io/verity
 ```
 
 ## Workflows
@@ -112,7 +112,7 @@ Verity operates in distinct modes, each designed for a specific phase of the pip
 
 **Triggers:** Push to `main` branch
 
-**Purpose:** Publish wrapper charts and verify patched images in GHCR
+**Purpose:** Publish wrapper charts and verify patched images in Quay.io
 
 **Flow:**
 1. Package and push wrapper charts to OCI registry
@@ -138,7 +138,7 @@ Verity operates in distinct modes, each designed for a specific phase of the pip
    ↓
 6. Review & merge PR
    ↓
-7. publish.yaml publishes to GHCR
+7. publish.yaml publishes to Quay.io
 ```
 
 ### Scenario 2: New CVE Discovered
@@ -176,18 +176,19 @@ Assemble ◄── manifest.json + all results + all reports
 
 ## Permissions Required
 
-All workflows use `GITHUB_TOKEN` with these permissions:
+Workflows use `GITHUB_TOKEN` plus Quay.io secrets:
 
 - `contents: write` - For committing wrapper charts
 - `pull-requests: write` - For scheduled-scan to create PRs
-- `packages: write` - For GHCR image and chart publishing
+- `QUAY_USERNAME` / `QUAY_PASSWORD` - For Quay.io image and chart publishing
+- `QUAY_API_TOKEN` - For setting new Quay.io repos to public
 
 ## Configuration
 
 ### Registry Settings
 
-Patched images: `ghcr.io/<owner>/<image-name>:<tag>-patched`
-Charts: `oci://ghcr.io/<owner>/charts/<chart-name>`
+Patched images: `quay.io/verity/<image-name>:<tag>-patched`
+Charts: `oci://quay.io/verity/charts/<chart-name>`
 
 ### Matrix Settings
 

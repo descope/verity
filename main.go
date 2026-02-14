@@ -15,7 +15,7 @@ func main() {
 	chartFile := flag.String("chart", "Chart.yaml", "path to Chart.yaml")
 	imagesFile := flag.String("images", "", "path to standalone images values.yaml")
 	outputDir := flag.String("output", "charts", "output directory for wrapper charts")
-	registry := flag.String("registry", "", "target registry for patched images (e.g. ghcr.io/descope)")
+	registry := flag.String("registry", "", "target registry for patched images (e.g. quay.io/verity)")
 	buildkitAddr := flag.String("buildkit-addr", "", "BuildKit address for Copa (e.g. docker-container://buildkitd)")
 	reportDir := flag.String("report-dir", "", "directory to store Trivy JSON reports (default: temp dir)")
 	siteDataPath := flag.String("site-data", "", "generate site catalog JSON at this path")

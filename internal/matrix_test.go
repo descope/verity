@@ -145,7 +145,7 @@ func TestBuildPatchResults(t *testing.T) {
 	resultMap := map[string]*SinglePatchResult{
 		"quay.io/prometheus/prometheus:v3.9.1": {
 			ImageRef:          "quay.io/prometheus/prometheus:v3.9.1",
-			PatchedRegistry:   "ghcr.io/descope",
+			PatchedRegistry:   "quay.io/verity",
 			PatchedRepository: "prometheus/prometheus",
 			PatchedTag:        "v3.9.1-patched",
 			VulnCount:         5,
@@ -165,8 +165,8 @@ func TestBuildPatchResults(t *testing.T) {
 
 	// First result: patched.
 	r0 := results[0]
-	if r0.Patched.Registry != "ghcr.io/descope" {
-		t.Errorf("expected patched registry 'ghcr.io/descope', got %q", r0.Patched.Registry)
+	if r0.Patched.Registry != "quay.io/verity" {
+		t.Errorf("expected patched registry 'quay.io/verity', got %q", r0.Patched.Registry)
 	}
 	if r0.Patched.Tag != "v3.9.1-patched" {
 		t.Errorf("expected patched tag 'v3.9.1-patched', got %q", r0.Patched.Tag)
