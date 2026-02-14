@@ -10,6 +10,8 @@ permissions:
   contents: write
   pull-requests: write
   packages: write
+  id-token: write
+  attestations: write
 
 env:
   REGISTRY: ghcr.io/${{ github.repository_owner }}
@@ -111,6 +113,69 @@ jobs:
             -buildkit-addr "docker-container://buildx_buildkit_${{ steps.buildx.outputs.name }}0" \
             -report-dir .verity/reports \
             -result-dir .verity/results
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Get patched image digest
+        id: digest
+        run: |
+          result_file=$(find .verity/results -name '*.json' -print -quit 2>/dev/null)
+          if [ -z "$result_file" ]; then
+            echo "has_image=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          registry=$(jq -r '.patched_registry // empty' "$result_file")
+          repo=$(jq -r '.patched_repository // empty' "$result_file")
+          tag=$(jq -r '.patched_tag // empty' "$result_file")
+          skipped=$(jq -r '.skipped' "$result_file")
+          err=$(jq -r '.error // empty' "$result_file")
+
+          if [ -z "$registry" ] || [ -z "$repo" ] || [ -z "$tag" ]; then
+            echo "has_image=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -n "$err" ]; then
+            echo "has_image=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          image="${registry}/${repo}"
+          image_with_tag="${image}:${tag}"
+          digest=$(crane digest "$image_with_tag")
+          echo "image=${image}" >> "$GITHUB_OUTPUT"
+          echo "image_with_tag=${image_with_tag}" >> "$GITHUB_OUTPUT"
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+          echo "has_image=true" >> "$GITHUB_OUTPUT"
+          echo "Resolved ${image_with_tag} → ${digest}"
+
+      - name: Sign image with cosign
+        if: steps.digest.outputs.has_image == 'true'
+        run: cosign sign --yes "${{ steps.digest.outputs.image }}@${{ steps.digest.outputs.digest }}"
+
+      - name: Attest build provenance
+        if: steps.digest.outputs.has_image == 'true'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ steps.digest.outputs.image }}
+          subject-digest: ${{ steps.digest.outputs.digest }}
+          push-to-registry: true
+
+      - name: Generate SBOM
+        if: steps.digest.outputs.has_image == 'true'
+        run: |
+          trivy image --format cyclonedx --output .verity/sbom.cdx.json \
+            "${{ steps.digest.outputs.image_with_tag }}"
+
+      - name: Attest SBOM
+        if: steps.digest.outputs.has_image == 'true'
+        uses: actions/attest-sbom@v2
+        with:
+          subject-name: ${{ steps.digest.outputs.image }}
+          subject-digest: ${{ steps.digest.outputs.digest }}
+          sbom-path: .verity/sbom.cdx.json
+          push-to-registry: true
 
       - name: Upload patch result
         if: always()
