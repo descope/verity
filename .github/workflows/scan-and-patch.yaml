@@ -1,22 +1,31 @@
-name: Patch Charts (Matrix)
-
-# DEPRECATED: Consolidated into scan-and-patch.yaml
-# This workflow is disabled but kept for reference.
-# See: https://github.com/descope/verity/pull/XX
+name: Scan and Patch Charts
 
 on:
-  # DISABLED: Use scan-and-patch.yaml instead
-  # pull_request:
-  #   branches: [main]
-  #   paths:
-  #     - 'Chart.yaml'
-  #     - 'values.yaml'
+  # Validate PRs (Renovate, new-issue workflow, manual chart updates)
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Chart.yaml'
+      - 'values.yaml'
+
+  # Publish when PRs merge to main (all sources)
+  push:
+    branches: [main]
+    paths:
+      - 'Chart.yaml'
+      - 'values.yaml'
+
+  # Daily vulnerability scan
+  schedule:
+    - cron: '0 2 * * *'
+
+  # Manual trigger
   workflow_dispatch:
 
 permissions:
   contents: write
   packages: write
-  pull-requests: read
+  pull-requests: write
   id-token: write
   attestations: write
 
@@ -25,18 +34,18 @@ env:
 
 jobs:
   # ── Job 1: Discover images ─────────────────────────────────────────
-  # Lightweight job: downloads Helm charts, scans for image refs,
-  # outputs a GitHub Actions matrix and a manifest for assembly.
   discover:
     name: Discover Images
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    # For PRs, only run if from same repo (security: prevent fork PRs from accessing secrets)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     outputs:
       matrix: ${{ steps.discover.outputs.matrix }}
       has_images: ${{ steps.discover.outputs.has_images }}
     steps:
       - uses: actions/checkout@v6
         with:
+          # For PRs, check out the PR branch; otherwise use the pushed ref
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -78,8 +87,6 @@ jobs:
           retention-days: 1
 
   # ── Job 2: Patch each image in parallel ────────────────────────────
-  # Each matrix job gets its own runner with full resources for
-  # pulling, scanning, and patching a single container image.
   patch:
     name: "Patch ${{ matrix.image_name }}"
     needs: discover
@@ -224,8 +231,6 @@ jobs:
           retention-days: 1
 
   # ── Job 3: Assemble wrapper charts ─────────────────────────────────
-  # Collects all matrix results, creates wrapper Helm charts with
-  # patched image overrides, commits the changes.
   assemble:
     name: Assemble Wrapper Charts
     needs: [discover, patch]
@@ -271,9 +276,6 @@ jobs:
         run: |
           mkdir -p .verity/results .verity/reports
 
-          # Each patch-result-* artifact is in its own subdirectory.
-          # upload-artifact strips the common prefix (.verity/), so files
-          # are at results/ and reports/ inside the artifact directory.
           for artifact_dir in .verity/artifacts/patch-result-*; do
             [ -d "$artifact_dir" ] || continue
             find "$artifact_dir" -name '*.json' -path '*/results/*' -exec cp -n {} .verity/results/ \; 2>/dev/null || true
@@ -291,16 +293,87 @@ jobs:
             -reports-dir .verity/reports \
             -output charts \
             -registry "$REGISTRY" \
-            -images values.yaml \
-            -site-data site/src/data/catalog.json
+            -images values.yaml
 
-      - name: Commit and push patched charts
+      # ═══════════════════════════════════════════════════════════════
+      # Branch 1: Pull Request Flow (Renovate, new-issue, manual PRs)
+      # ═══════════════════════════════════════════════════════════════
+      - name: Commit changes to PR branch
+        if: github.event_name == 'pull_request'
         run: ./.github/scripts/commit-changes.sh charts
+
+      # ═══════════════════════════════════════════════════════════════
+      # Branch 2: Push/Schedule Flow (Publish to OCI)
+      # ═══════════════════════════════════════════════════════════════
+      - name: Check for changes
+        if: github.event_name != 'pull_request'
+        id: check-changes
+        run: ./.github/scripts/check-chart-changes.sh
+
+      - name: Publish wrapper charts to OCI
+        if: github.event_name != 'pull_request' && steps.check-changes.outputs.changes == 'true'
+        env:
+          QUAY_API_TOKEN: ${{ secrets.QUAY_API_TOKEN }}
+        run: ./.github/scripts/publish-charts.sh . quay.io verity
+
+      # NEW: Sign charts immediately after publishing (atomic operation)
+      - name: Install cosign
+        if: github.event_name != 'pull_request' && steps.check-changes.outputs.changes == 'true'
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
+
+      - name: Install crane
+        if: github.event_name != 'pull_request' && steps.check-changes.outputs.changes == 'true'
+        uses: imjasonh/setup-crane@31b88efe9de28ae0ffa220711af4b60be9435f6e # v0.4
+
+      - name: Sign published charts
+        if: github.event_name != 'pull_request' && steps.check-changes.outputs.changes == 'true'
+        run: ./.github/scripts/sign-charts.sh . quay.io verity
+
+      - name: Push standalone reports to OCI
+        if: github.event_name != 'pull_request' && steps.check-changes.outputs.changes == 'true'
+        run: |
+          ./verity -push-standalone-reports \
+            -reports-dir reports \
+            -registry "$REGISTRY"
+
+      - name: Ensure standalone-reports repo is public
+        if: github.event_name != 'pull_request' && steps.check-changes.outputs.changes == 'true'
+        env:
+          QUAY_API_TOKEN: ${{ secrets.QUAY_API_TOKEN }}
+        run: ./.github/scripts/quay-make-public.sh verity standalone-reports || true
+
+      # ═══════════════════════════════════════════════════════════════
+      # Branch 3: Schedule Flow Only (Create PR for review)
+      # ═══════════════════════════════════════════════════════════════
+      - name: Create Pull Request
+        if: github.event_name == 'schedule' && steps.check-changes.outputs.changes == 'true'
+        uses: peter-evans/create-pull-request@v8.1.0
+        with:
+          commit-message: "chore: update patched images with latest security fixes"
+          title: "Security: Update patched images"
+          body: |
+            ## Scheduled Vulnerability Scan
+
+            This PR updates wrapper charts with newly discovered vulnerability patches.
+
+            ### Changes
+            - Re-scanned all charts for vulnerabilities
+            - Applied Copa patches to fixable vulnerabilities via parallel matrix jobs
+            - Updated wrapper chart images
+            - Published charts and reports to OCI registry
+
+            ### Reports
+            Trivy vulnerability reports are stored in OCI at `${{ env.REGISTRY }}/standalone-reports:latest`
+          branch: security/scheduled-patch-${{ github.run_number }}
+          delete-branch: true
+          labels: |
+            security
+            automated
 
       - name: Upload vulnerability reports
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: trivy-reports
+          name: trivy-reports-${{ github.event_name }}
           path: .verity/reports/*.json
           retention-days: 30
