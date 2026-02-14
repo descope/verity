@@ -11,12 +11,12 @@ Verity automatically scans Helm chart dependencies for container image vulnerabi
 ```bash
 # Install prometheus with security-patched images
 helm install my-prometheus \
-  oci://ghcr.io/descope/charts/prometheus-verity \
+  oci://ghcr.io/descope/verity/charts/prometheus \
   --version 25.8.0-0
 
 # With custom values (patched images automatically included)
 helm install my-prometheus \
-  oci://ghcr.io/descope/charts/prometheus-verity \
+  oci://ghcr.io/descope/verity/charts/prometheus \
   -f my-values.yaml
 ```
 
@@ -67,12 +67,12 @@ charts/
 prometheus:
   server:
     image:
-      registry: ghcr.io/descope
+      registry: ghcr.io/descope/verity
       repository: prometheus
       tag: v2.48.0-patched
   alertmanager:
     image:
-      registry: ghcr.io/descope
+      registry: ghcr.io/descope/verity
       repository: alertmanager
       tag: v0.26.0-patched
 ```
@@ -324,7 +324,7 @@ Patched images are:
 Verify patches yourself:
 ```bash
 # Pull patched image
-docker pull ghcr.io/descope/prometheus:v2.48.0-patched
+docker pull ghcr.io/descope/verity/prometheus:v2.48.0-patched
 
 # Compare to original
 docker pull quay.io/prometheus/prometheus:v2.48.0

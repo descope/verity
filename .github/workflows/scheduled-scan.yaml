@@ -14,7 +14,7 @@ permissions:
   attestations: write
 
 env:
-  REGISTRY: ghcr.io/${{ github.repository_owner }}
+  REGISTRY: ghcr.io/${{ github.repository_owner }}/verity
 
 jobs:
   # ── Job 1: Discover images ─────────────────────────────────────────
@@ -258,7 +258,7 @@ jobs:
 
       - name: Publish wrapper charts to OCI
         if: steps.check-changes.outputs.changes == 'true'
-        run: ./.github/scripts/publish-charts.sh . ghcr.io ${{ github.repository_owner }}
+        run: ./.github/scripts/publish-charts.sh . ghcr.io "${{ github.repository_owner }}/verity"
 
       - name: Push standalone reports to OCI
         if: steps.check-changes.outputs.changes == 'true'

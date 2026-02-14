@@ -46,7 +46,7 @@ Verity operates in distinct modes, each designed for a specific phase of the pip
 
 # Patch single image: run in a matrix job
 ./verity -patch-single -image "quay.io/prometheus/prometheus:v3.9.1" \
-  -registry ghcr.io/descope \
+  -registry ghcr.io/descope/verity \
   -buildkit-addr docker-container://buildkitd \
   -report-dir .verity/reports \
   -result-dir .verity/results
@@ -57,13 +57,13 @@ Verity operates in distinct modes, each designed for a specific phase of the pip
   -results-dir .verity/results \
   -reports-dir .verity/reports \
   -output charts \
-  -registry ghcr.io/descope
+  -registry ghcr.io/descope/verity
 
 # Scan: list images without patching (dry run)
 ./verity -scan -chart Chart.yaml -images values.yaml
 
 # Site data: generate catalog JSON from existing charts
-./verity -site-data site/src/data/catalog.json -images values.yaml -registry ghcr.io/descope
+./verity -site-data site/src/data/catalog.json -images values.yaml -registry ghcr.io/descope/verity
 ```
 
 ## Workflows
@@ -186,8 +186,8 @@ All workflows use `GITHUB_TOKEN` with these permissions:
 
 ### Registry Settings
 
-Patched images: `ghcr.io/<owner>/<image-name>:<tag>-patched`
-Charts: `oci://ghcr.io/<owner>/charts/<chart-name>`
+Patched images: `ghcr.io/<owner>/verity/<image-name>:<tag>-patched`
+Charts: `oci://ghcr.io/<owner>/verity/charts/<chart-name>`
 
 ### Matrix Settings
 

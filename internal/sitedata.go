@@ -357,15 +357,20 @@ func listGitHubPackageTags(registry, chartName string) ([]string, error) {
 		return nil, fmt.Errorf("GITHUB_TOKEN not set")
 	}
 
-	// Extract org from registry: "ghcr.io/descope" → "descope"
-	parts := strings.SplitN(registry, "/", 2)
+	// Extract org (and optional sub-path) from registry:
+	//   "ghcr.io/descope"        → org="descope", prefix=""
+	//   "ghcr.io/descope/verity" → org="descope", prefix="verity%2F"
+	parts := strings.Split(registry, "/")
 	if len(parts) < 2 {
 		return nil, fmt.Errorf("cannot extract org from registry %q", registry)
 	}
 	org := parts[1]
 
-	// Package name in API uses %2F for slashes: "charts/prometheus" → "charts%2Fprometheus"
-	packageName := "charts%2F" + chartName
+	var packagePrefix string
+	if len(parts) > 2 {
+		packagePrefix = strings.Join(parts[2:], "%2F") + "%2F"
+	}
+	packageName := packagePrefix + "charts%2F" + chartName
 	baseURL := fmt.Sprintf("https://api.github.com/orgs/%s/packages/container/%s/versions", org, packageName)
 
 	var tags []string

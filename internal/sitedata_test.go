@@ -496,12 +496,12 @@ func TestDiscoverRegistryVersions(t *testing.T) {
 		t.Skip("GITHUB_TOKEN not set")
 	}
 
-	// Discover all versions except the "local" one (28.9.1-5).
+	// Discover all versions except the "local" one (28.9.1-4).
 	charts, err := discoverRegistryVersions(
 		"prometheus",
-		"28.9.1-5",
-		"oci://ghcr.io/descope/charts",
-		"ghcr.io/descope",
+		"28.9.1-4",
+		"oci://ghcr.io/descope/verity/charts",
+		"ghcr.io/descope/verity",
 	)
 	if err != nil {
 		t.Fatalf("discoverRegistryVersions failed: %v", err)
@@ -526,7 +526,7 @@ func TestDiscoverRegistryVersions(t *testing.T) {
 		if c.Version == "" {
 			t.Error("expected non-empty version")
 		}
-		if c.Version == "28.9.1-5" {
+		if c.Version == "28.9.1-4" {
 			t.Error("local version should be excluded")
 		}
 		if len(c.Images) == 0 {
@@ -572,8 +572,8 @@ func TestDiscoverRegistryVersionsNonExistent(t *testing.T) {
 	charts, err := discoverRegistryVersions(
 		"nonexistent-chart-xyz",
 		"1.0.0",
-		"oci://ghcr.io/descope/charts",
-		"ghcr.io/descope",
+		"oci://ghcr.io/descope/verity/charts",
+		"ghcr.io/descope/verity",
 	)
 	if err != nil {
 		t.Fatalf("expected nil error, got: %v", err)
