@@ -16,22 +16,24 @@ const { text } = Astro.props;
       stroke-linejoin="round"
       stroke-width="2"
       d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-    />
+    ></path>
   </svg>
   <span class="copy-label">Copy</span>
 </button>
 
 <script>
-  document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const text = btn.getAttribute('data-copy');
+  document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const text = btn.getAttribute("data-copy");
       if (!text) return;
       navigator.clipboard.writeText(text).then(() => {
-        const label = btn.querySelector('.copy-label');
+        const label = btn.querySelector(".copy-label");
         if (label) {
           const prev = label.textContent;
-          label.textContent = 'Copied!';
-          setTimeout(() => { label.textContent = prev; }, 1500);
+          label.textContent = "Copied!";
+          setTimeout(() => {
+            label.textContent = prev;
+          }, 1500);
         }
       });
     });

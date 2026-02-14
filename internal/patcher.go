@@ -177,7 +177,7 @@ func PatchImage(ctx context.Context, img Image, opts PatchOptions) *PatchResult 
 			Repository: img.Repository,
 			Tag:        patchedTag,
 		}
-		if err := dockerRetag(ctx, localPatched.Reference(), target.Reference()); err != nil {
+		if err := pushLocal(ctx, localPatched.Reference(), target.Reference()); err != nil {
 			result.Error = fmt.Errorf("pushing %s: %w", target.Reference(), err)
 			return result
 		}
@@ -243,7 +243,8 @@ func trivyScan(ctx context.Context, ociDir, reportPath string) error {
 
 // copaPatch runs the copa CLI to patch an image via BuildKit.
 func copaPatch(ctx context.Context, imageRef, reportPath, patchedTag, buildkitAddr string) error {
-	args := []string{"patch",
+	args := []string{
+		"patch",
 		"--image", imageRef,
 		"--report", reportPath,
 		"--tag", patchedTag,
@@ -273,22 +274,35 @@ func mirrorImage(ctx context.Context, srcRef, dstRef string) error {
 	return crane.Copy(srcRef, dstRef, opts...)
 }
 
-// dockerRetag tags a local image and pushes it to a remote registry.
-func dockerRetag(ctx context.Context, srcRef, dstRef string) error {
-	tag := exec.CommandContext(ctx, "docker", "tag", srcRef, dstRef)
-	tag.Stdout = os.Stdout
-	tag.Stderr = os.Stderr
-	if err := tag.Run(); err != nil {
-		return fmt.Errorf("docker tag %s %s: %w", srcRef, dstRef, err)
+// pushLocal saves a local Docker image to a tarball and pushes it to a
+// remote registry using crane. This avoids "manifest invalid" errors that
+// docker push can produce on some registries (e.g. Quay.io) when the
+// image was built by Copa/BuildKit with Docker media types.
+func pushLocal(ctx context.Context, srcRef, dstRef string) error {
+	tmp, err := os.CreateTemp("", "verity-image-*.tar")
+	if err != nil {
+		return fmt.Errorf("creating temp file: %w", err)
+	}
+	tmp.Close()
+	defer os.Remove(tmp.Name())
+
+	save := exec.CommandContext(ctx, "docker", "save", "-o", tmp.Name(), srcRef)
+	save.Stdout = os.Stdout
+	save.Stderr = os.Stderr
+	if err := save.Run(); err != nil {
+		return fmt.Errorf("docker save %s: %w", srcRef, err)
 	}
 
-	push := exec.CommandContext(ctx, "docker", "push", dstRef)
-	push.Stdout = os.Stdout
-	push.Stderr = os.Stderr
-	if err := push.Run(); err != nil {
-		return fmt.Errorf("docker push %s: %w", dstRef, err)
+	img, err := crane.Load(tmp.Name())
+	if err != nil {
+		return fmt.Errorf("loading image %s: %w", srcRef, err)
 	}
-	return nil
+
+	fmt.Printf("    Pushing %s ...\n", dstRef)
+	return crane.Push(img, dstRef,
+		crane.WithAuthFromKeychain(authn.DefaultKeychain),
+		crane.WithContext(ctx),
+	)
 }
 
 // countFixable reads a Trivy JSON report and counts vulnerabilities with a fix available.

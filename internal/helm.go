@@ -101,7 +101,11 @@ func downloadTarball(url, chartName, destDir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("fetching %s: %w", url, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to close response body: %v\n", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("fetching %s: HTTP %d", url, resp.StatusCode)
@@ -115,7 +119,11 @@ func extractTarGz(r io.Reader, chartName, destDir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("gzip reader: %w", err)
 	}
-	defer gz.Close()
+	defer func() {
+		if err := gz.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to close gzip reader: %v\n", err)
+		}
+	}()
 
 	tr := tar.NewReader(gz)
 	for {
@@ -148,10 +156,12 @@ func extractTarGz(r io.Reader, chartName, destDir string) (string, error) {
 				return "", err
 			}
 			if _, err := io.Copy(f, tr); err != nil {
-				f.Close()
+				_ = f.Close()
 				return "", err
 			}
-			f.Close()
+			if err := f.Close(); err != nil {
+				return "", err
+			}
 		}
 	}
 

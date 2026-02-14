@@ -5,6 +5,7 @@ Reusable scripts for GitHub Actions workflows. All scripts follow bash best prac
 ## Installation Scripts
 
 ### install-copa.sh
+
 Installs the latest version of Copa (Project Copacetic) from GitHub releases.
 
 ```bash
@@ -22,12 +23,14 @@ Installs the latest version of Copa (Project Copacetic) from GitHub releases.
 Workflows use the **official** `docker/setup-buildx-action@v3` instead of a custom script.
 
 This action:
+
 - Sets up Docker Buildx (which uses BuildKit)
 - Doesn't require privileged mode
 - Creates a builder with an auto-generated name (accessible via action output)
 - Automatically maintained by Docker
 
 **Example workflow usage:**
+
 ```yaml
 - name: Set up Docker Buildx
   id: buildx
@@ -45,6 +48,7 @@ This action:
 ## Validation Scripts
 
 ### validate-charts.sh
+
 Validates wrapper chart structure, dependencies, and runs `helm lint`.
 
 ```bash
@@ -52,9 +56,11 @@ Validates wrapper chart structure, dependencies, and runs `helm lint`.
 ```
 
 **Arguments:**
+
 - `directory` - Root directory containing charts/ folder (default: .)
 
 **Checks:**
+
 - Required files exist (Chart.yaml, values.yaml, .helmignore)
 - Chart.yaml has valid apiVersion (v2)
 - Exactly one dependency configured
@@ -67,6 +73,7 @@ Validates wrapper chart structure, dependencies, and runs `helm lint`.
 ## Publishing Scripts
 
 ### publish-charts.sh
+
 Publishes wrapper charts to OCI registry.
 
 ```bash
@@ -74,16 +81,19 @@ Publishes wrapper charts to OCI registry.
 ```
 
 **Arguments:**
+
 - `charts-dir` - Directory containing charts/ folder
 - `registry` - OCI registry (e.g., quay.io)
 - `org` - Organization name
 
 **Example:**
+
 ```bash
 ./.github/scripts/publish-charts.sh . quay.io verity
 ```
 
 **Actions:**
+
 1. Builds Helm dependencies
 2. Packages charts
 3. Pushes to OCI registry
@@ -93,6 +103,7 @@ Publishes wrapper charts to OCI registry.
 ---
 
 ### verify-images.sh
+
 Verifies patched images exist in the registry.
 
 ```bash
@@ -100,16 +111,19 @@ Verifies patched images exist in the registry.
 ```
 
 **Arguments:**
+
 - `charts-dir` - Directory containing charts/ folder
 - `registry` - Docker registry (e.g., quay.io)
 - `org` - Organization name
 
 **Example:**
+
 ```bash
 ./.github/scripts/verify-images.sh . quay.io verity
 ```
 
 **Actions:**
+
 - Extracts image references from wrapper chart values
 - Checks if each image exists using `docker manifest inspect`
 - Reports missing images
@@ -119,6 +133,7 @@ Verifies patched images exist in the registry.
 ---
 
 ### generate-index.sh
+
 Generates a markdown index of published charts.
 
 ```bash
@@ -126,12 +141,14 @@ Generates a markdown index of published charts.
 ```
 
 **Arguments:**
+
 - `charts-dir` - Directory containing charts/ folder
 - `output-file` - Path to output markdown file
 - `registry` - OCI registry (e.g., quay.io)
 - `org` - Organization name
 
 **Example:**
+
 ```bash
 ./.github/scripts/generate-index.sh . /tmp/index.md quay.io verity
 ```
@@ -145,6 +162,7 @@ Generates a markdown index of published charts.
 ## Git Scripts
 
 ### commit-changes.sh
+
 Commits and pushes changes to a directory.
 
 ```bash
@@ -152,9 +170,11 @@ Commits and pushes changes to a directory.
 ```
 
 **Arguments:**
+
 - `directory` - Directory to commit (default: charts)
 
 **Actions:**
+
 1. Configures git user as github-actions[bot]
 2. Checks for changes
 3. Commits with standardized message
@@ -169,15 +189,19 @@ Commits and pushes changes to a directory.
 All scripts follow these conventions:
 
 ### Error Handling
+
 ```bash
 set -euo pipefail
 ```
+
 - `-e` - Exit on error
 - `-u` - Error on undefined variables
 - `-o pipefail` - Fail on pipeline errors
 
 ### Argument Validation
+
 Scripts validate required arguments and show usage on error:
+
 ```bash
 if [ -z "$ORG" ]; then
   echo "Usage: $0 <charts-dir> <registry> <org>"
@@ -186,13 +210,16 @@ fi
 ```
 
 ### Clear Output
+
 - ✅ Success messages with checkmarks
 - ❌ Error messages with X marks
 - ⚠️ Warnings for non-critical issues
 - Progress indicators for multi-step operations
 
 ### Idempotency
+
 Scripts handle re-runs gracefully:
+
 - Check if work already done
 - Skip unnecessary steps
 - Don't fail if nothing to do
@@ -202,12 +229,14 @@ Scripts handle re-runs gracefully:
 ## Testing Scripts Locally
 
 ### Prerequisites
+
 ```bash
 # Install required tools
 brew install yq jq helm docker
 ```
 
 ### Test Individual Scripts
+
 ```bash
 # Validate syntax
 bash -n .github/scripts/validate-charts.sh
@@ -217,6 +246,7 @@ bash -n .github/scripts/validate-charts.sh
 ```
 
 ### Test Full Workflow
+
 ```bash
 # Start BuildKit
 ./.github/scripts/start-buildkit.sh
@@ -254,6 +284,7 @@ Scripts automatically fetch latest release. No updates needed.
 5. Test locally before committing
 
 ### Script Template
+
 ```bash
 #!/bin/bash
 set -euo pipefail

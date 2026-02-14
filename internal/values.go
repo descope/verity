@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -133,11 +134,13 @@ func writeChartYaml(path string, chart WrapperChart) error {
 		Dependencies: chart.Dependencies,
 	}
 
-	data, err := yaml.Marshal(c)
-	if err != nil {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2) // Use 2-space indentation (yamllint standard)
+	if err := enc.Encode(c); err != nil {
 		return fmt.Errorf("marshaling Chart.yaml: %w", err)
 	}
-	return os.WriteFile(path, data, 0o644)
+	return os.WriteFile(path, buf.Bytes(), 0o644)
 }
 
 // GenerateNamespacedValuesOverride generates a values.yaml file with patched images
@@ -170,10 +173,13 @@ func GenerateNamespacedValuesOverride(chartName string, results []*PatchResult, 
 		root = map[string]interface{}{}
 	}
 
-	data, err := yaml.Marshal(root)
-	if err != nil {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2) // Use 2-space indentation (yamllint standard)
+	if err := enc.Encode(root); err != nil {
 		return fmt.Errorf("marshaling values override: %w", err)
 	}
+	data := buf.Bytes()
 
 	// Build comment header noting any image overrides applied.
 	var header string
@@ -257,13 +263,21 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer sourceFile.Close()
+	defer func() {
+		if err := sourceFile.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to close source file: %v\n", err)
+		}
+	}()
 
 	destFile, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer destFile.Close()
+	defer func() {
+		if err := destFile.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to close destination file: %v\n", err)
+		}
+	}()
 
 	if _, err := io.Copy(destFile, sourceFile); err != nil {
 		return err

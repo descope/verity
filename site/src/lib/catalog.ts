@@ -1,4 +1,4 @@
-import rawData from '../data/catalog.json';
+import rawData from "../data/catalog.json";
 
 export interface VulnSummary {
   total: number;
@@ -86,6 +86,6 @@ export function getImageById(id: string): SiteImage | undefined {
 
 /** Short display name from a full image reference (last path segment + tag). */
 export function shortName(ref: string): string {
-  const withoutRegistry = ref.includes('/') ? ref.split('/').slice(1).join('/') : ref;
+  const withoutRegistry = ref.includes("/") ? ref.split("/").slice(1).join("/") : ref;
   return withoutRegistry;
 }

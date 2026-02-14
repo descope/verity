@@ -108,7 +108,11 @@ func runDiscover(chartFile, imagesFile, discoverDir string) {
 	if err != nil {
 		log.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to clean up temp dir: %v\n", err)
+		}
+	}()
 
 	manifest, err := internal.DiscoverImages(chartFile, imagesFile, tmpDir)
 	if err != nil {
@@ -137,12 +141,7 @@ func applyOverridesToManifest(manifest *internal.DiscoveryManifest, overrides []
 	for i, ch := range manifest.Charts {
 		images := make([]internal.Image, len(ch.Images))
 		for j, d := range ch.Images {
-			images[j] = internal.Image{
-				Registry:   d.Registry,
-				Repository: d.Repository,
-				Tag:        d.Tag,
-				Path:       d.Path,
-			}
+			images[j] = internal.Image(d)
 		}
 		images = internal.ApplyOverrides(images, overrides)
 		for j, img := range images {
@@ -152,12 +151,7 @@ func applyOverridesToManifest(manifest *internal.DiscoveryManifest, overrides []
 	if len(manifest.Standalone) > 0 {
 		images := make([]internal.Image, len(manifest.Standalone))
 		for j, d := range manifest.Standalone {
-			images[j] = internal.Image{
-				Registry:   d.Registry,
-				Repository: d.Repository,
-				Tag:        d.Tag,
-				Path:       d.Path,
-			}
+			images[j] = internal.Image(d)
 		}
 		images = internal.ApplyOverrides(images, overrides)
 		for j, img := range images {
@@ -180,7 +174,11 @@ func runPatchSingle(imageRef, registry, buildkitAddr, reportDir, resultDir strin
 	if err != nil {
 		log.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to clean up temp dir: %v\n", err)
+		}
+	}()
 
 	rDir := reportDir
 	if rDir == "" {
@@ -260,7 +258,11 @@ func runScan(chartFile, imagesFile string) {
 	if err != nil {
 		log.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to clean up temp dir: %v\n", err)
+		}
+	}()
 
 	chart, err := internal.ParseChartFile(chartFile)
 	if err != nil {

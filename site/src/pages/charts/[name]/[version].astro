@@ -1,11 +1,11 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro';
-import ImageRow from '../../../components/ImageRow.astro';
-import CopyButton from '../../../components/CopyButton.astro';
-import SearchFilter from '../../../components/SearchFilter.astro';
-import SupplyChainBadges from '../../../components/SupplyChainBadges.astro';
-import { catalog } from '../../../lib/catalog';
-import type { SiteChart } from '../../../lib/catalog';
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import ImageRow from "../../../components/ImageRow.astro";
+import CopyButton from "../../../components/CopyButton.astro";
+import SearchFilter from "../../../components/SearchFilter.astro";
+import SupplyChainBadges from "../../../components/SupplyChainBadges.astro";
+import { catalog } from "../../../lib/catalog";
+import type { SiteChart } from "../../../lib/catalog";
 
 export function getStaticPaths() {
   return catalog.charts.map((chart) => ({
@@ -37,17 +37,21 @@ const chartOciRef = `${catalog.registry}/charts/${chart.name}:${chart.version}`;
     <h1 class="text-2xl font-bold mb-1">{chart.name}</h1>
     <p class="text-gray-500 mb-4">
       v{chart.version}
-      {chart.upstreamVersion && (
-        <span class="text-gray-400 ml-2">(upstream {chart.upstreamVersion})</span>
-      )}
+      {
+        chart.upstreamVersion && (
+          <span class="text-gray-400 ml-2">(upstream {chart.upstreamVersion})</span>
+        )
+      }
     </p>
 
-    {chart.helmInstall && (
-      <div class="bg-gray-50 rounded-lg p-4 flex items-center justify-between gap-4 mb-4">
-        <code class="text-sm font-mono text-gray-700 break-all">{chart.helmInstall}</code>
-        <CopyButton text={chart.helmInstall} />
-      </div>
-    )}
+    {
+      chart.helmInstall && (
+        <div class="bg-gray-50 rounded-lg p-4 flex items-center justify-between gap-4 mb-4">
+          <code class="text-sm font-mono text-gray-700 break-all">{chart.helmInstall}</code>
+          <CopyButton text={chart.helmInstall} />
+        </div>
+      )
+    }
 
     <SupplyChainBadges artifactRef={chartOciRef} kind="chart" />
   </div>
@@ -56,18 +60,16 @@ const chartOciRef = `${catalog.registry}/charts/${chart.name}:${chart.version}`;
     <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
       <h2 class="text-lg font-semibold">
         Container Images ({chart.images.length})
-        {totalVulns > 0 && (
-          <span class="text-sm font-normal text-gray-500 ml-2">
-            {totalVulns} vulns patched
-          </span>
-        )}
+        {
+          totalVulns > 0 && (
+            <span class="text-sm font-normal text-gray-500 ml-2">{totalVulns} vulns patched</span>
+          )
+        }
       </h2>
       {chart.images.length > 3 && <SearchFilter targetId="chart-images" />}
     </div>
     <div id="chart-images" class="space-y-2">
-      {chart.images.map((image) => (
-        <ImageRow image={image} />
-      ))}
+      {chart.images.map((image) => <ImageRow image={image} />)}
     </div>
   </section>
 </BaseLayout>
