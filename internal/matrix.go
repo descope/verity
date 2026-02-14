@@ -226,6 +226,13 @@ func PatchSingleImage(ctx context.Context, imageRef string, opts PatchOptions, r
 		return fmt.Errorf("writing result: %w", err)
 	}
 
+	// Fail if the patch operation had an error (push failure, Copa error, etc.)
+	// This ensures matrix jobs fail loudly instead of silently writing error
+	// to JSON and causing data loss in the assemble step.
+	if result.Error != nil {
+		return fmt.Errorf("patch failed for %s: %w", imageRef, result.Error)
+	}
+
 	return nil
 }
 
