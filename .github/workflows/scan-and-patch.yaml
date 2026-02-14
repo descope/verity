@@ -345,6 +345,36 @@ jobs:
         run: ./.github/scripts/quay-make-public.sh verity standalone-reports || true
 
       # ═══════════════════════════════════════════════════════════════
+      # Branch 2.5: Push to Main Only (Deploy Site with Fresh Data)
+      # ═══════════════════════════════════════════════════════════════
+      # Deploy site immediately after publishing charts (atomic operation).
+      # This ensures the site always reflects the latest published charts.
+      # Don't deploy on schedule (that creates a PR for review first).
+
+      - name: Generate site data
+        if: github.event_name == 'push' && steps.check-changes.outputs.changes == 'true'
+        run: ./verity -site-data site/src/data/catalog.json -images values.yaml -registry quay.io/verity
+
+      - name: Setup Node.js
+        if: github.event_name == 'push' && steps.check-changes.outputs.changes == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: 'site/package.json'
+          cache: 'npm'
+          cache-dependency-path: site/package-lock.json
+
+      - name: Build Astro site
+        if: github.event_name == 'push' && steps.check-changes.outputs.changes == 'true'
+        working-directory: site
+        run: npm ci && npm run build
+
+      - name: Upload Pages artifact
+        if: github.event_name == 'push' && steps.check-changes.outputs.changes == 'true'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site/dist
+
+      # ═══════════════════════════════════════════════════════════════
       # Branch 3: Schedule Flow Only (Create PR for review)
       # ═══════════════════════════════════════════════════════════════
       - name: Create Pull Request
@@ -379,3 +409,23 @@ jobs:
           name: trivy-reports-${{ github.event_name }}
           path: .verity/reports/*.json
           retention-days: 30
+
+  # ── Job 4: Deploy Site (Push to Main Only) ────────────────────────
+  # Deploys the site immediately after charts are published and signed.
+  # This ensures atomic operation: publish charts → sign → deploy site.
+  # Prevents the race where site deploys before charts are ready.
+  deploy-site:
+    name: Deploy Site to GitHub Pages
+    needs: assemble
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
