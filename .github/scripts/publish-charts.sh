@@ -41,6 +41,13 @@ for chart_yaml in "${CHARTS_DIR}"/charts/*/Chart.yaml; do
   # Get chart version
   version=$(yq eval '.version' "${chart_yaml}")
 
+  # Skip if this version already exists in OCI (avoid overwriting
+  # packages published by the scan workflow which include reports).
+  if helm show chart "oci://${REGISTRY}/${ORG}/charts/${chart_name}" --version "${version}" &>/dev/null; then
+    echo "  Version ${version} already exists in OCI, skipping"
+    continue
+  fi
+
   # Push to registry
   echo "  Pushing to ${REGISTRY}/${ORG}/charts/${chart_name}:${version}..."
   helm push "/tmp/helm-packages/${chart_name}-${version}.tgz" "oci://${REGISTRY}/${ORG}/charts"

@@ -252,18 +252,20 @@ jobs:
             -registry "$REGISTRY" \
             -images values.yaml
 
+      - name: Check for changes
+        id: check-changes
+        run: ./.github/scripts/check-chart-changes.sh
+
       - name: Publish wrapper charts to OCI
+        if: steps.check-changes.outputs.changes == 'true'
         run: ./.github/scripts/publish-charts.sh . ghcr.io ${{ github.repository_owner }}
 
       - name: Push standalone reports to OCI
+        if: steps.check-changes.outputs.changes == 'true'
         run: |
           ./verity -push-standalone-reports \
             -reports-dir reports \
             -registry "$REGISTRY"
-
-      - name: Check for changes
-        id: check-changes
-        run: ./.github/scripts/check-chart-changes.sh
 
       - name: Create Pull Request
         if: steps.check-changes.outputs.changes == 'true'
