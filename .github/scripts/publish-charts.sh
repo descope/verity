@@ -52,6 +52,10 @@ for chart_yaml in "${CHARTS_DIR}"/charts/*/Chart.yaml; do
   echo "  Pushing to ${REGISTRY}/${ORG}/charts/${chart_name}:${version}..."
   helm push "/tmp/helm-packages/${chart_name}-${version}.tgz" "oci://${REGISTRY}/${ORG}/charts"
 
+  # Ensure the new repo is public on Quay.io
+  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+  "${SCRIPT_DIR}/quay-make-public.sh" "${ORG}" "charts/${chart_name}" || true
+
   echo "Published ${chart_name}:${version}"
   echo ""
   published=$((published + 1))

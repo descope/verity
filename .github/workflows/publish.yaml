@@ -45,6 +45,12 @@ jobs:
             -reports-dir reports \
             -registry quay.io/verity
 
+      - name: Ensure standalone-reports repo is public
+        if: hashFiles('reports/*.json') != ''
+        env:
+          QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
+        run: ./.github/scripts/quay-make-public.sh verity standalone-reports || true
+
       - name: Verify patched images
         run: ./.github/scripts/verify-images.sh . quay.io verity
 

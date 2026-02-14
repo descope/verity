@@ -126,6 +126,17 @@ jobs:
             -report-dir .verity/reports \
             -result-dir .verity/results
 
+      - name: Ensure Quay.io repo is public
+        if: always()
+        env:
+          QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
+        run: |
+          result_file=$(find .verity/results -name '*.json' -print -quit 2>/dev/null)
+          [ -z "$result_file" ] && exit 0
+          repo=$(jq -r '.patched_repository // empty' "$result_file")
+          [ -z "$repo" ] && exit 0
+          ./.github/scripts/quay-make-public.sh verity "$repo" || true
+
       - name: Install cosign
         uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
 
