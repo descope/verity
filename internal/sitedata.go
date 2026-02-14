@@ -896,11 +896,16 @@ func pullStandaloneReports(registry string) (string, error) {
 				if clean == "." || clean == ".." {
 					continue
 				}
+				dest := filepath.Join(tmpDir, clean)
+				// Verify the resolved path is inside tmpDir.
+				if !strings.HasPrefix(dest, filepath.Clean(tmpDir)+string(os.PathSeparator)) {
+					continue
+				}
 				data, err := io.ReadAll(tr)
 				if err != nil {
 					return fmt.Errorf("reading %s from tar: %w", hdr.Name, err)
 				}
-				if err := os.WriteFile(filepath.Join(tmpDir, clean), data, 0o644); err != nil {
+				if err := os.WriteFile(dest, data, 0o644); err != nil {
 					return err
 				}
 			}
