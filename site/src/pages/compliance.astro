@@ -182,25 +182,261 @@ const base = import.meta.env.BASE_URL;
     </div>
   </section>
 
-  <!-- Framework mapping -->
+  <!-- FedRAMP / NIST 800-53 -->
+  <section class="mb-10">
+    <h2 class="text-xl font-semibold mb-1">FedRAMP &amp; NIST 800-53 Rev 5</h2>
+    <p class="text-sm text-gray-500 mb-4">
+      <a href="https://www.fedramp.gov/" class="underline hover:text-gray-700">FedRAMP</a> &middot;
+      <a href="https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final" class="underline hover:text-gray-700">NIST SP 800-53 Rev 5</a>
+    </p>
+    <div class="bg-gray-50 rounded-lg p-6 space-y-4">
+      <p class="text-sm text-gray-500">
+        FedRAMP authorization requires adherence to NIST 800-53 controls.
+        Verity's supply chain practices address several control families that auditors evaluate
+        when container images and Helm charts flow into FedRAMP-authorized environments.
+      </p>
+      <div class="grid sm:grid-cols-2 gap-6">
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">SR-3 / SR-4</div>
+          <div class="font-medium mb-1">Supply Chain Provenance</div>
+          <p class="text-sm text-gray-500">
+            SLSA L3 build provenance attestations provide a verifiable chain from source to artifact.
+            Every image records the GitHub Actions workflow, commit SHA, and runner environment that produced it.
+          </p>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">SR-11</div>
+          <div class="font-medium mb-1">Component Authenticity</div>
+          <p class="text-sm text-gray-500">
+            Cosign keyless signatures tied to the Verity repository OIDC identity let consumers
+            cryptographically verify that every artifact was produced by the authorized build pipeline.
+          </p>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">SI-7</div>
+          <div class="font-medium mb-1">Software &amp; Information Integrity</div>
+          <p class="text-sm text-gray-500">
+            Artifact signatures and Rekor transparency log entries ensure integrity from build through deployment.
+            Any tampering breaks signature verification.
+          </p>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">RA-5</div>
+          <div class="font-medium mb-1">Vulnerability Monitoring &amp; Scanning</div>
+          <p class="text-sm text-gray-500">
+            Daily automated Trivy scans with auto-generated remediation PRs.
+            Vulnerability reports are retained as workflow artifacts for audit evidence.
+          </p>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">CM-14</div>
+          <div class="font-medium mb-1">Signed Components</div>
+          <p class="text-sm text-gray-500">
+            All container images and Helm chart OCI packages are cryptographically signed before
+            entering the registry. Unsigned artifacts are never published.
+          </p>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">SA-11</div>
+          <div class="font-medium mb-1">Developer Testing &amp; Evaluation</div>
+          <p class="text-sm text-gray-500">
+            CI runs unit tests, linting (actionlint, shellcheck), and image scanning on every pull request
+            before any artifact is built or published.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SOC 2 -->
+  <section class="mb-10">
+    <h2 class="text-xl font-semibold mb-1">SOC 2 Type II</h2>
+    <p class="text-sm text-gray-500 mb-4">
+      <a href="https://www.aicpa-cima.com/topic/audit-assurance/audit-and-assurance-greater-than-soc-2" class="underline hover:text-gray-700">AICPA Trust Services Criteria</a>
+    </p>
+    <div class="bg-gray-50 rounded-lg p-6">
+      <p class="text-sm text-gray-500 mb-4">
+        SOC 2 audits evaluate controls around security, availability, and processing integrity.
+        Verity's automated, auditable pipeline supports multiple trust service criteria.
+      </p>
+      <div class="grid sm:grid-cols-2 gap-6">
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">CC8.1</div>
+          <div class="font-medium mb-1">Change Management</div>
+          <p class="text-sm text-gray-500">
+            All changes flow through pull requests with CI gates.
+            Scheduled scans create PRs rather than modifying main directly.
+            Every published artifact has provenance linking it to a specific commit and workflow run.
+          </p>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">CC7.1</div>
+          <div class="font-medium mb-1">Monitoring &amp; Detection</div>
+          <p class="text-sm text-gray-500">
+            Daily vulnerability scans detect new CVEs across all published images.
+            Trivy reports are retained for 30 days as workflow artifacts, providing continuous monitoring evidence.
+          </p>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">CC6.1</div>
+          <div class="font-medium mb-1">Logical Access Controls</div>
+          <p class="text-sm text-gray-500">
+            Workflows use scoped <code class="bg-gray-100 px-1 rounded text-xs">GITHUB_TOKEN</code> permissions
+            with least-privilege (e.g. <code class="bg-gray-100 px-1 rounded text-xs">packages: write</code>
+            only where needed). No long-lived credentials or static API keys.
+          </p>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">PI1.4</div>
+          <div class="font-medium mb-1">Processing Integrity</div>
+          <p class="text-sm text-gray-500">
+            Cryptographic signatures and attestations verify that artifacts have not been
+            altered between build and deployment. Consumers can independently validate integrity.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ISO 27001 -->
+  <section class="mb-10">
+    <h2 class="text-xl font-semibold mb-1">ISO 27001:2022</h2>
+    <p class="text-sm text-gray-500 mb-4">
+      <a href="https://www.iso.org/standard/27001" class="underline hover:text-gray-700">ISO/IEC 27001:2022 Information Security Management</a>
+    </p>
+    <div class="bg-gray-50 rounded-lg p-6">
+      <div class="grid sm:grid-cols-2 gap-6">
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">A.5.21</div>
+          <div class="font-medium mb-1">ICT Supply Chain Security</div>
+          <p class="text-sm text-gray-500">
+            Upstream images are continuously scanned and patched.
+            All dependencies are pinned with cryptographic hashes and automatically updated by Renovate.
+            SBOM attestations provide full component visibility.
+          </p>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">A.8.25</div>
+          <div class="font-medium mb-1">Secure Development Lifecycle</div>
+          <p class="text-sm text-gray-500">
+            Automated CI with linting, testing, and vulnerability scanning gates.
+            No artifact can be published without passing the full pipeline on GitHub-hosted runners.
+          </p>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">A.8.26</div>
+          <div class="font-medium mb-1">Application Security Requirements</div>
+          <p class="text-sm text-gray-500">
+            Vulnerability scanning enforces OS-level security requirements on every container image.
+            Copa patches fixable CVEs before artifacts reach the registry.
+          </p>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">A.8.30</div>
+          <div class="font-medium mb-1">Outsourced Development</div>
+          <p class="text-sm text-gray-500">
+            Third-party chart dependencies and upstream images are treated as untrusted inputs &mdash;
+            scanned, patched, re-signed, and attested before publication under the Verity identity.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- OWASP ASVS -->
+  <section class="mb-10">
+    <h2 class="text-xl font-semibold mb-1">OWASP ASVS</h2>
+    <p class="text-sm text-gray-500 mb-4">
+      <a href="https://owasp.org/www-project-application-security-verification-standard/" class="underline hover:text-gray-700">Application Security Verification Standard v4.0</a>
+    </p>
+    <div class="bg-gray-50 rounded-lg p-6">
+      <div class="grid sm:grid-cols-3 gap-4">
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">V14.2</div>
+          <div class="font-medium mb-1">Dependency</div>
+          <p class="text-sm text-gray-500">
+            All components come from known, trusted sources. Dependencies are pinned by hash,
+            not by mutable tag. Renovate monitors for outdated or vulnerable packages and creates PRs automatically.
+          </p>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">V10.3</div>
+          <div class="font-medium mb-1">Deployed Application Integrity</div>
+          <p class="text-sm text-gray-500">
+            Consumers can verify that every artifact was built by the Verity pipeline and has not been
+            modified, using cosign signature verification and GitHub attestation checks.
+          </p>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">V14.1</div>
+          <div class="font-medium mb-1">Build &amp; Deploy</div>
+          <p class="text-sm text-gray-500">
+            Build processes are scripted and reproducible on ephemeral CI runners.
+            No manual steps, no local builds, no self-hosted infrastructure.
+            Provenance attestations link every artifact to its build definition.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NIST CSF / CISA -->
+  <section class="mb-10">
+    <h2 class="text-xl font-semibold mb-1">NIST CSF 2.0 &amp; CISA Secure by Design</h2>
+    <p class="text-sm text-gray-500 mb-4">
+      <a href="https://www.nist.gov/cyberframework" class="underline hover:text-gray-700">NIST Cybersecurity Framework 2.0</a> &middot;
+      <a href="https://www.cisa.gov/securebydesign" class="underline hover:text-gray-700">CISA Secure by Design</a>
+    </p>
+    <div class="bg-gray-50 rounded-lg p-6">
+      <div class="grid sm:grid-cols-2 gap-6">
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">GV.SC</div>
+          <div class="font-medium mb-1">Supply Chain Risk Management</div>
+          <p class="text-sm text-gray-500">
+            NIST CSF 2.0 added supply chain risk management as a governance function.
+            Verity addresses this through provenance attestation, dependency pinning,
+            continuous scanning, and cryptographic signing of all published artifacts.
+          </p>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Secure by Design</div>
+          <div class="font-medium mb-1">Radical Transparency</div>
+          <p class="text-sm text-gray-500">
+            CISA's Secure by Design pledge calls for transparency in vulnerability disclosure
+            and software composition. Verity publishes vulnerability scan results, attaches SBOMs
+            to every image, and makes all verification publicly accessible via Rekor.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Framework mapping table -->
   <section class="mb-10">
     <h2 class="text-xl font-semibold mb-4">Framework Reference</h2>
+    <p class="text-sm text-gray-500 mb-4">
+      Quick-reference mapping of Verity controls to specific framework requirements.
+    </p>
     <div class="overflow-x-auto">
       <table class="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
         <thead class="bg-gray-50 text-left">
           <tr>
             <th class="px-4 py-3 font-medium text-gray-700">Framework</th>
-            <th class="px-4 py-3 font-medium text-gray-700">Requirement</th>
+            <th class="px-4 py-3 font-medium text-gray-700">Control / Requirement</th>
             <th class="px-4 py-3 font-medium text-gray-700">How Verity Meets It</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
           <tr>
-            <td class="px-4 py-3 font-medium whitespace-nowrap">
+            <td class="px-4 py-3 font-medium whitespace-nowrap" rowspan="2">
               <a href="https://slsa.dev/" class="underline hover:text-gray-700">SLSA v1.0</a>
             </td>
-            <td class="px-4 py-3 text-gray-500">Build L3 provenance</td>
-            <td class="px-4 py-3 text-gray-500">Platform-generated provenance via <code class="bg-gray-100 px-1 rounded text-xs">actions/attest-build-provenance</code> on GitHub-hosted runners</td>
+            <td class="px-4 py-3 text-gray-500">Build L3 &mdash; Hardened provenance</td>
+            <td class="px-4 py-3 text-gray-500">Platform-generated provenance via <code class="bg-gray-100 px-1 rounded text-xs">actions/attest-build-provenance</code> on ephemeral runners</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 text-gray-500">Source integrity</td>
+            <td class="px-4 py-3 text-gray-500">Version-controlled manifests in Git; provenance links artifacts to commit SHAs</td>
           </tr>
           <tr>
             <td class="px-4 py-3 font-medium whitespace-nowrap">
@@ -210,46 +446,112 @@ const base = import.meta.env.BASE_URL;
             <td class="px-4 py-3 text-gray-500">CycloneDX SBOM attested to every container image</td>
           </tr>
           <tr>
-            <td class="px-4 py-3 font-medium whitespace-nowrap">
+            <td class="px-4 py-3 font-medium whitespace-nowrap" rowspan="3">
               <a href="https://csrc.nist.gov/Projects/ssdf" class="underline hover:text-gray-700">NIST SSDF</a>
             </td>
             <td class="px-4 py-3 text-gray-500">PS.1 &mdash; Protect software integrity</td>
-            <td class="px-4 py-3 text-gray-500">Cryptographic signing of all artifacts with Sigstore keyless OIDC; transparency log</td>
+            <td class="px-4 py-3 text-gray-500">Cosign keyless signatures; Rekor transparency log</td>
           </tr>
           <tr>
-            <td class="px-4 py-3 font-medium whitespace-nowrap">
-              <a href="https://csrc.nist.gov/Projects/ssdf" class="underline hover:text-gray-700">NIST SSDF</a>
-            </td>
             <td class="px-4 py-3 text-gray-500">PW.4 &mdash; Verify third-party components</td>
-            <td class="px-4 py-3 text-gray-500">Continuous Trivy scanning of all upstream images; automated Copa patching</td>
+            <td class="px-4 py-3 text-gray-500">Trivy scanning of all upstream images; Copa patching</td>
           </tr>
           <tr>
-            <td class="px-4 py-3 font-medium whitespace-nowrap">
-              <a href="https://csrc.nist.gov/Projects/ssdf" class="underline hover:text-gray-700">NIST SSDF</a>
-            </td>
             <td class="px-4 py-3 text-gray-500">RV.1 &mdash; Identify and confirm vulnerabilities</td>
-            <td class="px-4 py-3 text-gray-500">Daily scheduled scans; auto-generated PRs for new vulnerabilities</td>
+            <td class="px-4 py-3 text-gray-500">Daily scheduled scans; auto-generated PRs</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 font-medium whitespace-nowrap" rowspan="4">
+              <a href="https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final" class="underline hover:text-gray-700">NIST 800-53r5</a>
+              <div class="text-xs font-normal text-gray-400">(FedRAMP)</div>
+            </td>
+            <td class="px-4 py-3 text-gray-500">SR-3 / SR-4 &mdash; Supply chain provenance</td>
+            <td class="px-4 py-3 text-gray-500">SLSA L3 provenance attestations linking artifacts to source, build, and runner</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 text-gray-500">SR-11 &mdash; Component authenticity</td>
+            <td class="px-4 py-3 text-gray-500">Cosign OIDC-based signatures verify artifact origin</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 text-gray-500">SI-7 &mdash; Software integrity</td>
+            <td class="px-4 py-3 text-gray-500">Signature verification detects any post-build tampering</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 text-gray-500">RA-5 &mdash; Vulnerability monitoring</td>
+            <td class="px-4 py-3 text-gray-500">Daily Trivy scans; 30-day report retention for audit evidence</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 font-medium whitespace-nowrap" rowspan="3">
+              <a href="https://www.aicpa-cima.com/topic/audit-assurance/audit-and-assurance-greater-than-soc-2" class="underline hover:text-gray-700">SOC 2</a>
+            </td>
+            <td class="px-4 py-3 text-gray-500">CC8.1 &mdash; Change management</td>
+            <td class="px-4 py-3 text-gray-500">PR-gated changes; provenance ties artifacts to specific commits and runs</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 text-gray-500">CC7.1 &mdash; Monitoring and detection</td>
+            <td class="px-4 py-3 text-gray-500">Daily CVE scans; vulnerability report artifacts retained</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 text-gray-500">CC6.1 &mdash; Logical access controls</td>
+            <td class="px-4 py-3 text-gray-500">Scoped GITHUB_TOKEN; least-privilege workflow permissions; no static keys</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 font-medium whitespace-nowrap" rowspan="3">
+              <a href="https://www.iso.org/standard/27001" class="underline hover:text-gray-700">ISO 27001:2022</a>
+            </td>
+            <td class="px-4 py-3 text-gray-500">A.5.21 &mdash; ICT supply chain security</td>
+            <td class="px-4 py-3 text-gray-500">Pinned dependencies; SBOM attestation; continuous upstream scanning</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 text-gray-500">A.8.25 &mdash; Secure development lifecycle</td>
+            <td class="px-4 py-3 text-gray-500">Automated CI gates (lint, test, scan) before any artifact is published</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 text-gray-500">A.8.30 &mdash; Outsourced development</td>
+            <td class="px-4 py-3 text-gray-500">Third-party images scanned, patched, re-signed under Verity identity</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 font-medium whitespace-nowrap" rowspan="2">
+              <a href="https://owasp.org/www-project-application-security-verification-standard/" class="underline hover:text-gray-700">OWASP ASVS v4</a>
+            </td>
+            <td class="px-4 py-3 text-gray-500">V14.2 &mdash; Dependency verification</td>
+            <td class="px-4 py-3 text-gray-500">All deps pinned by hash; Renovate auto-updates; no mutable tags</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 text-gray-500">V10.3 &mdash; Deployed application integrity</td>
+            <td class="px-4 py-3 text-gray-500">Cosign + <code class="bg-gray-100 px-1 rounded text-xs">gh attestation verify</code> for end-to-end integrity</td>
           </tr>
           <tr>
             <td class="px-4 py-3 font-medium whitespace-nowrap">
+              <a href="https://www.nist.gov/cyberframework" class="underline hover:text-gray-700">NIST CSF 2.0</a>
+            </td>
+            <td class="px-4 py-3 text-gray-500">GV.SC &mdash; Supply chain risk management</td>
+            <td class="px-4 py-3 text-gray-500">Provenance, signing, SBOM, pinning, and scanning as a unified supply chain posture</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 font-medium whitespace-nowrap">
+              <a href="https://www.cisa.gov/securebydesign" class="underline hover:text-gray-700">CISA Secure by Design</a>
+            </td>
+            <td class="px-4 py-3 text-gray-500">Radical transparency</td>
+            <td class="px-4 py-3 text-gray-500">Public vulnerability reports; SBOM on every image; Rekor for public audit</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 font-medium whitespace-nowrap" rowspan="2">
               <a href="https://bestpractices.openssf.org/" class="underline hover:text-gray-700">OpenSSF Scorecard</a>
             </td>
             <td class="px-4 py-3 text-gray-500">Pinned-Dependencies</td>
-            <td class="px-4 py-3 text-gray-500">All Actions pinned by SHA; Go deps pinned via go.sum; Renovate auto-updates</td>
+            <td class="px-4 py-3 text-gray-500">Actions pinned by SHA; Go deps via go.sum; Renovate auto-updates</td>
           </tr>
           <tr>
-            <td class="px-4 py-3 font-medium whitespace-nowrap">
-              <a href="https://bestpractices.openssf.org/" class="underline hover:text-gray-700">OpenSSF Scorecard</a>
-            </td>
             <td class="px-4 py-3 text-gray-500">Signed-Releases</td>
-            <td class="px-4 py-3 text-gray-500">All published OCI artifacts signed with cosign keyless</td>
+            <td class="px-4 py-3 text-gray-500">All OCI artifacts signed with cosign keyless</td>
           </tr>
           <tr>
             <td class="px-4 py-3 font-medium whitespace-nowrap">
               <a href="https://docs.sigstore.dev/" class="underline hover:text-gray-700">Sigstore</a>
             </td>
             <td class="px-4 py-3 text-gray-500">Artifact transparency</td>
-            <td class="px-4 py-3 text-gray-500">All signatures recorded in the Rekor transparency log; verifiable by anyone</td>
+            <td class="px-4 py-3 text-gray-500">All signatures in the Rekor transparency log; verifiable by anyone</td>
           </tr>
         </tbody>
       </table>
