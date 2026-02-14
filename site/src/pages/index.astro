@@ -4,17 +4,20 @@ import HeroSection from '../components/HeroSection.astro';
 import ChartCard from '../components/ChartCard.astro';
 import ImageRow from '../components/ImageRow.astro';
 import SearchFilter from '../components/SearchFilter.astro';
-import { catalog } from '../lib/catalog';
+import { catalog, getChartNames, getChartVersions } from '../lib/catalog';
+
+// Show one card per unique chart name (use the first/latest version for display)
+const uniqueCharts = getChartNames().map((name) => getChartVersions(name)[0]);
 ---
 
 <BaseLayout title="Verity — Security-Patched Registry">
   <HeroSection />
 
-  {catalog.charts.length > 0 && (
+  {uniqueCharts.length > 0 && (
     <section class="mb-10">
       <h2 class="text-xl font-semibold mb-4">Charts</h2>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {catalog.charts.map((chart) => (
+        {uniqueCharts.map((chart) => (
           <ChartCard chart={chart} />
         ))}
       </div>

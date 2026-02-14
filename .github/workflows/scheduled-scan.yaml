@@ -252,6 +252,15 @@ jobs:
             -registry "$REGISTRY" \
             -images values.yaml
 
+      - name: Publish wrapper charts to OCI
+        run: ./.github/scripts/publish-charts.sh . ghcr.io ${{ github.repository_owner }}
+
+      - name: Push standalone reports to OCI
+        run: |
+          ./verity -push-standalone-reports \
+            -reports-dir reports \
+            -registry "$REGISTRY"
+
       - name: Check for changes
         id: check-changes
         run: ./.github/scripts/check-chart-changes.sh
@@ -271,9 +280,10 @@ jobs:
             - Re-scanned all charts for vulnerabilities
             - Applied Copa patches to fixable vulnerabilities via parallel matrix jobs
             - Updated wrapper chart images
+            - Published charts and reports to OCI registry
 
             ### Reports
-            Trivy vulnerability reports are attached to the workflow run.
+            Trivy vulnerability reports are stored in OCI at `${{ env.REGISTRY }}/standalone-reports:latest`
           branch: security/scheduled-patch-${{ github.run_number }}
           delete-branch: true
           labels: |

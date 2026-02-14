@@ -27,7 +27,7 @@ const remaining = image.vulnSummary.total - fixed;
 
 // Find parent chart for breadcrumb
 const parentChart = image.chartName
-  ? catalog.charts.find((c) => c.name === image.chartName)
+  ? catalog.charts.find((c) => c.name === image.chartName && c.images.some((img) => img.id === image.id))
   : undefined;
 ---
 
@@ -39,6 +39,10 @@ const parentChart = image.chartName
         <span class="mx-1">/</span>
         <a href={`${base}charts/${parentChart.name}/`} class="hover:text-gray-700">
           {parentChart.name}
+        </a>
+        <span class="mx-1">/</span>
+        <a href={`${base}charts/${parentChart.name}/${parentChart.version}/`} class="hover:text-gray-700">
+          v{parentChart.version}
         </a>
       </>
     )}

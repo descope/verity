@@ -1,14 +1,22 @@
 package internal
 
 import (
+	"archive/tar"
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/google/go-containerregistry/pkg/crane"
+	"github.com/google/go-containerregistry/pkg/v1/empty"
+	"github.com/google/go-containerregistry/pkg/v1/mutate"
+	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"gopkg.in/yaml.v3"
 )
 
@@ -163,23 +171,24 @@ func loadOverrides(dir string) map[string]string {
 
 // GenerateSiteData walks the charts directory and standalone images file
 // to produce a catalog.json for the Astro static site.
-// reportsDir is the directory containing standalone image Trivy reports.
-func GenerateSiteData(chartsDir, imagesFile, reportsDir, registry, outputPath string) error {
+// Reports are pulled from the OCI registry (embedded in chart packages
+// and standalone-reports artifact), not from local files.
+func GenerateSiteData(chartsDir, imagesFile, registry, outputPath string) error {
 	data := SiteData{
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 		Registry:    registry,
 	}
 
-	// Discover wrapper charts
+	// Discover wrapper charts (all data pulled from OCI).
 	charts, err := discoverCharts(chartsDir, registry)
 	if err != nil {
 		return fmt.Errorf("discovering charts: %w", err)
 	}
 	data.Charts = charts
 
-	// Discover standalone images
+	// Discover standalone images (reports pulled from OCI).
 	if imagesFile != "" {
-		standalone, err := discoverStandaloneImages(imagesFile, reportsDir, registry)
+		standalone, err := discoverStandaloneImages(imagesFile, registry)
 		if err != nil {
 			return fmt.Errorf("discovering standalone images: %w", err)
 		}
@@ -202,6 +211,8 @@ func GenerateSiteData(chartsDir, imagesFile, reportsDir, registry, outputPath st
 }
 
 // discoverCharts walks chartsDir/*/Chart.yaml to find wrapper charts.
+// All chart data (including reports) is pulled from the OCI registry;
+// the local chart directories only provide the chart name.
 func discoverCharts(chartsDir, registry string) ([]SiteChart, error) {
 	entries, err := os.ReadDir(chartsDir)
 	if err != nil {
@@ -222,17 +233,209 @@ func discoverCharts(chartsDir, registry string) ([]SiteChart, error) {
 			continue
 		}
 
-		chart, err := parseWrapperChart(chartsDir, entry.Name(), registry)
-		if err != nil {
-			return nil, fmt.Errorf("parsing chart %s: %w", entry.Name(), err)
+		if registry != "" {
+			// Pull ALL versions from OCI (reports are embedded in the chart packages).
+			versions, err := discoverRegistryVersions(entry.Name(), "", "", registry)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not discover registry versions for %s: %v\n", entry.Name(), err)
+			}
+			charts = append(charts, versions...)
+		} else {
+			// No registry — fall back to local chart parsing (no reports).
+			chart, err := parseWrapperChart(chartsDir, entry.Name(), registry)
+			if err != nil {
+				return nil, fmt.Errorf("parsing chart %s: %w", entry.Name(), err)
+			}
+			charts = append(charts, chart)
 		}
-		charts = append(charts, chart)
 	}
 
 	sort.Slice(charts, func(i, j int) bool {
-		return charts[i].Name < charts[j].Name
+		if charts[i].Name != charts[j].Name {
+			return charts[i].Name < charts[j].Name
+		}
+		return charts[i].Version > charts[j].Version
 	})
 	return charts, nil
+}
+
+// discoverRegistryVersions queries the GitHub Packages API for all published
+// versions of a chart, pulls each one, and returns SiteChart entries with
+// full data (including embedded Trivy reports).
+// If skipVersion is non-empty, that version is excluded from the results.
+func discoverRegistryVersions(chartName, skipVersion, repository, registry string) ([]SiteChart, error) {
+	tags, err := listChartTags(registry, chartName)
+	if err != nil {
+		return nil, err
+	}
+
+	const maxConsecutiveFailures = 5
+
+	var charts []SiteChart
+	var consecutiveFailures int
+	for _, tag := range tags {
+		if skipVersion != "" && tag == skipVersion {
+			continue
+		}
+
+		tmpDir, err := os.MkdirTemp("", "verity-version-")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not create temp directory for %s:%s: %v\n", chartName, tag, err)
+			consecutiveFailures++
+			if consecutiveFailures >= maxConsecutiveFailures {
+				fmt.Fprintf(os.Stderr, "Warning: %d consecutive failures for %s, stopping version discovery\n", consecutiveFailures, chartName)
+				break
+			}
+			continue
+		}
+
+		dep := Dependency{
+			Name:       chartName,
+			Version:    tag,
+			Repository: fmt.Sprintf("oci://%s/charts", registry),
+		}
+
+		_, dlErr := DownloadChart(dep, tmpDir)
+		if dlErr != nil {
+			os.RemoveAll(tmpDir)
+			fmt.Fprintf(os.Stderr, "Warning: could not pull %s:%s: %v\n", chartName, tag, dlErr)
+			consecutiveFailures++
+			if consecutiveFailures >= maxConsecutiveFailures {
+				fmt.Fprintf(os.Stderr, "Warning: %d consecutive failures for %s, stopping version discovery\n", consecutiveFailures, chartName)
+				break
+			}
+			continue
+		}
+
+		chart, parseErr := parseWrapperChart(tmpDir, chartName, registry)
+		os.RemoveAll(tmpDir)
+		if parseErr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not parse %s:%s: %v\n", chartName, tag, parseErr)
+			consecutiveFailures++
+			if consecutiveFailures >= maxConsecutiveFailures {
+				fmt.Fprintf(os.Stderr, "Warning: %d consecutive failures for %s, stopping version discovery\n", consecutiveFailures, chartName)
+				break
+			}
+			continue
+		}
+
+		consecutiveFailures = 0
+		charts = append(charts, chart)
+	}
+
+	return charts, nil
+}
+
+// listChartTags discovers published chart versions. It first tries the
+// GitHub Packages API (works with standard GITHUB_TOKEN) and falls back
+// to crane.ListTags for non-GitHub registries.
+func listChartTags(registry, chartName string) ([]string, error) {
+	// Try GitHub Packages API for ghcr.io registries.
+	if strings.Contains(registry, "ghcr.io") {
+		tags, err := listGitHubPackageTags(registry, chartName)
+		if err == nil {
+			return tags, nil
+		}
+		fmt.Fprintf(os.Stderr, "Warning: GitHub API failed for %s, trying crane: %v\n", chartName, err)
+	}
+
+	// Fallback to crane for other registries.
+	chartRef := fmt.Sprintf("%s/charts/%s", registry, chartName)
+	tags, err := crane.ListTags(chartRef)
+	if err != nil {
+		return nil, fmt.Errorf("listing tags with crane for %s: %w", chartRef, err)
+	}
+	return tags, nil
+}
+
+// listGitHubPackageTags uses the GitHub Packages API to list all tags
+// for a chart package. This works with standard GITHUB_TOKEN auth
+// (unlike OCI pull which needs packages:read scope for crane).
+func listGitHubPackageTags(registry, chartName string) ([]string, error) {
+	token := os.Getenv("GITHUB_TOKEN")
+	if token == "" {
+		return nil, fmt.Errorf("GITHUB_TOKEN not set")
+	}
+
+	// Extract org from registry: "ghcr.io/descope" → "descope"
+	parts := strings.SplitN(registry, "/", 2)
+	if len(parts) < 2 {
+		return nil, fmt.Errorf("cannot extract org from registry %q", registry)
+	}
+	org := parts[1]
+
+	// Package name in API uses %2F for slashes: "charts/prometheus" → "charts%2Fprometheus"
+	packageName := "charts%2F" + chartName
+	baseURL := fmt.Sprintf("https://api.github.com/orgs/%s/packages/container/%s/versions", org, packageName)
+
+	var tags []string
+	perPage := 100
+	page := 1
+
+	for {
+		url := fmt.Sprintf("%s?per_page=%d&page=%d", baseURL, perPage, page)
+
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Accept", "application/vnd.github+json")
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return nil, fmt.Errorf("GitHub API returned %d", resp.StatusCode)
+		}
+
+		var pageVersions []struct {
+			Metadata struct {
+				Container struct {
+					Tags []string `json:"tags"`
+				} `json:"container"`
+			} `json:"metadata"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&pageVersions); err != nil {
+			resp.Body.Close()
+			return nil, err
+		}
+		resp.Body.Close()
+
+		if len(pageVersions) == 0 {
+			break
+		}
+
+		for _, v := range pageVersions {
+			for _, tag := range v.Metadata.Container.Tags {
+				if isVersionTag(tag) {
+					tags = append(tags, tag)
+				}
+			}
+		}
+
+		if len(pageVersions) < perPage {
+			break
+		}
+		page++
+	}
+
+	return tags, nil
+}
+
+// isVersionTag returns true if a tag looks like a chart version
+// (e.g. "28.9.1-5") rather than a cosign signature or digest tag.
+func isVersionTag(tag string) bool {
+	if strings.HasSuffix(tag, ".sig") || strings.HasSuffix(tag, ".att") {
+		return false
+	}
+	if strings.HasPrefix(tag, "sha256-") {
+		return false
+	}
+	return true
 }
 
 // parseWrapperChart reads a wrapper chart's metadata, values, and reports.
@@ -275,6 +478,39 @@ func parseWrapperChart(chartsDir, name, registry string) (SiteChart, error) {
 	if err != nil {
 		return SiteChart{}, fmt.Errorf("matching reports: %w", err)
 	}
+
+	// Filter to only images belonging to this chart version.
+	// paths.json records the canonical set of images for the current build;
+	// the reports directory may also contain leftover reports from older
+	// versions that should not appear on this version's page.
+	if len(imagePaths) > 0 {
+		filtered := make([]SiteImage, 0, len(imagePaths))
+		for _, img := range images {
+			if _, ok := imagePaths[img.ID]; ok {
+				filtered = append(filtered, img)
+			}
+		}
+		images = filtered
+	} else if upstreamDir := filepath.Join(chartDir, "charts", cf.Name); dirExists(upstreamDir) {
+		// Fallback for older chart packages that lack paths.json:
+		// scan the bundled upstream chart to determine which images
+		// belong to this version.
+		upstreamImages, scanErr := ScanForImages(upstreamDir)
+		if scanErr == nil && len(upstreamImages) > 0 {
+			allowed := make(map[string]bool)
+			for _, uimg := range upstreamImages {
+				allowed[sanitize(uimg.Reference())] = true
+			}
+			filtered := make([]SiteImage, 0, len(upstreamImages))
+			for _, img := range images {
+				if allowed[img.ID] {
+					filtered = append(filtered, img)
+				}
+			}
+			images = filtered
+		}
+	}
+
 	chart.Images = images
 
 	return chart, nil
@@ -541,9 +777,13 @@ func buildSiteImage(id, originalRef, patchedRef, valuesPath, chartName string, r
 	}
 }
 
+func dirExists(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && fi.IsDir()
+}
+
 // SaveStandaloneReports copies Trivy reports from PatchResults into a
-// persistent directory so they survive across runs and are available
-// for site data generation.
+// local directory. This is used during assembly before pushing to OCI.
 func SaveStandaloneReports(results []*PatchResult, reportsDir string) error {
 	if err := os.MkdirAll(reportsDir, 0o755); err != nil {
 		return fmt.Errorf("creating standalone reports dir: %w", err)
@@ -574,30 +814,173 @@ func SaveStandaloneReports(results []*PatchResult, reportsDir string) error {
 	return nil
 }
 
+// PushStandaloneReports pushes all standalone reports in reportsDir to
+// the OCI registry as a single image artifact at:
+//
+//	{registry}/standalone-reports:latest
+//
+// Each JSON report file becomes a layer in the OCI image.
+func PushStandaloneReports(reportsDir, registry string) error {
+	ref := registry + "/standalone-reports:latest"
+
+	entries, err := os.ReadDir(reportsDir)
+	if err != nil {
+		return fmt.Errorf("reading reports dir: %w", err)
+	}
+
+	// Build a tar archive of the reports directory content.
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(reportsDir, e.Name()))
+		if err != nil {
+			return fmt.Errorf("reading %s: %w", e.Name(), err)
+		}
+		hdr := &tar.Header{
+			Name: e.Name(),
+			Mode: 0o644,
+			Size: int64(len(data)),
+		}
+		if err := tw.WriteHeader(hdr); err != nil {
+			return err
+		}
+		if _, err := tw.Write(data); err != nil {
+			return err
+		}
+	}
+	if err := tw.Close(); err != nil {
+		return err
+	}
+
+	layer, err := tarball.LayerFromReader(&buf)
+	if err != nil {
+		return fmt.Errorf("creating OCI layer: %w", err)
+	}
+
+	img, err := mutate.AppendLayers(empty.Image, layer)
+	if err != nil {
+		return fmt.Errorf("building OCI image: %w", err)
+	}
+
+	if err := crane.Push(img, ref); err != nil {
+		return fmt.Errorf("pushing %s: %w", ref, err)
+	}
+	fmt.Printf("Pushed standalone reports → %s\n", ref)
+	return nil
+}
+
+// pullStandaloneReports pulls the standalone-reports artifact from OCI
+// and extracts the reports into a temporary directory.
+func pullStandaloneReports(registry string) (string, error) {
+	ref := registry + "/standalone-reports:latest"
+
+	img, err := crane.Pull(ref)
+	if err != nil {
+		return "", fmt.Errorf("pulling %s: %w", ref, err)
+	}
+
+	tmpDir, err := os.MkdirTemp("", "verity-standalone-reports-")
+	if err != nil {
+		return "", err
+	}
+
+	layers, err := img.Layers()
+	if err != nil {
+		os.RemoveAll(tmpDir)
+		return "", fmt.Errorf("reading layers: %w", err)
+	}
+
+	for _, layer := range layers {
+		rc, err := layer.Uncompressed()
+		if err != nil {
+			os.RemoveAll(tmpDir)
+			return "", fmt.Errorf("decompressing layer: %w", err)
+		}
+		err = func() error {
+			defer rc.Close()
+			tr := tar.NewReader(rc)
+			for {
+				hdr, err := tr.Next()
+				if err != nil {
+					break
+				}
+				if hdr.Typeflag != tar.TypeReg {
+					continue
+				}
+				// Sanitize the file name to prevent Zip Slip (path traversal).
+				clean := filepath.Base(hdr.Name)
+				if clean == "." || clean == ".." {
+					continue
+				}
+				dest := filepath.Join(tmpDir, clean)
+				// Verify the resolved path is inside tmpDir using filepath.Rel.
+				rel, err := filepath.Rel(tmpDir, dest)
+				if err != nil || strings.HasPrefix(rel, "..") {
+					continue
+				}
+				data, err := io.ReadAll(tr)
+				if err != nil {
+					return fmt.Errorf("reading %s from tar: %w", hdr.Name, err)
+				}
+				if err := os.WriteFile(dest, data, 0o644); err != nil {
+					return err
+				}
+			}
+			return nil
+		}()
+		if err != nil {
+			os.RemoveAll(tmpDir)
+			return "", err
+		}
+	}
+
+	return tmpDir, nil
+}
+
 // discoverStandaloneImages reads the standalone images values file and
-// finds reports for each image in the reports directory.
-func discoverStandaloneImages(imagesFile, reportsDir, registry string) ([]SiteImage, error) {
+// pulls reports from the OCI registry standalone-reports artifact.
+func discoverStandaloneImages(imagesFile, registry string) ([]SiteImage, error) {
 	images, err := ParseImagesFile(imagesFile)
 	if err != nil {
 		return nil, err
 	}
 
-	overrides := loadOverrides(reportsDir)
+	// Pull reports from OCI.
+	var reportsDir string
+	if registry != "" {
+		dir, err := pullStandaloneReports(registry)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not pull standalone reports from OCI: %v\n", err)
+		} else {
+			reportsDir = dir
+			defer os.RemoveAll(dir)
+		}
+	}
+
+	var overrides map[string]string
+	if reportsDir != "" {
+		overrides = loadOverrides(reportsDir)
+	}
 
 	var siteImages []SiteImage
 	for _, img := range images {
 		ref := img.Reference()
 		sanitizedRef := sanitize(ref)
 
-		reportPath := filepath.Join(reportsDir, sanitizedRef+".json")
-		report, err := parseTrivyReportFull(reportPath)
-
 		patchedRef := buildPatchedRef(ref, registry)
 
 		var si SiteImage
-		if err == nil {
-			si = buildSiteImage(sanitizedRef, ref, patchedRef, img.Path, "", report)
-		} else {
+		if reportsDir != "" {
+			reportPath := filepath.Join(reportsDir, sanitizedRef+".json")
+			report, err := parseTrivyReportFull(reportPath)
+			if err == nil {
+				si = buildSiteImage(sanitizedRef, ref, patchedRef, img.Path, "", report)
+			}
+		}
+		if si.ID == "" {
 			si = SiteImage{
 				ID:              sanitizedRef,
 				OriginalRef:     ref,
@@ -620,17 +1003,18 @@ func discoverStandaloneImages(imagesFile, reportsDir, registry string) ([]SiteIm
 
 // computeSummary aggregates stats across all charts and standalone images.
 func computeSummary(charts []SiteChart, standalone []SiteImage) SiteSummary {
-	summary := SiteSummary{
-		TotalCharts: len(charts),
-	}
+	chartNames := make(map[string]bool)
+	summary := SiteSummary{}
 
 	for _, c := range charts {
+		chartNames[c.Name] = true
 		summary.TotalImages += len(c.Images)
 		for _, img := range c.Images {
 			summary.TotalVulns += img.VulnSummary.Total
 			summary.FixableVulns += img.VulnSummary.Fixable
 		}
 	}
+	summary.TotalCharts = len(chartNames)
 
 	summary.TotalImages += len(standalone)
 	for _, img := range standalone {

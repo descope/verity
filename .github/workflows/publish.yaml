@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   publish:
-    name: Publish Charts and Images
+    name: Publish Charts and Deploy Site
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -22,14 +22,8 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Build verity (warms Go cache for PR branches)
+      - name: Build verity
         run: go build -o verity .
-
-      - name: Set up Trivy (warms DB cache for PR branches)
-        uses: aquasecurity/setup-trivy@v0.2.5
-        with:
-          version: latest
-          cache: true
 
       - name: Login to GHCR (Docker)
         uses: docker/login-action@v3.7.0
@@ -43,6 +37,13 @@ jobs:
 
       - name: Publish wrapper charts
         run: ./.github/scripts/publish-charts.sh . ghcr.io ${{ github.repository_owner }}
+
+      - name: Push standalone reports to OCI
+        if: hashFiles('reports/*.json') != ''
+        run: |
+          ./verity -push-standalone-reports \
+            -reports-dir reports \
+            -registry ghcr.io/${{ github.repository_owner }}
 
       - name: Verify patched images
         run: ./.github/scripts/verify-images.sh . ghcr.io ${{ github.repository_owner }}
@@ -68,6 +69,8 @@ jobs:
           retention-days: 90
 
       - name: Generate site data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./verity -site-data site/src/data/catalog.json -images values.yaml -registry ghcr.io/${{ github.repository_owner }}
 
       - name: Setup Node.js
