@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -133,11 +134,13 @@ func writeChartYaml(path string, chart WrapperChart) error {
 		Dependencies: chart.Dependencies,
 	}
 
-	data, err := yaml.Marshal(c)
-	if err != nil {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2) // Use 2-space indentation (yamllint standard)
+	if err := enc.Encode(c); err != nil {
 		return fmt.Errorf("marshaling Chart.yaml: %w", err)
 	}
-	return os.WriteFile(path, data, 0o644)
+	return os.WriteFile(path, buf.Bytes(), 0o644)
 }
 
 // GenerateNamespacedValuesOverride generates a values.yaml file with patched images
