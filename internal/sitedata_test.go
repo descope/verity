@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 )
 
@@ -462,5 +463,156 @@ func TestComputeSummaryMultipleVersions(t *testing.T) {
 	}
 	if summary.FixableVulns != 6 {
 		t.Errorf("expected 6 fixable, got %d", summary.FixableVulns)
+	}
+}
+
+// Integration tests against the public ghcr.io/descope registry.
+
+func TestListGitHubPackageTags(t *testing.T) {
+	if os.Getenv("GITHUB_TOKEN") == "" {
+		t.Skip("GITHUB_TOKEN not set")
+	}
+
+	tags, err := listGitHubPackageTags("ghcr.io/descope", "prometheus")
+	if err != nil {
+		t.Fatalf("listGitHubPackageTags failed: %v", err)
+	}
+
+	if len(tags) == 0 {
+		t.Fatal("expected at least one tag, got none")
+	}
+
+	// The registry should have multiple versions of prometheus.
+	// Verify we see at least 2 tags and that known versions exist.
+	t.Logf("found %d tags: %v", len(tags), tags)
+
+	found := make(map[string]bool)
+	for _, tag := range tags {
+		found[tag] = true
+	}
+
+	// These versions are known to be published.
+	for _, expected := range []string{"25.8.0-0", "28.9.1-5"} {
+		if !found[expected] {
+			t.Errorf("expected tag %q not found in %v", expected, tags)
+		}
+	}
+}
+
+func TestListChartTags(t *testing.T) {
+	if os.Getenv("GITHUB_TOKEN") == "" {
+		t.Skip("GITHUB_TOKEN not set")
+	}
+
+	tags, err := listChartTags("ghcr.io/descope", "victoria-logs-single")
+	if err != nil {
+		t.Fatalf("listChartTags failed: %v", err)
+	}
+
+	if len(tags) < 1 {
+		t.Fatal("expected at least one tag")
+	}
+
+	found := false
+	for _, tag := range tags {
+		if tag == "0.11.24-1" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected tag 0.11.24-1 in %v", tags)
+	}
+}
+
+func TestDiscoverRegistryVersions(t *testing.T) {
+	if os.Getenv("GITHUB_TOKEN") == "" {
+		t.Skip("GITHUB_TOKEN not set")
+	}
+
+	// Discover all versions except the "local" one (28.9.1-5).
+	charts, err := discoverRegistryVersions(
+		"prometheus",
+		"28.9.1-5",
+		"oci://ghcr.io/descope/charts",
+		"ghcr.io/descope",
+	)
+	if err != nil {
+		t.Fatalf("discoverRegistryVersions failed: %v", err)
+	}
+
+	// Should find historical versions (at least the 25.8.0-x series).
+	if len(charts) == 0 {
+		t.Fatal("expected at least one historical version, got none")
+	}
+
+	t.Logf("discovered %d historical versions:", len(charts))
+	for _, c := range charts {
+		t.Logf("  %s v%s (upstream %s) — %d images",
+			c.Name, c.Version, c.UpstreamVersion, len(c.Images))
+	}
+
+	// Each chart entry should have a non-empty name, version, and images.
+	for _, c := range charts {
+		if c.Name != "prometheus" {
+			t.Errorf("expected name 'prometheus', got %q", c.Name)
+		}
+		if c.Version == "" {
+			t.Error("expected non-empty version")
+		}
+		if c.Version == "28.9.1-5" {
+			t.Error("local version should be excluded")
+		}
+		if len(c.Images) == 0 {
+			t.Errorf("version %s has no images", c.Version)
+		}
+	}
+
+	// Verify that a 25.8.0-x version exists with different images
+	// than the 28.9.1 series (confirming per-version filtering works).
+	var found25 *SiteChart
+	for i := range charts {
+		if charts[i].UpstreamVersion == "25.8.0" {
+			found25 = &charts[i]
+			break
+		}
+	}
+	if found25 == nil {
+		t.Fatal("expected to find a 25.8.0-x version")
+	}
+
+	// The 25.8.0 series should have different image tags than 28.9.1.
+	imageRefs := make([]string, 0, len(found25.Images))
+	for _, img := range found25.Images {
+		imageRefs = append(imageRefs, img.OriginalRef)
+	}
+	sort.Strings(imageRefs)
+	t.Logf("25.8.0 images: %v", imageRefs)
+
+	// Verify it does NOT contain 28.9.1-era images.
+	for _, ref := range imageRefs {
+		if ref == "quay.io/prometheus/prometheus:v3.9.1" {
+			t.Error("25.8.0 version should not contain v3.9.1 images")
+		}
+	}
+}
+
+func TestDiscoverRegistryVersionsNonExistent(t *testing.T) {
+	if os.Getenv("GITHUB_TOKEN") == "" {
+		t.Skip("GITHUB_TOKEN not set")
+	}
+
+	// Non-existent chart should return empty, not error.
+	charts, err := discoverRegistryVersions(
+		"nonexistent-chart-xyz",
+		"1.0.0",
+		"oci://ghcr.io/descope/charts",
+		"ghcr.io/descope",
+	)
+	if err != nil {
+		t.Fatalf("expected nil error, got: %v", err)
+	}
+	if len(charts) != 0 {
+		t.Errorf("expected 0 charts, got %d", len(charts))
 	}
 }

@@ -3,6 +3,7 @@ package internal
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -251,15 +252,13 @@ func discoverCharts(chartsDir, registry string) ([]SiteChart, error) {
 	return charts, nil
 }
 
-// discoverRegistryVersions queries the OCI registry for all published
+// discoverRegistryVersions queries the GitHub Packages API for all published
 // versions of a chart, pulls each one (except the local version which
 // is already parsed), and returns SiteChart entries with full data.
 func discoverRegistryVersions(chartName, localVersion, repository, registry string) ([]SiteChart, error) {
-	chartRef := fmt.Sprintf("%s/charts/%s", registry, chartName)
-	tags, err := crane.ListTags(chartRef)
+	tags, err := listChartTags(registry, chartName)
 	if err != nil {
-		// Chart may not exist in the registry yet.
-		return nil, nil
+		return nil, err
 	}
 
 	var charts []SiteChart
@@ -273,14 +272,13 @@ func discoverRegistryVersions(chartName, localVersion, repository, registry stri
 			continue
 		}
 
-		repo := repository
-		if repo == "" {
-			repo = fmt.Sprintf("oci://%s/charts", registry)
-		}
+		// Always pull historical versions from our registry, not the
+		// upstream repository — the versioned chart packages live in
+		// our OCI registry (e.g. oci://ghcr.io/descope/charts).
 		dep := Dependency{
 			Name:       chartName,
 			Version:    tag,
-			Repository: repo,
+			Repository: fmt.Sprintf("oci://%s/charts", registry),
 		}
 
 		_, dlErr := DownloadChart(dep, tmpDir)
@@ -301,6 +299,83 @@ func discoverRegistryVersions(chartName, localVersion, repository, registry stri
 	}
 
 	return charts, nil
+}
+
+// listChartTags discovers published chart versions. It first tries the
+// GitHub Packages API (works with standard GITHUB_TOKEN) and falls back
+// to crane.ListTags for non-GitHub registries.
+func listChartTags(registry, chartName string) ([]string, error) {
+	// Try GitHub Packages API for ghcr.io registries.
+	if strings.Contains(registry, "ghcr.io") {
+		tags, err := listGitHubPackageTags(registry, chartName)
+		if err == nil {
+			return tags, nil
+		}
+		fmt.Fprintf(os.Stderr, "Warning: GitHub API failed for %s, trying crane: %v\n", chartName, err)
+	}
+
+	// Fallback to crane for other registries.
+	chartRef := fmt.Sprintf("%s/charts/%s", registry, chartName)
+	tags, err := crane.ListTags(chartRef)
+	if err != nil {
+		return nil, nil
+	}
+	return tags, nil
+}
+
+// listGitHubPackageTags uses the GitHub Packages API to list all tags
+// for a chart package. This works with standard GITHUB_TOKEN auth
+// (unlike OCI pull which needs packages:read scope for crane).
+func listGitHubPackageTags(registry, chartName string) ([]string, error) {
+	token := os.Getenv("GITHUB_TOKEN")
+	if token == "" {
+		return nil, fmt.Errorf("GITHUB_TOKEN not set")
+	}
+
+	// Extract org from registry: "ghcr.io/descope" → "descope"
+	parts := strings.SplitN(registry, "/", 2)
+	if len(parts) < 2 {
+		return nil, fmt.Errorf("cannot extract org from registry %q", registry)
+	}
+	org := parts[1]
+
+	// Package name in API uses %2F for slashes: "charts/prometheus" → "charts%2Fprometheus"
+	packageName := "charts%2F" + chartName
+	url := fmt.Sprintf("https://api.github.com/orgs/%s/packages/container/%s/versions?per_page=100", org, packageName)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GitHub API returned %d", resp.StatusCode)
+	}
+
+	var versions []struct {
+		Metadata struct {
+			Container struct {
+				Tags []string `json:"tags"`
+			} `json:"container"`
+		} `json:"metadata"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&versions); err != nil {
+		return nil, err
+	}
+
+	var tags []string
+	for _, v := range versions {
+		tags = append(tags, v.Metadata.Container.Tags...)
+	}
+	return tags, nil
 }
 
 // parseWrapperChart reads a wrapper chart's metadata, values, and reports.
@@ -356,6 +431,24 @@ func parseWrapperChart(chartsDir, name, registry string) (SiteChart, error) {
 			}
 		}
 		images = filtered
+	} else if upstreamDir := filepath.Join(chartDir, "charts", cf.Name); dirExists(upstreamDir) {
+		// Fallback for older chart packages that lack paths.json:
+		// scan the bundled upstream chart to determine which images
+		// belong to this version.
+		upstreamImages, scanErr := ScanForImages(upstreamDir)
+		if scanErr == nil && len(upstreamImages) > 0 {
+			allowed := make(map[string]bool)
+			for _, uimg := range upstreamImages {
+				allowed[sanitize(uimg.Reference())] = true
+			}
+			filtered := make([]SiteImage, 0, len(upstreamImages))
+			for _, img := range images {
+				if allowed[img.ID] {
+					filtered = append(filtered, img)
+				}
+			}
+			images = filtered
+		}
 	}
 
 	chart.Images = images
@@ -622,6 +715,11 @@ func buildSiteImage(id, originalRef, patchedRef, valuesPath, chartName string, r
 		},
 		Vulnerabilities: vulns,
 	}
+}
+
+func dirExists(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && fi.IsDir()
 }
 
 // SaveStandaloneReports copies Trivy reports from PatchResults into a
