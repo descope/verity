@@ -1,11 +1,11 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import VulnTable from '../../components/VulnTable.astro';
-import SeverityBreakdown from '../../components/SeverityBreakdown.astro';
-import CopyButton from '../../components/CopyButton.astro';
-import SupplyChainBadges from '../../components/SupplyChainBadges.astro';
-import { catalog, getAllImages, shortName } from '../../lib/catalog';
-import type { SiteImage } from '../../lib/catalog';
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import VulnTable from "../../components/VulnTable.astro";
+import SeverityBreakdown from "../../components/SeverityBreakdown.astro";
+import CopyButton from "../../components/CopyButton.astro";
+import SupplyChainBadges from "../../components/SupplyChainBadges.astro";
+import { catalog, getAllImages, shortName } from "../../lib/catalog";
+import type { SiteImage } from "../../lib/catalog";
 
 export function getStaticPaths() {
   const all = getAllImages();
@@ -27,63 +27,95 @@ const remaining = image.vulnSummary.total - fixed;
 
 // Find parent chart for breadcrumb
 const parentChart = image.chartName
-  ? catalog.charts.find((c) => c.name === image.chartName && c.images.some((img) => img.id === image.id))
+  ? catalog.charts.find(
+      (c) => c.name === image.chartName && c.images.some((img) => img.id === image.id)
+    )
   : undefined;
 ---
 
 <BaseLayout title={`${display} — Verity`}>
   <nav class="text-sm text-gray-500 mb-6">
     <a href={base} class="hover:text-gray-700">Home</a>
-    {parentChart && (
-      <>
-        <span class="mx-1">/</span>
-        <a href={`${base}charts/${parentChart.name}/`} class="hover:text-gray-700">
-          {parentChart.name}
-        </a>
-        <span class="mx-1">/</span>
-        <a href={`${base}charts/${parentChart.name}/${parentChart.version}/`} class="hover:text-gray-700">
-          v{parentChart.version}
-        </a>
-      </>
-    )}
+    {
+      parentChart && (
+        <>
+          <span class="mx-1">/</span>
+          <a href={`${base}charts/${parentChart.name}/`} class="hover:text-gray-700">
+            {parentChart.name}
+          </a>
+          <span class="mx-1">/</span>
+          <a
+            href={`${base}charts/${parentChart.name}/${parentChart.version}/`}
+            class="hover:text-gray-700"
+          >
+            v{parentChart.version}
+          </a>
+        </>
+      )
+    }
     <span class="mx-1">/</span>
-    <span class="text-gray-900 truncate">{display.split('/').pop()?.split(':')[0]}</span>
+    <span class="text-gray-900 truncate">{display.split("/").pop()?.split(":")[0]}</span>
   </nav>
 
   <div class="mb-6">
     <h1 class="text-xl font-bold font-mono break-all mb-2">{image.originalRef}</h1>
     <div class="flex items-center gap-3 flex-wrap">
-      {image.os && (
-        <span class="text-sm text-gray-500">Base OS: {image.os}</span>
-      )}
-      {fixed > 0 ? (
-        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-medium bg-green-100 text-green-800">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          {fixed} vulnerabilit{fixed === 1 ? 'y' : 'ies'} fixed
-        </span>
-      ) : (
-        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-medium bg-green-100 text-green-800">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          clean
-        </span>
-      )}
+      {image.os && <span class="text-sm text-gray-500">Base OS: {image.os}</span>}
+      {
+        fixed > 0 ? (
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-medium bg-green-100 text-green-800">
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2.5"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            {fixed} vulnerabilit{fixed === 1 ? "y" : "ies"} fixed
+          </span>
+        ) : (
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-medium bg-green-100 text-green-800">
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2.5"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            clean
+          </span>
+        )
+      }
     </div>
   </div>
 
-  {image.overriddenFrom && (
-    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-      <div class="text-xs text-amber-700 uppercase tracking-wide font-medium mb-1">Tag Override</div>
-      <p class="text-sm text-amber-900">
-        Original tag <code class="bg-amber-100 px-1 rounded">{image.overriddenFrom}</code> was overridden
-        to <code class="bg-amber-100 px-1 rounded">{image.originalRef.split(':').pop()}</code> because
-        the original image uses a distroless/scratch base that Copa cannot patch.
-      </p>
-    </div>
-  )}
+  {
+    image.overriddenFrom && (
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+        <div class="text-xs text-amber-700 uppercase tracking-wide font-medium mb-1">
+          Tag Override
+        </div>
+        <p class="text-sm text-amber-900">
+          Original tag <code class="bg-amber-100 px-1 rounded">{image.overriddenFrom}</code> was
+          overridden to{" "}
+          <code class="bg-amber-100 px-1 rounded">{image.originalRef.split(":").pop()}</code>{" "}
+          because the original image uses a distroless/scratch base that Copa cannot patch.
+        </p>
+      </div>
+    )
+  }
 
   <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
     <div class="text-xs text-green-700 uppercase tracking-wide font-medium mb-1">Patched Image</div>
@@ -97,36 +129,40 @@ const parentChart = image.chartName
     <SupplyChainBadges artifactRef={image.patchedRef} kind="image" />
   </div>
 
-  {image.vulnSummary.total > 0 && (
-    <div class="mb-8">
-      <h2 class="text-lg font-semibold mb-1">Pre-patch scan</h2>
-      <p class="text-sm text-gray-500 mb-3">
-        {fixed > 0 ? (
-          <>
-            Found {image.vulnSummary.total} vulnerabilit{image.vulnSummary.total === 1 ? 'y' : 'ies'} in the original image.
-            <span class="text-green-700 font-medium"> {fixed} fixed by Copa.</span>
-            {remaining > 0 && (
-              <span class="text-gray-400"> {remaining} have no upstream fix available.</span>
-            )}
-          </>
-        ) : (
-          <>
-            Found {image.vulnSummary.total} vulnerabilit{image.vulnSummary.total === 1 ? 'y' : 'ies'} — none have upstream fixes available.
-          </>
-        )}
-      </p>
-      <SeverityBreakdown summary={image.vulnSummary} />
-    </div>
-  )}
+  {
+    image.vulnSummary.total > 0 && (
+      <div class="mb-8">
+        <h2 class="text-lg font-semibold mb-1">Pre-patch scan</h2>
+        <p class="text-sm text-gray-500 mb-3">
+          {fixed > 0 ? (
+            <>
+              Found {image.vulnSummary.total} vulnerabilit
+              {image.vulnSummary.total === 1 ? "y" : "ies"} in the original image.
+              <span class="text-green-700 font-medium"> {fixed} fixed by Copa.</span>
+              {remaining > 0 && (
+                <span class="text-gray-400"> {remaining} have no upstream fix available.</span>
+              )}
+            </>
+          ) : (
+            <>
+              Found {image.vulnSummary.total} vulnerabilit
+              {image.vulnSummary.total === 1 ? "y" : "ies"} — none have upstream fixes available.
+            </>
+          )}
+        </p>
+        <SeverityBreakdown summary={image.vulnSummary} />
+      </div>
+    )
+  }
 
-  {image.vulnerabilities.length > 0 && (
-    <section>
-      <h2 class="text-lg font-semibold mb-4">
-        Vulnerability details
-      </h2>
-      <VulnTable vulnerabilities={image.vulnerabilities} />
-    </section>
-  )}
+  {
+    image.vulnerabilities.length > 0 && (
+      <section>
+        <h2 class="text-lg font-semibold mb-4">Vulnerability details</h2>
+        <VulnTable vulnerabilities={image.vulnerabilities} />
+      </section>
+    )
+  }
 
   <div class="mt-8 pt-6 border-t border-gray-200">
     <details class="text-sm text-gray-500">

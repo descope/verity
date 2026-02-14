@@ -1,6 +1,6 @@
 ---
-import type { VulnSummary } from '../lib/catalog';
-import { SEVERITY_ORDER, SEVERITY_COLORS } from '../lib/severity';
+import type { VulnSummary } from "../lib/catalog";
+import { SEVERITY_ORDER, SEVERITY_COLORS } from "../lib/severity";
 
 interface Props {
   summary: VulnSummary;
@@ -10,29 +10,33 @@ const { summary } = Astro.props;
 const total = summary.total || 1; // avoid div by zero
 ---
 
-{summary.total > 0 && (
-  <div>
-    <div class="flex rounded-full overflow-hidden h-3 bg-gray-100">
-      {SEVERITY_ORDER.map((sev) => {
-        const count = summary.severityCounts[sev] || 0;
-        if (count === 0) return null;
-        const pct = (count / total) * 100;
-        const colors = SEVERITY_COLORS[sev];
-        return <div class={`${colors.bar}`} style={`width: ${pct}%`} title={`${sev}: ${count}`} />;
-      })}
+{
+  summary.total > 0 && (
+    <div>
+      <div class="flex rounded-full overflow-hidden h-3 bg-gray-100">
+        {SEVERITY_ORDER.map((sev) => {
+          const count = summary.severityCounts[sev] || 0;
+          if (count === 0) return null;
+          const pct = (count / total) * 100;
+          const colors = SEVERITY_COLORS[sev];
+          return (
+            <div class={`${colors.bar}`} style={`width: ${pct}%`} title={`${sev}: ${count}`} />
+          );
+        })}
+      </div>
+      <div class="flex gap-3 mt-2 text-xs text-gray-600 flex-wrap">
+        {SEVERITY_ORDER.map((sev) => {
+          const count = summary.severityCounts[sev] || 0;
+          if (count === 0) return null;
+          const colors = SEVERITY_COLORS[sev];
+          return (
+            <span class="flex items-center gap-1">
+              <span class={`w-2 h-2 rounded-full ${colors.bar}`} />
+              {count} {sev}
+            </span>
+          );
+        })}
+      </div>
     </div>
-    <div class="flex gap-3 mt-2 text-xs text-gray-600 flex-wrap">
-      {SEVERITY_ORDER.map((sev) => {
-        const count = summary.severityCounts[sev] || 0;
-        if (count === 0) return null;
-        const colors = SEVERITY_COLORS[sev];
-        return (
-          <span class="flex items-center gap-1">
-            <span class={`w-2 h-2 rounded-full ${colors.bar}`} />
-            {count} {sev}
-          </span>
-        );
-      })}
-    </div>
-  </div>
-)}
+  )
+}

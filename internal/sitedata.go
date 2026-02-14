@@ -31,10 +31,10 @@ type SiteData struct {
 
 // SiteSummary aggregates stats across all charts and images.
 type SiteSummary struct {
-	TotalCharts   int `json:"totalCharts"`
-	TotalImages   int `json:"totalImages"`
-	TotalVulns    int `json:"totalVulns"`
-	FixableVulns  int `json:"fixableVulns"`
+	TotalCharts  int `json:"totalCharts"`
+	TotalImages  int `json:"totalImages"`
+	TotalVulns   int `json:"totalVulns"`
+	FixableVulns int `json:"fixableVulns"`
 }
 
 // SiteChart describes a wrapper Helm chart.

@@ -243,7 +243,8 @@ func trivyScan(ctx context.Context, ociDir, reportPath string) error {
 
 // copaPatch runs the copa CLI to patch an image via BuildKit.
 func copaPatch(ctx context.Context, imageRef, reportPath, patchedTag, buildkitAddr string) error {
-	args := []string{"patch",
+	args := []string{
+		"patch",
 		"--image", imageRef,
 		"--report", reportPath,
 		"--tag", patchedTag,

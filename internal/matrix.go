@@ -193,9 +193,9 @@ func PatchSingleImage(ctx context.Context, imageRef string, opts PatchOptions, r
 	result := PatchImage(ctx, img, opts)
 
 	entry := SinglePatchResult{
-		ImageRef:  imageRef,
-		VulnCount: result.VulnCount,
-		Skipped:   result.Skipped,
+		ImageRef:   imageRef,
+		VulnCount:  result.VulnCount,
+		Skipped:    result.Skipped,
 		SkipReason: result.SkipReason,
 	}
 	if result.Error != nil {

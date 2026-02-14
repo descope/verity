@@ -1,7 +1,7 @@
 ---
-import type { SiteVuln } from '../lib/catalog';
-import { sortBySeverity } from '../lib/severity';
-import VulnBadge from './VulnBadge.astro';
+import type { SiteVuln } from "../lib/catalog";
+import { sortBySeverity } from "../lib/severity";
+import VulnBadge from "./VulnBadge.astro";
 
 interface Props {
   vulnerabilities: SiteVuln[];
@@ -11,33 +11,35 @@ const { vulnerabilities } = Astro.props;
 const sorted = sortBySeverity(vulnerabilities, (v) => v.severity);
 ---
 
-{sorted.length > 0 ? (
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="border-b border-gray-200 text-left text-gray-500">
-          <th class="pb-2 pr-4 font-medium">ID</th>
-          <th class="pb-2 pr-4 font-medium">Package</th>
-          <th class="pb-2 pr-4 font-medium">Installed</th>
-          <th class="pb-2 pr-4 font-medium">Fixed</th>
-          <th class="pb-2 font-medium">Severity</th>
-        </tr>
-      </thead>
-      <tbody>
-        {sorted.map((v) => (
-          <tr class="border-b border-gray-100">
-            <td class="py-2 pr-4 font-mono text-xs">{v.id}</td>
-            <td class="py-2 pr-4">{v.pkgName}</td>
-            <td class="py-2 pr-4 font-mono text-xs">{v.installedVersion}</td>
-            <td class="py-2 pr-4 font-mono text-xs">{v.fixedVersion}</td>
-            <td class="py-2">
-              <VulnBadge severity={v.severity} />
-            </td>
+{
+  sorted.length > 0 ? (
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-200 text-left text-gray-500">
+            <th class="pb-2 pr-4 font-medium">ID</th>
+            <th class="pb-2 pr-4 font-medium">Package</th>
+            <th class="pb-2 pr-4 font-medium">Installed</th>
+            <th class="pb-2 pr-4 font-medium">Fixed</th>
+            <th class="pb-2 font-medium">Severity</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-) : (
-  <p class="text-gray-500">No vulnerabilities found.</p>
-)}
+        </thead>
+        <tbody>
+          {sorted.map((v) => (
+            <tr class="border-b border-gray-100">
+              <td class="py-2 pr-4 font-mono text-xs">{v.id}</td>
+              <td class="py-2 pr-4">{v.pkgName}</td>
+              <td class="py-2 pr-4 font-mono text-xs">{v.installedVersion}</td>
+              <td class="py-2 pr-4 font-mono text-xs">{v.fixedVersion}</td>
+              <td class="py-2">
+                <VulnBadge severity={v.severity} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  ) : (
+    <p class="text-gray-500">No vulnerabilities found.</p>
+  )
+}
