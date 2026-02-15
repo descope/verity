@@ -225,7 +225,11 @@ jobs:
 
       - name: Attest vulnerability report
         if: steps.digest.outputs.has_image == 'true'
+        env:
+          QUAY_USERNAME: ${{ secrets.QUAY_USERNAME }}
+          QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
         run: |
+          cosign login quay.io -u "$QUAY_USERNAME" -p "$QUAY_PASSWORD"
           report=$(find .verity/reports -name '*.json' -print -quit 2>/dev/null)
           if [ -n "$report" ]; then
             cosign attest --yes --type vuln \

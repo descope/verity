@@ -3,7 +3,6 @@ package internal
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -235,35 +234,6 @@ func setImageAtPath(root map[string]interface{}, dotPath string, img Image) {
 	if img.Tag != "" {
 		current["tag"] = img.Tag
 	}
-}
-
-// copyFile copies a file from src to dst.
-func copyFile(src, dst string) error {
-	sourceFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := sourceFile.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to close source file: %v\n", err)
-		}
-	}()
-
-	destFile, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := destFile.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to close destination file: %v\n", err)
-		}
-	}()
-
-	if _, err := io.Copy(destFile, sourceFile); err != nil {
-		return err
-	}
-
-	return destFile.Sync()
 }
 
 // getNextPatchLevel queries the OCI registry for existing wrapper chart versions

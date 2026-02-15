@@ -344,10 +344,11 @@ func MergeChartImages(valuesPath string, images []Image) error {
 		key := imageEntryKey(img)
 		if seen[key] {
 			// Append registry to disambiguate duplicate repository paths.
-			key = key + "-" + strings.ReplaceAll(img.Registry, ".", "-")
-		}
-		if seen[key] {
-			continue
+			disambiguated := key + "-" + strings.ReplaceAll(img.Registry, ".", "-")
+			if seen[disambiguated] {
+				continue
+			}
+			key = disambiguated
 		}
 		seen[key] = true
 

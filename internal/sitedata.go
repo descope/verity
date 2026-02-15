@@ -893,7 +893,6 @@ func dirExists(path string) bool {
 	return err == nil && fi.IsDir()
 }
 
-
 // computeSummary aggregates stats across all charts and the unified image list.
 func computeSummary(charts []SiteChart, allImages []SiteImage) SiteSummary {
 	chartNames := make(map[string]bool)
