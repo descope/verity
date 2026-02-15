@@ -168,14 +168,11 @@ Create a GitHub issue with the `new-chart` label, or manually:
 # Create PR
 ```
 
-### Adding a Standalone Image
+### Adding an Image
 
-Create a GitHub issue with the `new-image` label, or manually:
-
-```bash
-# Add to values.yaml
-# Create PR
-```
+Create a GitHub issue with the `new-image` label, or manually add it to
+`values.yaml` and create a PR. The discover step deduplicates by image
+reference, so images shared across charts only appear once.
 
 ### Updating Chart Versions
 
