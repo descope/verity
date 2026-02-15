@@ -27,14 +27,14 @@ const uniqueCharts = getChartNames().map((name) => getChartVersions(name)[0]);
   }
 
   {
-    catalog.standaloneImages.length > 0 && (
+    (catalog.images ?? catalog.standaloneImages ?? []).length > 0 && (
       <section>
         <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
-          <h2 class="text-xl font-semibold">Standalone Images</h2>
-          <SearchFilter targetId="standalone-list" />
+          <h2 class="text-xl font-semibold">Images</h2>
+          <SearchFilter targetId="images-list" />
         </div>
-        <div id="standalone-list" class="space-y-2">
-          {catalog.standaloneImages.map((image) => (
+        <div id="images-list" class="space-y-2">
+          {(catalog.images ?? catalog.standaloneImages ?? []).map((image) => (
             <ImageRow image={image} />
           ))}
         </div>

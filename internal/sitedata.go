@@ -16,11 +16,32 @@ import (
 
 // SiteData is the top-level structure for the catalog JSON consumed by the Astro site.
 type SiteData struct {
-	GeneratedAt string      `json:"generatedAt"`
-	Registry    string      `json:"registry"`
-	Summary     SiteSummary `json:"summary"`
-	Charts      []SiteChart `json:"charts"`
-	Images      []SiteImage `json:"images"` // All images (chart + standalone), unified
+	GeneratedAt      string      `json:"generatedAt"`
+	Registry         string      `json:"registry"`
+	Summary          SiteSummary `json:"summary"`
+	Charts           []SiteChart `json:"charts"`
+	Images           []SiteImage `json:"images"`                     // All images (chart + standalone), unified
+	StandaloneImages []SiteImage `json:"standaloneImages,omitempty"` // Deprecated: kept for backward compatibility with site consumers
+}
+
+// MarshalJSON emits both "images" and the deprecated "standaloneImages" field
+// so older site consumers continue to work during the migration.
+func (s SiteData) MarshalJSON() ([]byte, error) {
+	// Populate StandaloneImages from Images when not explicitly set,
+	// so both fields appear in the JSON output.
+	if len(s.StandaloneImages) == 0 {
+		s.StandaloneImages = s.Images
+	}
+	if s.StandaloneImages == nil {
+		s.StandaloneImages = []SiteImage{}
+	}
+	if s.Images == nil {
+		s.Images = []SiteImage{}
+	}
+
+	// Use an alias to avoid infinite recursion.
+	type Alias SiteData
+	return json.Marshal((*Alias)(&s))
 }
 
 // SiteSummary aggregates stats across all charts and images.
@@ -199,40 +220,39 @@ func GenerateSiteData(chartsDir, imagesFile, reportsDir, registry, outputPath st
 	if imagesFile != "" {
 		images, err := ParseImagesFile(imagesFile)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: could not parse images file %s: %v\n", imagesFile, err)
-		} else {
-			for _, img := range images {
-				ref := img.Reference()
-				if seen[ref] {
-					continue
-				}
-				seen[ref] = true
-
-				sanitizedRef := sanitize(ref)
-				patchedRef := buildPatchedRef(ref, registry)
-
-				// Try to find a report in the local reports directory.
-				var si SiteImage
-				if reportsDir != "" {
-					reportPath := filepath.Join(reportsDir, sanitizedRef+".json")
-					if report, err := parseTrivyReportFull(reportPath); err == nil {
-						si = buildSiteImage(sanitizedRef, ref, patchedRef, img.Path, "", report)
-					}
-				}
-				if si.ID == "" {
-					si = SiteImage{
-						ID:          sanitizedRef,
-						OriginalRef: ref,
-						PatchedRef:  patchedRef,
-						ValuesPath:  img.Path,
-						VulnSummary: VulnSummary{
-							SeverityCounts: make(map[string]int),
-						},
-						Vulnerabilities: []SiteVuln{},
-					}
-				}
-				allImages = append(allImages, si)
+			return fmt.Errorf("parsing images file %s: %w", imagesFile, err)
+		}
+		for _, img := range images {
+			ref := img.Reference()
+			if seen[ref] {
+				continue
 			}
+			seen[ref] = true
+
+			sanitizedRef := sanitize(ref)
+			patchedRef := buildPatchedRef(ref, registry)
+
+			// Try to find a report in the local reports directory.
+			var si SiteImage
+			if reportsDir != "" {
+				reportPath := filepath.Join(reportsDir, sanitizedRef+".json")
+				if report, err := parseTrivyReportFull(reportPath); err == nil {
+					si = buildSiteImage(sanitizedRef, ref, patchedRef, img.Path, "", report)
+				}
+			}
+			if si.ID == "" {
+				si = SiteImage{
+					ID:          sanitizedRef,
+					OriginalRef: ref,
+					PatchedRef:  patchedRef,
+					ValuesPath:  img.Path,
+					VulnSummary: VulnSummary{
+						SeverityCounts: make(map[string]int),
+					},
+					Vulnerabilities: []SiteVuln{},
+				}
+			}
+			allImages = append(allImages, si)
 		}
 	}
 

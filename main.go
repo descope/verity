@@ -64,7 +64,7 @@ func main() {
 	case *scan:
 		runScan(*chartFile, *imagesFile)
 	case *siteDataPath != "":
-		runSiteData(*outputDir, *imagesFile, *registry, *siteDataPath)
+		runSiteData(*outputDir, *imagesFile, *reportsDir, *registry, *siteDataPath)
 	default:
 		flag.Usage()
 		fmt.Fprintf(os.Stderr, "\nModes:\n")
@@ -225,8 +225,8 @@ func runAssemble(manifestPath, resultsDir, reportsDir, outputDir, registry, imag
 }
 
 // runSiteData generates the site catalog JSON from existing charts and reports.
-func runSiteData(outputDir, imagesFile, registry, siteDataPath string) {
-	if err := internal.GenerateSiteData(outputDir, imagesFile, "", registry, siteDataPath); err != nil {
+func runSiteData(outputDir, imagesFile, reportsDir, registry, siteDataPath string) {
+	if err := internal.GenerateSiteData(outputDir, imagesFile, reportsDir, registry, siteDataPath); err != nil {
 		log.Fatalf("Failed to generate site data: %v", err)
 	}
 	fmt.Printf("Site data → %s\n", siteDataPath)

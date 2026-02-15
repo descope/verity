@@ -123,6 +123,12 @@ func DiscoverImages(chartFile, imagesFile, tmpDir string) (*DiscoveryManifest, e
 			manifest.Images = append(manifest.Images, ImageDiscovery(img))
 		}
 		fmt.Printf("Total images: %d\n", len(allImages))
+	} else {
+		// No images file provided; fall back to chart-discovered images directly.
+		for _, img := range chartImages {
+			manifest.Images = append(manifest.Images, ImageDiscovery(img))
+		}
+		fmt.Printf("Total images: %d\n", len(chartImages))
 	}
 
 	return manifest, nil

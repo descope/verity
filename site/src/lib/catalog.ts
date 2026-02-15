@@ -49,6 +49,8 @@ export interface SiteData {
   registry: string;
   summary: SiteSummary;
   charts: SiteChart[];
+  images: SiteImage[];
+  /** @deprecated Use `images` instead. Kept for backward compatibility. */
   standaloneImages: SiteImage[];
 }
 
@@ -77,7 +79,9 @@ export function getAllImages(): SiteImage[] {
   const chartImages = catalog.charts.flatMap((c) =>
     c.images.map((img) => ({ ...img, chartName: c.name }))
   );
-  return [...chartImages, ...catalog.standaloneImages];
+  // Support both the new `images` field and the deprecated `standaloneImages`.
+  const extra = catalog.images ?? catalog.standaloneImages ?? [];
+  return [...chartImages, ...extra];
 }
 
 export function getImageById(id: string): SiteImage | undefined {

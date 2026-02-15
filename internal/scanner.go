@@ -306,6 +306,12 @@ func ParseOverrides(path string) ([]ImageOverride, error) {
 // MergeChartImages appends chart-discovered images to a values YAML file,
 // skipping any that already exist (matched by image reference). This keeps
 // values.yaml as a single flat list — no separate sections.
+//
+// NOTE: This is intentionally append-only. If a chart drops an image in a
+// future version, the old entry stays in values.yaml. This is acceptable
+// because the patch matrix deduplicates by reference, so stale entries only
+// cause a harmless extra patch job. Removing entries would risk deleting
+// images that were added manually or used by other charts.
 func MergeChartImages(valuesPath string, images []Image) error {
 	if len(images) == 0 {
 		return nil
@@ -320,10 +326,11 @@ func MergeChartImages(valuesPath string, images []Image) error {
 	existingRefs := make(map[string]bool)
 	if len(existing) > 0 {
 		var values map[string]interface{}
-		if err := yaml.Unmarshal(existing, &values); err == nil {
-			for _, img := range findImages(values, "", "", nil) {
-				existingRefs[img.Reference()] = true
-			}
+		if err := yaml.Unmarshal(existing, &values); err != nil {
+			return fmt.Errorf("parsing %s: %w", valuesPath, err)
+		}
+		for _, img := range findImages(values, "", "", nil) {
+			existingRefs[img.Reference()] = true
 		}
 	}
 
@@ -343,28 +350,37 @@ func MergeChartImages(valuesPath string, images []Image) error {
 		return newImages[i].Reference() < newImages[j].Reference()
 	})
 
-	// Scan existing top-level YAML keys to avoid collisions.
+	// Discover existing top-level YAML keys to avoid collisions.
 	content := string(existing)
 	if len(content) > 0 && !strings.HasSuffix(content, "\n") {
 		content += "\n"
 	}
 	usedKeys := make(map[string]bool)
-	for _, line := range strings.Split(content, "\n") {
-		if len(line) > 0 && line[0] != ' ' && line[0] != '#' && strings.HasSuffix(strings.TrimSpace(line), ":") {
-			usedKeys[strings.TrimSuffix(strings.TrimSpace(line), ":")] = true
+	var topLevel map[string]interface{}
+	if err := yaml.Unmarshal(existing, &topLevel); err == nil && topLevel != nil {
+		for k := range topLevel {
+			usedKeys[k] = true
 		}
 	}
 
 	// Append new entries at the same level as existing ones.
 	var sb strings.Builder
 	for _, img := range newImages {
-		key := imageEntryKey(img)
+		baseKey := imageEntryKey(img)
+		key := baseKey
 		if usedKeys[key] {
-			disambiguated := key + "-" + strings.ReplaceAll(img.Registry, ".", "-")
-			if usedKeys[disambiguated] {
-				continue
+			// Disambiguate by incorporating the registry.
+			disambiguator := strings.ReplaceAll(img.Registry, ".", "-")
+			if disambiguator == "" {
+				disambiguator = "image"
 			}
-			key = disambiguated
+			candidate := fmt.Sprintf("%s-%s", baseKey, disambiguator)
+			i := 1
+			for usedKeys[candidate] {
+				candidate = fmt.Sprintf("%s-%s-%d", baseKey, disambiguator, i)
+				i++
+			}
+			key = candidate
 		}
 		usedKeys[key] = true
 
