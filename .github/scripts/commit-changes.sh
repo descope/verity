@@ -8,13 +8,17 @@ echo "Checking for changes in ${CHARTS_DIR}/..."
 git config user.name "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
 
-if git diff --quiet "${CHARTS_DIR}/" && git diff --quiet reports/ && git diff --quiet site/src/data/catalog.json 2>/dev/null; then
+if git diff --quiet "${CHARTS_DIR}/" && git diff --quiet reports/ && git diff --quiet site/src/data/catalog.json 2>/dev/null && git diff --quiet values.yaml 2>/dev/null; then
   echo "No changes to commit"
   exit 0
 fi
 
 echo "Changes detected, committing..."
 git add "${CHARTS_DIR}/"
+# Also stage values.yaml if it was modified (merged chart images from discover)
+if ! git diff --quiet values.yaml 2>/dev/null; then
+  git add values.yaml
+fi
 # Also stage standalone image reports if they exist
 if [ -d "reports" ]; then
   git add reports/
