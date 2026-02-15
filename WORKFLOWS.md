@@ -91,8 +91,8 @@ Verity operates in distinct modes, each designed for a specific phase of the pip
 
 **Jobs:**
 
-1. **Discover** - Lightweight: scans charts, outputs matrix JSON and manifest
-2. **Patch** (matrix) - Each image gets its own runner: pull → trivy → copa → push
+1. **Discover** - Scans charts, merges images into values.yaml, outputs matrix JSON and manifest
+2. **Patch** (matrix) - Each image gets its own runner: pull → trivy → copa → push → sign → attest
 3. **Assemble** - Collects results, creates wrapper charts, commits to PR
 
 **Why matrix?** GitHub runners are small (2 vCPU, 7GB RAM). Pulling, scanning, and patching a container image is
@@ -170,16 +170,23 @@ committing to an existing branch.
 
 ```text
 Discover ──► .verity/manifest.json   (artifact: verity-manifest)
+         ──► values.yaml (updated)   (artifact: verity-manifest)
          ──► matrix JSON             (output: matrix)
 
 Patch[i] ──► .verity/results/<image>.json  (artifact: patch-result-<name>)
          ──► .verity/reports/<image>.json
+         ──► in-toto attestations (vuln report, SBOM, provenance)
+         ──► cosign signature
 
-Assemble ◄── manifest.json + all results + all reports
+Assemble ◄── manifest.json + updated values.yaml + all results + all reports
          ──► charts/<name>/Chart.yaml
          ──► charts/<name>/values.yaml
-         ──► charts/<name>/reports/*.json
 ```
+
+**Note:** Vulnerability reports are attached as **in-toto attestations** on each
+patched image (via cosign), not bundled in chart packages. The discover step
+merges chart-discovered images into `values.yaml`, which is uploaded as an
+artifact so the assemble step can use the updated unified image list.
 
 ## Permissions Required
 

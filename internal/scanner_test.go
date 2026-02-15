@@ -394,3 +394,159 @@ func TestApplyOverridesEmpty(t *testing.T) {
 		t.Errorf("expected unchanged tag, got %s", result[0].Tag)
 	}
 }
+
+func TestMergeChartImages(t *testing.T) {
+	dir := t.TempDir()
+	valuesPath := filepath.Join(dir, "values.yaml")
+
+	// Write an initial values.yaml with existing images and overrides.
+	initial := `# Images
+overrides:
+  timberio/vector:
+    from: "distroless-libc"
+    to: "debian"
+redis:
+  image:
+    registry: docker.io
+    repository: library/redis
+    tag: "7.2.0"
+`
+	if err := os.WriteFile(valuesPath, []byte(initial), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Merge chart images.
+	chartImages := []Image{
+		{Registry: "quay.io", Repository: "prometheus/prometheus", Tag: "v3.9.1", Path: "server.image"},
+		{Registry: "quay.io", Repository: "prometheus/alertmanager", Tag: "v0.31.0", Path: "alertmanager.image"},
+	}
+	if err := MergeChartImages(valuesPath, chartImages); err != nil {
+		t.Fatalf("MergeChartImages() error: %v", err)
+	}
+
+	// Read back and verify.
+	data, err := os.ReadFile(valuesPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+
+	// Existing entries preserved.
+	if !strings.Contains(content, "library/redis") {
+		t.Error("expected existing redis entry to be preserved")
+	}
+	if !strings.Contains(content, "overrides:") {
+		t.Error("expected overrides section to be preserved")
+	}
+
+	// New images appended as flat top-level entries (no chart-images section).
+	if strings.Contains(content, "chart-images:") {
+		t.Error("should not have a chart-images section — images are flat")
+	}
+	if !strings.Contains(content, "prometheus/prometheus") {
+		t.Error("expected prometheus image appended")
+	}
+	if !strings.Contains(content, "prometheus/alertmanager") {
+		t.Error("expected alertmanager image appended")
+	}
+
+	// ParseImagesFile should find all images (existing + chart).
+	images, err := ParseImagesFile(valuesPath)
+	if err != nil {
+		t.Fatalf("ParseImagesFile() error: %v", err)
+	}
+	if len(images) != 3 {
+		t.Fatalf("expected 3 images (1 existing + 2 chart), got %d", len(images))
+	}
+}
+
+func TestMergeChartImagesDedup(t *testing.T) {
+	dir := t.TempDir()
+	valuesPath := filepath.Join(dir, "values.yaml")
+
+	// values.yaml already has redis.
+	initial := `redis:
+  image:
+    registry: docker.io
+    repository: library/redis
+    tag: "7.2.0"
+`
+	if err := os.WriteFile(valuesPath, []byte(initial), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Chart discovers the same redis image — should NOT duplicate it.
+	chartImages := []Image{
+		{Registry: "docker.io", Repository: "library/redis", Tag: "7.2.0"},
+		{Registry: "quay.io", Repository: "new/image", Tag: "2.0.0"},
+	}
+	if err := MergeChartImages(valuesPath, chartImages); err != nil {
+		t.Fatalf("MergeChartImages() error: %v", err)
+	}
+
+	images, err := ParseImagesFile(valuesPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Should be 2: original redis + new/image. Redis NOT duplicated.
+	if len(images) != 2 {
+		t.Fatalf("expected 2 images (redis deduped), got %d", len(images))
+	}
+	if !strings.Contains(string(mustReadFile(t, valuesPath)), "new/image") {
+		t.Error("expected new/image to be appended")
+	}
+}
+
+func TestMergeChartImagesEmpty(t *testing.T) {
+	dir := t.TempDir()
+	valuesPath := filepath.Join(dir, "values.yaml")
+
+	initial := `redis:
+  image:
+    registry: docker.io
+    repository: library/redis
+    tag: "7.2.0"
+`
+	if err := os.WriteFile(valuesPath, []byte(initial), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Merge empty list — file should not change.
+	if err := MergeChartImages(valuesPath, nil); err != nil {
+		t.Fatalf("MergeChartImages() error: %v", err)
+	}
+
+	data, err := os.ReadFile(valuesPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != initial {
+		t.Error("expected file unchanged for empty input")
+	}
+}
+
+func mustReadFile(t *testing.T, path string) []byte {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
+}
+
+func TestImageEntryKey(t *testing.T) {
+	tests := []struct {
+		img  Image
+		want string
+	}{
+		{Image{Repository: "prometheus/prometheus"}, "prometheus-prometheus"},
+		{Image{Repository: "library/nginx"}, "library-nginx"},
+		{Image{Repository: "kube-state-metrics/kube-state-metrics"}, "kube-state-metrics-kube-state-metrics"},
+	}
+	for _, tt := range tests {
+		got := imageEntryKey(tt.img)
+		if got != tt.want {
+			t.Errorf("imageEntryKey(%q) = %q, want %q", tt.img.Repository, got, tt.want)
+		}
+	}
+}

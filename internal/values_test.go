@@ -474,29 +474,11 @@ func TestCreateWrapperChart(t *testing.T) {
 		t.Errorf(".helmignore not found: %v", err)
 	}
 
-	// Check reports/ directory exists with copied reports
+	// Reports are now attached as in-toto attestations on each image,
+	// NOT bundled in the chart package. Verify reports/ is NOT created.
 	reportsDir2 := filepath.Join(chartDir, "reports")
-	if _, err := os.Stat(reportsDir2); err != nil {
-		t.Errorf("reports/ directory not found: %v", err)
-	}
-
-	// Check that both reports were copied (named by sanitized original ref)
-	promReport := filepath.Join(reportsDir2, "quay.io_prometheus_prometheus_v2.48.0.json")
-	if _, err := os.Stat(promReport); err != nil {
-		t.Errorf("prometheus report not found: %v", err)
-	}
-	alertReport := filepath.Join(reportsDir2, "quay.io_prometheus_alertmanager_v0.26.0.json")
-	if _, err := os.Stat(alertReport); err != nil {
-		t.Errorf("alertmanager report not found: %v", err)
-	}
-
-	// Verify report content is correct
-	reportData, err := os.ReadFile(promReport)
-	if err != nil {
-		t.Fatalf("Failed to read copied report: %v", err)
-	}
-	if !strings.Contains(string(reportData), "CVE-2023-1234") {
-		t.Errorf("Report content incorrect, expected CVE-2023-1234")
+	if _, err := os.Stat(reportsDir2); !os.IsNotExist(err) {
+		t.Errorf("reports/ directory should not exist (reports are in-toto attestations now)")
 	}
 }
 

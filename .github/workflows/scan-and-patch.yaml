@@ -79,11 +79,13 @@ jobs:
 
           echo "Found $count unique images to patch"
 
-      - name: Upload manifest
+      - name: Upload manifest and updated values
         uses: actions/upload-artifact@v6
         with:
           name: verity-manifest
-          path: .verity/manifest.json
+          path: |
+            .verity/manifest.json
+            values.yaml
           retention-days: 1
 
   # ── Job 2: Patch each image in parallel ────────────────────────────
@@ -221,6 +223,20 @@ jobs:
           sbom-path: .verity/sbom.cdx.json
           push-to-registry: true
 
+      - name: Attest vulnerability report
+        if: steps.digest.outputs.has_image == 'true'
+        env:
+          QUAY_USERNAME: ${{ secrets.QUAY_USERNAME }}
+          QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
+        run: |
+          cosign login quay.io -u "$QUAY_USERNAME" -p "$QUAY_PASSWORD"
+          report=$(find .verity/reports -name '*.json' -print -quit 2>/dev/null)
+          if [ -n "$report" ]; then
+            cosign attest --yes --type vuln \
+              --predicate "$report" \
+              "${{ steps.digest.outputs.image }}@${{ steps.digest.outputs.digest }}"
+          fi
+
       - name: Upload patch result
         if: always()
         uses: actions/upload-artifact@v6
@@ -261,11 +277,18 @@ jobs:
       - name: Build verity
         run: go build -o verity .
 
-      - name: Download manifest
+      - name: Download manifest and updated values
         uses: actions/download-artifact@v7
         with:
           name: verity-manifest
           path: .verity
+
+      - name: Use updated values.yaml from discover
+        run: |
+          if [ -f .verity/values.yaml ]; then
+            cp .verity/values.yaml values.yaml
+            echo "Using updated values.yaml from discover step"
+          fi
 
       - name: Download all patch results
         uses: actions/download-artifact@v7
@@ -331,19 +354,6 @@ jobs:
         if: github.event_name != 'pull_request' && steps.check-changes.outputs.changes == 'true'
         run: ./.github/scripts/sign-charts.sh . quay.io verity
 
-      - name: Push standalone reports to OCI
-        if: github.event_name != 'pull_request' && steps.check-changes.outputs.changes == 'true'
-        run: |
-          ./verity -push-standalone-reports \
-            -reports-dir reports \
-            -registry "$REGISTRY"
-
-      - name: Ensure standalone-reports repo is public
-        if: github.event_name != 'pull_request' && steps.check-changes.outputs.changes == 'true'
-        env:
-          QUAY_API_TOKEN: ${{ secrets.QUAY_API_TOKEN }}
-        run: ./.github/scripts/quay-make-public.sh verity standalone-reports || true
-
       # ═══════════════════════════════════════════════════════════════
       # Branch 2.5: Push to Main Only (Deploy Site with Fresh Data)
       # ═══════════════════════════════════════════════════════════════
@@ -392,10 +402,10 @@ jobs:
             - Re-scanned all charts for vulnerabilities
             - Applied Copa patches to fixable vulnerabilities via parallel matrix jobs
             - Updated wrapper chart images
-            - Published charts and reports to OCI registry
+            - Published charts to OCI registry
 
             ### Reports
-            Trivy vulnerability reports are stored in OCI at `${{ env.REGISTRY }}/standalone-reports:latest`
+            Trivy vulnerability reports are attached as in-toto attestations on each patched image.
           branch: security/scheduled-patch-${{ github.run_number }}
           delete-branch: true
           labels: |

@@ -1,6 +1,6 @@
 module github.com/descope/verity
 
-go 1.25.7
+go 1.25.1
 
 require (
 	github.com/google/go-containerregistry v0.20.7

@@ -9,11 +9,13 @@ import (
 	"strings"
 )
 
-// DiscoveryManifest holds all discovered images grouped by their source.
+// DiscoveryManifest holds all discovered images.
+// Charts groups images by chart dependency (used by the assemble step).
+// Images is the unified flat list from values.yaml (used for matrix generation).
 // Written by the discover step, read by the assemble step.
 type DiscoveryManifest struct {
-	Charts     []ChartDiscovery `json:"charts"`
-	Standalone []ImageDiscovery `json:"standalone,omitempty"`
+	Charts []ChartDiscovery `json:"charts"`
+	Images []ImageDiscovery `json:"images"`
 }
 
 // ChartDiscovery groups images found in a single Helm chart dependency.
@@ -60,9 +62,14 @@ type SinglePatchResult struct {
 	Error             string `json:"error,omitempty"`
 }
 
-// DiscoverImages scans Chart.yaml dependencies and standalone images,
+// DiscoverImages scans Chart.yaml dependencies and the images file,
 // returning a manifest of all images and a deduplicated matrix for
 // GitHub Actions.
+//
+// Chart-discovered images are merged into the images file (values.yaml)
+// so that it becomes the single source of truth for all images. The
+// manifest retains chart→images grouping for the assemble step, while
+// manifest.Images holds the unified flat list from the images file.
 func DiscoverImages(chartFile, imagesFile, tmpDir string) (*DiscoveryManifest, error) {
 	manifest := &DiscoveryManifest{}
 
@@ -70,6 +77,8 @@ func DiscoverImages(chartFile, imagesFile, tmpDir string) (*DiscoveryManifest, e
 	if err != nil {
 		return nil, fmt.Errorf("parsing %s: %w", chartFile, err)
 	}
+
+	var chartImages []Image
 
 	for _, dep := range chart.Dependencies {
 		fmt.Printf("Discovering %s@%s\n", dep.Name, dep.Version)
@@ -94,47 +103,53 @@ func DiscoverImages(chartFile, imagesFile, tmpDir string) (*DiscoveryManifest, e
 		}
 		fmt.Printf("  Found %d images\n", len(images))
 		manifest.Charts = append(manifest.Charts, cd)
+
+		chartImages = append(chartImages, images...)
 	}
 
+	// Merge chart-discovered images into the images file so it contains
+	// all images (chart-discovered + manually maintained standalone).
 	if imagesFile != "" {
-		images, err := ParseImagesFile(imagesFile)
+		if err := MergeChartImages(imagesFile, chartImages); err != nil {
+			return nil, fmt.Errorf("merging chart images into %s: %w", imagesFile, err)
+		}
+
+		// Read the unified image list back from the updated file.
+		allImages, err := ParseImagesFile(imagesFile)
 		if err != nil {
 			return nil, fmt.Errorf("parsing %s: %w", imagesFile, err)
 		}
-		for _, img := range images {
-			manifest.Standalone = append(manifest.Standalone, ImageDiscovery(img))
+		for _, img := range allImages {
+			manifest.Images = append(manifest.Images, ImageDiscovery(img))
 		}
-		fmt.Printf("Standalone: %d images\n", len(images))
+		fmt.Printf("Total images: %d\n", len(allImages))
+	} else {
+		// No images file provided; fall back to chart-discovered images directly.
+		for _, img := range chartImages {
+			manifest.Images = append(manifest.Images, ImageDiscovery(img))
+		}
+		fmt.Printf("Total images: %d\n", len(chartImages))
 	}
 
 	return manifest, nil
 }
 
 // GenerateMatrix creates a deduplicated GitHub Actions matrix from a manifest.
-// Images that appear in multiple charts are only included once.
+// Uses the unified Images list so every image is patched exactly once.
 func GenerateMatrix(manifest *DiscoveryManifest) *MatrixOutput {
 	seen := make(map[string]bool)
 	matrix := &MatrixOutput{}
 
-	add := func(d ImageDiscovery) {
-		ref := d.reference()
+	for _, img := range manifest.Images {
+		ref := img.reference()
 		if seen[ref] {
-			return
+			continue
 		}
 		seen[ref] = true
 		matrix.Include = append(matrix.Include, MatrixEntry{
 			ImageRef:  ref,
 			ImageName: sanitize(ref),
 		})
-	}
-
-	for _, ch := range manifest.Charts {
-		for _, img := range ch.Images {
-			add(img)
-		}
-	}
-	for _, img := range manifest.Standalone {
-		add(img)
 	}
 
 	return matrix
@@ -227,7 +242,9 @@ func PatchSingleImage(ctx context.Context, imageRef string, opts PatchOptions, r
 }
 
 // AssembleResults reads a discovery manifest and patch results from matrix
-// jobs, then creates wrapper charts and saves standalone reports.
+// jobs, then creates wrapper charts. Vulnerability reports are attached as
+// in-toto attestations on each image (handled by the CI workflow), so they
+// are not bundled into the chart packages.
 func AssembleResults(manifestPath, resultsDir, reportsDir, outputDir, registry string) error {
 	manifestData, err := os.ReadFile(manifestPath)
 	if err != nil {
@@ -259,14 +276,6 @@ func AssembleResults(manifestPath, resultsDir, reportsDir, outputDir, registry s
 			return fmt.Errorf("creating wrapper chart for %s: %w", ch.Name, err)
 		}
 		fmt.Printf("  Wrapper chart → %s/%s (%s)\n", outputDir, ch.Name, version)
-	}
-
-	// Save standalone reports.
-	if len(manifest.Standalone) > 0 {
-		results := buildPatchResults(manifest.Standalone, resultMap, reportsDir)
-		if err := SaveStandaloneReports(results, "reports"); err != nil {
-			return fmt.Errorf("saving standalone reports: %w", err)
-		}
 	}
 
 	return nil

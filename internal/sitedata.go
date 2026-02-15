@@ -1,11 +1,8 @@
 package internal
 
 import (
-	"archive/tar"
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,9 +11,6 @@ import (
 	"time"
 
 	"github.com/google/go-containerregistry/pkg/crane"
-	"github.com/google/go-containerregistry/pkg/v1/empty"
-	"github.com/google/go-containerregistry/pkg/v1/mutate"
-	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"gopkg.in/yaml.v3"
 )
 
@@ -26,7 +20,28 @@ type SiteData struct {
 	Registry         string      `json:"registry"`
 	Summary          SiteSummary `json:"summary"`
 	Charts           []SiteChart `json:"charts"`
-	StandaloneImages []SiteImage `json:"standaloneImages"`
+	Images           []SiteImage `json:"images"`                     // All images (chart + standalone), unified
+	StandaloneImages []SiteImage `json:"standaloneImages,omitempty"` // Deprecated: kept for backward compatibility with site consumers
+}
+
+// MarshalJSON emits both "images" and the deprecated "standaloneImages" field
+// so older site consumers continue to work during the migration.
+func (s SiteData) MarshalJSON() ([]byte, error) {
+	// Populate StandaloneImages from Images when not explicitly set,
+	// so both fields appear in the JSON output.
+	if len(s.StandaloneImages) == 0 {
+		s.StandaloneImages = s.Images
+	}
+	if s.StandaloneImages == nil {
+		s.StandaloneImages = []SiteImage{}
+	}
+	if s.Images == nil {
+		s.Images = []SiteImage{}
+	}
+
+	// Use an alias to avoid infinite recursion.
+	type Alias SiteData
+	return json.Marshal((*Alias)(&s))
 }
 
 // SiteSummary aggregates stats across all charts and images.
@@ -169,34 +184,80 @@ func loadOverrides(dir string) map[string]string {
 	return overrides
 }
 
-// GenerateSiteData walks the charts directory and standalone images file
-// to produce a catalog.json for the Astro static site.
-// Reports are pulled from the OCI registry (embedded in chart packages
-// and standalone-reports artifact), not from local files.
-func GenerateSiteData(chartsDir, imagesFile, registry, outputPath string) error {
+// GenerateSiteData walks the charts directory and images file to produce
+// a catalog.json for the Astro static site.
+//
+// The images file (values.yaml) is the single source of truth for all images.
+// reportsDir optionally provides local Trivy reports for images not covered
+// by chart packages (available during CI from the patch step artifacts).
+func GenerateSiteData(chartsDir, imagesFile, reportsDir, registry, outputPath string) error {
 	data := SiteData{
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 		Registry:    registry,
 	}
 
-	// Discover wrapper charts (all data pulled from OCI).
+	// Discover wrapper charts.
 	charts, err := discoverCharts(chartsDir, registry)
 	if err != nil {
 		return fmt.Errorf("discovering charts: %w", err)
 	}
 	data.Charts = charts
 
-	// Discover standalone images (reports pulled from OCI).
-	if imagesFile != "" {
-		standalone, err := discoverStandaloneImages(imagesFile, registry)
-		if err != nil {
-			return fmt.Errorf("discovering standalone images: %w", err)
+	// Build unified image list from charts + values.yaml.
+	var allImages []SiteImage
+	seen := make(map[string]bool)
+
+	for _, chart := range data.Charts {
+		for _, img := range chart.Images {
+			if !seen[img.OriginalRef] {
+				seen[img.OriginalRef] = true
+				allImages = append(allImages, img)
+			}
 		}
-		data.StandaloneImages = standalone
 	}
 
-	// Compute summary
-	data.Summary = computeSummary(data.Charts, data.StandaloneImages)
+	// Add images from values.yaml that aren't already covered by charts.
+	if imagesFile != "" {
+		images, err := ParseImagesFile(imagesFile)
+		if err != nil {
+			return fmt.Errorf("parsing images file %s: %w", imagesFile, err)
+		}
+		for _, img := range images {
+			ref := img.Reference()
+			if seen[ref] {
+				continue
+			}
+			seen[ref] = true
+
+			sanitizedRef := sanitize(ref)
+			patchedRef := buildPatchedRef(ref, registry)
+
+			// Try to find a report in the local reports directory.
+			var si SiteImage
+			if reportsDir != "" {
+				reportPath := filepath.Join(reportsDir, sanitizedRef+".json")
+				if report, err := parseTrivyReportFull(reportPath); err == nil {
+					si = buildSiteImage(sanitizedRef, ref, patchedRef, img.Path, "", report)
+				}
+			}
+			if si.ID == "" {
+				si = SiteImage{
+					ID:          sanitizedRef,
+					OriginalRef: ref,
+					PatchedRef:  patchedRef,
+					ValuesPath:  img.Path,
+					VulnSummary: VulnSummary{
+						SeverityCounts: make(map[string]int),
+					},
+					Vulnerabilities: []SiteVuln{},
+				}
+			}
+			allImages = append(allImages, si)
+		}
+	}
+
+	data.Images = allImages
+	data.Summary = computeSummary(data.Charts, allImages)
 
 	// Marshal and write
 	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
@@ -852,252 +913,18 @@ func dirExists(path string) bool {
 	return err == nil && fi.IsDir()
 }
 
-// SaveStandaloneReports copies Trivy reports from PatchResults into a
-// local directory. This is used during assembly before pushing to OCI.
-func SaveStandaloneReports(results []*PatchResult, reportsDir string) error {
-	if err := os.MkdirAll(reportsDir, 0o755); err != nil {
-		return fmt.Errorf("creating standalone reports dir: %w", err)
-	}
-
-	for _, r := range results {
-		// Prefer the upstream (pre-patch) report for "before" data.
-		src := r.UpstreamReportPath
-		if src == "" {
-			src = r.ReportPath
-		}
-		if src == "" {
-			continue
-		}
-		// Use the original image ref for the filename, not the patched one.
-		reportName := sanitize(r.Original.Reference()) + ".json"
-		destPath := filepath.Join(reportsDir, reportName)
-		if err := copyFile(src, destPath); err != nil {
-			return fmt.Errorf("copying report for %s: %w", r.Original.Reference(), err)
-		}
-	}
-
-	// Save override metadata for site data generation.
-	if err := SaveOverrides(results, reportsDir); err != nil {
-		return fmt.Errorf("saving overrides: %w", err)
-	}
-
-	return nil
-}
-
-// PushStandaloneReports pushes all standalone reports in reportsDir to
-// the OCI registry as a single image artifact at:
-//
-//	{registry}/standalone-reports:latest
-//
-// Each JSON report file becomes a layer in the OCI image.
-func PushStandaloneReports(reportsDir, registry string) error {
-	ref := registry + "/standalone-reports:latest"
-
-	entries, err := os.ReadDir(reportsDir)
-	if err != nil {
-		return fmt.Errorf("reading reports dir: %w", err)
-	}
-
-	// Build a tar archive of the reports directory content.
-	var buf bytes.Buffer
-	tw := tar.NewWriter(&buf)
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join(reportsDir, e.Name()))
-		if err != nil {
-			return fmt.Errorf("reading %s: %w", e.Name(), err)
-		}
-		hdr := &tar.Header{
-			Name: e.Name(),
-			Mode: 0o644,
-			Size: int64(len(data)),
-		}
-		if err := tw.WriteHeader(hdr); err != nil {
-			return err
-		}
-		if _, err := tw.Write(data); err != nil {
-			return err
-		}
-	}
-	if err := tw.Close(); err != nil {
-		return err
-	}
-
-	layer, err := tarball.LayerFromOpener(func() (io.ReadCloser, error) {
-		return io.NopCloser(bytes.NewReader(buf.Bytes())), nil
-	})
-	if err != nil {
-		return fmt.Errorf("creating OCI layer: %w", err)
-	}
-
-	img, err := mutate.AppendLayers(empty.Image, layer)
-	if err != nil {
-		return fmt.Errorf("building OCI image: %w", err)
-	}
-
-	if err := crane.Push(img, ref); err != nil {
-		return fmt.Errorf("pushing %s: %w", ref, err)
-	}
-	fmt.Printf("Pushed standalone reports → %s\n", ref)
-	return nil
-}
-
-// pullStandaloneReports pulls the standalone-reports artifact from OCI
-// and extracts the reports into a temporary directory.
-func pullStandaloneReports(registry string) (string, error) {
-	ref := registry + "/standalone-reports:latest"
-
-	img, err := crane.Pull(ref)
-	if err != nil {
-		return "", fmt.Errorf("pulling %s: %w", ref, err)
-	}
-
-	tmpDir, err := os.MkdirTemp("", "verity-standalone-reports-")
-	if err != nil {
-		return "", err
-	}
-
-	layers, err := img.Layers()
-	if err != nil {
-		_ = os.RemoveAll(tmpDir)
-		return "", fmt.Errorf("reading layers: %w", err)
-	}
-
-	for _, layer := range layers {
-		rc, err := layer.Uncompressed()
-		if err != nil {
-			_ = os.RemoveAll(tmpDir)
-			return "", fmt.Errorf("decompressing layer: %w", err)
-		}
-		err = func() error {
-			defer func() {
-				if err := rc.Close(); err != nil {
-					fmt.Fprintf(os.Stderr, "Warning: failed to close layer reader: %v\n", err)
-				}
-			}()
-			tr := tar.NewReader(rc)
-			for {
-				hdr, err := tr.Next()
-				if err != nil {
-					break
-				}
-				if hdr.Typeflag != tar.TypeReg {
-					continue
-				}
-				// Sanitize the file name to prevent Zip Slip (path traversal).
-				clean := filepath.Base(hdr.Name)
-				if clean == "." || clean == ".." {
-					continue
-				}
-				dest := filepath.Join(tmpDir, clean)
-				// Verify the resolved path is inside tmpDir using filepath.Rel.
-				rel, err := filepath.Rel(tmpDir, dest)
-				if err != nil || strings.HasPrefix(rel, "..") {
-					continue
-				}
-				data, err := io.ReadAll(tr)
-				if err != nil {
-					return fmt.Errorf("reading %s from tar: %w", hdr.Name, err)
-				}
-				if err := os.WriteFile(dest, data, 0o644); err != nil {
-					return err
-				}
-			}
-			return nil
-		}()
-		if err != nil {
-			_ = os.RemoveAll(tmpDir)
-			return "", err
-		}
-	}
-
-	return tmpDir, nil
-}
-
-// discoverStandaloneImages reads the standalone images values file and
-// pulls reports from the OCI registry standalone-reports artifact.
-func discoverStandaloneImages(imagesFile, registry string) ([]SiteImage, error) {
-	images, err := ParseImagesFile(imagesFile)
-	if err != nil {
-		return nil, err
-	}
-
-	// Pull reports from OCI.
-	var reportsDir string
-	if registry != "" {
-		dir, err := pullStandaloneReports(registry)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: could not pull standalone reports from OCI: %v\n", err)
-		} else {
-			reportsDir = dir
-			defer func() {
-				if err := os.RemoveAll(dir); err != nil {
-					fmt.Fprintf(os.Stderr, "Warning: failed to clean up temp dir: %v\n", err)
-				}
-			}()
-		}
-	}
-
-	var overrides map[string]string
-	if reportsDir != "" {
-		overrides = loadOverrides(reportsDir)
-	}
-
-	var siteImages []SiteImage
-	for _, img := range images {
-		ref := img.Reference()
-		sanitizedRef := sanitize(ref)
-
-		patchedRef := buildPatchedRef(ref, registry)
-
-		var si SiteImage
-		if reportsDir != "" {
-			reportPath := filepath.Join(reportsDir, sanitizedRef+".json")
-			report, err := parseTrivyReportFull(reportPath)
-			if err == nil {
-				si = buildSiteImage(sanitizedRef, ref, patchedRef, img.Path, "", report)
-			}
-		}
-		if si.ID == "" {
-			si = SiteImage{
-				ID:              sanitizedRef,
-				OriginalRef:     ref,
-				PatchedRef:      patchedRef,
-				ValuesPath:      img.Path,
-				Vulnerabilities: make([]SiteVuln, 0),
-				VulnSummary: VulnSummary{
-					SeverityCounts: make(map[string]int),
-				},
-			}
-		}
-		if ov, ok := overrides[sanitizedRef]; ok {
-			si.OverriddenFrom = ov
-		}
-		siteImages = append(siteImages, si)
-	}
-
-	return siteImages, nil
-}
-
-// computeSummary aggregates stats across all charts and standalone images.
-func computeSummary(charts []SiteChart, standalone []SiteImage) SiteSummary {
+// computeSummary aggregates stats across all charts and the unified image list.
+func computeSummary(charts []SiteChart, allImages []SiteImage) SiteSummary {
 	chartNames := make(map[string]bool)
-	summary := SiteSummary{}
-
 	for _, c := range charts {
 		chartNames[c.Name] = true
-		summary.TotalImages += len(c.Images)
-		for _, img := range c.Images {
-			summary.TotalVulns += img.VulnSummary.Total
-			summary.FixableVulns += img.VulnSummary.Fixable
-		}
 	}
-	summary.TotalCharts = len(chartNames)
 
-	summary.TotalImages += len(standalone)
-	for _, img := range standalone {
+	summary := SiteSummary{
+		TotalCharts: len(chartNames),
+		TotalImages: len(allImages),
+	}
+	for _, img := range allImages {
 		summary.TotalVulns += img.VulnSummary.Total
 		summary.FixableVulns += img.VulnSummary.Fixable
 	}

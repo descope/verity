@@ -38,8 +38,12 @@ charts/
   prometheus/
     Chart.yaml          # Wrapper chart that depends on prometheus
     values.yaml         # Patched image references
-    .helmignore        # Standard Helm ignore patterns
+    .helmignore         # Standard Helm ignore patterns
 ```
+
+Vulnerability reports are not bundled in the chart. Instead, they are attached as
+**in-toto attestations** on each patched image in the registry. You can verify
+them with `cosign verify-attestation --type vuln <image>`.
 
 ### Generated Chart.yaml
 

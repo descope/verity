@@ -96,7 +96,7 @@ dependencies:
 
 	// Run GenerateSiteData (no registry — falls back to local parsing)
 	outputPath := filepath.Join(tmpDir, "output", "catalog.json")
-	err := GenerateSiteData(chartsDir, imagesFile, "", outputPath)
+	err := GenerateSiteData(chartsDir, imagesFile, "", "", outputPath)
 	if err != nil {
 		t.Fatalf("GenerateSiteData failed: %v", err)
 	}
@@ -159,13 +159,20 @@ dependencies:
 		t.Errorf("expected 1 MEDIUM vuln, got %d", img.VulnSummary.SeverityCounts["MEDIUM"])
 	}
 
-	// Verify standalone images (no registry → no OCI pull, but image entry still created)
-	if len(siteData.StandaloneImages) != 1 {
-		t.Fatalf("expected 1 standalone image, got %d", len(siteData.StandaloneImages))
+	// Verify unified images list (chart images + standalone from values.yaml)
+	if len(siteData.Images) < 1 {
+		t.Fatalf("expected at least 1 image, got %d", len(siteData.Images))
 	}
-	si := siteData.StandaloneImages[0]
-	if si.OriginalRef != "docker.io/library/redis:7.0.0" {
-		t.Errorf("expected original ref docker.io/library/redis:7.0.0, got %s", si.OriginalRef)
+	// The redis image from values.yaml should appear in the unified images list.
+	foundRedis := false
+	for _, img := range siteData.Images {
+		if img.OriginalRef == "docker.io/library/redis:7.0.0" {
+			foundRedis = true
+			break
+		}
+	}
+	if !foundRedis {
+		t.Error("expected redis image in unified images list")
 	}
 
 	// Verify summary
@@ -268,97 +275,6 @@ func TestSanitizeRoundTrip(t *testing.T) {
 	}
 }
 
-func TestSaveStandaloneReports(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	// Create a fake report file
-	srcDir := filepath.Join(tmpDir, "src")
-	if err := os.MkdirAll(srcDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	reportContent := `{"Metadata":{"OS":{"Family":"debian","Name":"12"}},"Results":[{"Vulnerabilities":[{"VulnerabilityID":"CVE-2024-9999","PkgName":"curl","InstalledVersion":"7.88","FixedVersion":"7.89","Severity":"HIGH","Title":"test vuln"}]}]}`
-	srcReport := filepath.Join(srcDir, "report.json")
-	if err := os.WriteFile(srcReport, []byte(reportContent), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	results := []*PatchResult{
-		{
-			Original:   Image{Registry: "docker.io", Repository: "library/redis", Tag: "7.0.0"},
-			ReportPath: srcReport,
-		},
-		{
-			Original:   Image{Registry: "quay.io", Repository: "prometheus/prometheus", Tag: "v3.0.0"},
-			ReportPath: "", // no report
-		},
-	}
-
-	destDir := filepath.Join(tmpDir, "reports")
-	if err := SaveStandaloneReports(results, destDir); err != nil {
-		t.Fatalf("SaveStandaloneReports failed: %v", err)
-	}
-
-	// Check the report was saved with the correct filename
-	expectedFile := filepath.Join(destDir, "docker.io_library_redis_7.0.0.json")
-	if _, err := os.Stat(expectedFile); os.IsNotExist(err) {
-		t.Errorf("expected report at %s, not found", expectedFile)
-	}
-
-	// Verify content is intact
-	data, err := os.ReadFile(expectedFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	report, err := parseTrivyReportFull(expectedFile)
-	if err != nil {
-		t.Fatalf("failed to parse saved report: %v", err)
-	}
-	if report.Metadata.OS.Family != "debian" {
-		t.Errorf("expected debian, got %s", report.Metadata.OS.Family)
-	}
-	_ = data
-
-	// Image with no report should be skipped
-	missingFile := filepath.Join(destDir, "quay.io_prometheus_prometheus_v3.0.0.json")
-	if _, err := os.Stat(missingFile); !os.IsNotExist(err) {
-		t.Errorf("expected no report for image without ReportPath, but file exists")
-	}
-}
-
-func TestDiscoverStandaloneImagesNoRegistry(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	// Write standalone images file
-	imagesFile := filepath.Join(tmpDir, "images.yaml")
-	imagesYaml := `redis:
-  image:
-    registry: docker.io
-    repository: library/redis
-    tag: "7.0.0"
-`
-	if err := os.WriteFile(imagesFile, []byte(imagesYaml), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	// No registry → no OCI pull, but should return image entries with empty vulns.
-	images, err := discoverStandaloneImages(imagesFile, "")
-	if err != nil {
-		t.Fatalf("discoverStandaloneImages failed: %v", err)
-	}
-
-	if len(images) != 1 {
-		t.Fatalf("expected 1 standalone image, got %d", len(images))
-	}
-
-	si := images[0]
-	if si.OriginalRef != "docker.io/library/redis:7.0.0" {
-		t.Errorf("expected original ref docker.io/library/redis:7.0.0, got %s", si.OriginalRef)
-	}
-	if si.VulnSummary.Total != 0 {
-		t.Errorf("expected 0 vulns (no registry), got %d", si.VulnSummary.Total)
-	}
-}
-
 func TestComputeSummary(t *testing.T) {
 	charts := []SiteChart{
 		{
@@ -369,11 +285,13 @@ func TestComputeSummary(t *testing.T) {
 			},
 		},
 	}
-	standalone := []SiteImage{
+	allImages := []SiteImage{
+		{VulnSummary: VulnSummary{Total: 5, Fixable: 3, SeverityCounts: map[string]int{"HIGH": 3, "LOW": 2}}},
+		{VulnSummary: VulnSummary{Total: 2, Fixable: 1, SeverityCounts: map[string]int{"MEDIUM": 2}}},
 		{VulnSummary: VulnSummary{Total: 1, Fixable: 0, SeverityCounts: map[string]int{"LOW": 1}}},
 	}
 
-	summary := computeSummary(charts, standalone)
+	summary := computeSummary(charts, allImages)
 
 	if summary.TotalCharts != 1 {
 		t.Errorf("expected 1 chart, got %d", summary.TotalCharts)
@@ -416,7 +334,13 @@ func TestComputeSummaryMultipleVersions(t *testing.T) {
 		},
 	}
 
-	summary := computeSummary(charts, nil)
+	allImages := []SiteImage{
+		{VulnSummary: VulnSummary{Total: 4, Fixable: 4, SeverityCounts: map[string]int{"UNKNOWN": 4}}},
+		{VulnSummary: VulnSummary{Total: 2, Fixable: 2, SeverityCounts: map[string]int{"HIGH": 2}}},
+		{VulnSummary: VulnSummary{Total: 1, Fixable: 0, SeverityCounts: map[string]int{"LOW": 1}}},
+	}
+
+	summary := computeSummary(charts, allImages)
 
 	if summary.TotalCharts != 2 {
 		t.Errorf("expected 2 unique charts, got %d", summary.TotalCharts)

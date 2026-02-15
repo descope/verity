@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -300,6 +301,108 @@ func ParseOverrides(path string) ([]ImageOverride, error) {
 		})
 	}
 	return overrides, nil
+}
+
+// MergeChartImages appends chart-discovered images to a values YAML file,
+// skipping any that already exist (matched by image reference). This keeps
+// values.yaml as a single flat list — no separate sections.
+//
+// NOTE: This is intentionally append-only. If a chart drops an image in a
+// future version, the old entry stays in values.yaml. This is acceptable
+// because the patch matrix deduplicates by reference, so stale entries only
+// cause a harmless extra patch job. Removing entries would risk deleting
+// images that were added manually or used by other charts.
+func MergeChartImages(valuesPath string, images []Image) error {
+	if len(images) == 0 {
+		return nil
+	}
+
+	existing, err := os.ReadFile(valuesPath)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("reading %s: %w", valuesPath, err)
+	}
+
+	// Parse existing images to know which references are already present.
+	existingRefs := make(map[string]bool)
+	if len(existing) > 0 {
+		var values map[string]interface{}
+		if err := yaml.Unmarshal(existing, &values); err != nil {
+			return fmt.Errorf("parsing %s: %w", valuesPath, err)
+		}
+		for _, img := range findImages(values, "", "", nil) {
+			existingRefs[img.Reference()] = true
+		}
+	}
+
+	// Collect only genuinely new images.
+	var newImages []Image
+	for _, img := range images {
+		if !existingRefs[img.Reference()] {
+			newImages = append(newImages, img)
+		}
+	}
+	if len(newImages) == 0 {
+		return nil
+	}
+
+	// Sort for deterministic output.
+	sort.Slice(newImages, func(i, j int) bool {
+		return newImages[i].Reference() < newImages[j].Reference()
+	})
+
+	// Discover existing top-level YAML keys to avoid collisions.
+	content := string(existing)
+	if len(content) > 0 && !strings.HasSuffix(content, "\n") {
+		content += "\n"
+	}
+	usedKeys := make(map[string]bool)
+	var topLevel map[string]interface{}
+	if err := yaml.Unmarshal(existing, &topLevel); err == nil && topLevel != nil {
+		for k := range topLevel {
+			usedKeys[k] = true
+		}
+	}
+
+	// Append new entries at the same level as existing ones.
+	var sb strings.Builder
+	for _, img := range newImages {
+		baseKey := imageEntryKey(img)
+		key := baseKey
+		if usedKeys[key] {
+			// Disambiguate by incorporating the registry.
+			disambiguator := strings.ReplaceAll(img.Registry, ".", "-")
+			if disambiguator == "" {
+				disambiguator = "image"
+			}
+			candidate := fmt.Sprintf("%s-%s", baseKey, disambiguator)
+			i := 1
+			for usedKeys[candidate] {
+				candidate = fmt.Sprintf("%s-%s-%d", baseKey, disambiguator, i)
+				i++
+			}
+			key = candidate
+		}
+		usedKeys[key] = true
+
+		sb.WriteString(fmt.Sprintf("%s:\n", key))
+		sb.WriteString("  image:\n")
+		if img.Registry != "" {
+			sb.WriteString(fmt.Sprintf("    registry: %s\n", img.Registry))
+		}
+		sb.WriteString(fmt.Sprintf("    repository: %s\n", img.Repository))
+		if img.Tag != "" {
+			sb.WriteString(fmt.Sprintf("    tag: \"%s\"\n", img.Tag))
+		}
+	}
+
+	content += sb.String()
+	return os.WriteFile(valuesPath, []byte(content), 0o644)
+}
+
+// imageEntryKey generates a YAML key for a chart-discovered image
+// from its repository path (e.g. "prometheus/prometheus" → "prometheus-prometheus").
+func imageEntryKey(img Image) string {
+	return strings.ReplaceAll(img.Repository, "/", "-")
 }
 
 // ApplyOverrides applies tag replacements to images matching override rules.

@@ -19,7 +19,9 @@ func TestGenerateMatrix(t *testing.T) {
 				},
 			},
 		},
-		Standalone: []ImageDiscovery{
+		Images: []ImageDiscovery{
+			{Registry: "quay.io", Repository: "prometheus/prometheus", Tag: "v3.9.1", Path: "server.image"},
+			{Registry: "quay.io", Repository: "prometheus/alertmanager", Tag: "v0.27.0", Path: "alertmanager.image"},
 			{Registry: "docker.io", Repository: "grafana/grafana", Tag: "12.3.3", Path: "grafana.image"},
 			// Duplicate of a chart image — should be deduplicated.
 			{Registry: "quay.io", Repository: "prometheus/prometheus", Tag: "v3.9.1", Path: "prometheus.image"},
@@ -74,6 +76,9 @@ func TestWriteDiscoveryOutput(t *testing.T) {
 					{Registry: "docker.io", Repository: "library/nginx", Tag: "1.25", Path: "image"},
 				},
 			},
+		},
+		Images: []ImageDiscovery{
+			{Registry: "docker.io", Repository: "library/nginx", Tag: "1.25", Path: "image"},
 		},
 	}
 	matrix := GenerateMatrix(manifest)
@@ -330,10 +335,11 @@ func TestAssembleResults(t *testing.T) {
 		t.Errorf("wrapper values.yaml not created: %v", err)
 	}
 
-	// Verify the trivy report was copied into the wrapper chart.
-	copiedReport := filepath.Join(outputDir, "myapp", "reports", sanitize("docker.io/library/nginx:1.25")+".json")
-	if _, err := os.Stat(copiedReport); err != nil {
-		t.Errorf("trivy report not copied to wrapper chart: %v", err)
+	// Reports are now attached as in-toto attestations on each image,
+	// NOT bundled in the chart package. Verify reports/ is NOT created.
+	copiedReport := filepath.Join(outputDir, "myapp", "reports")
+	if _, err := os.Stat(copiedReport); !os.IsNotExist(err) {
+		t.Errorf("reports/ should not exist in wrapper chart (reports are in-toto attestations now)")
 	}
 }
 

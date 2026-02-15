@@ -33,12 +33,11 @@ func main() {
 
 	// Scan-only mode (no patching)
 	scan := flag.Bool("scan", false, "scan charts for images without patching (dry run)")
-	pushStandaloneReports := flag.Bool("push-standalone-reports", false, "push standalone reports to OCI registry")
 	flag.Parse()
 
 	// Validate mutual exclusivity of mode flags.
 	modeCount := 0
-	for _, set := range []bool{*discover, *patchSingle, *assemble, *scan, *pushStandaloneReports} {
+	for _, set := range []bool{*discover, *patchSingle, *assemble, *scan} {
 		if set {
 			modeCount++
 		}
@@ -47,11 +46,11 @@ func main() {
 		modeCount = 1 // standalone -site-data mode
 	}
 	if modeCount > 1 {
-		log.Fatal("Only one mode flag may be specified at a time (-discover, -patch-single, -assemble, -scan, -site-data, -push-standalone-reports)")
+		log.Fatal("Only one mode flag may be specified at a time (-discover, -patch-single, -assemble, -scan, -site-data)")
 	}
 	// -site-data is valid as a standalone mode or combined with -assemble,
 	// but reject it with other modes to avoid silent no-ops.
-	if *siteDataPath != "" && (*discover || *patchSingle || *scan || *pushStandaloneReports) {
+	if *siteDataPath != "" && (*discover || *patchSingle || *scan) {
 		log.Fatal("-site-data can only be used standalone or with -assemble")
 	}
 
@@ -64,19 +63,16 @@ func main() {
 		runAssemble(*manifestPath, *resultsDir, *reportsDir, *outputDir, *registry, *imagesFile, *siteDataPath)
 	case *scan:
 		runScan(*chartFile, *imagesFile)
-	case *pushStandaloneReports:
-		runPushStandaloneReports(*reportsDir, *registry)
 	case *siteDataPath != "":
-		runSiteData(*outputDir, *imagesFile, *registry, *siteDataPath)
+		runSiteData(*outputDir, *imagesFile, *reportsDir, *registry, *siteDataPath)
 	default:
 		flag.Usage()
 		fmt.Fprintf(os.Stderr, "\nModes:\n")
-		fmt.Fprintf(os.Stderr, "  -discover                  Scan charts and output a GitHub Actions matrix\n")
-		fmt.Fprintf(os.Stderr, "  -patch-single              Patch a single image (run in a matrix job)\n")
-		fmt.Fprintf(os.Stderr, "  -assemble                  Assemble wrapper charts from matrix results\n")
-		fmt.Fprintf(os.Stderr, "  -scan                      List images found in charts (dry run)\n")
-		fmt.Fprintf(os.Stderr, "  -site-data                 Generate site catalog JSON from existing charts\n")
-		fmt.Fprintf(os.Stderr, "  -push-standalone-reports   Push standalone reports to OCI registry\n")
+		fmt.Fprintf(os.Stderr, "  -discover        Scan charts and output a GitHub Actions matrix\n")
+		fmt.Fprintf(os.Stderr, "  -patch-single    Patch a single image (run in a matrix job)\n")
+		fmt.Fprintf(os.Stderr, "  -assemble        Assemble wrapper charts from matrix results\n")
+		fmt.Fprintf(os.Stderr, "  -scan            List images found in charts (dry run)\n")
+		fmt.Fprintf(os.Stderr, "  -site-data       Generate site catalog JSON from existing charts\n")
 		os.Exit(1)
 	}
 }
@@ -148,14 +144,14 @@ func applyOverridesToManifest(manifest *internal.DiscoveryManifest, overrides []
 			manifest.Charts[i].Images[j].Tag = img.Tag
 		}
 	}
-	if len(manifest.Standalone) > 0 {
-		images := make([]internal.Image, len(manifest.Standalone))
-		for j, d := range manifest.Standalone {
+	if len(manifest.Images) > 0 {
+		images := make([]internal.Image, len(manifest.Images))
+		for j, d := range manifest.Images {
 			images[j] = internal.Image(d)
 		}
 		images = internal.ApplyOverrides(images, overrides)
 		for j, img := range images {
-			manifest.Standalone[j].Tag = img.Tag
+			manifest.Images[j].Tag = img.Tag
 		}
 	}
 }
@@ -219,7 +215,7 @@ func runAssemble(manifestPath, resultsDir, reportsDir, outputDir, registry, imag
 	}
 
 	if siteDataPath != "" {
-		if err := internal.GenerateSiteData(outputDir, imagesFile, registry, siteDataPath); err != nil {
+		if err := internal.GenerateSiteData(outputDir, imagesFile, reportsDir, registry, siteDataPath); err != nil {
 			log.Fatalf("Failed to generate site data: %v", err)
 		}
 		fmt.Printf("Site data → %s\n", siteDataPath)
@@ -229,28 +225,15 @@ func runAssemble(manifestPath, resultsDir, reportsDir, outputDir, registry, imag
 }
 
 // runSiteData generates the site catalog JSON from existing charts and reports.
-func runSiteData(outputDir, imagesFile, registry, siteDataPath string) {
-	if err := internal.GenerateSiteData(outputDir, imagesFile, registry, siteDataPath); err != nil {
+func runSiteData(outputDir, imagesFile, reportsDir, registry, siteDataPath string) {
+	if err := internal.GenerateSiteData(outputDir, imagesFile, reportsDir, registry, siteDataPath); err != nil {
 		log.Fatalf("Failed to generate site data: %v", err)
 	}
 	fmt.Printf("Site data → %s\n", siteDataPath)
 }
 
-// runPushStandaloneReports pushes standalone reports to the OCI registry.
-func runPushStandaloneReports(reportsDir, registry string) {
-	if reportsDir == "" {
-		log.Fatal("-reports-dir is required with -push-standalone-reports")
-	}
-	if registry == "" {
-		log.Fatal("-registry is required with -push-standalone-reports")
-	}
-	if err := internal.PushStandaloneReports(reportsDir, registry); err != nil {
-		log.Fatalf("Failed to push standalone reports: %v", err)
-	}
-}
-
 // runScan is a lightweight dry-run mode that lists all images found
-// in charts and standalone values without patching anything.
+// in charts and the images file without patching anything.
 func runScan(chartFile, imagesFile string) {
 	overrides := parseOverridesFromFile(imagesFile)
 
@@ -297,7 +280,7 @@ func runScan(chartFile, imagesFile string) {
 		if err != nil {
 			log.Fatalf("Failed to parse %s: %v", imagesFile, err)
 		}
-		fmt.Printf("Standalone images from %s\n", imagesFile)
+		fmt.Printf("Images from %s\n", imagesFile)
 		for _, img := range images {
 			fmt.Printf("  %s  (%s)\n", img.Reference(), img.Path)
 		}
