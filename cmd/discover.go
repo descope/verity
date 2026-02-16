@@ -44,35 +44,9 @@ func runDiscover(c *cli.Context) error {
 		return err
 	}
 
-	var manifest *internal.DiscoveryManifest
-
-	if chartFile != "" {
-		// Chart-based discovery: scan Chart.yaml dependencies + merge into images file.
-		// Create a separate temp directory for chart downloads to avoid polluting output dir
-		tmpDir, err := os.MkdirTemp("", "verity-discover-*")
-		if err != nil {
-			return fmt.Errorf("creating temp dir: %w", err)
-		}
-		defer os.RemoveAll(tmpDir)
-
-		manifest, err = internal.DiscoverImages(chartFile, imagesFile, tmpDir)
-		if err != nil {
-			return fmt.Errorf("discovery failed: %w", err)
-		}
-	} else {
-		// Flat discovery: just parse the images file.
-		images, err := internal.ParseImagesFile(imagesFile)
-		if err != nil {
-			return fmt.Errorf("discovery failed: %w", err)
-		}
-
-		// Convert to discovery format
-		manifest = &internal.DiscoveryManifest{
-			Images: make([]internal.ImageDiscovery, len(images)),
-		}
-		for i, img := range images {
-			manifest.Images[i] = internal.ImageDiscovery(img)
-		}
+	manifest, err := discoverManifest(chartFile, imagesFile)
+	if err != nil {
+		return err
 	}
 
 	// Apply image tag overrides (e.g. distroless → debian) so the matrix
@@ -91,6 +65,42 @@ func runDiscover(c *cli.Context) error {
 	fmt.Printf("  Manifest → %s/manifest.json\n", discoverDir)
 	fmt.Printf("  Matrix   → %s/matrix.json\n", discoverDir)
 	return nil
+}
+
+func discoverManifest(chartFile, imagesFile string) (*internal.DiscoveryManifest, error) {
+	if chartFile != "" {
+		return discoverFromChart(chartFile, imagesFile)
+	}
+	return discoverFromImages(imagesFile)
+}
+
+func discoverFromChart(chartFile, imagesFile string) (*internal.DiscoveryManifest, error) {
+	tmpDir, err := os.MkdirTemp("", "verity-discover-*")
+	if err != nil {
+		return nil, fmt.Errorf("creating temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	manifest, err := internal.DiscoverImages(chartFile, imagesFile, tmpDir)
+	if err != nil {
+		return nil, fmt.Errorf("discovery failed: %w", err)
+	}
+	return manifest, nil
+}
+
+func discoverFromImages(imagesFile string) (*internal.DiscoveryManifest, error) {
+	images, err := internal.ParseImagesFile(imagesFile)
+	if err != nil {
+		return nil, fmt.Errorf("discovery failed: %w", err)
+	}
+
+	manifest := &internal.DiscoveryManifest{
+		Images: make([]internal.ImageDiscovery, len(images)),
+	}
+	for i, img := range images {
+		manifest.Images[i] = internal.ImageDiscovery(img)
+	}
+	return manifest, nil
 }
 
 // parseOverridesFromFile loads image tag overrides from the images file, if present.
