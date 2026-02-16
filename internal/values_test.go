@@ -19,7 +19,7 @@ func TestGenerateValuesOverride(t *testing.T) {
 				Path:       "alertmanager.image",
 			},
 			Patched: Image{
-				Registry:   "quay.io/verity",
+				Registry:   "ghcr.io/verity-org",
 				Repository: "prom/alertmanager",
 				Tag:        "v0.26.0-patched",
 			},
@@ -55,7 +55,7 @@ func TestGenerateValuesOverride(t *testing.T) {
 				Path:       "pushgateway.image",
 			},
 			Patched: Image{
-				Registry:   "quay.io/verity",
+				Registry:   "ghcr.io/verity-org",
 				Repository: "prometheus/pushgateway",
 				Tag:        "v1.6.2-patched",
 			},
@@ -99,8 +99,8 @@ func TestGenerateValuesOverride(t *testing.T) {
 	if !ok {
 		t.Fatal("missing alertmanager.image key")
 	}
-	if amImg["registry"] != "quay.io/verity" {
-		t.Errorf("alertmanager.image.registry = %v, want quay.io/verity", amImg["registry"])
+	if amImg["registry"] != "ghcr.io/verity-org" {
+		t.Errorf("alertmanager.image.registry = %v, want ghcr.io/verity-org", amImg["registry"])
 	}
 	if amImg["repository"] != "prom/alertmanager" {
 		t.Errorf("alertmanager.image.repository = %v, want prom/alertmanager", amImg["repository"])
@@ -146,8 +146,8 @@ func TestGenerateValuesOverride(t *testing.T) {
 	if !ok {
 		t.Fatal("missing pushgateway.image key")
 	}
-	if pgImg["registry"] != "quay.io/verity" {
-		t.Errorf("pushgateway.image.registry = %v, want quay.io/verity", pgImg["registry"])
+	if pgImg["registry"] != "ghcr.io/verity-org" {
+		t.Errorf("pushgateway.image.registry = %v, want ghcr.io/verity-org", pgImg["registry"])
 	}
 	if pgImg["repository"] != "prometheus/pushgateway" {
 		t.Errorf("pushgateway.image.repository = %v, want prometheus/pushgateway", pgImg["repository"])
@@ -193,7 +193,7 @@ func TestGenerateValuesOverride_AllSkippedWithPatchedRef(t *testing.T) {
 		{
 			Original: Image{Repository: "nginx", Tag: "1.25", Path: "image"},
 			Patched: Image{
-				Registry:   "quay.io/verity",
+				Registry:   "ghcr.io/verity-org",
 				Repository: "library/nginx",
 				Tag:        "1.25-patched",
 			},
@@ -343,7 +343,7 @@ func TestCreateWrapperChart(t *testing.T) {
 				Path:       "server.image",
 			},
 			Patched: Image{
-				Registry:   "quay.io/verity",
+				Registry:   "ghcr.io/verity-org",
 				Repository: "prometheus",
 				Tag:        "v2.48.0-patched",
 			},
@@ -360,7 +360,7 @@ func TestCreateWrapperChart(t *testing.T) {
 				Path:       "alertmanager.image",
 			},
 			Patched: Image{
-				Registry:   "quay.io/verity",
+				Registry:   "ghcr.io/verity-org",
 				Repository: "alertmanager",
 				Tag:        "v0.26.0-patched",
 			},
@@ -464,8 +464,8 @@ func TestCreateWrapperChart(t *testing.T) {
 	if serverImage["tag"] != "v2.48.0-patched" {
 		t.Errorf("Expected tag 'v2.48.0-patched', got %v", serverImage["tag"])
 	}
-	if serverImage["registry"] != "quay.io/verity" {
-		t.Errorf("Expected registry 'quay.io/verity', got %v", serverImage["registry"])
+	if serverImage["registry"] != "ghcr.io/verity-org" {
+		t.Errorf("Expected registry 'ghcr.io/verity-org', got %v", serverImage["registry"])
 	}
 
 	// Check .helmignore exists
@@ -491,7 +491,7 @@ func TestGenerateNamespacedValuesOverride_OverrideComment(t *testing.T) {
 				Path:       "vector.image",
 			},
 			Patched: Image{
-				Registry:   "quay.io/verity",
+				Registry:   "ghcr.io/verity-org",
 				Repository: "timberio/vector",
 				Tag:        "0.46.1-debian-patched",
 			},
@@ -505,7 +505,7 @@ func TestGenerateNamespacedValuesOverride_OverrideComment(t *testing.T) {
 				Path:       "server.image",
 			},
 			Patched: Image{
-				Registry:   "quay.io/verity",
+				Registry:   "ghcr.io/verity-org",
 				Repository: "victoriametrics/victoria-logs",
 				Tag:        "v1.0.0-victorialogs-patched",
 			},
@@ -575,7 +575,7 @@ func TestGetNextPatchLevel(t *testing.T) {
 	}{
 		{
 			name:            "no existing versions",
-			registry:        "quay.io/verity",
+			registry:        "ghcr.io/verity-org",
 			chartName:       "prometheus",
 			upstreamVersion: "25.8.0",
 			mockTags:        []string{},
@@ -583,7 +583,7 @@ func TestGetNextPatchLevel(t *testing.T) {
 		},
 		{
 			name:            "existing version 0",
-			registry:        "quay.io/verity",
+			registry:        "ghcr.io/verity-org",
 			chartName:       "prometheus",
 			upstreamVersion: "25.8.0",
 			mockTags:        []string{"25.8.0-0"},
@@ -591,7 +591,7 @@ func TestGetNextPatchLevel(t *testing.T) {
 		},
 		{
 			name:            "multiple versions",
-			registry:        "quay.io/verity",
+			registry:        "ghcr.io/verity-org",
 			chartName:       "prometheus",
 			upstreamVersion: "25.8.0",
 			mockTags:        []string{"25.8.0-0", "25.8.0-1", "25.8.0-2"},
@@ -599,7 +599,7 @@ func TestGetNextPatchLevel(t *testing.T) {
 		},
 		{
 			name:            "different upstream versions mixed",
-			registry:        "quay.io/verity",
+			registry:        "ghcr.io/verity-org",
 			chartName:       "prometheus",
 			upstreamVersion: "25.8.0",
 			mockTags:        []string{"25.7.0-0", "25.8.0-0", "25.8.0-1", "25.9.0-0"},
@@ -607,7 +607,7 @@ func TestGetNextPatchLevel(t *testing.T) {
 		},
 		{
 			name:            "non-sequential patch levels",
-			registry:        "quay.io/verity",
+			registry:        "ghcr.io/verity-org",
 			chartName:       "prometheus",
 			upstreamVersion: "25.8.0",
 			mockTags:        []string{"25.8.0-0", "25.8.0-2", "25.8.0-5"},

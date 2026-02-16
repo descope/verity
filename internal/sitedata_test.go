@@ -365,8 +365,8 @@ func TestDiscoverRegistryVersions(t *testing.T) {
 	charts, err := discoverRegistryVersions(
 		"prometheus",
 		"28.9.1-4",
-		"oci://quay.io/verity/charts",
-		"quay.io/verity",
+		"oci://ghcr.io/verity-org/charts",
+		"ghcr.io/verity-org",
 	)
 	if err != nil {
 		t.Fatalf("discoverRegistryVersions failed: %v", err)
@@ -438,8 +438,8 @@ func TestDiscoverRegistryVersionsNonExistent(t *testing.T) {
 	charts, err := discoverRegistryVersions(
 		"nonexistent-chart-xyz",
 		"1.0.0",
-		"oci://quay.io/verity/charts",
-		"quay.io/verity",
+		"oci://ghcr.io/verity-org/charts",
+		"ghcr.io/verity-org",
 	)
 	if err != nil {
 		t.Fatalf("expected nil error, got: %v", err)
@@ -477,7 +477,7 @@ dependencies:
 	// Write values.yaml with patched image
 	valuesYaml := `myapp:
   image:
-    registry: quay.io/verity
+    registry: ghcr.io/verity-org
     repository: myorg/myapp
     tag: v1.0.0-patched
 `
@@ -496,7 +496,7 @@ dependencies:
 	// Do NOT create reports/ directory - this triggers the stub fallback
 
 	// Parse the chart
-	chart, err := parseWrapperChart(tmpDir, "myapp", "quay.io/verity")
+	chart, err := parseWrapperChart(tmpDir, "myapp", "ghcr.io/verity-org")
 	if err != nil {
 		t.Fatalf("parseWrapperChart failed: %v", err)
 	}
@@ -515,8 +515,8 @@ dependencies:
 	if img.OriginalRef != "docker.io/myorg/myapp:v1.0.0" {
 		t.Errorf("expected OriginalRef docker.io/myorg/myapp:v1.0.0, got %s", img.OriginalRef)
 	}
-	if img.PatchedRef != "quay.io/verity/myorg/myapp:v1.0.0-patched" {
-		t.Errorf("expected PatchedRef quay.io/verity/myorg/myapp:v1.0.0-patched, got %s", img.PatchedRef)
+	if img.PatchedRef != "ghcr.io/verity-org/myorg/myapp:v1.0.0-patched" {
+		t.Errorf("expected PatchedRef ghcr.io/verity-org/myorg/myapp:v1.0.0-patched, got %s", img.PatchedRef)
 	}
 	if img.ValuesPath != ".myapp.image" {
 		t.Errorf("expected ValuesPath .myapp.image, got %s", img.ValuesPath)
@@ -577,7 +577,7 @@ dependencies:
 
 	// Parse multiple times to verify stable ordering
 	for run := 0; run < 5; run++ {
-		chart, err := parseWrapperChart(tmpDir, "test", "quay.io/verity")
+		chart, err := parseWrapperChart(tmpDir, "test", "ghcr.io/verity-org")
 		if err != nil {
 			t.Fatalf("run %d: parseWrapperChart failed: %v", run, err)
 		}

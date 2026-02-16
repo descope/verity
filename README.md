@@ -1,129 +1,98 @@
 # Verity
 
-## Self-maintaining registry of security-patched Helm charts
+## Self-maintaining registry of security-patched container images
 
-Verity automatically scans Helm chart dependencies for container image vulnerabilities, patches them using
-[Copa](https://github.com/project-copacetic/copacetic), and publishes wrapper charts that make it easy to
-consume patched images while maintaining full chart customization.
+Verity automatically scans container images for vulnerabilities, patches them using
+[Copa](https://github.com/project-copacetic/copacetic), and publishes patched versions to GitHub Container Registry (GHCR).
 
 ## Quick Start
 
-### Install a Patched Chart
+### Use a Patched Image
 
 ```bash
-# Install prometheus with security-patched images
-helm install my-prometheus \
-  oci://quay.io/verity/charts/prometheus \
-  --version 25.8.0-0
+# Pull a patched image
+docker pull ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
 
-# With custom values (patched images automatically included)
-helm install my-prometheus \
-  oci://quay.io/verity/charts/prometheus \
-  -f my-values.yaml
+# Use in Kubernetes
+kubectl set image deployment/prometheus \
+  prometheus=ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
+
+# Use in Docker Compose
+services:
+  prometheus:
+    image: ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
 ```
 
 ### Run Locally
 
 ```bash
-# Scan charts for images
-./verity -chart Chart.yaml -output charts
+# List images to patch
+./verity list
 
-# Scan and patch with Copa
-./verity -chart Chart.yaml -output charts \
-  -patch \
-  -registry quay.io/your-org \
-  -buildkit-addr docker-container://buildkitd
+# Discover images for CI
+./verity discover
+
+# Patch a single image
+./verity patch \
+  --image "quay.io/prometheus/prometheus:v3.9.1" \
+  --registry ghcr.io/myorg \
+  --buildkit-addr docker-container://buildkitd \
+  --result-dir ./results
 ```
 
 ## How It Works
 
-The primary product is a **registry of patched images**. Wrapper charts are a secondary convenience.
-
 ```text
-Chart.yaml + values.yaml
+values.yaml (image list)
         ↓
-  Discover (extract all images → values.yaml)
+  Discover (parse images → matrix.json)
         ↓
-  Patch (scan + Copa-patch each image)
+  Patch (parallel: scan + copa-patch)
         ↓
-  Push to Registry (patched images + attestations)
+  Sign & Attest (cosign + SLSA + SBOM)
         ↓
-  Assemble Wrapper Charts (optional)
-        ↓
-  Published to Quay.io
+  Published to ghcr.io/verity-org
 ```
 
-### Unified Image Source
+### Image Source
 
-`values.yaml` is the **single source of truth** for all images — a single flat
-list with no separate sections. You can add images manually or let the discover
-step append them automatically.
-
-The discover step scans Chart.yaml dependencies and appends any newly found
-images to `values.yaml`, deduplicating by image reference. This means every
-image — whether from a chart or added manually — is patched through the same
-pipeline. Common images like config-reloader only appear once, regardless of
-how many charts use them.
-
-### What Gets Created
-
-For each chart dependency, verity creates a wrapper chart:
-
-```text
-charts/
-  prometheus/
-    Chart.yaml    # Depends on original prometheus chart
-    values.yaml   # Patched images (namespaced)
-    .helmignore
-```
-
-Vulnerability reports are attached as **in-toto attestations** on each patched
-image in the registry (not bundled in chart packages).
+`values.yaml` is the **single source of truth** - a flat list of container images to patch.
 
 **Example values.yaml:**
 
 ```yaml
+# Image tag overrides for Copa compatibility
+overrides:
+  timberio/vector:
+    from: "distroless-libc"  # Copa can't patch distroless
+    to: "debian"              # Use debian variant instead
+
+# Images to patch
 prometheus:
-  server:
-    image:
-      registry: quay.io/verity
-      repository: prometheus
-      tag: v2.48.0-patched
-  alertmanager:
-    image:
-      registry: quay.io/verity
-      repository: alertmanager
-      tag: v0.26.0-patched
+  image:
+    registry: quay.io
+    repository: prometheus/prometheus
+    tag: "v3.9.1"
+
+grafana:
+  image:
+    registry: docker.io
+    repository: grafana/grafana
+    tag: "12.3.3"
 ```
 
-### Versioning Strategy
+### Image Naming Convention
 
-Wrapper chart versions mirror the upstream chart version with a patch level suffix:
+- **Source**: `quay.io/prometheus/prometheus:v3.9.1`
+- **Patched**: `ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched`
 
-**Format:** `{upstream-version}-{patch-level}`
-
-**Examples:**
-
-```text
-prometheus 25.8.0 → prometheus 25.8.0-0 (initial patch)
-                 → prometheus 25.8.0-1 (new CVEs found)
-                 → prometheus 25.8.0-2 (more patches)
-prometheus 25.9.0 → prometheus 25.9.0-0 (chart update, reset)
-```
-
-**When versions change:**
-
-- **Chart Update (Renovate):** Base version changes, patch level resets to `-0`
-- **New CVEs (Scheduled Scan):** Patch level auto-increments (queries registry for existing versions)
-- **Manual Patch:** Patch level auto-increments (if registry is specified)
-
-This keeps the relationship to upstream charts clear while tracking security updates independently.
+All patched images get a `-patched` suffix.
 
 ## Automation
 
 Verity is **fully automated** with GitHub Actions:
 
-### 1️⃣ Scheduled Scans (Daily)
+### 1️⃣ Daily Vulnerability Scans
 
 - Scans for new vulnerabilities
 - Creates PR if patches available
@@ -131,108 +100,108 @@ Verity is **fully automated** with GitHub Actions:
 
 ### 2️⃣ Auto-Patch on Updates (Renovate)
 
-- Renovate bumps chart version
-- Workflow auto-patches images
-- Commits to same PR
+- Renovate updates image tags in values.yaml
+- Workflow auto-patches new versions
+- Commits to PR
 - Ready to merge!
 
-### 3️⃣ Publish to Quay.io (On Merge)
+### 3️⃣ Publish to GHCR (On Merge)
 
-- Wrapper charts published to OCI registry
-- Patched images verified
-- Chart index generated
+- Patched images pushed to GitHub Container Registry
+- Images signed with cosign (keyless)
+- SLSA L3 provenance + SBOM + vulnerability reports attached
+- Site catalog updated
 
 See [WORKFLOWS.md](WORKFLOWS.md) for details.
 
 ## Benefits
 
-### For Chart Maintainers
+### For Image Consumers
 
-✅ Security patches without forking upstream
-✅ Update chart versions independently
+✅ Security-patched container images
 ✅ Automated vulnerability monitoring
-✅ Publish to your own registry
-
-### For Chart Consumers
-
-✅ Drop-in replacements for original charts
-✅ All customization options preserved
-✅ Transparent security patching
-✅ Zero-trust supply chain (verify patches yourself)
+✅ Drop-in replacements for upstream images
+✅ SLSA L3 build provenance
+✅ Signed with cosign (Sigstore)
+✅ Full SBOM attestations
+✅ Zero-trust supply chain (verify everything yourself)
 
 ## Architecture
 
 ### Components
 
-- **Verity** (Go) - Chart scanner and wrapper generator
+- **Verity** (Go) - Image scanner and patcher
 - **Trivy** - Vulnerability scanner
 - **Copa** - Microsoft's container patching tool
 - **BuildKit** - Image building
-- **Helm** - Chart dependency management
+- **Cosign** - Image signing (Sigstore)
 
 ### Workflow System
 
 ```text
 ┌──────────────┐
-│  Renovate    │ Updates Chart.yaml
+│  Renovate    │ Updates values.yaml
 └──────┬───────┘
        ↓
-┌──────────────────┐
-│ patch-on-pr.yaml │ Auto-patches
-└──────┬───────────┘
+┌──────────────────────┐
+│ scan-and-patch.yaml  │ Auto-patches (matrix)
+└──────┬───────────────┘
        ↓
 ┌────────────────┐
 │ Merge to main  │
 └──────┬─────────┘
        ↓
-┌─────────────┐
-│ publish.yaml│ Pushes to Quay.io
-└─────────────┘
+┌────────────────┐
+│ Push to GHCR   │ Signed + attested
+└────────────────┘
 ```
 
-Plus scheduled scans for continuous monitoring.
+Plus daily scheduled scans for continuous monitoring.
 
 ## Usage
 
-### Add Charts to Monitor
+### Add Images to Monitor
 
-Edit `Chart.yaml`:
+Edit `values.yaml`:
 
 ```yaml
-dependencies:
-  - name: prometheus
-    version: "25.8.0"
-    repository: oci://ghcr.io/prometheus-community/charts
-  - name: grafana
-    version: "7.0.0"
-    repository: https://grafana.github.io/helm-charts
+my-app:
+  image:
+    registry: docker.io
+    repository: myorg/myapp
+    tag: "v1.2.3"
 ```
 
 Renovate and workflows handle the rest.
 
+### Updating Image Versions
+
+Renovate handles this automatically. For manual updates:
+
+```bash
+# Update values.yaml image tags
+# Create PR → scan-and-patch validates → merge → publishes
+```
+
 ### Configuration
 
 **Registry:**
-Set via `-registry` flag (e.g. `quay.io/your-org`).
+Set via `-registry` flag (e.g. `ghcr.io/your-org`).
 
 **Scan Schedule:**
-Edit `.github/workflows/scheduled-scan.yaml`:
+Edit `.github/workflows/scan-and-patch.yaml`:
 
 ```yaml
 schedule:
   - cron: '0 2 * * *'  # Daily at 2 AM UTC
 ```
 
-**Renovate:**
-See `.github/renovate.json` for dependency update config.
-
 ## Installation
 
 ### Prerequisites
 
-- Go 1.24+
+- Go 1.25+
 - Docker
-- Helm 3
 - BuildKit (for patching)
 
 ### Build
@@ -245,48 +214,49 @@ go build -o verity .
 
 ```bash
 docker run --rm -v $(pwd):/workspace \
-  quay.io/verity:latest \
-  -chart /workspace/Chart.yaml -output /workspace/charts
+  ghcr.io/verity-org/verity:latest \
+  list --images /workspace/values.yaml
 ```
 
 ## CLI Reference
 
 ```text
-verity [options]
+verity - Self-maintaining registry of security-patched container images
 
-Options:
-  -chart string
-        Path to Chart.yaml (default "Chart.yaml")
-  -output string
-        Output directory for charts (default "charts")
-  -patch
-        Enable patching with Trivy + Copa
-  -registry string
-        Target registry for patched images (e.g. quay.io/org)
-  -buildkit-addr string
-        BuildKit address (e.g. docker-container://buildkitd)
-  -report-dir string
-        Directory for Trivy JSON reports
+Commands:
+  discover    Scan images and output a GitHub Actions matrix
+  patch       Patch a single container image
+  list        List images from values.yaml (dry run)
+  catalog     Generate site catalog JSON from patch reports
+
+Use "verity [command] --help" for command-specific options.
 ```
+
+**Common Options:**
+- `--images, -i` - Path to images values.yaml (default: "values.yaml")
+- `--registry` - Target registry for patched images (e.g. ghcr.io/verity-org)
 
 **Examples:**
 
 ```bash
-# Scan only
-./verity -chart Chart.yaml -output ./charts
+# List images
+./verity list
 
-# Scan and patch
-./verity -chart Chart.yaml -output ./charts \
-  -patch \
-  -registry quay.io/myorg \
-  -buildkit-addr docker-container://buildkitd
+# Discover for CI
+./verity discover --discover-dir .verity
 
-# With custom report directory
-./verity -chart Chart.yaml -output ./charts \
-  -patch \
-  -registry quay.io/myorg \
-  -buildkit-addr docker-container://buildkitd \
-  -report-dir ./reports
+# Patch single image (in CI matrix)
+./verity patch \
+  --image "quay.io/prometheus/prometheus:v3.9.1" \
+  --registry ghcr.io/myorg \
+  --buildkit-addr docker-container://buildkitd \
+  --result-dir ./results
+
+# Generate site catalog
+./verity catalog \
+  --output site/src/data/catalog.json \
+  --registry ghcr.io/verity-org \
+  --reports-dir .verity/reports
 ```
 
 ## Development
@@ -301,33 +271,60 @@ go test ./...
 
 ```bash
 # Check YAML syntax
-for f in .github/workflows/*.yaml; do
-  yq eval '.' "$f" > /dev/null && echo "✅ $f" || echo "❌ $f"
-done
+actionlint .github/workflows/*.yaml
 ```
 
 ### Local Testing
 
-```bash
-# Start BuildKit
-docker run -d --privileged --name buildkitd \
-  moby/buildkit:v0.19.0
+Test without touching external registries using Docker Compose:
 
-# Run verity with patching
-./verity -chart Chart.yaml -output /tmp/test-charts \
-  -patch \
-  -registry quay.io/test \
-  -buildkit-addr docker-container://buildkitd
+```bash
+# Start local registry + BuildKit
+make up
+
+# Run integration tests (fast - no patching)
+make test-local
+
+# Test patching with local registry
+make test-local-patch
+
+# Stop services
+make down
+```
+
+**Manual testing:**
+
+```bash
+# Start services
+docker compose up -d
+
+# Test discover
+./verity discover
+
+# Test list
+./verity list
+
+# Test patch with local registry
+./verity patch \
+  --image "docker.io/library/nginx:1.29.5" \
+  --registry "localhost:5555/verity" \
+  --buildkit-addr "tcp://localhost:1234" \
+  --result-dir .verity/results
+
+# Check results
+ls -la .verity/results/
+curl http://localhost:5555/v2/_catalog
 
 # Cleanup
-docker stop buildkitd && docker rm buildkitd
+docker compose down -v
 ```
 
 ## Documentation
 
 - [WORKFLOWS.md](WORKFLOWS.md) - Complete workflow automation guide
-- [WRAPPER_CHARTS.md](WRAPPER_CHARTS.md) - How wrapper charts work
-- [.github/RENOVATE.md](.github/RENOVATE.md) - Renovate integration
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Development setup and guidelines
+- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture (images-only)
+- [MIGRATION_COMPLETE.md](MIGRATION_COMPLETE.md) - Migration from charts to images
 
 ## Security
 
@@ -335,9 +332,9 @@ docker stop buildkitd && docker rm buildkitd
 
 Every patch run includes:
 
-- Trivy vulnerability reports attached as **in-toto attestations** on each patched image
-- SBOM (CycloneDX) attestations on each patched image
-- Build provenance attestations via GitHub Actions
+- Trivy vulnerability reports attached as **in-toto attestations**
+- SBOM (CycloneDX) attestations
+- SLSA L3 build provenance attestations
 - CVE details and CVSS scores
 - Fixable vs unfixable vulnerabilities
 
@@ -348,7 +345,7 @@ Patched images are:
 1. Built from official upstream images
 2. Scanned with Trivy (open source)
 3. Patched with Copa (Microsoft, open source)
-4. Pushed to your registry with `-patched` suffix
+4. Pushed to GHCR with `-patched` suffix
 5. Signed with cosign (keyless, Sigstore)
 6. Attested with build provenance, SBOM, and vulnerability reports
 7. Never modify upstream images
@@ -359,19 +356,25 @@ Verify patches yourself:
 
 ```bash
 # Verify image signature
-cosign verify quay.io/verity/prometheus/prometheus:v2.48.0-patched
+cosign verify \
+  --certificate-identity-regexp "https://github.com/verity-org/verity/" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
 
-# Verify vulnerability report attestation
+# Verify build provenance
+gh attestation verify \
+  oci://ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched \
+  --owner verity-org
+
+# View vulnerability report attestation
 cosign verify-attestation --type vuln \
-  quay.io/verity/prometheus/prometheus:v2.48.0-patched
-
-# Verify SBOM attestation
-cosign verify-attestation --type spdxjson \
-  quay.io/verity/prometheus/prometheus:v2.48.0-patched
+  --certificate-identity-regexp "https://github.com/verity-org/verity/" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
 
 # Compare to original
-docker pull quay.io/prometheus/prometheus:v2.48.0
-docker pull quay.io/verity/prometheus/prometheus:v2.48.0-patched
+docker pull quay.io/prometheus/prometheus:v3.9.1
+docker pull ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
 ```
 
 ## FAQ
@@ -382,15 +385,14 @@ A: Copa patches OS-level packages (apt, yum, apk). It cannot patch application v
 **Q: Will this patch ALL vulnerabilities?**
 A: No. Only vulnerabilities with available package updates. Some images may have unfixable CVEs.
 
-**Q: Can I use my existing Chart values?**
-A: Yes! Wrapper charts support all original chart values. Just namespace them under the chart name
-(or use them as-is, Helm handles it).
+**Q: How do I use patched images in my deployments?**
+A: Just change the image reference to use `ghcr.io/verity-org/` instead of the original registry.
 
 **Q: What if I don't want to auto-merge security updates?**
-A: Edit `.github/renovate.json` and set `automerge: false` for vulnerability alerts.
+A: Edit `.github/renovate.json` and set `automerge: false`.
 
-**Q: How do I add more charts?**
-A: Just add them to `Chart.yaml` dependencies. Workflows automatically handle any number of charts.
+**Q: How do I add more images?**
+A: Just add them to `values.yaml`. Workflows automatically handle any number of images.
 
 **Q: Can I run this without GitHub Actions?**
 A: Yes! Verity is a standalone CLI tool. Run it manually or integrate with any CI system.
@@ -403,6 +405,8 @@ A: Yes! Verity is a standalone CLI tool. Run it manually or integrate with any C
 4. Add tests
 5. Open a pull request
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
 ## License
 
 [MIT License](LICENSE)
@@ -411,8 +415,8 @@ A: Yes! Verity is a standalone CLI tool. Run it manually or integrate with any C
 
 - [Copa](https://github.com/project-copacetic/copacetic) - Microsoft's container patching tool
 - [Trivy](https://github.com/aquasecurity/trivy) - Vulnerability scanner
-- [Helm](https://helm.sh) - Kubernetes package manager
-- [Renovate](https://renovatebot.com) - Dependency automation
+- [Sigstore](https://www.sigstore.dev/) - Keyless signing infrastructure
+- [SLSA](https://slsa.dev/) - Supply-chain Levels for Software Artifacts
 
 ---
 

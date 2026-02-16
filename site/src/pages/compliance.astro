@@ -714,9 +714,9 @@ const base = import.meta.env.BASE_URL;
             class="whitespace-pre-wrap break-all">cosign verify \
   --certificate-identity-regexp "https://github.com/verity-org/verity/" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-  quay.io/verity/grafana/grafana:11.6.0-patched</pre>
+  ghcr.io/verity-org/grafana/grafana:11.6.0-patched</pre>
           <CopyButton
-            text='cosign verify --certificate-identity-regexp "https://github.com/verity-org/verity/" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" quay.io/verity/grafana/grafana:11.6.0-patched'
+            text='cosign verify --certificate-identity-regexp "https://github.com/verity-org/verity/" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" ghcr.io/verity-org/grafana/grafana:11.6.0-patched'
           />
         </div>
       </div>
@@ -727,25 +727,10 @@ const base = import.meta.env.BASE_URL;
         >
           <pre
             class="whitespace-pre-wrap break-all">gh attestation verify \
-  oci://quay.io/verity/grafana/grafana:11.6.0-patched \
+  oci://ghcr.io/verity-org/grafana/grafana:11.6.0-patched \
   --owner verity-org</pre>
           <CopyButton
-            text="gh attestation verify oci://quay.io/verity/grafana/grafana:11.6.0-patched --owner verity-org"
-          />
-        </div>
-      </div>
-      <div>
-        <div class="text-sm font-medium mb-2">Verify cosign signature on a Helm chart</div>
-        <div
-          class="bg-gray-900 text-gray-100 rounded-lg p-4 font-mono text-sm overflow-x-auto flex items-start justify-between gap-4"
-        >
-          <pre
-            class="whitespace-pre-wrap break-all">cosign verify \
-  --certificate-identity-regexp "https://github.com/verity-org/verity/" \
-  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-  quay.io/verity/charts/prometheus:28.9.1-4</pre>
-          <CopyButton
-            text='cosign verify --certificate-identity-regexp "https://github.com/verity-org/verity/" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" quay.io/verity/charts/prometheus:28.9.1-4'
+            text="gh attestation verify oci://ghcr.io/verity-org/grafana/grafana:11.6.0-patched --owner verity-org"
           />
         </div>
       </div>
@@ -758,8 +743,7 @@ const base = import.meta.env.BASE_URL;
     <div class="bg-gray-50 rounded-lg p-6">
       <ol class="space-y-3 text-sm text-gray-600 list-decimal list-inside">
         <li>
-          <span class="font-medium text-gray-900">Discover</span> &mdash; Helm chart dependencies and
-          standalone images are enumerated from version-controlled manifests
+          <span class="font-medium text-gray-900">Discover</span> &mdash; Container images are enumerated from values.yaml
         </li>
         <li>
           <span class="font-medium text-gray-900">Scan</span> &mdash; Trivy scans each image for OS-level
@@ -770,20 +754,15 @@ const base = import.meta.env.BASE_URL;
           on parallel ephemeral GitHub Actions runners
         </li>
         <li>
-          <span class="font-medium text-gray-900">Push</span> &mdash; Patched images are pushed to the
-          GHCR OCI registry
+          <span class="font-medium text-gray-900">Push</span> &mdash; Patched images are pushed to GHCR
         </li>
         <li>
-          <span class="font-medium text-gray-900">Sign</span> &mdash; Cosign signs each artifact using
+          <span class="font-medium text-gray-900">Sign</span> &mdash; Cosign signs each image using
           keyless OIDC; signatures are logged in Rekor
         </li>
         <li>
-          <span class="font-medium text-gray-900">Attest</span> &mdash; SLSA build provenance and CycloneDX
-          SBOM are attached as in-toto attestations
-        </li>
-        <li>
-          <span class="font-medium text-gray-900">Publish</span> &mdash; Wrapper Helm charts are packaged,
-          pushed, and signed in the OCI registry
+          <span class="font-medium text-gray-900">Attest</span> &mdash; SLSA build provenance, CycloneDX
+          SBOM, and vulnerability reports are attached as in-toto attestations
         </li>
       </ol>
     </div>

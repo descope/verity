@@ -27,7 +27,7 @@ Running verity with patching:
 
 ```bash
 ./verity -chart Chart.yaml -output charts -patch \
-  -registry quay.io/verity \
+  -registry ghcr.io/verity-org \
   -buildkit-addr docker-container://buildkitd
 ```
 
@@ -65,12 +65,12 @@ dependencies:
 prometheus:
   server:
     image:
-      registry: quay.io/verity
+      registry: ghcr.io/verity-org
       repository: prometheus
       tag: v2.48.0-patched
   alertmanager:
     image:
-      registry: quay.io/verity
+      registry: ghcr.io/verity-org
       repository: alertmanager
       tag: v0.26.0-patched
   # ... other patched images
@@ -150,13 +150,13 @@ helm dependency build charts/prometheus/
 helm package charts/prometheus/
 
 # Push to your registry
-helm push prometheus-1.0.0.tgz oci://quay.io/verity/charts
+helm push prometheus-1.0.0.tgz oci://ghcr.io/verity-org/charts
 ```
 
 Then users can install directly from your registry:
 
 ```bash
-helm install my-prometheus oci://quay.io/verity/charts/prometheus --version 1.0.0
+helm install my-prometheus oci://ghcr.io/verity-org/charts/prometheus --version 1.0.0
 ```
 
 ### Overriding Patched Images

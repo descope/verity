@@ -47,7 +47,7 @@ Verity operates in distinct modes, each designed for a specific phase of the pip
 
 # Patch single image: run in a matrix job
 ./verity -patch-single -image "quay.io/prometheus/prometheus:v3.9.1" \
-  -registry quay.io/verity \
+  -registry ghcr.io/verity-org \
   -buildkit-addr docker-container://buildkitd \
   -report-dir .verity/reports \
   -result-dir .verity/results
@@ -58,13 +58,13 @@ Verity operates in distinct modes, each designed for a specific phase of the pip
   -results-dir .verity/results \
   -reports-dir .verity/reports \
   -output charts \
-  -registry quay.io/verity
+  -registry ghcr.io/verity-org
 
 # Scan: list images without patching (dry run)
 ./verity -scan -chart Chart.yaml -images values.yaml
 
 # Site data: generate catalog JSON from existing charts
-./verity -site-data site/src/data/catalog.json -images values.yaml -registry quay.io/verity
+./verity -site-data site/src/data/catalog.json -images values.yaml -registry ghcr.io/verity-org
 ```
 
 ## Workflows
@@ -194,15 +194,14 @@ Workflows use `GITHUB_TOKEN` plus Quay.io secrets:
 
 - `contents: write` - For committing wrapper charts
 - `pull-requests: write` - For scheduled-scan to create PRs
-- `QUAY_USERNAME` / `QUAY_PASSWORD` - For Quay.io image and chart publishing
-- `QUAY_API_TOKEN` - For setting new Quay.io repos to public
+- `GITHUB_TOKEN` - Automatically provided by GitHub Actions for GHCR authentication
 
 ## Configuration
 
 ### Registry Settings
 
-Patched images: `quay.io/verity/<image-name>:<tag>-patched`
-Charts: `oci://quay.io/verity/charts/<chart-name>`
+Patched images: `ghcr.io/verity-org/<image-name>:<tag>-patched`
+Charts: `oci://ghcr.io/verity-org/charts/<chart-name>`
 
 ### Matrix Settings
 

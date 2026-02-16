@@ -38,7 +38,7 @@ This action:
 
 - name: Run Copa patching
   run: |
-    ./verity -chart Chart.yaml -output charts \
+    ./verity-org -chart Chart.yaml -output charts \
       -patch \
       -buildkit-addr docker-container://${{ steps.buildx.outputs.name }}
 ```
@@ -83,13 +83,13 @@ Publishes wrapper charts to OCI registry.
 **Arguments:**
 
 - `charts-dir` - Directory containing charts/ folder
-- `registry` - OCI registry (e.g., quay.io)
+- `registry` - OCI registry (e.g., ghcr.io)
 - `org` - Organization name
 
 **Example:**
 
 ```bash
-./.github/scripts/publish-charts.sh . quay.io verity
+./.github/scripts/publish-charts.sh . ghcr.io verity-org
 ```
 
 **Actions:**
@@ -113,13 +113,13 @@ Verifies patched images exist in the registry.
 **Arguments:**
 
 - `charts-dir` - Directory containing charts/ folder
-- `registry` - Docker registry (e.g., quay.io)
+- `registry` - Docker registry (e.g., ghcr.io)
 - `org` - Organization name
 
 **Example:**
 
 ```bash
-./.github/scripts/verify-images.sh . quay.io verity
+./.github/scripts/verify-images.sh . ghcr.io verity-org
 ```
 
 **Actions:**
@@ -144,13 +144,13 @@ Generates a markdown index of published charts.
 
 - `charts-dir` - Directory containing charts/ folder
 - `output-file` - Path to output markdown file
-- `registry` - OCI registry (e.g., quay.io)
+- `registry` - OCI registry (e.g., ghcr.io)
 - `org` - Organization name
 
 **Example:**
 
 ```bash
-./.github/scripts/generate-index.sh . /tmp/index.md quay.io verity
+./.github/scripts/generate-index.sh . /tmp/index.md ghcr.io verity-org
 ```
 
 **Output:** Markdown file with installation commands for each chart
@@ -251,8 +251,8 @@ bash -n .github/scripts/validate-charts.sh
 # Start BuildKit
 ./.github/scripts/start-buildkit.sh
 
-# Run verity with patching
-./verity -chart Chart.yaml -output /tmp/test-charts \
+# Run verity-org with patching
+./verity-org -chart Chart.yaml -output /tmp/test-charts \
   -patch \
   -buildkit-addr docker-container://buildkitd
 

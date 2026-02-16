@@ -195,7 +195,7 @@ Charts need reports embedded. Trigger scan-and-patch workflow manually.
 
 ### OCI authentication issues
 
-Ensure `QUAY_USERNAME` and `QUAY_PASSWORD` secrets are set.
+GHCR authentication uses `GITHUB_TOKEN` automatically in workflows.
 
 ## Getting Help
 

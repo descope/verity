@@ -1,17 +1,21 @@
-.PHONY: help build test test-coverage lint lint-fmt lint-vuln lint-workflows lint-yaml lint-shell lint-markdown lint-frontend fmt fmt-strict fmt-frontend check-frontend vet sec clean install-tools quality
+.PHONY: help build test test-coverage lint lint-fmt lint-vuln lint-workflows lint-yaml lint-shell lint-markdown lint-frontend fmt fmt-strict fmt-frontend check-frontend vet sec clean install-tools quality test-local test-local-patch up down
 
 # Default target
 help:
 	@echo "Available targets:"
-	@echo "  make build         - Build the verity binary"
-	@echo "  make test          - Run tests"
-	@echo "  make lint          - Run Go linter (golangci-lint)"
-	@echo "  make quality       - Run ALL linters and tests"
-	@echo "  make fmt           - Format code"
-	@echo "  make vet           - Run go vet"
-	@echo "  make sec           - Run security scanner (gosec)"
-	@echo "  make clean         - Clean build artifacts"
-	@echo "  make install-tools - Install development tools via mise"
+	@echo "  make build            - Build the verity binary"
+	@echo "  make test             - Run unit tests"
+	@echo "  make test-local       - Run integration tests with local registry"
+	@echo "  make test-local-patch - Test patching with local registry"
+	@echo "  make up               - Start local registry + BuildKit"
+	@echo "  make down             - Stop local test environment"
+	@echo "  make lint             - Run Go linter (golangci-lint)"
+	@echo "  make quality          - Run ALL linters and tests"
+	@echo "  make fmt              - Format code"
+	@echo "  make vet              - Run go vet"
+	@echo "  make sec              - Run security scanner (gosec)"
+	@echo "  make clean            - Clean build artifacts"
+	@echo "  make install-tools    - Install development tools via mise"
 
 # Build binary
 build:
@@ -123,3 +127,48 @@ install-tools:
 	@echo "  - shellcheck (Shell script linter)"
 	@echo ""
 	@echo "Run 'mise list' to see all installed tools"
+
+# ── Local Testing with Docker ────────────────────────────────────────
+
+# Start local test environment (registry + buildkit)
+up:
+	@echo "Starting local registry and BuildKit..."
+	docker compose up -d
+	@echo "Waiting for services to be ready..."
+	@sleep 3
+	@echo ""
+	@echo "✓ Local registry:  localhost:5555"
+	@echo "✓ BuildKit:        tcp://localhost:1234"
+	@echo ""
+	@echo "Use 'make test-local' to run integration tests"
+
+# Stop local test environment
+down:
+	docker compose down
+
+# Run integration tests with local registry (fast - no patching)
+test-local: build
+	@echo "Running local integration tests..."
+	@echo ""
+	@echo "→ Testing discover..."
+	./verity discover --discover-dir .verity
+	@echo ""
+	@echo "→ Testing list..."
+	./verity list | head -10
+	@echo ""
+	@echo "✓ Integration tests complete"
+
+# Test patching with local registry (requires: make up)
+test-local-patch: build
+	@echo "Testing patch with local registry..."
+	@echo "Note: Make sure local registry is running (make up)"
+	@echo ""
+	./verity patch \
+		--image "docker.io/library/nginx:1.29.5" \
+		--registry "localhost:5555/verity" \
+		--buildkit-addr "tcp://localhost:1234" \
+		--result-dir .verity/results \
+		--report-dir .verity/reports
+	@echo ""
+	@echo "✓ Patch test complete"
+	@echo "Check .verity/results/ for patch results"
