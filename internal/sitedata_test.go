@@ -4,85 +4,13 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"sort"
 	"testing"
 )
 
 func TestGenerateSiteData(t *testing.T) {
-	// Create a mock chart structure in a temp dir
 	tmpDir := t.TempDir()
-	chartsDir := filepath.Join(tmpDir, "charts")
-	chartDir := filepath.Join(chartsDir, "myapp")
-	reportsDir := filepath.Join(chartDir, "reports")
 
-	if err := os.MkdirAll(reportsDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	// Write Chart.yaml
-	chartYaml := `apiVersion: v2
-name: myapp
-description: myapp with Copa-patched container images
-type: application
-version: 1.0.0-0
-dependencies:
-    - name: myapp
-      version: "1.0.0"
-      repository: oci://ghcr.io/example/charts
-`
-	if err := os.WriteFile(filepath.Join(chartDir, "Chart.yaml"), []byte(chartYaml), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	// Write values.yaml
-	valuesYaml := `myapp:
-    image:
-        registry: ghcr.io/testorg
-        repository: myorg/myapp
-        tag: v1.0.0-patched
-`
-	if err := os.WriteFile(filepath.Join(chartDir, "values.yaml"), []byte(valuesYaml), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	// Write a mock Trivy report
-	report := map[string]interface{}{
-		"Metadata": map[string]interface{}{
-			"OS": map[string]interface{}{
-				"Family": "debian",
-				"Name":   "12.0",
-			},
-		},
-		"Results": []map[string]interface{}{
-			{
-				"Vulnerabilities": []map[string]interface{}{
-					{
-						"VulnerabilityID":  "CVE-2024-0001",
-						"PkgName":          "openssl",
-						"InstalledVersion": "1.1.1",
-						"FixedVersion":     "1.1.2",
-						"Severity":         "HIGH",
-						"Title":            "Buffer overflow in openssl",
-					},
-					{
-						"VulnerabilityID":  "CVE-2024-0002",
-						"PkgName":          "zlib",
-						"InstalledVersion": "1.2.11",
-						"FixedVersion":     "1.2.12",
-						"Severity":         "MEDIUM",
-						"Title":            "Integer overflow in zlib",
-					},
-				},
-			},
-		},
-	}
-	reportJSON, _ := json.Marshal(report)
-	reportPath := filepath.Join(reportsDir, "docker.io_myorg_myapp_v1.0.0.json")
-	if err := os.WriteFile(reportPath, reportJSON, 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	// Write a standalone images file
+	// Write an images file
 	imagesFile := filepath.Join(tmpDir, "images.yaml")
 	imagesYaml := `redis:
   image:
@@ -94,9 +22,9 @@ dependencies:
 		t.Fatal(err)
 	}
 
-	// Run GenerateSiteData (no registry — falls back to local parsing)
+	// Run GenerateSiteData (no registry)
 	outputPath := filepath.Join(tmpDir, "output", "catalog.json")
-	err := GenerateSiteData(chartsDir, imagesFile, "", "", outputPath)
+	err := GenerateSiteData(imagesFile, "", "", outputPath)
 	if err != nil {
 		t.Fatalf("GenerateSiteData failed: %v", err)
 	}
@@ -112,7 +40,7 @@ dependencies:
 		t.Fatalf("Failed to parse output JSON: %v", err)
 	}
 
-	// Verify structure (no registry in local-only mode)
+	// Verify structure
 	if siteData.Registry != "" {
 		t.Errorf("expected empty registry, got %s", siteData.Registry)
 	}
@@ -120,67 +48,18 @@ dependencies:
 		t.Error("expected generatedAt to be set")
 	}
 
-	// Verify charts
-	if len(siteData.Charts) != 1 {
-		t.Fatalf("expected 1 chart, got %d", len(siteData.Charts))
+	// Verify images list
+	if len(siteData.Images) != 1 {
+		t.Fatalf("expected 1 image, got %d", len(siteData.Images))
 	}
-	chart := siteData.Charts[0]
-	if chart.Name != "myapp" {
-		t.Errorf("expected chart name myapp, got %s", chart.Name)
-	}
-	if chart.Version != "1.0.0-0" {
-		t.Errorf("expected version 1.0.0-0, got %s", chart.Version)
-	}
-	if chart.UpstreamVersion != "1.0.0" {
-		t.Errorf("expected upstream version 1.0.0, got %s", chart.UpstreamVersion)
-	}
-
-	// Verify chart images
-	if len(chart.Images) != 1 {
-		t.Fatalf("expected 1 image, got %d", len(chart.Images))
-	}
-	img := chart.Images[0]
-	if img.OriginalRef != "docker.io/myorg/myapp:v1.0.0" {
-		t.Errorf("expected original ref docker.io/myorg/myapp:v1.0.0, got %s", img.OriginalRef)
-	}
-	if img.OS != "debian 12.0" {
-		t.Errorf("expected OS debian 12.0, got %s", img.OS)
-	}
-	if img.VulnSummary.Total != 2 {
-		t.Errorf("expected 2 total vulns, got %d", img.VulnSummary.Total)
-	}
-	if img.VulnSummary.Fixable != 2 {
-		t.Errorf("expected 2 fixable vulns, got %d", img.VulnSummary.Fixable)
-	}
-	if img.VulnSummary.SeverityCounts["HIGH"] != 1 {
-		t.Errorf("expected 1 HIGH vuln, got %d", img.VulnSummary.SeverityCounts["HIGH"])
-	}
-	if img.VulnSummary.SeverityCounts["MEDIUM"] != 1 {
-		t.Errorf("expected 1 MEDIUM vuln, got %d", img.VulnSummary.SeverityCounts["MEDIUM"])
-	}
-
-	// Verify unified images list (chart images + standalone from values.yaml)
-	if len(siteData.Images) < 1 {
-		t.Fatalf("expected at least 1 image, got %d", len(siteData.Images))
-	}
-	// The redis image from values.yaml should appear in the unified images list.
-	foundRedis := false
-	for _, img := range siteData.Images {
-		if img.OriginalRef == "docker.io/library/redis:7.0.0" {
-			foundRedis = true
-			break
-		}
-	}
-	if !foundRedis {
-		t.Error("expected redis image in unified images list")
+	img := siteData.Images[0]
+	if img.OriginalRef != "docker.io/library/redis:7.0.0" {
+		t.Errorf("expected redis image, got %s", img.OriginalRef)
 	}
 
 	// Verify summary
-	if siteData.Summary.TotalCharts != 1 {
-		t.Errorf("expected 1 total chart, got %d", siteData.Summary.TotalCharts)
-	}
-	if siteData.Summary.TotalImages != 2 {
-		t.Errorf("expected 2 total images, got %d", siteData.Summary.TotalImages)
+	if siteData.Summary.TotalImages != 1 {
+		t.Errorf("expected 1 total image, got %d", siteData.Summary.TotalImages)
 	}
 }
 
@@ -224,78 +103,15 @@ func TestParseTrivyReportFull(t *testing.T) {
 	}
 }
 
-func TestUnsanitize(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{
-			input:    "quay.io_brancz_kube-rbac-proxy_v0.14.0",
-			expected: "quay.io/brancz/kube-rbac-proxy:v0.14.0",
-		},
-		{
-			input:    "quay.io_prometheus_prometheus_v2.48.0",
-			expected: "quay.io/prometheus/prometheus:v2.48.0",
-		},
-		{
-			input:    "registry.k8s.io_kube-state-metrics_kube-state-metrics_v2.10.1",
-			expected: "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.10.1",
-		},
-		{
-			input:    "docker.io_grafana_grafana_12.3.1",
-			expected: "docker.io/grafana/grafana:12.3.1",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			result := unsanitize(tt.input)
-			if result != tt.expected {
-				t.Errorf("unsanitize(%q) = %q, want %q", tt.input, result, tt.expected)
-			}
-		})
-	}
-}
-
-func TestSanitizeRoundTrip(t *testing.T) {
-	refs := []string{
-		"quay.io/brancz/kube-rbac-proxy:v0.14.0",
-		"quay.io/prometheus/prometheus:v2.48.0",
-		"docker.io/grafana/grafana:12.3.1",
-	}
-
-	for _, ref := range refs {
-		t.Run(ref, func(t *testing.T) {
-			sanitized := sanitize(ref)
-			restored := unsanitize(sanitized)
-			if restored != ref {
-				t.Errorf("round-trip failed: %q → %q → %q", ref, sanitized, restored)
-			}
-		})
-	}
-}
-
 func TestComputeSummary(t *testing.T) {
-	charts := []SiteChart{
-		{
-			Name: "chart1",
-			Images: []SiteImage{
-				{VulnSummary: VulnSummary{Total: 5, Fixable: 3, SeverityCounts: map[string]int{"HIGH": 3, "LOW": 2}}},
-				{VulnSummary: VulnSummary{Total: 2, Fixable: 1, SeverityCounts: map[string]int{"MEDIUM": 2}}},
-			},
-		},
-	}
 	allImages := []SiteImage{
 		{VulnSummary: VulnSummary{Total: 5, Fixable: 3, SeverityCounts: map[string]int{"HIGH": 3, "LOW": 2}}},
 		{VulnSummary: VulnSummary{Total: 2, Fixable: 1, SeverityCounts: map[string]int{"MEDIUM": 2}}},
 		{VulnSummary: VulnSummary{Total: 1, Fixable: 0, SeverityCounts: map[string]int{"LOW": 1}}},
 	}
 
-	summary := computeSummary(charts, allImages)
+	summary := computeSummary(allImages)
 
-	if summary.TotalCharts != 1 {
-		t.Errorf("expected 1 chart, got %d", summary.TotalCharts)
-	}
 	if summary.TotalImages != 3 {
 		t.Errorf("expected 3 images, got %d", summary.TotalImages)
 	}
@@ -304,298 +120,5 @@ func TestComputeSummary(t *testing.T) {
 	}
 	if summary.FixableVulns != 4 {
 		t.Errorf("expected 4 fixable, got %d", summary.FixableVulns)
-	}
-}
-
-func TestComputeSummaryMultipleVersions(t *testing.T) {
-	// Multiple chart entries with the same name (different versions)
-	// should count as 1 unique chart.
-	charts := []SiteChart{
-		{
-			Name:    "prometheus",
-			Version: "28.9.1-5",
-			Images: []SiteImage{
-				{VulnSummary: VulnSummary{Total: 4, Fixable: 4, SeverityCounts: map[string]int{"UNKNOWN": 4}}},
-			},
-		},
-		{
-			Name:    "prometheus",
-			Version: "28.9.1-4",
-			Images: []SiteImage{
-				{VulnSummary: VulnSummary{Total: 2, Fixable: 2, SeverityCounts: map[string]int{"HIGH": 2}}},
-			},
-		},
-		{
-			Name:    "victoria-logs-single",
-			Version: "0.11.24-1",
-			Images: []SiteImage{
-				{VulnSummary: VulnSummary{Total: 1, Fixable: 0, SeverityCounts: map[string]int{"LOW": 1}}},
-			},
-		},
-	}
-
-	allImages := []SiteImage{
-		{VulnSummary: VulnSummary{Total: 4, Fixable: 4, SeverityCounts: map[string]int{"UNKNOWN": 4}}},
-		{VulnSummary: VulnSummary{Total: 2, Fixable: 2, SeverityCounts: map[string]int{"HIGH": 2}}},
-		{VulnSummary: VulnSummary{Total: 1, Fixable: 0, SeverityCounts: map[string]int{"LOW": 1}}},
-	}
-
-	summary := computeSummary(charts, allImages)
-
-	if summary.TotalCharts != 2 {
-		t.Errorf("expected 2 unique charts, got %d", summary.TotalCharts)
-	}
-	if summary.TotalImages != 3 {
-		t.Errorf("expected 3 images, got %d", summary.TotalImages)
-	}
-	if summary.TotalVulns != 7 {
-		t.Errorf("expected 7 vulns, got %d", summary.TotalVulns)
-	}
-	if summary.FixableVulns != 6 {
-		t.Errorf("expected 6 fixable, got %d", summary.FixableVulns)
-	}
-}
-
-func TestDiscoverRegistryVersions(t *testing.T) {
-	if os.Getenv("RUN_INTEGRATION_TESTS") == "" {
-		t.Skip("skipping integration test; set RUN_INTEGRATION_TESTS=1 to enable")
-	}
-
-	// Discover all versions except the "local" one (28.9.1-4).
-	charts, err := discoverRegistryVersions(
-		"prometheus",
-		"28.9.1-4",
-		"oci://quay.io/verity/charts",
-		"quay.io/verity",
-	)
-	if err != nil {
-		t.Fatalf("discoverRegistryVersions failed: %v", err)
-	}
-
-	// Should find historical versions (at least the 25.8.0-x series).
-	// Skip if the chart repo is not yet public (returns empty).
-	if len(charts) == 0 {
-		t.Skip("no versions found — chart repo may not be public yet")
-	}
-
-	t.Logf("discovered %d historical versions:", len(charts))
-	for _, c := range charts {
-		t.Logf("  %s v%s (upstream %s) — %d images",
-			c.Name, c.Version, c.UpstreamVersion, len(c.Images))
-	}
-
-	// Each chart entry should have a non-empty name, version, and images.
-	for _, c := range charts {
-		if c.Name != "prometheus" {
-			t.Errorf("expected name 'prometheus', got %q", c.Name)
-		}
-		if c.Version == "" {
-			t.Error("expected non-empty version")
-		}
-		if c.Version == "28.9.1-4" {
-			t.Error("local version should be excluded")
-		}
-		if len(c.Images) == 0 {
-			t.Errorf("version %s has no images", c.Version)
-		}
-	}
-
-	// Verify that a 25.8.0-x version exists with different images
-	// than the 28.9.1 series (confirming per-version filtering works).
-	var found25 *SiteChart
-	for i := range charts {
-		if charts[i].UpstreamVersion == "25.8.0" {
-			found25 = &charts[i]
-			break
-		}
-	}
-	if found25 == nil {
-		t.Fatal("expected to find a 25.8.0-x version")
-	}
-
-	// The 25.8.0 series should have different image tags than 28.9.1.
-	imageRefs := make([]string, 0, len(found25.Images))
-	for _, img := range found25.Images {
-		imageRefs = append(imageRefs, img.OriginalRef)
-	}
-	sort.Strings(imageRefs)
-	t.Logf("25.8.0 images: %v", imageRefs)
-
-	// Verify it does NOT contain 28.9.1-era images.
-	for _, ref := range imageRefs {
-		if ref == "quay.io/prometheus/prometheus:v3.9.1" {
-			t.Error("25.8.0 version should not contain v3.9.1 images")
-		}
-	}
-}
-
-func TestDiscoverRegistryVersionsNonExistent(t *testing.T) {
-	if os.Getenv("RUN_INTEGRATION_TESTS") == "" {
-		t.Skip("skipping integration test; set RUN_INTEGRATION_TESTS=1 to enable")
-	}
-
-	// Non-existent chart should return empty, not error.
-	charts, err := discoverRegistryVersions(
-		"nonexistent-chart-xyz",
-		"1.0.0",
-		"oci://quay.io/verity/charts",
-		"quay.io/verity",
-	)
-	if err != nil {
-		t.Fatalf("expected nil error, got: %v", err)
-	}
-	if len(charts) != 0 {
-		t.Errorf("expected 0 charts, got %d", len(charts))
-	}
-}
-
-func TestParseWrapperChartStubImageFallback(t *testing.T) {
-	// Test the stub image fallback when reports/ is missing but paths.json
-	// and values.yaml indicate patched images exist.
-	tmpDir := t.TempDir()
-	chartDir := filepath.Join(tmpDir, "myapp")
-
-	if err := os.MkdirAll(chartDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	// Write Chart.yaml
-	chartYaml := `apiVersion: v2
-name: myapp
-description: Test chart
-type: application
-version: 1.0.0-0
-dependencies:
-  - name: myapp
-    version: "1.0.0"
-    repository: oci://ghcr.io/example/charts
-`
-	if err := os.WriteFile(filepath.Join(chartDir, "Chart.yaml"), []byte(chartYaml), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	// Write values.yaml with patched image
-	valuesYaml := `myapp:
-  image:
-    registry: quay.io/verity
-    repository: myorg/myapp
-    tag: v1.0.0-patched
-`
-	if err := os.WriteFile(filepath.Join(chartDir, "values.yaml"), []byte(valuesYaml), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	// Write paths.json (sanitized ID → values path mapping)
-	pathsJSON := `{
-  "docker.io_myorg_myapp_v1.0.0": ".myapp.image"
-}`
-	if err := os.WriteFile(filepath.Join(chartDir, "paths.json"), []byte(pathsJSON), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	// Do NOT create reports/ directory - this triggers the stub fallback
-
-	// Parse the chart
-	chart, err := parseWrapperChart(tmpDir, "myapp", "quay.io/verity")
-	if err != nil {
-		t.Fatalf("parseWrapperChart failed: %v", err)
-	}
-
-	// Verify stub image was created
-	if len(chart.Images) != 1 {
-		t.Fatalf("expected 1 stub image, got %d", len(chart.Images))
-	}
-
-	img := chart.Images[0]
-
-	// Verify correct fields
-	if img.ID != "docker.io_myorg_myapp_v1.0.0" {
-		t.Errorf("expected ID docker.io_myorg_myapp_v1.0.0, got %s", img.ID)
-	}
-	if img.OriginalRef != "docker.io/myorg/myapp:v1.0.0" {
-		t.Errorf("expected OriginalRef docker.io/myorg/myapp:v1.0.0, got %s", img.OriginalRef)
-	}
-	if img.PatchedRef != "quay.io/verity/myorg/myapp:v1.0.0-patched" {
-		t.Errorf("expected PatchedRef quay.io/verity/myorg/myapp:v1.0.0-patched, got %s", img.PatchedRef)
-	}
-	if img.ValuesPath != ".myapp.image" {
-		t.Errorf("expected ValuesPath .myapp.image, got %s", img.ValuesPath)
-	}
-
-	// Verify 0 vulnerabilities (stub)
-	if img.VulnSummary.Total != 0 {
-		t.Errorf("expected 0 total vulns (stub), got %d", img.VulnSummary.Total)
-	}
-	if img.VulnSummary.Fixable != 0 {
-		t.Errorf("expected 0 fixable vulns (stub), got %d", img.VulnSummary.Fixable)
-	}
-	if len(img.Vulnerabilities) != 0 {
-		t.Errorf("expected 0 vulnerabilities list (stub), got %d", len(img.Vulnerabilities))
-	}
-
-	// Verify ChartName is populated
-	if img.ChartName != "myapp" {
-		t.Errorf("expected ChartName myapp, got %s", img.ChartName)
-	}
-}
-
-func TestParseWrapperChartStubImageSorting(t *testing.T) {
-	// Test that stub images are sorted deterministically
-	tmpDir := t.TempDir()
-	chartDir := filepath.Join(tmpDir, "test")
-
-	if err := os.MkdirAll(chartDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	chartYaml := `apiVersion: v2
-name: test
-version: 1.0.0
-dependencies:
-  - name: test
-    version: "1.0.0"
-    repository: oci://example.com/charts
-`
-	if err := os.WriteFile(filepath.Join(chartDir, "Chart.yaml"), []byte(chartYaml), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	valuesYaml := `app: {}`
-	if err := os.WriteFile(filepath.Join(chartDir, "values.yaml"), []byte(valuesYaml), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	// Multiple images in paths.json (map iteration is nondeterministic)
-	pathsJSON := `{
-  "zulu.io_zorg_zapp_v3.0.0": ".zapp.image",
-  "alpha.io_aorg_aapp_v1.0.0": ".aapp.image",
-  "beta.io_borg_bapp_v2.0.0": ".bapp.image"
-}`
-	if err := os.WriteFile(filepath.Join(chartDir, "paths.json"), []byte(pathsJSON), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	// Parse multiple times to verify stable ordering
-	for run := 0; run < 5; run++ {
-		chart, err := parseWrapperChart(tmpDir, "test", "quay.io/verity")
-		if err != nil {
-			t.Fatalf("run %d: parseWrapperChart failed: %v", run, err)
-		}
-
-		if len(chart.Images) != 3 {
-			t.Fatalf("run %d: expected 3 images, got %d", run, len(chart.Images))
-		}
-
-		// Verify sorted by OriginalRef
-		expectedOrder := []string{
-			"alpha.io/aorg/aapp:v1.0.0",
-			"beta.io/borg/bapp:v2.0.0",
-			"zulu.io/zorg/zapp:v3.0.0",
-		}
-		for i, expected := range expectedOrder {
-			if chart.Images[i].OriginalRef != expected {
-				t.Errorf("run %d: image[%d] expected %s, got %s", run, i, expected, chart.Images[i].OriginalRef)
-			}
-		}
 	}
 }

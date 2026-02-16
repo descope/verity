@@ -14,9 +14,16 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
 
+// Skip reason constants for consistent change detection.
+const (
+	SkipReasonUpToDate          = "patched image up to date"
+	SkipReasonNoVulnerabilities = "no fixable vulnerabilities"
+	SkipReasonNoPatchResult     = "no patch result for image"
+)
+
 // PatchOptions configures the patching pipeline.
 type PatchOptions struct {
-	// TargetRegistry is the registry to push patched images to (e.g. "quay.io/verity").
+	// TargetRegistry is the registry to push patched images to (e.g. "ghcr.io/verity-org").
 	// If empty, patched images are left in the local Docker daemon only.
 	TargetRegistry string
 
@@ -51,7 +58,7 @@ type PatchResult struct {
 // image already exists there. If so, it scans the patched image
 // instead of the upstream — skipping entirely when no new fixable
 // vulns are found, or re-patching from upstream when they are.
-func PatchImage(ctx context.Context, img Image, opts PatchOptions) *PatchResult {
+func PatchImage(ctx context.Context, img Image, opts PatchOptions) *PatchResult { //nolint:gocognit,gocyclo,cyclop,funlen // complex workflow
 	result := &PatchResult{Original: img}
 
 	tag := img.Tag
@@ -61,7 +68,7 @@ func PatchImage(ctx context.Context, img Image, opts PatchOptions) *PatchResult 
 	patchedTag := tag + "-patched"
 
 	// Check if a patched image already exists in the target registry.
-	if opts.TargetRegistry != "" {
+	if opts.TargetRegistry != "" { //nolint:nestif // patching workflow
 		patchedRef := Image{
 			Registry:   opts.TargetRegistry,
 			Repository: img.Repository,
@@ -104,7 +111,7 @@ func PatchImage(ctx context.Context, img Image, opts PatchOptions) *PatchResult 
 
 			if vulns == 0 {
 				result.Skipped = true
-				result.SkipReason = "patched image up to date"
+				result.SkipReason = SkipReasonUpToDate
 				result.Patched = patchedRef
 				return result
 			}
@@ -137,9 +144,9 @@ func PatchImage(ctx context.Context, img Image, opts PatchOptions) *PatchResult 
 	}
 	result.VulnCount = vulns
 
-	if vulns == 0 {
+	if vulns == 0 { //nolint:nestif // early exit logic
 		result.Skipped = true
-		result.SkipReason = "no fixable vulnerabilities"
+		result.SkipReason = SkipReasonNoVulnerabilities
 
 		// Mirror the image to the target registry even when no patching is
 		// needed, so consumers always see the latest version available and
@@ -283,8 +290,8 @@ func pushLocal(ctx context.Context, srcRef, dstRef string) error {
 	if err != nil {
 		return fmt.Errorf("creating temp file: %w", err)
 	}
-	tmp.Close()
-	defer os.Remove(tmp.Name())
+	_ = tmp.Close()
+	defer func() { _ = os.Remove(tmp.Name()) }()
 
 	save := exec.CommandContext(ctx, "docker", "save", "-o", tmp.Name(), srcRef)
 	save.Stdout = os.Stdout
@@ -328,10 +335,18 @@ func countFixable(reportPath string) (int, error) {
 
 type trivyReport struct {
 	Results []struct {
-		Vulnerabilities []struct {
-			FixedVersion string `json:"FixedVersion"`
-		} `json:"Vulnerabilities"`
+		Vulnerabilities []trivyVulnerability `json:"Vulnerabilities"`
 	} `json:"Results"`
+}
+
+type trivyVulnerability struct {
+	VulnerabilityID  string `json:"VulnerabilityID"`
+	PkgName          string `json:"PkgName"`
+	Severity         string `json:"Severity"`
+	InstalledVersion string `json:"InstalledVersion"`
+	FixedVersion     string `json:"FixedVersion"`
+	Title            string `json:"Title"`
+	Description      string `json:"Description"`
 }
 
 func sanitize(ref string) string {

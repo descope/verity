@@ -1,0 +1,146 @@
+version: "2"
+linters:
+  enable:
+    # Security
+    - gosec           # Security issues
+
+    # Enabled by default (explicit for clarity)
+    - errcheck        # Unchecked errors
+    - govet           # Go vet checks
+    - ineffassign     # Ineffectual assignments
+    - staticcheck     # Advanced static analysis (includes gosimple, stylecheck)
+    - unused          # Unused constants, variables, functions
+
+    # Style & Best Practices
+    - gocognit        # Cognitive complexity
+    - goconst         # Repeated strings -> constants
+    - gocritic        # Comprehensive linter with auto-fix
+    - gocyclo         # Cyclomatic complexity
+    - godot           # Comment punctuation
+    - godoclint       # Documentation practice
+    - goprintffuncname # Printf naming
+    - misspell        # Misspelled words
+    - nolintlint      # Proper nolint directives
+    - predeclared     # Shadowed predeclared identifiers
+    - revive          # Fast, extensible linter
+
+    # Performance
+    - bodyclose       # HTTP response body closed
+    - prealloc        # Pre-allocatable slices
+    - perfsprint      # Faster sprintf alternatives
+
+    # Error handling
+    - errname         # Error naming conventions
+    - errorlint       # Error wrapping issues
+    - err113          # Error handling expressions
+    - nilerr          # Returns nil on error check
+
+    # Code quality
+    - dupl            # Duplicated code
+    - maintidx        # Maintainability index
+    - nakedret        # Naked returns in long functions
+    - nestif          # Deeply nested if statements
+    - cyclop          # Package/function complexity
+    - funlen          # Long functions
+    - gochecknoinits  # No init functions
+
+    # Modern Go practices
+    - copyloopvar     # Loop variable copies
+    - intrange        # Integer range loops
+    - mirror          # bytes/strings patterns
+    - modernize       # Modern language features
+
+    # Correctness
+    - durationcheck   # Duration multiplication
+    - noctx           # Missing context.Context
+    - nilnil          # Simultaneous nil return
+
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+      disabled-checks:
+        - commentedOutCode
+    gocyclo:
+      min-complexity: 15
+    cyclop:
+      max-complexity: 15
+    dupl:
+      threshold: 100
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+    nakedret:
+      max-func-lines: 30
+    nestif:
+      min-complexity: 4
+    funlen:
+      lines: 100
+      statements: 50
+    revive:
+      enable-all-rules: false
+      rules:
+        - name: exported
+          arguments:
+            - checkPrivateReceivers
+            - disableStutteringCheck
+
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      # Exclude complexity linters from test files
+      - linters:
+          - funlen
+          - gocyclo
+          - gocognit
+          - cyclop
+          - dupl
+        path: _test\.go
+      - linters:
+          - gosec
+        text: G204
+      - linters:
+          - gosec
+        text: G306
+      - linters:
+          - gosec
+        text: G702
+      - linters:
+          - gosec
+        text: G703
+      - linters:
+          - gosec
+        text: G110
+      - linters:
+          - gosec
+        text: G115
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    gofumpt:
+      extra-rules: true
+    goimports:
+      local-prefixes:
+        - github.com/verity-org/verity
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

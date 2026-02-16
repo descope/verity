@@ -18,9 +18,9 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version-file: go.mod
 
@@ -30,25 +30,303 @@ jobs:
       - name: Build verity
         run: go build -o verity .
 
-  scan:
-    name: Scan Chart Images
+  discover:
+    name: Discover Images
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version-file: go.mod
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3.7.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build verity
         run: go build -o verity .
 
-      - name: Scan charts for images
-        run: ./verity -scan -chart Chart.yaml -images values.yaml
+      - name: Discover images
+        run: ./verity discover --images values.yaml --discover-dir .verity
+
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+        options: >-
+          --health-cmd "wget -q --spider http://localhost:5000/v2/ || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+
+      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        with:
+          driver-opts: network=host
+
+      - name: Build verity
+        run: go build -o verity .
+
+      - name: Install Copa
+        run: ./.github/scripts/install-copa.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.5
+        with:
+          version: latest
+          cache: true
+
+      - name: Test patch with local registry
+        run: |
+          ./verity patch \
+            --image "docker.io/library/nginx:1.29.5" \
+            --registry "localhost:5000/verity" \
+            --buildkit-addr "docker-container://buildx_buildkit_builder0" \
+            --result-dir .verity/results \
+            --report-dir .verity/reports
+
+      - name: Verify patched image exists
+        run: |
+          # Check if image was pushed to local registry
+          curl -f http://localhost:5000/v2/verity/library/nginx/tags/list || \
+            (echo "Image not found in local registry" && exit 1)
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: integration-test-results
+          path: |
+            .verity/results/*.json
+            .verity/reports/*.json
+          retention-days: 7
+
+  integration-charts:
+    name: Integration Tests - Charts
+    runs-on: ubuntu-latest
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+        options: >-
+          --health-cmd "wget -q --spider http://localhost:5000/v2/ || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+
+      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Build verity
+        run: go build -o verity .
+
+      - name: Create test manifest and results
+        run: |
+          mkdir -p .verity-ci-test/{results,reports}
+
+          # Create minimal test manifest
+          cat > .verity-ci-test/manifest.json <<'EOF'
+          {
+            "charts": [
+              {
+                "name": "test-chart",
+                "version": "1.0.0",
+                "repository": "oci://example.com/charts",
+                "images": [
+                  {
+                    "registry": "docker.io",
+                    "repository": "library/nginx",
+                    "tag": "1.25",
+                    "path": "image"
+                  }
+                ]
+              }
+            ],
+            "images": [
+              {
+                "registry": "docker.io",
+                "repository": "library/nginx",
+                "tag": "1.25",
+                "path": "image"
+              }
+            ]
+          }
+          EOF
+
+          # Create mock patch result with Changed=true
+          cat > .verity-ci-test/results/docker.io_library_nginx_1.25.json <<EOF
+          {
+            "image_ref": "docker.io/library/nginx:1.25",
+            "patched_registry": "localhost:5000",
+            "patched_repository": "library/nginx",
+            "patched_tag": "1.25-patched",
+            "vuln_count": 2,
+            "skipped": false,
+            "changed": true
+          }
+          EOF
+
+          # Create mock Trivy report
+          cat > .verity-ci-test/reports/docker.io_library_nginx_1.25.json <<'EOF'
+          {
+            "Results": [
+              {
+                "Vulnerabilities": [
+                  {
+                    "VulnerabilityID": "CVE-2024-TEST",
+                    "PkgName": "test-pkg",
+                    "Severity": "HIGH",
+                    "InstalledVersion": "1.0.0",
+                    "FixedVersion": "1.0.1",
+                    "Title": "Test vulnerability",
+                    "Description": "CI test vulnerability"
+                  }
+                ]
+              }
+            ]
+          }
+          EOF
+
+      - name: Test chart assembly (without publish)
+        run: |
+          ./verity assemble \
+            --manifest .verity-ci-test/manifest.json \
+            --results-dir .verity-ci-test/results \
+            --reports-dir .verity-ci-test/reports \
+            --output-dir .verity-ci-test/charts \
+            --registry "localhost:5000"
+
+      - name: Verify chart artifacts
+        run: |
+          # Check published-charts.json exists and has 1 chart
+          if [ ! -f .verity-ci-test/charts/published-charts.json ]; then
+            echo "❌ published-charts.json not created"
+            exit 1
+          fi
+
+          count=$(jq length .verity-ci-test/charts/published-charts.json)
+          if [ "$count" != "1" ]; then
+            echo "❌ Expected 1 published chart, got $count"
+            exit 1
+          fi
+
+          chart_name=$(jq -r '.[0].name' .verity-ci-test/charts/published-charts.json)
+          echo "✅ Chart published: $chart_name"
+
+          # Verify chart structure
+          if [ ! -f .verity-ci-test/charts/test-chart/Chart.yaml ]; then
+            echo "❌ Chart.yaml missing"
+            exit 1
+          fi
+          echo "✅ Chart.yaml created"
+
+          if [ ! -f .verity-ci-test/charts/test-chart/values.yaml ]; then
+            echo "❌ values.yaml missing"
+            exit 1
+          fi
+          echo "✅ values.yaml created"
+
+          # Verify SBOM
+          if [ ! -f .verity-ci-test/charts/test-chart/sbom.cdx.json ]; then
+            echo "❌ SBOM missing"
+            exit 1
+          fi
+
+          sbom_format=$(jq -r '.bomFormat' .verity-ci-test/charts/test-chart/sbom.cdx.json)
+          if [ "$sbom_format" != "CycloneDX" ]; then
+            echo "❌ Invalid SBOM format: $sbom_format"
+            exit 1
+          fi
+          echo "✅ SBOM generated (CycloneDX)"
+
+          # Verify vulnerability predicate
+          if [ ! -f .verity-ci-test/charts/test-chart/vuln-predicate.json ]; then
+            echo "❌ Vulnerability predicate missing"
+            exit 1
+          fi
+
+          vuln_count=$(jq '.vulnerabilities | length' .verity-ci-test/charts/test-chart/vuln-predicate.json)
+          echo "✅ Vulnerability predicate generated ($vuln_count vulnerabilities)"
+
+      - name: Test change detection
+        run: |
+          # Create a second manifest with unchanged images
+          cat > .verity-ci-test/manifest2.json <<'EOF'
+          {
+            "charts": [
+              {
+                "name": "unchanged-chart",
+                "version": "1.0.0",
+                "repository": "oci://example.com/charts",
+                "images": [
+                  {
+                    "registry": "docker.io",
+                    "repository": "library/redis",
+                    "tag": "7.0",
+                    "path": "image"
+                  }
+                ]
+              }
+            ],
+            "images": [
+              {
+                "registry": "docker.io",
+                "repository": "library/redis",
+                "tag": "7.0",
+                "path": "image"
+              }
+            ]
+          }
+          EOF
+
+          # Create result with Changed=false
+          cat > .verity-ci-test/results/docker.io_library_redis_7.0.json <<EOF
+          {
+            "image_ref": "docker.io/library/redis:7.0",
+            "skipped": true,
+            "skip_reason": "patched image up to date",
+            "changed": false
+          }
+          EOF
+
+          # Run assemble
+          ./verity assemble \
+            --manifest .verity-ci-test/manifest2.json \
+            --results-dir .verity-ci-test/results \
+            --reports-dir .verity-ci-test/reports \
+            --output-dir .verity-ci-test/charts2 \
+            --registry "localhost:5000"
+
+          # Verify chart was NOT created
+          if [ -d .verity-ci-test/charts2/unchanged-chart ]; then
+            echo "❌ Chart should not have been created for unchanged images"
+            exit 1
+          fi
+          echo "✅ Change detection working: unchanged chart correctly skipped"
+
+      - name: Upload chart test results
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: integration-chart-test-results
+          path: |
+            .verity-ci-test/charts/published-charts.json
+            .verity-ci-test/charts/*/Chart.yaml
+            .verity-ci-test/charts/*/sbom.cdx.json
+            .verity-ci-test/charts/*/vuln-predicate.json
+          retention-days: 7

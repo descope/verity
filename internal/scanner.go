@@ -40,14 +40,19 @@ func ParseImagesFile(path string) ([]Image, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", path, err)
 	}
-	var values map[string]interface{}
+	var values map[string]any
 	if err := yaml.Unmarshal(data, &values); err != nil {
 		return nil, fmt.Errorf("parsing %s: %w", path, err)
 	}
 	if len(values) == 0 {
 		return nil, nil
 	}
-	return dedup(findImages(values, "", "", nil)), nil
+	images := dedup(findImages(values, "", "", nil))
+	// Sort for deterministic output (Go map iteration is randomized)
+	sort.Slice(images, func(i, j int) bool {
+		return images[i].Reference() < images[j].Reference()
+	})
+	return images, nil
 }
 
 // ScanForImages loads a chart directory and finds all container image references.
@@ -78,7 +83,7 @@ func scanChart(ch *chart.Chart, prefix string, cache map[string]string) []Image 
 // Replaceable in tests for deterministic behavior.
 var tagChecker func(ctx context.Context, ref string) bool = imageExists
 
-func findImages(values map[string]interface{}, prefix, appVersion string, cache map[string]string) []Image {
+func findImages(values map[string]any, prefix, appVersion string, cache map[string]string) []Image {
 	if cache == nil {
 		cache = map[string]string{}
 	}
@@ -102,9 +107,51 @@ func findImages(values map[string]interface{}, prefix, appVersion string, cache 
 	return images
 }
 
-// resolveTag determines the correct image tag when falling back to appVersion.
+// ResolveImageTag determines the correct image tag when falling back to appVersion.
 // It checks the registry to see if appVersion or "v"+appVersion exists as a tag,
 // since chart templates vary in whether they prepend "v" to Chart.AppVersion.
+// ResolveImageTag attempts to find the correct tag for an image by trying
+// multiple variations. It tries the tag as-is first, then with a "v" prefix
+// if the tag doesn't already have one. Returns an Image with the resolved tag,
+// or the original image if no variation exists in the registry.
+func ResolveImageTag(ctx context.Context, img Image) Image {
+	// If no tag specified, return as-is (will default to "latest" elsewhere)
+	if img.Tag == "" {
+		return img
+	}
+
+	// If tag already starts with "v", try as-is first, then without "v"
+	if strings.HasPrefix(img.Tag, "v") {
+		// Try with "v" prefix first
+		if tagChecker(ctx, img.Reference()) {
+			return img
+		}
+		// Try without "v" prefix
+		candidate := img
+		candidate.Tag = strings.TrimPrefix(img.Tag, "v")
+		if tagChecker(ctx, candidate.Reference()) {
+			return candidate
+		}
+		// Fall back to original
+		return img
+	}
+
+	// Tag doesn't start with "v", try without prefix first
+	if tagChecker(ctx, img.Reference()) {
+		return img
+	}
+
+	// Try with "v" prefix
+	candidate := img
+	candidate.Tag = "v" + img.Tag
+	if tagChecker(ctx, candidate.Reference()) {
+		return candidate
+	}
+
+	// Fall back to original tag if neither exists
+	return img
+}
+
 func resolveTag(img Image, appVersion string) string {
 	if strings.HasPrefix(appVersion, "v") {
 		return appVersion
@@ -113,26 +160,16 @@ func resolveTag(img Image, appVersion string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Try appVersion as-is first
+	// Use the new ResolveImageTag function
 	candidate := img
 	candidate.Tag = appVersion
-	if tagChecker(ctx, candidate.Reference()) {
-		return appVersion
-	}
-
-	// Try with "v" prefix
-	candidate.Tag = "v" + appVersion
-	if tagChecker(ctx, candidate.Reference()) {
-		return "v" + appVersion
-	}
-
-	// Default to as-is if neither resolves (will fail at pull time with a clear error)
-	return appVersion
+	resolved := ResolveImageTag(ctx, candidate)
+	return resolved.Tag
 }
 
-func walk(node interface{}, path, parentKey string, fn func(string, Image)) {
+func walk(node any, path, parentKey string, fn func(string, Image)) {
 	switch v := node.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		// Check if this map itself is an image definition.
 		if img, ok := extractImage(v, parentKey); ok {
 			fn(path, img)
@@ -149,7 +186,7 @@ func walk(node interface{}, path, parentKey string, fn func(string, Image)) {
 			walk(val, joinPath(path, k), k, fn)
 		}
 
-	case []interface{}:
+	case []any:
 		for i, item := range v {
 			walk(item, fmt.Sprintf("%s[%d]", path, i), "", fn)
 		}
@@ -157,7 +194,7 @@ func walk(node interface{}, path, parentKey string, fn func(string, Image)) {
 }
 
 // extractImage checks whether a map looks like {repository: ..., tag: ...}.
-func extractImage(m map[string]interface{}, parentKey string) (Image, bool) {
+func extractImage(m map[string]any, parentKey string) (Image, bool) {
 	repo, ok := stringVal(m, "repository")
 	if !ok || !looksLikeImage(repo) {
 		return Image{}, false
@@ -181,7 +218,7 @@ func extractImage(m map[string]interface{}, parentKey string) (Image, bool) {
 	return img, true
 }
 
-func stringVal(m map[string]interface{}, key string) (string, bool) {
+func stringVal(m map[string]any, key string) (string, bool) {
 	v, ok := m[key]
 	if !ok {
 		return "", false
@@ -237,16 +274,68 @@ func joinPath(base, key string) string {
 }
 
 func dedup(images []Image) []Image {
-	seen := make(map[string]bool)
+	seen := make(map[string]*Image)
 	var result []Image
+
 	for _, img := range images {
-		key := img.Reference()
-		if !seen[key] {
-			seen[key] = true
-			result = append(result, img)
+		// Normalize the key by handling tag variations (v1.2.3 vs 1.2.3)
+		normalizedKey := normalizeReference(img)
+
+		if existing, found := seen[normalizedKey]; found {
+			// If we already have this image, prefer the one with more specific tag
+			// (prefer "v1.2.3" over "1.2.3" as it's more explicit)
+			if shouldPrefer(img, *existing) {
+				// Update the seen map and replace in result
+				seen[normalizedKey] = &img
+				// Find and replace the existing entry
+				for i, r := range result {
+					if normalizeReference(r) == normalizedKey {
+						result[i] = img
+						break
+					}
+				}
+			}
+			// Skip this image as we already have a version of it
+			continue
 		}
+
+		seen[normalizedKey] = &img
+		result = append(result, img)
 	}
 	return result
+}
+
+// normalizeReference returns a normalized reference string for deduplication.
+// Strips "v" prefix from tags to treat "v1.2.3" and "1.2.3" as the same image.
+func normalizeReference(img Image) string {
+	ref := img.Repository
+	if img.Registry != "" {
+		ref = img.Registry + "/" + ref
+	}
+	if img.Tag != "" {
+		// Normalize tag by removing "v" prefix for comparison
+		tag := strings.TrimPrefix(img.Tag, "v")
+		ref = ref + ":" + tag
+	}
+	return ref
+}
+
+// shouldPrefer returns true if img1 should be preferred over img2.
+// Prefers tags with "v" prefix as they're more explicit.
+func shouldPrefer(img1, img2 Image) bool {
+	// If one has "v" prefix and the other doesn't, prefer the one with "v"
+	hasV1 := strings.HasPrefix(img1.Tag, "v")
+	hasV2 := strings.HasPrefix(img2.Tag, "v")
+
+	if hasV1 && !hasV2 {
+		return true
+	}
+	if !hasV1 && hasV2 {
+		return false
+	}
+
+	// Otherwise prefer the first one we saw
+	return false
 }
 
 // ImageOverride specifies a tag replacement for images matching a repository.
@@ -269,7 +358,7 @@ func ParseOverrides(path string) ([]ImageOverride, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", path, err)
 	}
-	var raw map[string]interface{}
+	var raw map[string]any
 	if err := yaml.Unmarshal(data, &raw); err != nil {
 		return nil, fmt.Errorf("parsing %s: %w", path, err)
 	}
@@ -278,22 +367,22 @@ func ParseOverrides(path string) ([]ImageOverride, error) {
 	if !ok {
 		return nil, nil
 	}
-	ovrMap, ok := ovr.(map[string]interface{})
+	ovrMap, ok := ovr.(map[string]any)
 	if !ok {
 		return nil, nil
 	}
 
 	var overrides []ImageOverride
 	for repo, v := range ovrMap {
-		m, ok := v.(map[string]interface{})
+		m, ok := v.(map[string]any)
 		if !ok {
 			continue
 		}
-		from, _ := m["from"].(string)
-		to, _ := m["to"].(string)
-		if from == "" {
+		from, ok := m["from"].(string)
+		if !ok || from == "" {
 			continue
 		}
+		to, _ := m["to"].(string) //nolint:errcheck // optional field
 		overrides = append(overrides, ImageOverride{
 			Repository: repo,
 			From:       from,
@@ -312,7 +401,7 @@ func ParseOverrides(path string) ([]ImageOverride, error) {
 // because the patch matrix deduplicates by reference, so stale entries only
 // cause a harmless extra patch job. Removing entries would risk deleting
 // images that were added manually or used by other charts.
-func MergeChartImages(valuesPath string, images []Image) error {
+func MergeChartImages(valuesPath string, images []Image) error { //nolint:gocognit,gocyclo,cyclop,funlen // complex workflow
 	if len(images) == 0 {
 		return nil
 	}
@@ -325,7 +414,7 @@ func MergeChartImages(valuesPath string, images []Image) error {
 	// Parse existing images to know which references are already present.
 	existingRefs := make(map[string]bool)
 	if len(existing) > 0 {
-		var values map[string]interface{}
+		var values map[string]any
 		if err := yaml.Unmarshal(existing, &values); err != nil {
 			return fmt.Errorf("parsing %s: %w", valuesPath, err)
 		}
@@ -352,11 +441,11 @@ func MergeChartImages(valuesPath string, images []Image) error {
 
 	// Discover existing top-level YAML keys to avoid collisions.
 	content := string(existing)
-	if len(content) > 0 && !strings.HasSuffix(content, "\n") {
+	if content != "" && !strings.HasSuffix(content, "\n") {
 		content += "\n"
 	}
 	usedKeys := make(map[string]bool)
-	var topLevel map[string]interface{}
+	var topLevel map[string]any
 	if err := yaml.Unmarshal(existing, &topLevel); err == nil && topLevel != nil {
 		for k := range topLevel {
 			usedKeys[k] = true
@@ -384,14 +473,14 @@ func MergeChartImages(valuesPath string, images []Image) error {
 		}
 		usedKeys[key] = true
 
-		sb.WriteString(fmt.Sprintf("%s:\n", key))
+		sb.WriteString(key + ":\n")
 		sb.WriteString("  image:\n")
 		if img.Registry != "" {
 			sb.WriteString(fmt.Sprintf("    registry: %s\n", img.Registry))
 		}
 		sb.WriteString(fmt.Sprintf("    repository: %s\n", img.Repository))
 		if img.Tag != "" {
-			sb.WriteString(fmt.Sprintf("    tag: \"%s\"\n", img.Tag))
+			sb.WriteString(fmt.Sprintf("    tag: %q\n", img.Tag))
 		}
 	}
 

@@ -1,0 +1,23 @@
+services:
+  # Local OCI registry for testing
+  registry:
+    image: registry:2
+    ports:
+      - "5555:5000"
+    environment:
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+    volumes:
+      - registry-data:/var/lib/registry
+
+  # BuildKit for Copa patching
+  buildkit:
+    image: moby/buildkit:latest
+    privileged: true
+    ports:
+      - "1234:1234"
+    entrypoint:
+      - buildkitd
+      - --addr=tcp://0.0.0.0:1234
+
+volumes:
+  registry-data:

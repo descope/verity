@@ -1,0 +1,88 @@
+name: Update Image List
+
+on:
+  # When Renovate updates Chart.yaml
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Chart.yaml'
+      - 'Chart.lock'
+
+  push:
+    branches: [main]
+    paths:
+      - 'Chart.yaml'
+      - 'Chart.lock'
+
+  # Manual trigger
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-images:
+    name: Update Image List
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Setup Helm
+        uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
+        with:
+          version: latest
+
+      - name: Build verity
+        run: go build -o verity .
+
+      - name: Download chart dependencies
+        run: helm dependency update .
+
+      - name: Scan charts for images
+        run: |
+          ./verity scan --chart . --output values.yaml
+          echo "Updated values.yaml with images from charts"
+
+      - name: Check for changes
+        id: check
+        run: |
+          if git diff --quiet values.yaml; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No changes to values.yaml"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "values.yaml has been updated"
+            git diff values.yaml
+          fi
+
+      - name: Commit updated values.yaml
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add values.yaml
+          git commit -m "chore: update image list from chart dependencies
+
+          Scanned charts for container images:
+          $(./verity list --images values.yaml 2>/dev/null | head -20 || echo "See values.yaml for full list")
+
+          Co-Authored-By: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+
+      - name: Push changes
+        if: steps.check.outputs.changed == 'true' && github.event_name == 'push'
+        run: git push
+
+      - name: Push to PR branch
+        if: steps.check.outputs.changed == 'true' && github.event_name == 'pull_request'
+        env:
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git push origin "HEAD:${PR_HEAD_REF}"

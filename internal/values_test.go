@@ -19,7 +19,7 @@ func TestGenerateValuesOverride(t *testing.T) {
 				Path:       "alertmanager.image",
 			},
 			Patched: Image{
-				Registry:   "quay.io/verity",
+				Registry:   testRegistry,
 				Repository: "prom/alertmanager",
 				Tag:        "v0.26.0-patched",
 			},
@@ -55,7 +55,7 @@ func TestGenerateValuesOverride(t *testing.T) {
 				Path:       "pushgateway.image",
 			},
 			Patched: Image{
-				Registry:   "quay.io/verity",
+				Registry:   "ghcr.io/verity-org",
 				Repository: "prometheus/pushgateway",
 				Tag:        "v1.6.2-patched",
 			},
@@ -85,22 +85,22 @@ func TestGenerateValuesOverride(t *testing.T) {
 		t.Fatalf("reading output: %v", err)
 	}
 
-	var got map[string]interface{}
+	var got map[string]any
 	if err := yaml.Unmarshal(data, &got); err != nil {
 		t.Fatalf("parsing output YAML: %v", err)
 	}
 
 	// Check alertmanager.image has patched values.
-	am, ok := got["alertmanager"].(map[string]interface{})
+	am, ok := got["alertmanager"].(map[string]any)
 	if !ok {
 		t.Fatal("missing alertmanager key")
 	}
-	amImg, ok := am["image"].(map[string]interface{})
+	amImg, ok := am["image"].(map[string]any)
 	if !ok {
 		t.Fatal("missing alertmanager.image key")
 	}
-	if amImg["registry"] != "quay.io/verity" {
-		t.Errorf("alertmanager.image.registry = %v, want quay.io/verity", amImg["registry"])
+	if amImg["registry"] != testRegistry {
+		t.Errorf("alertmanager.image.registry = %v, want ghcr.io/verity-org", amImg["registry"])
 	}
 	if amImg["repository"] != "prom/alertmanager" {
 		t.Errorf("alertmanager.image.repository = %v, want prom/alertmanager", amImg["repository"])
@@ -110,11 +110,11 @@ func TestGenerateValuesOverride(t *testing.T) {
 	}
 
 	// Check server.image has patched values.
-	srv, ok := got["server"].(map[string]interface{})
+	srv, ok := got["server"].(map[string]any)
 	if !ok {
 		t.Fatal("missing server key")
 	}
-	srvImg, ok := srv["image"].(map[string]interface{})
+	srvImg, ok := srv["image"].(map[string]any)
 	if !ok {
 		t.Fatal("missing server.image key")
 	}
@@ -138,16 +138,16 @@ func TestGenerateValuesOverride(t *testing.T) {
 	}
 
 	// Skipped with valid patched ref SHOULD appear.
-	pg, ok := got["pushgateway"].(map[string]interface{})
+	pg, ok := got["pushgateway"].(map[string]any)
 	if !ok {
 		t.Fatal("missing pushgateway key (skipped image with patched ref should be included)")
 	}
-	pgImg, ok := pg["image"].(map[string]interface{})
+	pgImg, ok := pg["image"].(map[string]any)
 	if !ok {
 		t.Fatal("missing pushgateway.image key")
 	}
-	if pgImg["registry"] != "quay.io/verity" {
-		t.Errorf("pushgateway.image.registry = %v, want quay.io/verity", pgImg["registry"])
+	if pgImg["registry"] != testRegistry {
+		t.Errorf("pushgateway.image.registry = %v, want ghcr.io/verity-org", pgImg["registry"])
 	}
 	if pgImg["repository"] != "prometheus/pushgateway" {
 		t.Errorf("pushgateway.image.repository = %v, want prometheus/pushgateway", pgImg["repository"])
@@ -179,7 +179,7 @@ func TestGenerateValuesOverride_AllSkippedNoPatchedRef(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected file to be written: %v", err)
 	}
-	var got map[string]interface{}
+	var got map[string]any
 	if err := yaml.Unmarshal(data, &got); err != nil {
 		t.Fatalf("parsing output YAML: %v", err)
 	}
@@ -193,7 +193,7 @@ func TestGenerateValuesOverride_AllSkippedWithPatchedRef(t *testing.T) {
 		{
 			Original: Image{Repository: "nginx", Tag: "1.25", Path: "image"},
 			Patched: Image{
-				Registry:   "quay.io/verity",
+				Registry:   "ghcr.io/verity-org",
 				Repository: "library/nginx",
 				Tag:        "1.25-patched",
 			},
@@ -215,12 +215,12 @@ func TestGenerateValuesOverride_AllSkippedWithPatchedRef(t *testing.T) {
 		t.Fatalf("expected values file to be written: %v", err)
 	}
 
-	var got map[string]interface{}
+	var got map[string]any
 	if err := yaml.Unmarshal(data, &got); err != nil {
 		t.Fatalf("parsing output YAML: %v", err)
 	}
 
-	img, ok := got["image"].(map[string]interface{})
+	img, ok := got["image"].(map[string]any)
 	if !ok {
 		t.Fatal("missing image key")
 	}
@@ -265,7 +265,7 @@ func TestGenerateValuesOverride_SkippedWithUpstreamRef(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected file to be written: %v", err)
 	}
-	var got map[string]interface{}
+	var got map[string]any
 	if err := yaml.Unmarshal(data, &got); err != nil {
 		t.Fatalf("parsing output YAML: %v", err)
 	}
@@ -343,7 +343,7 @@ func TestCreateWrapperChart(t *testing.T) {
 				Path:       "server.image",
 			},
 			Patched: Image{
-				Registry:   "quay.io/verity",
+				Registry:   "ghcr.io/verity-org",
 				Repository: "prometheus",
 				Tag:        "v2.48.0-patched",
 			},
@@ -360,7 +360,7 @@ func TestCreateWrapperChart(t *testing.T) {
 				Path:       "alertmanager.image",
 			},
 			Patched: Image{
-				Registry:   "quay.io/verity",
+				Registry:   "ghcr.io/verity-org",
 				Repository: "alertmanager",
 				Tag:        "v0.26.0-patched",
 			},
@@ -393,12 +393,12 @@ func TestCreateWrapperChart(t *testing.T) {
 		t.Fatalf("Failed to read Chart.yaml: %v", err)
 	}
 
-	var chart map[string]interface{}
+	var chart map[string]any
 	if err := yaml.Unmarshal(chartData, &chart); err != nil {
 		t.Fatalf("Failed to parse Chart.yaml: %v", err)
 	}
 
-	if chart["name"] != "prometheus" {
+	if chart["name"] != "prometheus" { //nolint:goconst // test value
 		t.Errorf("Expected name 'prometheus', got %v", chart["name"])
 	}
 
@@ -412,12 +412,15 @@ func TestCreateWrapperChart(t *testing.T) {
 	}
 
 	// Check dependencies
-	deps, ok := chart["dependencies"].([]interface{})
+	deps, ok := chart["dependencies"].([]any)
 	if !ok || len(deps) != 1 {
 		t.Fatalf("Expected 1 dependency, got %v", chart["dependencies"])
 	}
 
-	depMap := deps[0].(map[string]interface{})
+	depMap, ok := deps[0].(map[string]any)
+	if !ok {
+		t.Fatalf("Expected dependency to be map[string]interface{}, got %T", deps[0])
+	}
 	if depMap["name"] != "prometheus" {
 		t.Errorf("Expected dependency name 'prometheus', got %v", depMap["name"])
 	}
@@ -436,24 +439,24 @@ func TestCreateWrapperChart(t *testing.T) {
 		t.Fatalf("Failed to read values.yaml: %v", err)
 	}
 
-	var values map[string]interface{}
+	var values map[string]any
 	if err := yaml.Unmarshal(valuesData, &values); err != nil {
 		t.Fatalf("Failed to parse values.yaml: %v", err)
 	}
 
 	// Values should be namespaced under "prometheus"
-	promValues, ok := values["prometheus"].(map[string]interface{})
+	promValues, ok := values["prometheus"].(map[string]any)
 	if !ok {
 		t.Fatalf("Expected values to be namespaced under 'prometheus', got %v", values)
 	}
 
 	// Check server.image is set
-	server, ok := promValues["server"].(map[string]interface{})
+	server, ok := promValues["server"].(map[string]any)
 	if !ok {
 		t.Fatalf("Expected prometheus.server, got %v", promValues)
 	}
 
-	serverImage, ok := server["image"].(map[string]interface{})
+	serverImage, ok := server["image"].(map[string]any)
 	if !ok {
 		t.Fatalf("Expected prometheus.server.image, got %v", server)
 	}
@@ -464,8 +467,8 @@ func TestCreateWrapperChart(t *testing.T) {
 	if serverImage["tag"] != "v2.48.0-patched" {
 		t.Errorf("Expected tag 'v2.48.0-patched', got %v", serverImage["tag"])
 	}
-	if serverImage["registry"] != "quay.io/verity" {
-		t.Errorf("Expected registry 'quay.io/verity', got %v", serverImage["registry"])
+	if serverImage["registry"] != testRegistry {
+		t.Errorf("Expected registry 'ghcr.io/verity-org', got %v", serverImage["registry"])
 	}
 
 	// Check .helmignore exists
@@ -491,7 +494,7 @@ func TestGenerateNamespacedValuesOverride_OverrideComment(t *testing.T) {
 				Path:       "vector.image",
 			},
 			Patched: Image{
-				Registry:   "quay.io/verity",
+				Registry:   "ghcr.io/verity-org",
 				Repository: "timberio/vector",
 				Tag:        "0.46.1-debian-patched",
 			},
@@ -505,7 +508,7 @@ func TestGenerateNamespacedValuesOverride_OverrideComment(t *testing.T) {
 				Path:       "server.image",
 			},
 			Patched: Image{
-				Registry:   "quay.io/verity",
+				Registry:   "ghcr.io/verity-org",
 				Repository: "victoriametrics/victoria-logs",
 				Tag:        "v1.0.0-victorialogs-patched",
 			},
@@ -541,21 +544,21 @@ func TestGenerateNamespacedValuesOverride_OverrideComment(t *testing.T) {
 	}
 
 	// Should still be valid YAML after stripping comments
-	var values map[string]interface{}
+	var values map[string]any
 	if err := yaml.Unmarshal(data, &values); err != nil {
 		t.Fatalf("output should be valid YAML: %v", err)
 	}
 
 	// Check the actual values are correct
-	vls, ok := values["victoria-logs-single"].(map[string]interface{})
+	vls, ok := values["victoria-logs-single"].(map[string]any)
 	if !ok {
 		t.Fatal("expected victoria-logs-single namespace")
 	}
-	vec, ok := vls["vector"].(map[string]interface{})
+	vec, ok := vls["vector"].(map[string]any)
 	if !ok {
 		t.Fatal("expected vector key")
 	}
-	vecImg, ok := vec["image"].(map[string]interface{})
+	vecImg, ok := vec["image"].(map[string]any)
 	if !ok {
 		t.Fatal("expected vector.image key")
 	}
@@ -575,7 +578,7 @@ func TestGetNextPatchLevel(t *testing.T) {
 	}{
 		{
 			name:            "no existing versions",
-			registry:        "quay.io/verity",
+			registry:        "ghcr.io/verity-org",
 			chartName:       "prometheus",
 			upstreamVersion: "25.8.0",
 			mockTags:        []string{},
@@ -583,7 +586,7 @@ func TestGetNextPatchLevel(t *testing.T) {
 		},
 		{
 			name:            "existing version 0",
-			registry:        "quay.io/verity",
+			registry:        "ghcr.io/verity-org",
 			chartName:       "prometheus",
 			upstreamVersion: "25.8.0",
 			mockTags:        []string{"25.8.0-0"},
@@ -591,7 +594,7 @@ func TestGetNextPatchLevel(t *testing.T) {
 		},
 		{
 			name:            "multiple versions",
-			registry:        "quay.io/verity",
+			registry:        "ghcr.io/verity-org",
 			chartName:       "prometheus",
 			upstreamVersion: "25.8.0",
 			mockTags:        []string{"25.8.0-0", "25.8.0-1", "25.8.0-2"},
@@ -599,7 +602,7 @@ func TestGetNextPatchLevel(t *testing.T) {
 		},
 		{
 			name:            "different upstream versions mixed",
-			registry:        "quay.io/verity",
+			registry:        "ghcr.io/verity-org",
 			chartName:       "prometheus",
 			upstreamVersion: "25.8.0",
 			mockTags:        []string{"25.7.0-0", "25.8.0-0", "25.8.0-1", "25.9.0-0"},
@@ -607,7 +610,7 @@ func TestGetNextPatchLevel(t *testing.T) {
 		},
 		{
 			name:            "non-sequential patch levels",
-			registry:        "quay.io/verity",
+			registry:        "ghcr.io/verity-org",
 			chartName:       "prometheus",
 			upstreamVersion: "25.8.0",
 			mockTags:        []string{"25.8.0-0", "25.8.0-2", "25.8.0-5"},

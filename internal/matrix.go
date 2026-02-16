@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -60,6 +61,7 @@ type SinglePatchResult struct {
 	Skipped           bool   `json:"skipped"`
 	SkipReason        string `json:"skip_reason,omitempty"`
 	Error             string `json:"error,omitempty"`
+	Changed           bool   `json:"changed"`
 }
 
 // DiscoverImages scans Chart.yaml dependencies and the images file,
@@ -79,6 +81,30 @@ func DiscoverImages(chartFile, imagesFile, tmpDir string) (*DiscoveryManifest, e
 	}
 
 	var chartImages []Image
+
+	// Handle standalone chart (local directory, not a Helm dependency)
+	standalonePath := filepath.Join(filepath.Dir(chartFile), "charts", "standalone")
+	if _, err := os.Stat(standalonePath); err == nil {
+		fmt.Println("Discovering standalone@0.0.0")
+		images, err := ScanForImages(standalonePath)
+		if err != nil {
+			return nil, fmt.Errorf("scanning standalone: %w", err)
+		}
+
+		if len(images) > 0 {
+			cd := ChartDiscovery{
+				Name:       "standalone",
+				Version:    "0.0.0",
+				Repository: "file://./charts/standalone",
+			}
+			for _, img := range images {
+				cd.Images = append(cd.Images, ImageDiscovery(img))
+			}
+			fmt.Printf("  Found %d images\n", len(images))
+			manifest.Charts = append(manifest.Charts, cd)
+			chartImages = append(chartImages, images...)
+		}
+	}
 
 	for _, dep := range chart.Dependencies {
 		fmt.Printf("Discovering %s@%s\n", dep.Name, dep.Version)
@@ -134,6 +160,36 @@ func DiscoverImages(chartFile, imagesFile, tmpDir string) (*DiscoveryManifest, e
 	return manifest, nil
 }
 
+// ApplyOverridesToManifest applies image tag overrides to both the flat Images
+// list and all Charts[*].Images so that refs match after patching.
+func ApplyOverridesToManifest(manifest *DiscoveryManifest, overrides []ImageOverride) {
+	if len(overrides) == 0 {
+		return
+	}
+
+	// Convert ImageDiscovery to Image, apply overrides, convert back.
+	images := make([]Image, len(manifest.Images))
+	for i, img := range manifest.Images {
+		images[i] = Image(img)
+	}
+	images = ApplyOverrides(images, overrides)
+	for i, img := range images {
+		manifest.Images[i] = ImageDiscovery(img)
+	}
+
+	// Apply to each chart's images.
+	for i := range manifest.Charts {
+		chartImages := make([]Image, len(manifest.Charts[i].Images))
+		for j, img := range manifest.Charts[i].Images {
+			chartImages[j] = Image(img)
+		}
+		chartImages = ApplyOverrides(chartImages, overrides)
+		for j, img := range chartImages {
+			manifest.Charts[i].Images[j] = ImageDiscovery(img)
+		}
+	}
+}
+
 // GenerateMatrix creates a deduplicated GitHub Actions matrix from a manifest.
 // Uses the unified Images list so every image is patched exactly once.
 func GenerateMatrix(manifest *DiscoveryManifest) *MatrixOutput {
@@ -187,6 +243,13 @@ func WriteDiscoveryOutput(manifest *DiscoveryManifest, matrix *MatrixOutput, out
 // Trivy report to the given directories. Designed to run in a matrix job.
 func PatchSingleImage(ctx context.Context, imageRef string, opts PatchOptions, resultDir string) error {
 	img := parseRef(imageRef)
+	originalTag := img.Tag
+
+	// Resolve the tag - try both with and without "v" prefix to find what actually exists
+	img = ResolveImageTag(ctx, img)
+	if img.Tag != originalTag {
+		fmt.Printf("    Resolved tag: %s -> %s\n", originalTag, img.Tag)
+	}
 
 	if err := os.MkdirAll(resultDir, 0o755); err != nil {
 		return fmt.Errorf("creating result dir: %w", err)
@@ -221,6 +284,10 @@ func PatchSingleImage(ctx context.Context, imageRef string, opts PatchOptions, r
 		entry.PatchedTag = result.Patched.Tag
 	}
 
+	// Mark as changed if image was successfully patched or mirrored (first time).
+	// Not changed if: already up to date, or patch failed.
+	entry.Changed = result.Error == nil && (!result.Skipped || result.SkipReason != SkipReasonUpToDate)
+
 	data, err := json.MarshalIndent(entry, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshaling result: %w", err)
@@ -241,11 +308,28 @@ func PatchSingleImage(ctx context.Context, imageRef string, opts PatchOptions, r
 	return nil
 }
 
+// PublishedChart represents a chart that was published to OCI.
+type PublishedChart struct {
+	Name              string           `json:"name"`
+	Version           string           `json:"version"`
+	Registry          string           `json:"registry"`
+	OCIRef            string           `json:"oci_ref"`
+	SBOMPath          string           `json:"sbom_path"`
+	VulnPredicatePath string           `json:"vuln_predicate_path"`
+	Images            []PublishedImage `json:"images"`
+}
+
+// PublishedImage represents an image included in a published chart.
+type PublishedImage struct {
+	Original string `json:"original"`
+	Patched  string `json:"patched"`
+}
+
 // AssembleResults reads a discovery manifest and patch results from matrix
-// jobs, then creates wrapper charts. Vulnerability reports are attached as
-// in-toto attestations on each image (handled by the CI workflow), so they
-// are not bundled into the chart packages.
-func AssembleResults(manifestPath, resultsDir, reportsDir, outputDir, registry string) error {
+// jobs, then creates wrapper charts. When publish is true and registry is set,
+// publishes charts to OCI and generates SBOMs and vulnerability attestations.
+// Only publishes charts where at least one underlying image changed.
+func AssembleResults(manifestPath, resultsDir, reportsDir, outputDir, registry string, publish bool) error { //nolint:gocognit,gocyclo,cyclop,funlen // complex workflow
 	manifestData, err := os.ReadFile(manifestPath)
 	if err != nil {
 		return fmt.Errorf("reading manifest: %w", err)
@@ -261,6 +345,8 @@ func AssembleResults(manifestPath, resultsDir, reportsDir, outputDir, registry s
 		return err
 	}
 
+	var publishedCharts []PublishedChart
+
 	// Create wrapper charts.
 	for _, ch := range manifest.Charts {
 		dep := Dependency{
@@ -271,11 +357,83 @@ func AssembleResults(manifestPath, resultsDir, reportsDir, outputDir, registry s
 
 		results := buildPatchResults(ch.Images, resultMap, reportsDir)
 
+		// Check if any images changed
+		hasChanges := false
+		for _, imgDisc := range ch.Images {
+			ref := Image(imgDisc).Reference()
+			if r, ok := resultMap[ref]; ok && r.Changed {
+				hasChanges = true
+				break
+			}
+		}
+
+		if !hasChanges {
+			fmt.Printf("  Skipping %s: no images changed\n", ch.Name)
+			continue
+		}
+
+		// Create wrapper chart
 		version, err := CreateWrapperChart(dep, results, outputDir, registry)
 		if err != nil {
 			return fmt.Errorf("creating wrapper chart for %s: %w", ch.Name, err)
 		}
 		fmt.Printf("  Wrapper chart → %s/%s (%s)\n", outputDir, ch.Name, version)
+
+		chartDir := filepath.Join(outputDir, ch.Name)
+		ociRef := fmt.Sprintf("%s/charts/%s:%s", registry, ch.Name, version)
+
+		// Publish to OCI if requested
+		if publish && registry != "" {
+			_, err := PublishChart(chartDir, registry)
+			if err != nil {
+				return fmt.Errorf("publishing chart %s: %w", ch.Name, err)
+			}
+		}
+
+		// Generate SBOM
+		sbomPath := filepath.Join(chartDir, "sbom.cdx.json")
+		if err := GenerateChartSBOM(ch, results, version, sbomPath); err != nil {
+			return fmt.Errorf("generating SBOM for %s: %w", ch.Name, err)
+		}
+
+		// Generate aggregated vulnerability predicate
+		vulnPredicatePath := filepath.Join(chartDir, "vuln-predicate.json")
+		if err := AggregateVulnPredicate(results, reportsDir, vulnPredicatePath); err != nil {
+			return fmt.Errorf("generating vuln predicate for %s: %w", ch.Name, err)
+		}
+
+		// Record published chart
+		pc := PublishedChart{
+			Name:              ch.Name,
+			Version:           version,
+			Registry:          registry,
+			OCIRef:            ociRef,
+			SBOMPath:          sbomPath,
+			VulnPredicatePath: vulnPredicatePath,
+		}
+		for _, pr := range results {
+			// Include all successfully processed images (including mirrored ones that were skipped)
+			if pr.Error == nil && pr.Patched.Reference() != "" {
+				pc.Images = append(pc.Images, PublishedImage{
+					Original: pr.Original.Reference(),
+					Patched:  pr.Patched.Reference(),
+				})
+			}
+		}
+		publishedCharts = append(publishedCharts, pc)
+	}
+
+	// Write published-charts.json
+	if len(publishedCharts) > 0 {
+		data, err := json.MarshalIndent(publishedCharts, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshaling published charts: %w", err)
+		}
+		publishedPath := filepath.Join(outputDir, "published-charts.json")
+		if err := os.WriteFile(publishedPath, data, 0o644); err != nil {
+			return fmt.Errorf("writing published charts: %w", err)
+		}
+		fmt.Printf("\nPublished %d chart(s) → %s\n", len(publishedCharts), publishedPath)
 	}
 
 	return nil
@@ -334,13 +492,13 @@ func buildPatchResults(images []ImageDiscovery, resultMap map[string]*SinglePatc
 		if !ok || r == nil {
 			// No patch result produced (matrix job may have failed).
 			pr.Skipped = true
-			pr.SkipReason = "no patch result for image"
+			pr.SkipReason = SkipReasonNoPatchResult
 			results = append(results, pr)
 			continue
 		}
 
-		if r.Error != "" {
-			pr.Error = fmt.Errorf("%s", r.Error)
+		if r.Error != "" { //nolint:gocritic // prefer if-else for readability
+			pr.Error = errors.New(r.Error) //nolint:err113 // wrapping error from JSON string
 		} else if r.Skipped {
 			pr.Skipped = true
 			pr.SkipReason = r.SkipReason

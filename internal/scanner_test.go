@@ -9,31 +9,31 @@ import (
 )
 
 func TestFindImages(t *testing.T) {
-	values := map[string]interface{}{
-		"server": map[string]interface{}{
-			"image": map[string]interface{}{
+	values := map[string]any{
+		"server": map[string]any{
+			"image": map[string]any{
 				"repository": "quay.io/prometheus/prometheus",
 				"tag":        "v2.48.0",
 			},
 			"replicas": 1,
 		},
-		"alertmanager": map[string]interface{}{
-			"image": map[string]interface{}{
+		"alertmanager": map[string]any{
+			"image": map[string]any{
 				"registry":   "docker.io",
 				"repository": "prom/alertmanager",
 				"tag":        "v0.26.0",
 			},
 		},
-		"nodeExporter": map[string]interface{}{
-			"image": map[string]interface{}{
+		"nodeExporter": map[string]any{
+			"image": map[string]any{
 				"repository": "quay.io/prometheus/node-exporter",
 				"tag":        "v1.7.0",
 			},
 		},
-		"configmapReload": map[string]interface{}{
+		"configmapReload": map[string]any{
 			"image": "jimmidyson/configmap-reload:v0.12.0",
 		},
-		"notAnImage": map[string]interface{}{
+		"notAnImage": map[string]any{
 			"repository": "https://example.com/charts",
 		},
 	}
@@ -66,6 +66,85 @@ func TestFindImages(t *testing.T) {
 		if img.Repository == "https://example.com/charts" {
 			t.Error("URL was incorrectly detected as an image")
 		}
+	}
+}
+
+func TestResolveImageTag(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name         string
+		img          Image
+		tagExists    map[string]bool
+		want         Image
+		wantResolved bool
+	}{
+		{
+			name: "tag exists as-is",
+			img:  Image{Registry: "docker.io", Repository: "library/nginx", Tag: "1.25"},
+			tagExists: map[string]bool{
+				"docker.io/library/nginx:1.25": true,
+			},
+			want:         Image{Registry: "docker.io", Repository: "library/nginx", Tag: "1.25"},
+			wantResolved: false,
+		},
+		{
+			name: "tag needs v prefix",
+			img:  Image{Registry: "quay.io", Repository: "prometheus/node-exporter", Tag: "1.10.2"},
+			tagExists: map[string]bool{
+				"quay.io/prometheus/node-exporter:v1.10.2": true,
+			},
+			want:         Image{Registry: "quay.io", Repository: "prometheus/node-exporter", Tag: "v1.10.2"},
+			wantResolved: true,
+		},
+		{
+			name: "tag has v prefix and exists",
+			img:  Image{Registry: "quay.io", Repository: "prometheus/node-exporter", Tag: "v1.10.2"},
+			tagExists: map[string]bool{
+				"quay.io/prometheus/node-exporter:v1.10.2": true,
+			},
+			want:         Image{Registry: "quay.io", Repository: "prometheus/node-exporter", Tag: "v1.10.2"},
+			wantResolved: false,
+		},
+		{
+			name: "tag has v prefix but exists without v",
+			img:  Image{Registry: "docker.io", Repository: "library/nginx", Tag: "v1.25"},
+			tagExists: map[string]bool{
+				"docker.io/library/nginx:1.25": true,
+			},
+			want:         Image{Registry: "docker.io", Repository: "library/nginx", Tag: "1.25"},
+			wantResolved: true,
+		},
+		{
+			name:         "tag doesn't exist in either form",
+			img:          Image{Registry: "docker.io", Repository: "library/nginx", Tag: "nonexistent"},
+			tagExists:    map[string]bool{},
+			want:         Image{Registry: "docker.io", Repository: "library/nginx", Tag: "nonexistent"},
+			wantResolved: false,
+		},
+		{
+			name:         "empty tag returns as-is",
+			img:          Image{Registry: "docker.io", Repository: "library/nginx", Tag: ""},
+			tagExists:    map[string]bool{},
+			want:         Image{Registry: "docker.io", Repository: "library/nginx", Tag: ""},
+			wantResolved: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Mock the tagChecker
+			oldChecker := tagChecker
+			tagChecker = func(_ context.Context, ref string) bool {
+				return tt.tagExists[ref]
+			}
+			defer func() { tagChecker = oldChecker }()
+
+			got := ResolveImageTag(ctx, tt.img)
+			if got != tt.want {
+				t.Errorf("ResolveImageTag() = %+v, want %+v", got, tt.want)
+			}
+		})
 	}
 }
 
@@ -114,9 +193,9 @@ func TestLooksLikeImage(t *testing.T) {
 
 func TestFindImagesWithEmptyTag(t *testing.T) {
 	// Test with appVersion that has "v" prefix — used as-is, no registry check needed
-	values := map[string]interface{}{
-		"server": map[string]interface{}{
-			"image": map[string]interface{}{
+	values := map[string]any{
+		"server": map[string]any{
+			"image": map[string]any{
 				"repository": "quay.io/prometheus/prometheus",
 				"tag":        "",
 			},
@@ -139,9 +218,9 @@ func TestFindImagesWithEmptyTag(t *testing.T) {
 		return strings.HasSuffix(ref, ":v2.10.1")
 	}
 
-	values = map[string]interface{}{
-		"kube-state-metrics": map[string]interface{}{
-			"image": map[string]interface{}{
+	values = map[string]any{
+		"kube-state-metrics": map[string]any{
+			"image": map[string]any{
 				"registry":   "registry.k8s.io",
 				"repository": "kube-state-metrics/kube-state-metrics",
 				"tag":        "",
@@ -163,9 +242,9 @@ func TestFindImagesWithEmptyTag(t *testing.T) {
 		return strings.HasSuffix(ref, ":0.50.0-distroless-libc")
 	}
 
-	values = map[string]interface{}{
-		"vector": map[string]interface{}{
-			"image": map[string]interface{}{
+	values = map[string]any{
+		"vector": map[string]any{
+			"image": map[string]any{
 				"repository": "timberio/vector",
 				"tag":        "",
 			},

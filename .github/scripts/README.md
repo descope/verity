@@ -1,306 +1,71 @@
-# Workflow Scripts
+# GitHub Actions Scripts
 
-Reusable scripts for GitHub Actions workflows. All scripts follow bash best practices with proper error handling.
+This directory contains shell scripts used by GitHub Actions workflows.
 
-## Installation Scripts
+## Issue Handling - Automated PR Creation
 
-### install-copa.sh
+### Adding a New Chart (`add-chart-dependency.sh`)
 
-Installs the latest version of Copa (Project Copacetic) from GitHub releases.
+**Triggered by:** Creating an issue with the "new-chart" label
 
-```bash
-./.github/scripts/install-copa.sh
+**Flow:**
+```
+User creates issue → Script adds to Chart.yaml → PR created → Merge → Renovate keeps updated
 ```
 
-**Used by:** ci.yaml, scheduled-scan.yaml, patch-on-pr.yaml
+**What happens after merge:**
+1. Renovate auto-updates chart versions
+2. `update-images` workflow scans chart for images
+3. Updates `values.yaml` automatically
+4. `scan-and-patch` workflow patches and publishes images + charts
 
-**Note:** Trivy installation now uses the official `aquasecurity/setup-trivy` GitHub Action instead of a custom script.
+### Adding a Standalone Image (`add-standalone-image.sh`)
 
----
+**Triggered by:** Creating an issue with the "new-image" label
 
-## BuildKit Setup
-
-Workflows use the **official** `docker/setup-buildx-action@v3` instead of a custom script.
-
-This action:
-
-- Sets up Docker Buildx (which uses BuildKit)
-- Doesn't require privileged mode
-- Creates a builder with an auto-generated name (accessible via action output)
-- Automatically maintained by Docker
-
-**Example workflow usage:**
-
-```yaml
-- name: Set up Docker Buildx
-  id: buildx
-  uses: docker/setup-buildx-action@v3
-
-- name: Run Copa patching
-  run: |
-    ./verity -chart Chart.yaml -output charts \
-      -patch \
-      -buildkit-addr docker-container://${{ steps.buildx.outputs.name }}
+**Flow:**
+```
+User creates issue → Script adds to charts/standalone/values.yaml → PR created → Merge → Image gets scanned & patched
 ```
 
----
+**What happens after merge:**
+1. Image is added to the standalone chart (`charts/standalone/`)
+2. `update-images` workflow scans all charts including standalone
+3. Updates root `values.yaml` with standalone images
+4. `scan-and-patch` workflow patches and publishes the image
+5. Renovate auto-updates the image tag in `charts/standalone/values.yaml`
 
-## Validation Scripts
+**Architecture:** Standalone images are managed through a local Helm chart to ensure they survive `scan` regeneration.
 
-### validate-charts.sh
+## Workflow Scripts
 
-Validates wrapper chart structure, dependencies, and runs `helm lint`.
+All scripts follow best practices: `set -euo pipefail`, shellcheck validated, clear error messages.
 
-```bash
-./.github/scripts/validate-charts.sh [directory]
-```
+### Discovery & Matrix
+- `discover-images.sh` - Image discovery and matrix generation
 
-**Arguments:**
+### Image Operations
+- `get-image-digest.sh` - Extract digest from results  
+- `sign-image.sh` - Cosign signature
+- `generate-image-sbom.sh` - Trivy SBOM
+- `attest-image-vulnerability.sh` - Vulnerability attestation
 
-- `directory` - Root directory containing charts/ folder (default: .)
+### Chart Operations
+- `assemble-charts.sh` - Assemble and publish charts
+- `get-chart-digest.sh` - Get OCI chart digest
+- `sign-chart.sh` - Cosign chart signature
+- `attest-chart-vulnerability.sh` - Chart vulnerability attestation
 
-**Checks:**
+### Utilities
+- `install-copa.sh` - Install Copa
+- `parse-*.sh` - Issue form parsers
+- `verify-*.sh` - Verification scripts
 
-- Required files exist (Chart.yaml, values.yaml, .helmignore)
-- Chart.yaml has valid apiVersion (v2)
-- Exactly one dependency configured
-- Helm lint passes
-
-**Used by:** ci.yaml
-
----
-
-## Publishing Scripts
-
-### publish-charts.sh
-
-Publishes wrapper charts to OCI registry.
-
-```bash
-./.github/scripts/publish-charts.sh <charts-dir> <registry> <org>
-```
-
-**Arguments:**
-
-- `charts-dir` - Directory containing charts/ folder
-- `registry` - OCI registry (e.g., quay.io)
-- `org` - Organization name
-
-**Example:**
+## Development
 
 ```bash
-./.github/scripts/publish-charts.sh . quay.io verity
-```
+# Lint all scripts
+make lint-scripts
 
-**Actions:**
-
-1. Builds Helm dependencies
-2. Packages charts
-3. Pushes to OCI registry
-
-**Used by:** publish.yaml
-
----
-
-### verify-images.sh
-
-Verifies patched images exist in the registry.
-
-```bash
-./.github/scripts/verify-images.sh <charts-dir> <registry> <org>
-```
-
-**Arguments:**
-
-- `charts-dir` - Directory containing charts/ folder
-- `registry` - Docker registry (e.g., quay.io)
-- `org` - Organization name
-
-**Example:**
-
-```bash
-./.github/scripts/verify-images.sh . quay.io verity
-```
-
-**Actions:**
-
-- Extracts image references from wrapper chart values
-- Checks if each image exists using `docker manifest inspect`
-- Reports missing images
-
-**Used by:** publish.yaml
-
----
-
-### generate-index.sh
-
-Generates a markdown index of published charts.
-
-```bash
-./.github/scripts/generate-index.sh <charts-dir> <output-file> <registry> <org>
-```
-
-**Arguments:**
-
-- `charts-dir` - Directory containing charts/ folder
-- `output-file` - Path to output markdown file
-- `registry` - OCI registry (e.g., quay.io)
-- `org` - Organization name
-
-**Example:**
-
-```bash
-./.github/scripts/generate-index.sh . /tmp/index.md quay.io verity
-```
-
-**Output:** Markdown file with installation commands for each chart
-
-**Used by:** publish.yaml
-
----
-
-## Git Scripts
-
-### commit-changes.sh
-
-Commits and pushes changes to a directory.
-
-```bash
-./.github/scripts/commit-changes.sh [directory]
-```
-
-**Arguments:**
-
-- `directory` - Directory to commit (default: charts)
-
-**Actions:**
-
-1. Configures git user as github-actions[bot]
-2. Checks for changes
-3. Commits with standardized message
-4. Pushes to current branch
-
-**Used by:** patch-on-pr.yaml
-
----
-
-## Best Practices
-
-All scripts follow these conventions:
-
-### Error Handling
-
-```bash
-set -euo pipefail
-```
-
-- `-e` - Exit on error
-- `-u` - Error on undefined variables
-- `-o pipefail` - Fail on pipeline errors
-
-### Argument Validation
-
-Scripts validate required arguments and show usage on error:
-
-```bash
-if [ -z "$ORG" ]; then
-  echo "Usage: $0 <charts-dir> <registry> <org>"
-  exit 1
-fi
-```
-
-### Clear Output
-
-- ✅ Success messages with checkmarks
-- ❌ Error messages with X marks
-- ⚠️ Warnings for non-critical issues
-- Progress indicators for multi-step operations
-
-### Idempotency
-
-Scripts handle re-runs gracefully:
-
-- Check if work already done
-- Skip unnecessary steps
-- Don't fail if nothing to do
-
----
-
-## Testing Scripts Locally
-
-### Prerequisites
-
-```bash
-# Install required tools
-brew install yq jq helm docker
-```
-
-### Test Individual Scripts
-
-```bash
-# Validate syntax
-bash -n .github/scripts/validate-charts.sh
-
-# Dry run (most scripts support this)
-./.github/scripts/validate-charts.sh /tmp/test-charts
-```
-
-### Test Full Workflow
-
-```bash
-# Start BuildKit
-./.github/scripts/start-buildkit.sh
-
-# Run verity with patching
-./verity -chart Chart.yaml -output /tmp/test-charts \
-  -patch \
-  -buildkit-addr docker-container://buildkitd
-
-# Validate output
-./.github/scripts/validate-charts.sh /tmp/test-charts
-
-# Cleanup
-docker stop buildkitd
-```
-
----
-
-## Maintenance
-
-### Updating Tool Versions
-
-**BuildKit:**
-Edit `start-buildkit.sh` default version or pass as argument.
-
-**Trivy/Copa:**
-Scripts automatically fetch latest release. No updates needed.
-
-### Adding New Scripts
-
-1. Create script in `.github/scripts/`
-2. Set executable: `chmod +x .github/scripts/new-script.sh`
-3. Add to this README
-4. Update relevant workflows
-5. Test locally before committing
-
-### Script Template
-
-```bash
-#!/bin/bash
-set -euo pipefail
-
-# Script description and usage
-if [ "$#" -lt 1 ]; then
-  echo "Usage: $0 <required-arg> [optional-arg]"
-  exit 1
-fi
-
-REQUIRED="${1}"
-OPTIONAL="${2:-default}"
-
-echo "Starting operation..."
-
-# Script logic here
-
-echo "✅ Operation complete"
+# CI automatically runs shellcheck on all *.sh files
 ```

@@ -36,11 +36,26 @@ git config user.name "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
 git checkout -b "${BRANCH}"
 git add Chart.yaml
-git commit -m "feat: add ${CHART_NAME} chart dependency"
+git commit -m "feat: add ${CHART_NAME} chart dependency
+
+Adds ${CHART_NAME}@${CHART_VERSION} from ${CHART_REPOSITORY}.
+
+The update-images workflow will automatically scan this chart and
+update values.yaml with all discovered images.
+
+Closes #${ISSUE_NUMBER}"
+
 git push -u origin "${BRANCH}"
+
 gh pr create \
-  --title "Add ${CHART_NAME} chart" \
-  --body "Adds ${CHART_NAME}@${CHART_VERSION} from \`${CHART_REPOSITORY}\`.
+  --title "feat: add ${CHART_NAME} chart" \
+  --body "Adds \`${CHART_NAME}@${CHART_VERSION}\` from \`${CHART_REPOSITORY}\`.
+
+## What happens next
+
+1. **Renovate** will keep this chart version up-to-date automatically
+2. **update-images workflow** will scan the chart and update \`values.yaml\` with all images
+3. **scan-and-patch workflow** will patch all images and publish them to GHCR
 
 Closes #${ISSUE_NUMBER}" \
   --label new-chart

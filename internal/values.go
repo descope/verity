@@ -52,7 +52,7 @@ func CreateWrapperChart(dep Dependency, results []*PatchResult, outputDir, regis
 	wrapper := WrapperChart{
 		Name:         chartName,
 		Version:      version,
-		Description:  fmt.Sprintf("%s with Copa-patched container images", dep.Name),
+		Description:  dep.Name + " with Copa-patched container images",
 		Dependencies: []Dependency{dep},
 	}
 	if err := writeChartYaml(filepath.Join(chartDir, "Chart.yaml"), wrapper); err != nil {
@@ -126,7 +126,7 @@ func writeChartYaml(path string, chart WrapperChart) error {
 // namespaced under the chart name. This allows the values to be used with a parent
 // chart that subcharts the original.
 func GenerateNamespacedValuesOverride(chartName string, results []*PatchResult, path string) error {
-	inner := make(map[string]interface{})
+	inner := make(map[string]any)
 
 	for _, r := range results {
 		if r.Error != nil {
@@ -145,11 +145,11 @@ func GenerateNamespacedValuesOverride(chartName string, results []*PatchResult, 
 	// Wrap the values under the chart name. When no images qualify,
 	// still write an empty file to clear any stale upstream refs
 	// from a previous run.
-	root := map[string]interface{}{
+	root := map[string]any{
 		chartName: inner,
 	}
 	if len(inner) == 0 {
-		root = map[string]interface{}{}
+		root = map[string]any{}
 	}
 
 	var buf bytes.Buffer
@@ -162,12 +162,14 @@ func GenerateNamespacedValuesOverride(chartName string, results []*PatchResult, 
 
 	// Build comment header noting any image overrides applied.
 	var header string
+	var headerBuilder strings.Builder
 	for _, r := range results {
 		if r.OverriddenFrom != "" && r.Error == nil && !r.Skipped {
-			header += fmt.Sprintf("# NOTE: %s was overridden from %q to %q for Copa compatibility\n",
-				r.Original.Repository, r.OverriddenFrom, r.Original.Tag)
+			headerBuilder.WriteString(fmt.Sprintf("# NOTE: %s was overridden from %q to %q for Copa compatibility\n",
+				r.Original.Repository, r.OverriddenFrom, r.Original.Tag))
 		}
 	}
+	header += headerBuilder.String()
 
 	var out []byte
 	if header != "" {
@@ -184,7 +186,7 @@ func GenerateNamespacedValuesOverride(chartName string, results []*PatchResult, 
 // Each PatchResult.Original.Path (e.g. "server.image") determines where in
 // the nested YAML the image fields are set.
 func GenerateValuesOverride(results []*PatchResult, path string) error {
-	root := make(map[string]interface{})
+	root := make(map[string]any)
 
 	for _, r := range results {
 		if r.Error != nil {
@@ -205,22 +207,22 @@ func GenerateValuesOverride(results []*PatchResult, path string) error {
 
 // setImageAtPath sets registry/repository/tag at a dot-separated path like
 // "server.image" → {server: {image: {registry: ..., repository: ..., tag: ...}}}.
-func setImageAtPath(root map[string]interface{}, dotPath string, img Image) {
+func setImageAtPath(root map[string]any, dotPath string, img Image) {
 	parts := strings.Split(dotPath, ".")
 	current := root
 
 	// Walk/create intermediate maps.
 	for _, key := range parts {
 		if existing, ok := current[key]; ok {
-			if m, ok := existing.(map[string]interface{}); ok {
+			if m, ok := existing.(map[string]any); ok {
 				current = m
 			} else {
-				m := make(map[string]interface{})
+				m := make(map[string]any)
 				current[key] = m
 				current = m
 			}
 		} else {
-			m := make(map[string]interface{})
+			m := make(map[string]any)
 			current[key] = m
 			current = m
 		}
@@ -257,9 +259,9 @@ func getNextPatchLevel(registry, chartName, upstreamVersion string) int {
 	var patchLevels []int
 
 	for _, tag := range tags {
-		if strings.HasPrefix(tag, prefix) {
+		if after, ok := strings.CutPrefix(tag, prefix); ok {
 			// Extract patch level from tag
-			patchStr := strings.TrimPrefix(tag, prefix)
+			patchStr := after
 			if patch, err := strconv.Atoi(patchStr); err == nil {
 				patchLevels = append(patchLevels, patch)
 			}

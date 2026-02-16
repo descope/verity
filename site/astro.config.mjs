@@ -5,7 +5,7 @@ import tailwind from '@astrojs/tailwind';
 const base = process.env.CI ? '/verity/' : '/';
 
 export default defineConfig({
-  site: 'https://descope.github.io',
+  site: 'https://verity-org.github.io',
   base,
   output: 'static',
   integrations: [tailwind()],

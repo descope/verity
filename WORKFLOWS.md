@@ -1,221 +1,269 @@
 # Workflow Architecture
 
-Verity uses a matrix-based workflow system to scan, patch, and publish security-hardened Helm charts in parallel
-across GitHub Actions runners.
+Verity uses a streamlined workflow system to automatically scan charts, discover images, and patch them in
+parallel using GitHub Actions.
 
 ## Overview
 
 ```text
-┌─────────────────┐
-│   Chart.yaml    │  ← Renovate updates versions
-│   values.yaml   │  ← Renovate updates image tags
-└────────┬────────┘
-         │
-    ┌────▼────────────────────────────────────────────────────┐
-    │  patch-matrix.yaml  /  scheduled-scan.yaml              │
-    │                                                         │
-    │  Job 1: Discover       Job 2: Patch (matrix)            │
-    │  ┌──────────────┐      ┌───────────┐ ┌───────────┐     │
-    │  │ Scan charts  │─────▶│ Image A   │ │ Image B   │ ... │
-    │  │ Output matrix│      │ trivy+copa│ │ trivy+copa│     │
-    │  └──────────────┘      └─────┬─────┘ └─────┬─────┘     │
-    │                              │              │           │
-    │  Job 3: Assemble       ┌─────▼──────────────▼─────┐    │
-    │                        │ Collect results           │    │
-    │                        │ Create wrapper charts     │    │
-    │                        │ Commit / Create PR        │    │
-    │                        └──────────────────────────┘    │
-    └─────────────────────────────────────────────────────────┘
-                       │
-                  Merge to main
-                       │
-                       ▼
-            ┌──────────────────────┐
-            │  Publish to Quay.io  │
-            │  - Charts (OCI)      │
-            │  - Images (Docker)   │
-            └──────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                      Renovate Bot                            │
+│  Updates Chart.yaml dependencies (chart versions)            │
+└────────────────────────┬─────────────────────────────────────┘
+                         │
+                         ▼
+         ┌───────────────────────────────┐
+         │  update-images.yaml           │
+         │  • helm dependency update     │
+         │  • verity scan (extract imgs) │
+         │  • commit values.yaml         │
+         └───────────┬───────────────────┘
+                     │
+                     ▼
+         ┌───────────────────────────────┐
+         │  scan-and-patch.yaml          │
+         │  Job 1: Discover              │
+         │    • Parse values.yaml        │
+         │    • Apply overrides          │
+         │    • Generate matrix          │
+         │                               │
+         │  Job 2: Patch (matrix)        │
+         │    ┌────────┐  ┌────────┐    │
+         │    │Image A │  │Image B │... │
+         │    │trivy   │  │trivy   │    │
+         │    │copa    │  │copa    │    │
+         │    │sign    │  │sign    │    │
+         │    └────────┘  └────────┘    │
+         │                               │
+         │  Job 3: Generate Catalog      │
+         │    • Collect reports          │
+         │    • Update site data         │
+         │    • Deploy to GitHub Pages   │
+         └───────────────────────────────┘
+                     │
+                     ▼
+         ┌───────────────────────────────┐
+         │  ghcr.io/verity-org          │
+         │  • Patched images             │
+         │  • Signed with cosign         │
+         │  • SLSA attestations          │
+         │  • SBOM + vuln reports        │
+         └───────────────────────────────┘
 ```
 
-## CLI Modes
-
-Verity operates in distinct modes, each designed for a specific phase of the pipeline:
+## Core Commands
 
 ```bash
-# Discover: scan charts, output GitHub Actions matrix
-./verity -discover -chart Chart.yaml -images values.yaml -discover-dir .verity
+# Scan charts for images
+./verity scan --chart . --output values.yaml
 
-# Patch single image: run in a matrix job
-./verity -patch-single -image "quay.io/prometheus/prometheus:v3.9.1" \
-  -registry quay.io/verity \
-  -buildkit-addr docker-container://buildkitd \
-  -report-dir .verity/reports \
-  -result-dir .verity/results
+# Discover images and generate matrix
+./verity discover --images values.yaml --discover-dir .verity
 
-# Assemble: create wrapper charts from matrix results
-./verity -assemble \
-  -manifest .verity/manifest.json \
-  -results-dir .verity/results \
-  -reports-dir .verity/reports \
-  -output charts \
-  -registry quay.io/verity
+# Patch a single image
+./verity patch \
+  --image "quay.io/prometheus/prometheus:v2.45.0" \
+  --registry ghcr.io/verity-org \
+  --buildkit-addr docker-container://buildkitd \
+  --result-dir .verity/results \
+  --report-dir .verity/reports
 
-# Scan: list images without patching (dry run)
-./verity -scan -chart Chart.yaml -images values.yaml
+# List images (dry run)
+./verity list --images values.yaml
 
-# Site data: generate catalog JSON from existing charts
-./verity -site-data site/src/data/catalog.json -images values.yaml -registry quay.io/verity
+# Generate site catalog
+./verity catalog \
+  --output site/src/data/catalog.json \
+  --images values.yaml \
+  --registry ghcr.io/verity-org \
+  --reports-dir .verity/reports
 ```
 
 ## Workflows
 
-### 1. CI Workflow (`ci.yaml`)
-
-**Triggers:** Pull requests (except for `charts/**` and `**.md` changes)
-
-**Purpose:** Validate code changes
-
-**Jobs:**
-
-- **Lint** - actionlint + shellcheck
-- **Unit Tests** - Run Go tests
-- **Scan** - Discover images in Chart.yaml dependencies (dry run)
-
----
-
-### 2. Patch on PR (`patch-matrix.yaml`)
-
-**Triggers:** Pull requests that modify `Chart.yaml` or `values.yaml`, or `workflow_dispatch`
-
-**Purpose:** Automatically patch images when Renovate updates chart versions or image tags
-
-**Jobs:**
-
-1. **Discover** - Scans charts, merges images into values.yaml, outputs matrix JSON and manifest
-2. **Patch** (matrix) - Each image gets its own runner: pull → trivy → copa → push → sign → attest
-3. **Assemble** - Collects results, creates wrapper charts, commits to PR
-
-**Why matrix?** GitHub runners are small (2 vCPU, 7GB RAM). Pulling, scanning, and patching a container image is
-resource-intensive. Matrix jobs give each image a fresh runner with full resources and run in parallel.
-
----
-
-### 3. Scheduled Scan (`scheduled-scan.yaml`)
+### 1. Update Images (`update-images.yaml`)
 
 **Triggers:**
 
-- Cron: Daily at 2 AM UTC
-- Manual: `workflow_dispatch`
+- Pull requests modifying `Chart.yaml` or `Chart.lock`
+- Push to main (Chart.yaml/Chart.lock changes)
+- Manual (`workflow_dispatch`)
 
-**Purpose:** Continuously monitor for new vulnerabilities
-
-**Jobs:** Same 3-job matrix pattern as `patch-matrix.yaml`, but the assemble step creates a PR instead of
-committing to an existing branch.
-
----
-
-### 4. Publish (`publish.yaml`)
-
-**Triggers:** Push to `main` branch
-
-**Purpose:** Publish wrapper charts and verify patched images in Quay.io
+**Purpose:** Auto-update values.yaml when chart dependencies change
 
 **Flow:**
 
-1. Package and push wrapper charts to OCI registry
-2. Verify all patched images exist
-3. Generate site catalog and deploy to GitHub Pages
+1. Renovate opens PR updating Chart.yaml
+2. Workflow downloads chart dependencies
+3. Scans all charts for images
+4. Updates values.yaml with discovered images
+5. Commits to PR
+
+**Result:** values.yaml is always in sync with Chart.yaml
+
+---
+
+### 2. Scan and Patch (`scan-and-patch.yaml`)
+
+**Triggers:**
+
+- Pull requests modifying `values.yaml`
+- Push to main (values.yaml changes)
+- Daily schedule (2 AM UTC)
+- Manual (`workflow_dispatch`)
+
+**Purpose:** Patch all images when values.yaml changes or on schedule
+
+**Flow:**
+
+#### Job 1: Discover
+
+```bash
+./verity discover --images values.yaml --discover-dir .verity
+```
+
+- Parses values.yaml
+- Applies overrides (e.g., distroless → debian)
+- Generates matrix.json for parallel patching
+- Outputs manifest.json with all image metadata
+
+#### Job 2: Patch (Matrix)
+
+```bash
+./verity patch --image ${{ matrix.image_ref }} ...
+```
+
+- **Matrix strategy** - Each image gets its own runner
+- Runs in parallel (fail-fast: false)
+- Per image:
+  1. Pull source image
+  2. Scan with Trivy
+  3. Patch with Copa
+  4. Push to ghcr.io/verity-org
+  5. Sign with cosign
+  6. Attest (provenance, SBOM, vuln report)
+
+**Why matrix?** Resource isolation + parallelization. Each image gets 2 vCPU / 7GB RAM.
+
+#### Job 3: Generate Catalog
+
+```bash
+./verity catalog --output site/src/data/catalog.json ...
+```
+
+- Collects all patch results
+- Aggregates vulnerability data
+- Updates site catalog
+- Deploys to GitHub Pages
+
+**Result:** Patched images published to GHCR with full attestations
+
+---
+
+## Data Flow
+
+```text
+Chart.yaml
+    ↓ (helm dependency update)
+charts/*.tgz
+    ↓ (verity scan)
+values.yaml ──────────────┐
+    ↓ (verity discover)   │
+manifest.json             │
+matrix.json               │
+    ↓ (parallel patching) │
+.verity/results/*.json    │
+.verity/reports/*.json    │
+    ↓ (verity catalog) ───┤
+site/src/data/catalog.json
+```
+
+**Key files:**
+
+- **Chart.yaml** - Source of truth for chart dependencies
+- **values.yaml** - Centralized list of all images to patch
+- **manifest.json** - Full image metadata with paths
+- **matrix.json** - GitHub Actions matrix format
+- **results/*.json** - Patch results (registry, tag, digest)
+- **reports/*.json** - Trivy vulnerability reports
+
+---
+
+## Image Overrides
+
+Copa cannot patch distroless/Alpine/scratch images. Use overrides in values.yaml:
+
+```yaml
+# values.yaml
+overrides:
+  timberio/vector:
+    from: "distroless-libc"  # Unpatchable
+    to: "debian"              # Patchable variant
+
+timberio-vector:
+  image:
+    repository: timberio/vector
+    tag: "0.50.0-distroless-libc"
+```
+
+During discovery, the tag transforms to `0.50.0-debian` so Copa patches the right variant.
 
 ---
 
 ## Self-Maintenance Flow
 
-### Scenario 1: Renovate Updates Chart Version
+### Scenario 1: Renovate Updates Chart
 
 ```text
-1. Renovate opens PR: Chart.yaml updated (prometheus 28.9.1 → 29.0.0)
+1. Renovate: Chart.yaml updated (prometheus 28.9.1 → 29.0.0)
    ↓
-2. patch-matrix.yaml triggers
+2. update-images.yaml: Scans new chart → updates values.yaml
    ↓
-3. Discover job scans new chart, finds 15 images → matrix
+3. scan-and-patch.yaml: Triggers on values.yaml change
    ↓
-4. 15 parallel patch jobs run (one image per runner)
+4. Discover: Parses images, applies overrides → matrix
    ↓
-5. Assemble job creates wrapper charts, commits to PR
+5. Patch (matrix): 20 images patched in parallel
    ↓
-6. Review & merge PR
+6. Catalog: Site updated with new patch data
    ↓
-7. publish.yaml publishes to Quay.io
+7. Merge PR → Images live on GHCR
 ```
 
-### Scenario 2: New CVE Discovered
+### Scenario 2: Daily Vulnerability Scan
 
 ```text
-1. Scheduled scan runs nightly
+1. Cron: 2 AM UTC
    ↓
-2. Discover finds all images → matrix
+2. scan-and-patch.yaml: Scans all images for new CVEs
    ↓
-3. Patch jobs scan existing patched images for new vulns
+3. Images with fixable vulns get re-patched
    ↓
-4. Images with new fixable CVEs get re-patched
-   ↓
-5. Assemble creates PR if charts changed
-   ↓
-6. Review & merge PR
-   ↓
-7. publish.yaml publishes updated charts
+4. Catalog updated if vulnerabilities found/fixed
 ```
 
-## Data Flow Between Jobs
-
-```text
-Discover ──► .verity/manifest.json   (artifact: verity-manifest)
-         ──► values.yaml (updated)   (artifact: verity-manifest)
-         ──► matrix JSON             (output: matrix)
-
-Patch[i] ──► .verity/results/<image>.json  (artifact: patch-result-<name>)
-         ──► .verity/reports/<image>.json
-         ──► in-toto attestations (vuln report, SBOM, provenance)
-         ──► cosign signature
-
-Assemble ◄── manifest.json + updated values.yaml + all results + all reports
-         ──► charts/<name>/Chart.yaml
-         ──► charts/<name>/values.yaml
-```
-
-**Note:** Vulnerability reports are attached as **in-toto attestations** on each
-patched image (via cosign), not bundled in chart packages. The discover step
-merges chart-discovered images into `values.yaml`, which is uploaded as an
-artifact so the assemble step can use the updated unified image list.
-
-## Permissions Required
-
-Workflows use `GITHUB_TOKEN` plus Quay.io secrets:
-
-- `contents: write` - For committing wrapper charts
-- `pull-requests: write` - For scheduled-scan to create PRs
-- `QUAY_USERNAME` / `QUAY_PASSWORD` - For Quay.io image and chart publishing
-- `QUAY_API_TOKEN` - For setting new Quay.io repos to public
+---
 
 ## Configuration
 
-### Registry Settings
+### Registry
 
-Patched images: `quay.io/verity/<image-name>:<tag>-patched`
-Charts: `oci://quay.io/verity/charts/<chart-name>`
+```yaml
+env:
+  REGISTRY: ghcr.io/verity-org
+```
+
+Patched images: `ghcr.io/verity-org/<repo>/<image>:<tag>-patched`
 
 ### Matrix Settings
 
 ```yaml
 strategy:
   matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
-  fail-fast: false    # Don't cancel other images if one fails
-  max-parallel: 10    # Limit concurrent runners
+  fail-fast: false    # Continue patching other images if one fails
 ```
 
-### Scheduled Scan Frequency
-
-Edit `.github/workflows/scheduled-scan.yaml`:
+### Schedule
 
 ```yaml
 on:
@@ -223,19 +271,59 @@ on:
     - cron: '0 2 * * *'  # Daily at 2 AM UTC
 ```
 
+---
+
+## Permissions
+
+```yaml
+permissions:
+  contents: write       # Commit to PR
+  packages: write       # Push to GHCR
+  pull-requests: write  # Create/update PRs
+  id-token: write       # OIDC signing
+  attestations: write   # GitHub Attestations API
+```
+
+---
+
+## Local Testing
+
+Use `act` to test workflows locally:
+
+```bash
+# Install act
+brew install act
+
+# Test chart scanning
+make test-update-images
+
+# Test image patching (requires local registry)
+make up  # Start local registry + BuildKit
+make test-scan-and-patch
+```
+
+See [LOCAL_TESTING.md](LOCAL_TESTING.md) for details.
+
+---
+
 ## Troubleshooting
 
 ### Matrix job fails for one image
 
-Other images continue due to `fail-fast: false`. The assemble job still runs and creates wrapper charts using
-the successful results. Check the failed job's logs for details.
+Other images continue (`fail-fast: false`). Check failed job logs. Common issues:
 
-### Discover step finds 0 images
+- Image doesn't exist / no access
+- Copa can't patch distroless images (use overrides)
+- BuildKit connection issues
 
-- Verify `Chart.yaml` has valid dependencies
-- Check Helm registry login succeeded
-- Run `./verity -scan` locally to debug
+### Discover finds 0 images
 
-### Assemble step has missing results
+- Verify Chart.yaml has dependencies
+- Run `helm dependency update` manually
+- Check `verity scan --chart .` locally
 
-This happens when patch jobs fail. Assemble handles missing results gracefully — images without results are treated as unpatched.
+### Override not applied
+
+- Verify override syntax in values.yaml
+- Check discover job logs for "Loaded N override(s)"
+- Ensure repository name matches exactly

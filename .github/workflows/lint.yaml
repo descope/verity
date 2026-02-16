@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   golangci-lint:
-    name: Go Lint
+    name: Go Lint (gofumpt, goimports, gosec, vet)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -70,26 +70,6 @@ jobs:
 
       - name: Run ShellCheck
         run: shellcheck .github/scripts/*.sh
-
-  gofumpt:
-    name: Go Format Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install mise
-        uses: jdx/mise-action@6d1e696aa24c1aa1bcc1adea0212707c71ab78a8 # v3.6.1
-        with:
-          install: true
-          cache: true
-
-      - name: Check Go formatting
-        run: |
-          gofumpt -l . | tee /tmp/gofumpt.txt
-          if [ -s /tmp/gofumpt.txt ]; then
-            echo "Files need formatting. Run: make fmt-strict"
-            exit 1
-          fi
 
   govulncheck:
     name: Go Vulnerability Check

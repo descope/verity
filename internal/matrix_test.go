@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -112,11 +113,8 @@ func TestWriteDiscoveryOutput(t *testing.T) {
 		t.Fatal("matrix.json is empty")
 	}
 	// Compact JSON should not contain newlines.
-	for _, b := range matData {
-		if b == '\n' {
-			t.Error("matrix.json should be compact (no newlines)")
-			break
-		}
+	if slices.Contains(matData, '\n') {
+		t.Error("matrix.json should be compact (no newlines)")
 	}
 
 	var gotMatrix MatrixOutput
@@ -150,7 +148,7 @@ func TestBuildPatchResults(t *testing.T) {
 	resultMap := map[string]*SinglePatchResult{
 		"quay.io/prometheus/prometheus:v3.9.1": {
 			ImageRef:          "quay.io/prometheus/prometheus:v3.9.1",
-			PatchedRegistry:   "quay.io/verity",
+			PatchedRegistry:   testRegistry,
 			PatchedRepository: "prometheus/prometheus",
 			PatchedTag:        "v3.9.1-patched",
 			VulnCount:         5,
@@ -170,8 +168,8 @@ func TestBuildPatchResults(t *testing.T) {
 
 	// First result: patched.
 	r0 := results[0]
-	if r0.Patched.Registry != "quay.io/verity" {
-		t.Errorf("expected patched registry 'quay.io/verity', got %q", r0.Patched.Registry)
+	if r0.Patched.Registry != testRegistry {
+		t.Errorf("expected patched registry %q, got %q", testRegistry, r0.Patched.Registry)
 	}
 	if r0.Patched.Tag != "v3.9.1-patched" {
 		t.Errorf("expected patched tag 'v3.9.1-patched', got %q", r0.Patched.Tag)
@@ -214,7 +212,10 @@ func TestLoadResults(t *testing.T) {
 	}
 
 	for _, r := range []SinglePatchResult{r1, r2} {
-		data, _ := json.Marshal(r)
+		data, err := json.Marshal(r)
+		if err != nil {
+			t.Fatal(err)
+		}
 		path := filepath.Join(dir, sanitize(r.ImageRef)+".json")
 		if err := os.WriteFile(path, data, 0o644); err != nil {
 			t.Fatal(err)
@@ -285,7 +286,10 @@ func TestAssembleResults(t *testing.T) {
 			},
 		},
 	}
-	manifestData, _ := json.Marshal(manifest)
+	manifestData, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
 	manifestPath := filepath.Join(dir, "manifest.json")
 	if err := os.WriteFile(manifestPath, manifestData, 0o644); err != nil {
 		t.Fatal(err)
@@ -302,8 +306,12 @@ func TestAssembleResults(t *testing.T) {
 		PatchedRepository: "library/nginx",
 		PatchedTag:        "1.25-patched",
 		VulnCount:         2,
+		Changed:           true, // Image was patched (changed)
 	}
-	rData, _ := json.Marshal(result)
+	rData, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(resultsDir, sanitize("docker.io/library/nginx:1.25")+".json"), rData, 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -318,9 +326,9 @@ func TestAssembleResults(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Run assemble.
+	// Run assemble (without publishing).
 	outputDir := filepath.Join(dir, "charts")
-	if err := AssembleResults(manifestPath, resultsDir, reportsDir, outputDir, ""); err != nil {
+	if err := AssembleResults(manifestPath, resultsDir, reportsDir, outputDir, "", false); err != nil {
 		t.Fatalf("AssembleResults() error: %v", err)
 	}
 
@@ -333,6 +341,24 @@ func TestAssembleResults(t *testing.T) {
 	valuesYaml := filepath.Join(outputDir, "myapp", "values.yaml")
 	if _, err := os.Stat(valuesYaml); err != nil {
 		t.Errorf("wrapper values.yaml not created: %v", err)
+	}
+
+	// Verify SBOM was generated.
+	sbomPath := filepath.Join(outputDir, "myapp", "sbom.cdx.json")
+	if _, err := os.Stat(sbomPath); err != nil {
+		t.Errorf("SBOM should be created: %v", err)
+	}
+
+	// Verify vuln predicate was generated.
+	vulnPath := filepath.Join(outputDir, "myapp", "vuln-predicate.json")
+	if _, err := os.Stat(vulnPath); err != nil {
+		t.Errorf("vuln predicate should be created: %v", err)
+	}
+
+	// Verify published-charts.json was created.
+	publishedPath := filepath.Join(outputDir, "published-charts.json")
+	if _, err := os.Stat(publishedPath); err != nil {
+		t.Errorf("published-charts.json should be created: %v", err)
 	}
 
 	// Reports are now attached as in-toto attestations on each image,
@@ -377,5 +403,280 @@ func TestImageDiscoveryReference(t *testing.T) {
 	d2 := ImageDiscovery{Repository: "nginx", Tag: "latest"}
 	if got := d2.reference(); got != "nginx:latest" {
 		t.Errorf("reference() = %q, want %q", got, "nginx:latest")
+	}
+}
+
+func TestChangedFieldInSinglePatchResult(t *testing.T) {
+	tests := []struct {
+		name        string
+		result      SinglePatchResult
+		wantChanged bool
+	}{
+		{
+			name: "successfully patched image",
+			result: SinglePatchResult{
+				ImageRef:          "nginx:1.25",
+				PatchedRegistry:   "ghcr.io/test",
+				PatchedRepository: "nginx",
+				PatchedTag:        "1.25-patched",
+				Skipped:           false,
+				Error:             "",
+				Changed:           true,
+			},
+			wantChanged: true,
+		},
+		{
+			name: "image already up to date",
+			result: SinglePatchResult{
+				ImageRef:   "nginx:1.25",
+				Skipped:    true,
+				SkipReason: "patched image up to date",
+				Error:      "",
+				Changed:    false,
+			},
+			wantChanged: false,
+		},
+		{
+			name: "image mirrored (no fixable vulns)",
+			result: SinglePatchResult{
+				ImageRef:   "nginx:1.25",
+				Skipped:    true,
+				SkipReason: "no fixable vulnerabilities",
+				Error:      "",
+				Changed:    true,
+			},
+			wantChanged: true,
+		},
+		{
+			name: "image patch failed",
+			result: SinglePatchResult{
+				ImageRef: "nginx:1.25",
+				Error:    "failed to push",
+				Changed:  false,
+			},
+			wantChanged: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.result.Changed != tt.wantChanged {
+				t.Errorf("Changed = %v, want %v", tt.result.Changed, tt.wantChanged)
+			}
+		})
+	}
+}
+
+func TestAssembleResultsSkipsUnchangedCharts(t *testing.T) {
+	dir := t.TempDir()
+
+	// Write manifest with one chart.
+	manifest := DiscoveryManifest{
+		Charts: []ChartDiscovery{
+			{
+				Name:       "myapp",
+				Version:    "1.0.0",
+				Repository: "oci://ghcr.io/charts",
+				Images: []ImageDiscovery{
+					{Registry: "docker.io", Repository: "library/nginx", Tag: "1.25", Path: "image"},
+				},
+			},
+		},
+	}
+	manifestData, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(dir, "manifest.json")
+	if err := os.WriteFile(manifestPath, manifestData, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write result with Changed=false (already up to date).
+	resultsDir := filepath.Join(dir, "results")
+	if err := os.MkdirAll(resultsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	result := SinglePatchResult{
+		ImageRef:   "docker.io/library/nginx:1.25",
+		Skipped:    true,
+		SkipReason: "patched image up to date",
+		Changed:    false,
+	}
+	rData, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(resultsDir, sanitize("docker.io/library/nginx:1.25")+".json"), rData, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	reportsDir := filepath.Join(dir, "reports")
+	if err := os.MkdirAll(reportsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Run assemble.
+	outputDir := filepath.Join(dir, "charts")
+	if err := AssembleResults(manifestPath, resultsDir, reportsDir, outputDir, "", false); err != nil {
+		t.Fatalf("AssembleResults() error: %v", err)
+	}
+
+	// Verify wrapper chart was NOT created (skipped due to no changes).
+	chartYaml := filepath.Join(outputDir, "myapp", "Chart.yaml")
+	if _, err := os.Stat(chartYaml); !os.IsNotExist(err) {
+		t.Errorf("wrapper Chart.yaml should not be created when no images changed")
+	}
+
+	// Verify published-charts.json was not created or is empty.
+	publishedPath := filepath.Join(outputDir, "published-charts.json")
+	if data, err := os.ReadFile(publishedPath); err == nil {
+		var charts []PublishedChart
+		if err := json.Unmarshal(data, &charts); err == nil && len(charts) > 0 {
+			t.Errorf("published-charts.json should be empty when no charts published, got %d charts", len(charts))
+		}
+	}
+}
+
+func TestAssembleResultsProcessesChangedCharts(t *testing.T) {
+	dir := t.TempDir()
+
+	// Write manifest with two charts.
+	manifest := DiscoveryManifest{
+		Charts: []ChartDiscovery{
+			{
+				Name:       "unchanged-app",
+				Version:    "1.0.0",
+				Repository: "oci://ghcr.io/charts",
+				Images: []ImageDiscovery{
+					{Registry: "docker.io", Repository: "library/nginx", Tag: "1.25", Path: "image"},
+				},
+			},
+			{
+				Name:       "changed-app",
+				Version:    "2.0.0",
+				Repository: "oci://ghcr.io/charts",
+				Images: []ImageDiscovery{
+					{Registry: "docker.io", Repository: "library/redis", Tag: "7.0", Path: "image"},
+				},
+			},
+		},
+	}
+	manifestData, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(dir, "manifest.json")
+	if err := os.WriteFile(manifestPath, manifestData, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write results: first unchanged, second changed.
+	resultsDir := filepath.Join(dir, "results")
+	if err := os.MkdirAll(resultsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	result1 := SinglePatchResult{
+		ImageRef:   "docker.io/library/nginx:1.25",
+		Skipped:    true,
+		SkipReason: "patched image up to date",
+		Changed:    false,
+	}
+	rData1, err := json.Marshal(result1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(resultsDir, sanitize("docker.io/library/nginx:1.25")+".json"), rData1, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	result2 := SinglePatchResult{
+		ImageRef:          "docker.io/library/redis:7.0",
+		PatchedRegistry:   "ghcr.io/test",
+		PatchedRepository: "library/redis",
+		PatchedTag:        "7.0-patched",
+		VulnCount:         3,
+		Changed:           true,
+	}
+	rData2, err := json.Marshal(result2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(resultsDir, sanitize("docker.io/library/redis:7.0")+".json"), rData2, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write trivy report for the changed image.
+	reportsDir := filepath.Join(dir, "reports")
+	if err := os.MkdirAll(reportsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	reportData := []byte(`{"Results":[{"Vulnerabilities":[{"FixedVersion":"1.0","VulnerabilityID":"CVE-2024-0001"}]}]}`)
+	if err := os.WriteFile(filepath.Join(reportsDir, sanitize("docker.io/library/redis:7.0")+".json"), reportData, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Run assemble.
+	outputDir := filepath.Join(dir, "charts")
+	if err := AssembleResults(manifestPath, resultsDir, reportsDir, outputDir, "ghcr.io/test", false); err != nil {
+		t.Fatalf("AssembleResults() error: %v", err)
+	}
+
+	// Verify unchanged-app was NOT created.
+	unchangedChart := filepath.Join(outputDir, "unchanged-app", "Chart.yaml")
+	if _, err := os.Stat(unchangedChart); !os.IsNotExist(err) {
+		t.Errorf("unchanged-app Chart.yaml should not be created")
+	}
+
+	// Verify changed-app WAS created.
+	changedChart := filepath.Join(outputDir, "changed-app", "Chart.yaml")
+	if _, err := os.Stat(changedChart); err != nil {
+		t.Errorf("changed-app Chart.yaml should be created: %v", err)
+	}
+
+	changedValues := filepath.Join(outputDir, "changed-app", "values.yaml")
+	if _, err := os.Stat(changedValues); err != nil {
+		t.Errorf("changed-app values.yaml should be created: %v", err)
+	}
+
+	// Verify SBOM was generated.
+	sbomPath := filepath.Join(outputDir, "changed-app", "sbom.cdx.json")
+	if _, err := os.Stat(sbomPath); err != nil {
+		t.Errorf("SBOM should be created: %v", err)
+	}
+
+	// Verify vuln predicate was generated.
+	vulnPath := filepath.Join(outputDir, "changed-app", "vuln-predicate.json")
+	if _, err := os.Stat(vulnPath); err != nil {
+		t.Errorf("vuln predicate should be created: %v", err)
+	}
+
+	// Verify published-charts.json contains only the changed chart.
+	publishedPath := filepath.Join(outputDir, "published-charts.json")
+	data, err := os.ReadFile(publishedPath)
+	if err != nil {
+		t.Fatalf("published-charts.json should be created: %v", err)
+	}
+
+	var charts []PublishedChart
+	if err := json.Unmarshal(data, &charts); err != nil {
+		t.Fatalf("failed to parse published-charts.json: %v", err)
+	}
+
+	if len(charts) != 1 {
+		t.Fatalf("expected 1 published chart, got %d", len(charts))
+	}
+
+	if charts[0].Name != "changed-app" {
+		t.Errorf("expected published chart 'changed-app', got %q", charts[0].Name)
+	}
+
+	if charts[0].Version != "2.0.0-0" {
+		t.Errorf("expected version '2.0.0-0', got %q", charts[0].Version)
+	}
+
+	if len(charts[0].Images) != 1 {
+		t.Errorf("expected 1 image in published chart, got %d", len(charts[0].Images))
 	}
 }

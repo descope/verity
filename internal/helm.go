@@ -3,10 +3,12 @@ package internal
 import (
 	"archive/tar"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -15,6 +17,11 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/registry"
+)
+
+var (
+	errNoTgzFound = errors.New("no .tgz file found")
+	errHTTPFetch  = errors.New("HTTP request failed")
 )
 
 type Dependency struct {
@@ -71,11 +78,17 @@ func helmPull(dep Dependency, destDir string) (string, error) {
 		cfg.RegistryClient = regClient
 	}
 
+	// Create temp dir for .tgz download
+	tmpDir, err := os.MkdirTemp("", "verity-helm-*")
+	if err != nil {
+		return "", fmt.Errorf("creating temp dir: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
 	pull := action.NewPullWithOpts(action.WithConfig(cfg))
 	pull.Settings = settings
-	pull.Untar = true
-	pull.UntarDir = destDir
-	pull.DestDir = destDir
+	pull.Untar = false // We'll extract it ourselves
+	pull.DestDir = tmpDir
 	pull.Version = dep.Version
 
 	var chartRef string
@@ -86,18 +99,46 @@ func helmPull(dep Dependency, destDir string) (string, error) {
 		chartRef = dep.Name
 	}
 
-	_, err := pull.Run(chartRef)
+	output, err := pull.Run(chartRef)
 	if err != nil {
 		return "", fmt.Errorf("pulling %s@%s: %w", dep.Name, dep.Version, err)
 	}
 
-	return filepath.Join(destDir, dep.Name), nil
+	// Find the .tgz file in tmpDir
+	entries, err := os.ReadDir(tmpDir)
+	if err != nil {
+		return "", fmt.Errorf("reading temp dir: %w", err)
+	}
+	var tgzPath string
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), ".tgz") {
+			tgzPath = filepath.Join(tmpDir, entry.Name())
+			break
+		}
+	}
+	if tgzPath == "" {
+		return "", fmt.Errorf("%w in %s (output was: %q)", errNoTgzFound, tmpDir, output)
+	}
+
+	// Extract the downloaded .tgz
+	file, err := os.Open(tgzPath)
+	if err != nil {
+		return "", fmt.Errorf("opening chart archive: %w", err)
+	}
+	defer func() { _ = file.Close() }()
+
+	chartPath, err := extractTarGz(file, dep.Name, destDir)
+	if err != nil {
+		return "", fmt.Errorf("extracting chart: %w", err)
+	}
+
+	return chartPath, nil
 }
 
 // downloadTarball fetches a .tgz URL and extracts it into destDir.
 func downloadTarball(url, chartName, destDir string) (string, error) {
 	client := &http.Client{Timeout: 5 * time.Minute}
-	resp, err := client.Get(url)
+	resp, err := client.Get(url) //nolint:noctx // TODO: add context support
 	if err != nil {
 		return "", fmt.Errorf("fetching %s: %w", url, err)
 	}
@@ -108,7 +149,7 @@ func downloadTarball(url, chartName, destDir string) (string, error) {
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("fetching %s: HTTP %d", url, resp.StatusCode)
+		return "", fmt.Errorf("%w: fetching %s: HTTP %d", errHTTPFetch, url, resp.StatusCode)
 	}
 
 	return extractTarGz(resp.Body, chartName, destDir)
@@ -151,7 +192,8 @@ func extractTarGz(r io.Reader, chartName, destDir string) (string, error) {
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return "", err
 			}
-			f, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(hdr.Mode))
+			// Mask to valid file mode bits to prevent integer overflow
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(hdr.Mode)&0o777)
 			if err != nil {
 				return "", err
 			}
@@ -166,4 +208,56 @@ func extractTarGz(r io.Reader, chartName, destDir string) (string, error) {
 	}
 
 	return filepath.Join(destDir, chartName), nil
+}
+
+// PublishChart packages a chart directory and pushes it to an OCI registry.
+// Returns the path to the packaged .tgz file.
+func PublishChart(chartDir, targetRegistry string) (string, error) {
+	// Create a temp directory for the package output
+	tmpDir, err := os.MkdirTemp("", "helm-package-*")
+	if err != nil {
+		return "", fmt.Errorf("creating temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Build dependencies so the published chart is self-contained
+	cmd := exec.Command("helm", "dependency", "build", chartDir) //nolint:noctx // TODO: add context support
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("helm dependency build failed: %w\nOutput: %s", err, output)
+	}
+
+	// Package the chart
+	cmd = exec.Command("helm", "package", chartDir, "-d", tmpDir) //nolint:noctx // TODO: add context support
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("helm package failed: %w\nOutput: %s", err, output)
+	}
+
+	// Find the packaged .tgz file
+	entries, err := os.ReadDir(tmpDir)
+	if err != nil {
+		return "", fmt.Errorf("reading package dir: %w", err)
+	}
+	var tgzPath string
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".tgz") {
+			tgzPath = filepath.Join(tmpDir, e.Name())
+			break
+		}
+	}
+	if tgzPath == "" {
+		return "", fmt.Errorf("%w after packaging", errNoTgzFound)
+	}
+
+	// Push to OCI registry
+	ociURL := fmt.Sprintf("oci://%s/charts", targetRegistry)
+	cmd = exec.Command("helm", "push", tgzPath, ociURL) //nolint:noctx // TODO: add context support
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("helm push failed: %w\nOutput: %s", err, output)
+	}
+
+	fmt.Printf("Published chart to %s\n", ociURL)
+	return tgzPath, nil
 }
