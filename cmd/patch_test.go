@@ -6,11 +6,11 @@ import (
 
 func TestPatchCommand_ValidateFlags(t *testing.T) {
 	tests := []struct {
-		name       string
-		image      string
-		registry   string
-		resultDir  string
-		wantErr    bool
+		name      string
+		image     string
+		registry  string
+		resultDir string
+		wantErr   bool
 	}{
 		{
 			name:      "all required flags",

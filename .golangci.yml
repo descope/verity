@@ -1,0 +1,36 @@
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - errcheck      # Check for unchecked errors
+    - gosec         # Security checks
+    - govet         # Go vet
+    - staticcheck   # Static analysis
+    - gofmt         # Format checking
+    - goimports     # Import formatting
+    - misspell      # Spell checking
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/verity-org/verity
+
+issues:
+  exclude-rules:
+    # Gosec G204: Subprocess execution is intentional for external tools (copa, trivy, docker, helm)
+    - linters: [gosec]
+      text: "G204"
+    # Gosec G306: File permissions 0644 appropriate for non-sensitive config/data files
+    - linters: [gosec]
+      text: "G306"
+    # Gosec G702/G703: False positives from taint analysis (exec.CommandContext, os.CreateTemp are safe)
+    - linters: [gosec]
+      text: "G702"
+    - linters: [gosec]
+      text: "G703"
+    # Gosec G110: Decompression bomb - tar extraction is from trusted chart registries only
+    - linters: [gosec]
+      text: "G110"
+    # Gosec G115: Integer overflow - value is masked to valid file mode bits (0o777)
+    - linters: [gosec]
+      text: "G115"

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/urfave/cli/v2"
+
 	"github.com/verity-org/verity/internal"
 )
 

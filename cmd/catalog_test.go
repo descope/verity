@@ -36,11 +36,11 @@ func TestCatalogCommand_ParseImages(t *testing.T) {
 
 func TestCatalogCommand_ValidateFlags(t *testing.T) {
 	tests := []struct {
-		name      string
-		images    string
-		registry  string
+		name       string
+		images     string
+		registry   string
 		outputPath string
-		wantErr   bool
+		wantErr    bool
 	}{
 		{
 			name:       "all required flags",

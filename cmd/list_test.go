@@ -10,11 +10,11 @@ import (
 
 func TestListCommand_ParseImages(t *testing.T) {
 	tests := []struct {
-		name        string
-		content     string
-		wantCount   int
-		wantFirst   string
-		wantErr     bool
+		name      string
+		content   string
+		wantCount int
+		wantFirst string
+		wantErr   bool
 	}{
 		{
 			name: "single image",
@@ -57,8 +57,8 @@ prometheus:
 			wantErr:   false,
 		},
 		{
-			name: "empty file",
-			content: ``,
+			name:      "empty file",
+			content:   ``,
 			wantCount: 0,
 			wantErr:   false,
 		},

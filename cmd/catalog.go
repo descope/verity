@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/urfave/cli/v2"
+
 	"github.com/verity-org/verity/internal"
 )
 

@@ -104,8 +104,8 @@ fmt-frontend:
 check-frontend:
 	cd site && npx prettier --check "src/**/*.{js,ts,astro,css,json,md}"
 
-# Run all quality checks
-quality: fmt vet lint lint-fmt lint-vuln lint-workflows lint-yaml lint-shell lint-markdown check-frontend sec test
+# Run all quality checks (gofmt, goimports, govet, gosec all via golangci-lint)
+quality: lint lint-vuln lint-workflows lint-yaml lint-shell lint-markdown check-frontend test
 	@echo "✓ All quality checks passed!"
 
 # Clean build artifacts

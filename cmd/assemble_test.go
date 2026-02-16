@@ -11,11 +11,11 @@ import (
 
 func TestAssembleCommand_ValidateFlags(t *testing.T) {
 	tests := []struct {
-		name        string
-		manifest    string
-		resultsDir  string
-		outputDir   string
-		wantErr     bool
+		name       string
+		manifest   string
+		resultsDir string
+		outputDir  string
+		wantErr    bool
 	}{
 		{
 			name:       "all required flags",
