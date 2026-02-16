@@ -1,11 +1,13 @@
 # Wrapper Charts (Deprecated)
 
 > **⚠️ This approach is no longer used.**
-> Verity now uses a single `Chart.yaml` with dependencies and a centralized `values.yaml` instead of individual wrapper charts.
+> Verity now uses a single `Chart.yaml` with dependencies and a centralized `values.yaml` instead of
+> individual wrapper charts.
 
 ## Migration
 
 **Old approach:**
+
 ```text
 charts/
   prometheus/
@@ -17,6 +19,7 @@ charts/
 ```
 
 **New approach:**
+
 ```text
 Chart.yaml        # Single meta-chart with all dependencies
 values.yaml       # Centralized image list (auto-generated)
@@ -64,11 +67,13 @@ prometheus:
 ## Why the Change?
 
 **Wrapper charts were complex:**
+
 - Required publishing charts to OCI registry
 - Needed version management (upstream-version + patch-level)
 - Users had to use special wrapper charts
 
 **New approach is simpler:**
+
 - Images are the primary artifact
 - No chart publishing needed
 - Users can use upstream charts with our images

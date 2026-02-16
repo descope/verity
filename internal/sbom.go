@@ -11,16 +11,16 @@ import (
 
 // CycloneDX SBOM structures (simplified for chart use)
 type cycloneDXSBOM struct {
-	BOMFormat   string              `json:"bomFormat"`
-	SpecVersion string              `json:"specVersion"`
-	Version     int                 `json:"version"`
-	Metadata    cycloneDXMetadata   `json:"metadata"`
+	BOMFormat   string               `json:"bomFormat"`
+	SpecVersion string               `json:"specVersion"`
+	Version     int                  `json:"version"`
+	Metadata    cycloneDXMetadata    `json:"metadata"`
 	Components  []cycloneDXComponent `json:"components"`
 }
 
 type cycloneDXMetadata struct {
-	Timestamp string              `json:"timestamp"`
-	Component cycloneDXComponent  `json:"component"`
+	Timestamp string             `json:"timestamp"`
+	Component cycloneDXComponent `json:"component"`
 }
 
 type cycloneDXComponent struct {
@@ -120,14 +120,14 @@ func imageToPURL(img Image) string {
 // The predicate format follows the cosign attest --type vuln schema.
 func AggregateVulnPredicate(patchedImages []*PatchResult, reportsDir, outputPath string) error {
 	type vulnEntry struct {
-		VulnerabilityID string `json:"VulnerabilityID"`
-		PkgName         string `json:"PkgName"`
-		Severity        string `json:"Severity"`
+		VulnerabilityID  string `json:"VulnerabilityID"`
+		PkgName          string `json:"PkgName"`
+		Severity         string `json:"Severity"`
 		InstalledVersion string `json:"InstalledVersion,omitempty"`
-		FixedVersion    string `json:"FixedVersion,omitempty"`
-		Title           string `json:"Title,omitempty"`
-		Description     string `json:"Description,omitempty"`
-		Image           string `json:"Image"` // Which image this vuln came from
+		FixedVersion     string `json:"FixedVersion,omitempty"`
+		Title            string `json:"Title,omitempty"`
+		Description      string `json:"Description,omitempty"`
+		Image            string `json:"Image"` // Which image this vuln came from
 	}
 
 	type predicate struct {

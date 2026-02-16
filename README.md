@@ -183,6 +183,7 @@ dependencies:
 ```
 
 Then run:
+
 ```bash
 make scan  # Updates values.yaml with discovered images
 ```
@@ -248,6 +249,7 @@ Use "verity [command] --help" for command-specific options.
 ```
 
 **Common Options:**
+
 - `--images, -i` - Path to images values.yaml (default: "values.yaml")
 - `--registry` - Target registry for patched images (e.g. ghcr.io/verity-org)
 

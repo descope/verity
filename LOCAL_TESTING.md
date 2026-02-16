@@ -33,6 +33,7 @@ act pull_request \
 ```
 
 This runs the workflow that:
+
 1. Downloads chart dependencies
 2. Scans for images
 3. Updates values.yaml
@@ -47,11 +48,13 @@ act push \
 ```
 
 This runs the complete workflow:
+
 1. Discovers images
 2. Patches images (in matrix)
 3. Signs and attests
 
 **Note:** The full workflow requires:
+
 - Docker access for BuildKit
 - Registry access for pushing
 
@@ -108,11 +111,13 @@ make up
 ## Limitations
 
 `act` runs workflows locally but some features may differ:
+
 - GitHub OIDC signing (cosign) won't work locally
 - Attestations API requires GitHub
 - Some actions may not work in local containers
 
 For full integration testing, use:
+
 ```bash
 # Start local infrastructure
 make up
@@ -126,11 +131,13 @@ make up
 ## Troubleshooting
 
 ### act not found
+
 ```bash
 brew install act
 ```
 
 ### Docker issues
+
 ```bash
 # act requires Docker Desktop or Docker Engine
 docker ps
@@ -140,6 +147,7 @@ ls -la /var/run/docker.sock
 ```
 
 ### Workflow fails on secrets
+
 ```bash
 # Use dummy secrets for local testing
 act -W .github/workflows/scan-and-patch.yaml \
@@ -149,7 +157,7 @@ act -W .github/workflows/scan-and-patch.yaml \
 ## CI vs Local with act
 
 | Aspect | GitHub Actions | Local with act |
-|--------|---------------|----------------|
+| ------ | -------------- | -------------- |
 | Workflow execution | ✅ Exact same | ✅ Exact same |
 | Secrets | GitHub Secrets | Local .secrets file |
 | OIDC signing | ✅ Works | ❌ Not supported |

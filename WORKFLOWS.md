@@ -1,6 +1,7 @@
 # Workflow Architecture
 
-Verity uses a streamlined workflow system to automatically scan charts, discover images, and patch them in parallel using GitHub Actions.
+Verity uses a streamlined workflow system to automatically scan charts, discover images, and patch them in
+parallel using GitHub Actions.
 
 ## Overview
 
@@ -83,6 +84,7 @@ Verity uses a streamlined workflow system to automatically scan charts, discover
 ### 1. Update Images (`update-images.yaml`)
 
 **Triggers:**
+
 - Pull requests modifying `Chart.yaml` or `Chart.lock`
 - Push to main (Chart.yaml/Chart.lock changes)
 - Manual (`workflow_dispatch`)
@@ -90,6 +92,7 @@ Verity uses a streamlined workflow system to automatically scan charts, discover
 **Purpose:** Auto-update values.yaml when chart dependencies change
 
 **Flow:**
+
 1. Renovate opens PR updating Chart.yaml
 2. Workflow downloads chart dependencies
 3. Scans all charts for images
@@ -103,6 +106,7 @@ Verity uses a streamlined workflow system to automatically scan charts, discover
 ### 2. Scan and Patch (`scan-and-patch.yaml`)
 
 **Triggers:**
+
 - Pull requests modifying `values.yaml`
 - Push to main (values.yaml changes)
 - Daily schedule (2 AM UTC)
@@ -113,18 +117,22 @@ Verity uses a streamlined workflow system to automatically scan charts, discover
 **Flow:**
 
 #### Job 1: Discover
+
 ```bash
 ./verity discover --images values.yaml --discover-dir .verity
 ```
+
 - Parses values.yaml
 - Applies overrides (e.g., distroless → debian)
 - Generates matrix.json for parallel patching
 - Outputs manifest.json with all image metadata
 
 #### Job 2: Patch (Matrix)
+
 ```bash
 ./verity patch --image ${{ matrix.image_ref }} ...
 ```
+
 - **Matrix strategy** - Each image gets its own runner
 - Runs in parallel (fail-fast: false)
 - Per image:
@@ -138,9 +146,11 @@ Verity uses a streamlined workflow system to automatically scan charts, discover
 **Why matrix?** Resource isolation + parallelization. Each image gets 2 vCPU / 7GB RAM.
 
 #### Job 3: Generate Catalog
+
 ```bash
 ./verity catalog --output site/src/data/catalog.json ...
 ```
+
 - Collects all patch results
 - Aggregates vulnerability data
 - Updates site catalog
@@ -169,6 +179,7 @@ site/src/data/catalog.json
 ```
 
 **Key files:**
+
 - **Chart.yaml** - Source of truth for chart dependencies
 - **values.yaml** - Centralized list of all images to patch
 - **manifest.json** - Full image metadata with paths
@@ -300,6 +311,7 @@ See [LOCAL_TESTING.md](LOCAL_TESTING.md) for details.
 ### Matrix job fails for one image
 
 Other images continue (`fail-fast: false`). Check failed job logs. Common issues:
+
 - Image doesn't exist / no access
 - Copa can't patch distroless images (use overrides)
 - BuildKit connection issues

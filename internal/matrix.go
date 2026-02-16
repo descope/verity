@@ -254,7 +254,7 @@ func PatchSingleImage(ctx context.Context, imageRef string, opts PatchOptions, r
 
 	// Mark as changed if image was successfully patched or mirrored (first time).
 	// Not changed if: already up to date, or patch failed.
-	entry.Changed = result.Error == nil && !(result.Skipped && result.SkipReason == "patched image up to date")
+	entry.Changed = result.Error == nil && (!result.Skipped || result.SkipReason != "patched image up to date")
 
 	data, err := json.MarshalIndent(entry, "", "  ")
 	if err != nil {
@@ -278,13 +278,13 @@ func PatchSingleImage(ctx context.Context, imageRef string, opts PatchOptions, r
 
 // PublishedChart represents a chart that was published to OCI.
 type PublishedChart struct {
-	Name              string            `json:"name"`
-	Version           string            `json:"version"`
-	Registry          string            `json:"registry"`
-	OCIRef            string            `json:"oci_ref"`
-	SBOMPath          string            `json:"sbom_path"`
-	VulnPredicatePath string            `json:"vuln_predicate_path"`
-	Images            []PublishedImage  `json:"images"`
+	Name              string           `json:"name"`
+	Version           string           `json:"version"`
+	Registry          string           `json:"registry"`
+	OCIRef            string           `json:"oci_ref"`
+	SBOMPath          string           `json:"sbom_path"`
+	VulnPredicatePath string           `json:"vuln_predicate_path"`
+	Images            []PublishedImage `json:"images"`
 }
 
 // PublishedImage represents an image included in a published chart.

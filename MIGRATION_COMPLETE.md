@@ -7,13 +7,16 @@ Successfully migrated Verity from Quay.io to GHCR and removed chart concept to f
 ## Changes Made
 
 ### 1. Quay.io → GHCR Migration ✅
+
 - **Target registry**: `quay.io/verity` → `ghcr.io/verity-org`
 - **Authentication**: Removed `QUAY_USERNAME`, `QUAY_PASSWORD`, `QUAY_API_TOKEN` → Uses `GITHUB_TOKEN`
 - **Visibility**: Removed `quay-make-public.sh` (GHCR is public by default)
 - **Intentionally kept**: Upstream source registries in `values.yaml` (quay.io/prometheus, docker.io/grafana, etc.)
 
 ### 2. Removed Chart Concept ✅
+
 **Deleted:**
+
 - Chart.yaml
 - charts/ directory (3 wrapper charts removed)
 - .github/scripts/publish-charts.sh
@@ -26,22 +29,25 @@ Successfully migrated Verity from Quay.io to GHCR and removed chart concept to f
 - quay-make-public.sh
 
 **Simplified:**
+
 - main.go: Removed `assemble` mode, removed `-chart` flag
 - Workflow: Removed chart assembly, chart publishing, chart signing jobs
 
 ### 3. New Architecture ✅
 
-```
+```text
 values.yaml → discover → patch (matrix) → sign/attest → ghcr.io/verity-org
 ```
 
 **CLI Modes (4 total):**
+
 - `discover` - Parse values.yaml, output matrix.json
 - `patch-single` - Patch one image (matrix job)
 - `list` - List images (dry run)
 - `site-data` - Generate catalog JSON
 
 **Workflow Jobs (5 total):**
+
 1. Discover images
 2. Patch (parallel matrix)
 3. Generate catalog (optional)
@@ -49,6 +55,7 @@ values.yaml → discover → patch (matrix) → sign/attest → ghcr.io/verity-o
 5. Upload reports
 
 ### 4. Testing ✅
+
 - All tests pass
 - CLI modes verified:
   - `./verity -list` → Lists 19 images
@@ -58,6 +65,7 @@ values.yaml → discover → patch (matrix) → sign/attest → ghcr.io/verity-o
 - Workflow YAML is valid
 
 ### 5. Documentation Updates ✅
+
 - site/src/pages/compliance.astro: Removed chart verification example, updated pipeline
 - CONTRIBUTING.md: Updated OCI authentication section
 - README.md: Already updated by user/linter
@@ -72,6 +80,7 @@ values.yaml → discover → patch (matrix) → sign/attest → ghcr.io/verity-o
 ## Remaining Scripts
 
 These scripts are still present and functional:
+
 - add-standalone-image.sh
 - install-copa.sh
 - parse-image-issue-form.sh
@@ -82,11 +91,13 @@ These scripts are still present and functional:
 ## Registry References Explained
 
 **values.yaml contains `quay.io` references - this is CORRECT:**
+
 - These are **upstream source registries** we pull FROM
 - Examples: `quay.io/prometheus/prometheus`, `quay.io/opstree/redis`
 - We patch these and push to `ghcr.io/verity-org/*-patched`
 
 **Our target registry:**
+
 - `ghcr.io/verity-org/*-patched` (all patched images go here)
 
 ## Verification Commands
@@ -113,6 +124,7 @@ All commands work successfully!
 ## What's Next
 
 The project is now:
+
 - ✅ Using GHCR with automatic GitHub authentication
 - ✅ Focused purely on patched container images
 - ✅ Simpler architecture (no charts)

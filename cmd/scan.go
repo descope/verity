@@ -128,7 +128,7 @@ func extractOverrides(path string) string {
 		// File doesn't exist or can't be read - no overrides to preserve
 		return ""
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	var overridesLines []string
 	var inOverrides bool

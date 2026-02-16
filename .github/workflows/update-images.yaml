@@ -82,5 +82,7 @@ jobs:
 
       - name: Push to PR branch
         if: steps.check.outputs.changed == 'true' && github.event_name == 'pull_request'
+        env:
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          git push origin "HEAD:${PR_HEAD_REF}"

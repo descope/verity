@@ -283,8 +283,8 @@ func pushLocal(ctx context.Context, srcRef, dstRef string) error {
 	if err != nil {
 		return fmt.Errorf("creating temp file: %w", err)
 	}
-	tmp.Close()
-	defer os.Remove(tmp.Name())
+	_ = tmp.Close()
+	defer func() { _ = os.Remove(tmp.Name()) }()
 
 	save := exec.CommandContext(ctx, "docker", "save", "-o", tmp.Name(), srcRef)
 	save.Stdout = os.Stdout

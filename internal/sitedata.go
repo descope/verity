@@ -179,7 +179,6 @@ func GenerateSiteData(imagesFile, reportsDir, registry, outputPath string) error
 	return os.WriteFile(outputPath, out, 0o644)
 }
 
-
 // buildPatchedRef constructs the patched image reference.
 func buildPatchedRef(originalRef, registry string) string {
 	// Parse the original ref to get repo and tag
