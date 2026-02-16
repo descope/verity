@@ -106,6 +106,27 @@ jobs:
         working-directory: site
         run: npm run format:check
 
+  eslint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: 'site/package.json'
+          cache: 'npm'
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install site dependencies
+        working-directory: site
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: site
+        run: npm run lint
+
   markdown-lint:
     name: Markdown Lint
     runs-on: ubuntu-latest
