@@ -39,6 +39,61 @@ func TestDiscoverCommand_ParseImages(t *testing.T) {
 	}
 }
 
+func TestDiscoverFromImages(t *testing.T) {
+	tmpDir := t.TempDir()
+	valuesPath := filepath.Join(tmpDir, "values.yaml")
+	valuesContent := `nginx:
+  image:
+    registry: docker.io
+    repository: library/nginx
+    tag: "1.25"
+prometheus:
+  image:
+    registry: quay.io
+    repository: prometheus/prometheus
+    tag: "v2.45.0"
+`
+	if err := os.WriteFile(valuesPath, []byte(valuesContent), 0o644); err != nil {
+		t.Fatalf("failed to create test values.yaml: %v", err)
+	}
+
+	manifest, err := discoverFromImages(valuesPath)
+	if err != nil {
+		t.Fatalf("discoverFromImages failed: %v", err)
+	}
+
+	if len(manifest.Images) != 2 {
+		t.Errorf("expected 2 images, got %d", len(manifest.Images))
+	}
+}
+
+func TestDiscoverManifest_FlatDiscovery(t *testing.T) {
+	tmpDir := t.TempDir()
+	valuesPath := filepath.Join(tmpDir, "values.yaml")
+	if err := os.WriteFile(valuesPath, []byte(`nginx:
+  image:
+    registry: docker.io
+    repository: library/nginx
+    tag: "1.25"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Empty chartFile should use flat discovery
+	manifest, err := discoverManifest("", valuesPath)
+	if err != nil {
+		t.Fatalf("discoverManifest failed: %v", err)
+	}
+
+	if len(manifest.Images) != 1 {
+		t.Errorf("expected 1 image, got %d", len(manifest.Images))
+	}
+
+	if manifest.Images[0].Reference() != "docker.io/library/nginx:1.25" {
+		t.Errorf("unexpected reference: %s", manifest.Images[0].Reference())
+	}
+}
+
 func TestDiscoverCommand_MultipleImages(t *testing.T) {
 	tmpDir := t.TempDir()
 	valuesPath := filepath.Join(tmpDir, "values.yaml")

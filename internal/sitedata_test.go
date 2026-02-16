@@ -103,6 +103,52 @@ func TestParseTrivyReportFull(t *testing.T) {
 	}
 }
 
+func TestGenerateSiteData_ChartsFieldPresent(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a minimal values.yaml (no chart data, just standalone images)
+	imagesFile := filepath.Join(tmpDir, "values.yaml")
+	if err := os.WriteFile(imagesFile, []byte(`nginx:
+  image:
+    registry: docker.io
+    repository: library/nginx
+    tag: "1.25"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	outputPath := filepath.Join(tmpDir, "catalog.json")
+	if err := GenerateSiteData(imagesFile, "", "ghcr.io/test", outputPath); err != nil {
+		t.Fatalf("GenerateSiteData failed: %v", err)
+	}
+
+	// Read raw JSON and verify "charts" key exists and is an array (not null/missing)
+	raw, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var parsed map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &parsed); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+
+	chartsRaw, ok := parsed["charts"]
+	if !ok {
+		t.Fatal("catalog JSON missing 'charts' key — Astro site will crash with 'Cannot read properties of undefined'")
+	}
+
+	// Ensure it's an array, not null
+	if string(chartsRaw) == "null" {
+		t.Fatal("catalog JSON has 'charts': null — Astro site will crash calling .map() on null")
+	}
+
+	var charts []json.RawMessage
+	if err := json.Unmarshal(chartsRaw, &charts); err != nil {
+		t.Fatalf("'charts' is not a JSON array: %v", err)
+	}
+}
+
 func TestComputeSummary(t *testing.T) {
 	allImages := []SiteImage{
 		{VulnSummary: VulnSummary{Total: 5, Fixable: 3, SeverityCounts: map[string]int{"HIGH": 3, "LOW": 2}}},

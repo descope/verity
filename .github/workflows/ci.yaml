@@ -46,6 +46,33 @@ jobs:
       - name: Discover images
         run: ./verity discover --images values.yaml --discover-dir .verity
 
+  site-build:
+    name: Site Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+
+      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Build verity
+        run: go build -o verity .
+
+      - name: Generate catalog
+        run: ./verity catalog --output site/src/data/catalog.json --images values.yaml --registry "ghcr.io/verity-org"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: 'site/package.json'
+          cache: 'npm'
+          cache-dependency-path: site/package-lock.json
+
+      - name: Build Astro site
+        working-directory: site
+        run: npm ci && npm run build
+
   integration:
     name: Integration Tests
     runs-on: ubuntu-latest

@@ -13,11 +13,24 @@ type SiteData struct {
 	GeneratedAt string      `json:"generatedAt"`
 	Registry    string      `json:"registry"`
 	Summary     SiteSummary `json:"summary"`
+	Charts      []SiteChart `json:"charts"`
 	Images      []SiteImage `json:"images"`
+}
+
+// SiteChart describes a Helm chart and the container images it contains.
+type SiteChart struct {
+	Name            string      `json:"name"`
+	Version         string      `json:"version"`
+	UpstreamVersion string      `json:"upstreamVersion"`
+	Description     string      `json:"description"`
+	Repository      string      `json:"repository"`
+	HelmInstall     string      `json:"helmInstall"`
+	Images          []SiteImage `json:"images"`
 }
 
 // SiteSummary aggregates stats across all images.
 type SiteSummary struct {
+	TotalCharts  int `json:"totalCharts"`
 	TotalImages  int `json:"totalImages"`
 	TotalVulns   int `json:"totalVulns"`
 	FixableVulns int `json:"fixableVulns"`
@@ -125,6 +138,7 @@ func GenerateSiteData(imagesFile, reportsDir, registry, outputPath string) error
 	data := SiteData{
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 		Registry:    registry,
+		Charts:      []SiteChart{},
 	}
 
 	var allImages []SiteImage
