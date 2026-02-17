@@ -1,0 +1,130 @@
+apiVersion: copa.sh/v1alpha1
+kind: PatchConfig
+
+target:
+  registry: "ghcr.io/verity-org"
+
+images:
+  # Docker Hub
+  - name: "grafana"
+    image: "docker.io/grafana/grafana"
+    tags:
+      strategy: "pattern"
+      pattern: "^\\d+\\.\\d+\\.\\d+$"
+
+  - name: "busybox"
+    image: "docker.io/library/busybox"
+    tags:
+      strategy: "pattern"
+      pattern: "^\\d+\\.\\d+$"
+
+  - name: "nginx"
+    image: "docker.io/library/nginx"
+    tags:
+      strategy: "pattern"
+      pattern: "^\\d+\\.\\d+\\.\\d+$"
+
+  - name: "rabbitmq"
+    image: "docker.io/library/rabbitmq"
+    tags:
+      strategy: "pattern"
+      pattern: "^\\d+\\.\\d+\\.\\d+$"
+
+  - name: "rabbitmq-cluster-operator"
+    image: "docker.io/rabbitmqoperator/cluster-operator"
+    tags:
+      strategy: "pattern"
+      pattern: "^\\d+\\.\\d+\\.\\d+$"
+
+  - name: "vector"
+    image: "docker.io/timberio/vector"
+    tags:
+      strategy: "pattern"
+      pattern: "^\\d+\\.\\d+\\.\\d+-debian$"  # debian variant (Copa can't patch distroless)
+
+  - name: "victoria-logs"
+    image: "docker.io/victoriametrics/victoria-logs"
+    tags:
+      strategy: "pattern"
+      pattern: "^v\\d+\\.\\d+\\.\\d+$"
+
+  - name: "haproxy-alpine"
+    image: "docker.io/haproxytech/haproxy-alpine"
+    tags:
+      strategy: "pattern"
+      pattern: "^\\d+\\.\\d+\\.\\d+$"
+
+  # GHCR
+  - name: "k8s-sidecar"
+    image: "ghcr.io/kiwigrid/k8s-sidecar"
+    tags:
+      strategy: "pattern"
+      pattern: "^\\d+\\.\\d+\\.\\d+$"
+
+  - name: "postgres-operator"
+    image: "ghcr.io/zalando/postgres-operator"
+    tags:
+      strategy: "pattern"
+      pattern: "^v\\d+\\.\\d+\\.\\d+$"
+
+  # Quay.io
+  - name: "kube-rbac-proxy"
+    image: "quay.io/brancz/kube-rbac-proxy"
+    tags:
+      strategy: "pattern"
+      pattern: "^v\\d+\\.\\d+\\.\\d+$"
+
+  - name: "redis-exporter"
+    image: "quay.io/opstree/redis-exporter"
+    tags:
+      strategy: "pattern"
+      pattern: "^v\\d+\\.\\d+\\.\\d+$"
+
+  - name: "redis-sentinel"
+    image: "quay.io/opstree/redis-sentinel"
+    tags:
+      strategy: "pattern"
+      pattern: "^v\\d+\\.\\d+\\.\\d+$"
+
+  - name: "redis"
+    image: "quay.io/opstree/redis"
+    tags:
+      strategy: "pattern"
+      pattern: "^v\\d+\\.\\d+\\.\\d+$"
+
+  - name: "prometheus-config-reloader"
+    image: "quay.io/prometheus-operator/prometheus-config-reloader"
+    tags:
+      strategy: "pattern"
+      pattern: "^v\\d+\\.\\d+\\.\\d+$"
+
+  - name: "alertmanager"
+    image: "quay.io/prometheus/alertmanager"
+    tags:
+      strategy: "pattern"
+      pattern: "^v\\d+\\.\\d+\\.\\d+$"
+
+  - name: "node-exporter"
+    image: "quay.io/prometheus/node-exporter"
+    tags:
+      strategy: "pattern"
+      pattern: "^v\\d+\\.\\d+\\.\\d+$"
+
+  - name: "prometheus"
+    image: "quay.io/prometheus/prometheus"
+    tags:
+      strategy: "pattern"
+      pattern: "^v\\d+\\.\\d+\\.\\d+$"
+
+  - name: "pushgateway"
+    image: "quay.io/prometheus/pushgateway"
+    tags:
+      strategy: "pattern"
+      pattern: "^v\\d+\\.\\d+\\.\\d+$"
+
+  # registry.k8s.io
+  - name: "kube-state-metrics"
+    image: "registry.k8s.io/kube-state-metrics/kube-state-metrics"
+    tags:
+      strategy: "pattern"
+      pattern: "^v\\d+\\.\\d+\\.\\d+$"
