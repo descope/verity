@@ -41,12 +41,12 @@ jobs:
       matrix: ${{ steps.discover.outputs.matrix }}
       has_images: ${{ steps.discover.outputs.has_images }}
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version-file: go.mod
 
@@ -74,11 +74,11 @@ jobs:
       matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
       fail-fast: false  # Continue patching other images if one fails
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
 
-      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version-file: go.mod
 
@@ -135,7 +135,7 @@ jobs:
 
       - name: Attest build provenance
         if: steps.digest.outputs.has_image == 'true'
-        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
         with:
           subject-name: ${{ steps.digest.outputs.image }}
           subject-digest: ${{ steps.digest.outputs.digest }}
@@ -181,8 +181,8 @@ jobs:
       chart_matrix: ${{ steps.assemble.outputs.chart_matrix }}
       has_charts: ${{ steps.assemble.outputs.has_charts }}
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
-      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version-file: go.mod
 
@@ -230,7 +230,7 @@ jobs:
       matrix: ${{ fromJson(needs.assemble.outputs.chart_matrix) }}
     steps:
       - name: Install cosign
-        uses: sigstore/cosign-installer@c56c2d3e59e4281cc41dea2217323ba5694b171e # v3.8.0
+        uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
 
       - name: Install crane
         run: |
@@ -251,7 +251,7 @@ jobs:
         run: ./.github/scripts/sign-chart.sh "${{ steps.digest.outputs.oci_name }}" "${{ steps.digest.outputs.digest }}" "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
         with:
           subject-name: ${{ steps.digest.outputs.oci_name }}
           subject-digest: ${{ steps.digest.outputs.digest }}
@@ -276,11 +276,11 @@ jobs:
     if: github.event_name == 'push' && needs.discover.outputs.has_images == 'true' && needs.patch.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version-file: go.mod
 
