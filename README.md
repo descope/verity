@@ -1,6 +1,17 @@
-# Verity
+<p align="center">
+  <img src="site/public/logo.svg" alt="Verity Logo" width="420">
+</p>
 
-## Self-maintaining registry of security-patched container images
+<h1 align="center">Verity</h1>
+<p align="center"><strong>Self-maintaining registry of security-patched container images</strong></p>
+<p align="center">
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#how-it-works">How It Works</a> •
+  <a href="#benefits">Benefits</a> •
+  <a href="#documentation">Documentation</a>
+</p>
+
+---
 
 Verity automatically scans container images for vulnerabilities, patches them using
 [Copa](https://github.com/project-copacetic/copacetic), and publishes patched versions to GitHub Container Registry (GHCR).
@@ -437,4 +448,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ---
 
-## Built with ❤️ to make Kubernetes more secure
+<p align="center">
+  <strong>Built to make Kubernetes more secure</strong><br>
+  <sub>Powered by Copa, Trivy, and Sigstore</sub>
+</p>

@@ -4,7 +4,7 @@ import VulnTable from "../../components/VulnTable.astro";
 import SeverityBreakdown from "../../components/SeverityBreakdown.astro";
 import CopyButton from "../../components/CopyButton.astro";
 import SupplyChainBadges from "../../components/SupplyChainBadges.astro";
-import { catalog, getAllImages, shortName } from "../../lib/catalog";
+import { getAllImages, shortName } from "../../lib/catalog";
 import type { SiteImage } from "../../lib/catalog";
 
 export function getStaticPaths() {
@@ -27,19 +27,21 @@ const remaining = image.vulnSummary.total - fixed;
 ---
 
 <BaseLayout title={`${display} — Verity`}>
-  <nav class="text-sm text-gray-500 mb-6">
-    <a href={base} class="hover:text-gray-700">Home</a>
+  <nav class="text-sm text-verity-text-secondary mb-6">
+    <a href={base} class="hover:text-verity-nucleus transition-colors">Home</a>
     <span class="mx-1">/</span>
-    <span class="text-gray-900 truncate">{display.split("/").pop()?.split(":")[0]}</span>
+    <span class="text-verity-text-primary truncate">{display.split("/").pop()?.split(":")[0]}</span>
   </nav>
 
   <div class="mb-6">
-    <h1 class="text-xl font-bold font-mono break-all mb-2">{image.originalRef}</h1>
+    <h1 class="text-xl font-bold font-mono break-all mb-2 text-verity-text-primary">
+      {image.originalRef}
+    </h1>
     <div class="flex items-center gap-3 flex-wrap">
-      {image.os && <span class="text-sm text-gray-500">Base OS: {image.os}</span>}
+      {image.os && <span class="text-sm text-verity-text-secondary">Base OS: {image.os}</span>}
       {
         fixed > 0 ? (
-          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-medium bg-green-100 text-green-800">
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-medium bg-green-950/40 text-green-400 border border-green-800/50">
             <svg
               class="w-4 h-4"
               fill="none"
@@ -79,23 +81,28 @@ const remaining = image.vulnSummary.total - fixed;
 
   {
     image.overriddenFrom && (
-      <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-        <div class="text-xs text-amber-700 uppercase tracking-wide font-medium mb-1">
+      <div class="bg-amber-950/30 border border-amber-800/50 rounded-lg p-4 mb-4">
+        <div class="text-xs text-amber-300 uppercase tracking-wide font-medium mb-1">
           Tag Override
         </div>
-        <p class="text-sm text-amber-900">
-          Original tag <code class="bg-amber-100 px-1 rounded">{image.overriddenFrom}</code> was
-          overridden to{" "}
-          <code class="bg-amber-100 px-1 rounded">{image.originalRef.split(":").pop()}</code>{" "}
+        <p class="text-sm text-amber-100">
+          Original tag{" "}
+          <code class="bg-amber-950/50 px-1 rounded text-amber-200">{image.overriddenFrom}</code>{" "}
+          was overridden to{" "}
+          <code class="bg-amber-950/50 px-1 rounded text-amber-200">
+            {image.originalRef.split(":").pop()}
+          </code>{" "}
           because the original image uses a distroless/scratch base that Copa cannot patch.
         </p>
       </div>
     )
   }
 
-  <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-    <div class="text-xs text-green-700 uppercase tracking-wide font-medium mb-1">Patched Image</div>
-    <div class="font-mono text-sm break-all text-green-900">{image.patchedRef}</div>
+  <div class="bg-verity-surface border border-verity-nucleus/30 rounded-lg p-4 mb-4">
+    <div class="text-xs text-verity-nucleus uppercase tracking-wide font-medium mb-1">
+      Patched Image
+    </div>
+    <div class="font-mono text-sm break-all text-verity-text-primary">{image.patchedRef}</div>
     <div class="mt-2">
       <CopyButton text={image.patchedRef} />
     </div>
@@ -108,15 +115,18 @@ const remaining = image.vulnSummary.total - fixed;
   {
     image.vulnSummary.total > 0 && (
       <div class="mb-8">
-        <h2 class="text-lg font-semibold mb-1">Pre-patch scan</h2>
-        <p class="text-sm text-gray-500 mb-3">
+        <h2 class="text-lg font-semibold mb-1 text-verity-text-primary">Pre-patch scan</h2>
+        <p class="text-sm text-verity-text-muted mb-3">
           {fixed > 0 ? (
             <>
               Found {image.vulnSummary.total} vulnerabilit
               {image.vulnSummary.total === 1 ? "y" : "ies"} in the original image.
-              <span class="text-green-700 font-medium"> {fixed} fixed by Copa.</span>
+              <span class="text-verity-nucleus font-medium"> {fixed} fixed by Copa.</span>
               {remaining > 0 && (
-                <span class="text-gray-400"> {remaining} have no upstream fix available.</span>
+                <span class="text-verity-text-secondary">
+                  {" "}
+                  {remaining} have no upstream fix available.
+                </span>
               )}
             </>
           ) : (
@@ -134,16 +144,22 @@ const remaining = image.vulnSummary.total - fixed;
   {
     image.vulnerabilities.length > 0 && (
       <section>
-        <h2 class="text-lg font-semibold mb-4">Vulnerability details</h2>
+        <h2 class="text-lg font-semibold mb-4 text-verity-text-primary">Vulnerability details</h2>
         <VulnTable vulnerabilities={image.vulnerabilities} />
       </section>
     )
   }
 
-  <div class="mt-8 pt-6 border-t border-gray-200">
-    <details class="text-sm text-gray-500">
-      <summary class="cursor-pointer hover:text-gray-700">Original image reference</summary>
-      <div class="mt-2 font-mono text-xs break-all bg-gray-50 p-3 rounded">{image.originalRef}</div>
+  <div class="mt-8 pt-6 border-t border-verity-border">
+    <details class="text-sm text-verity-text-secondary">
+      <summary class="cursor-pointer hover:text-verity-nucleus transition-colors"
+        >Original image reference</summary
+      >
+      <div
+        class="mt-2 font-mono text-xs break-all bg-verity-surface border border-verity-border p-3 rounded text-verity-text-muted"
+      >
+        {image.originalRef}
+      </div>
     </details>
   </div>
 </BaseLayout>
