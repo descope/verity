@@ -15,10 +15,6 @@ export function severityIndex(sev: string): number {
   return idx === -1 ? SEVERITY_ORDER.length : idx;
 }
 
-export function sortBySeverity<T>(
-  items: T[],
-  // eslint-disable-next-line no-unused-vars
-  getSeverity: (item: T) => string
-): T[] {
-  return [...items].sort((a, b) => severityIndex(getSeverity(a)) - severityIndex(getSeverity(b)));
+export function sortBySeverity<T>(items: T[], _getSeverity: (item: T) => string): T[] {
+  return [...items].sort((a, b) => severityIndex(_getSeverity(a)) - severityIndex(_getSeverity(b)));
 }
