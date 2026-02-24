@@ -1,0 +1,30 @@
+apiVersion: copa.sh/v1alpha1
+kind: PatchConfig
+
+# Strategy: Pattern-based with maxTags to automatically patch the latest 3 versions
+# This auto-updates as new versions are released without manual version updates
+target:
+  registry: "ghcr.io/verity-org"
+
+images:
+  # Start with core images - expand list as needed
+  - name: "grafana"
+    image: "docker.io/grafana/grafana"
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "nginx"
+    image: "docker.io/library/nginx"
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "prometheus"
+    image: "quay.io/prometheus/prometheus"
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3

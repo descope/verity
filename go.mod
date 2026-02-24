@@ -1,6 +1,6 @@
 module github.com/verity-org/verity
 
-go 1.25.0
+go 1.25.7
 
 require (
 	github.com/google/go-containerregistry v0.20.7

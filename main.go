@@ -14,14 +14,11 @@ func main() {
 		Name:  "verity",
 		Usage: "Self-maintaining registry of security-patched container images",
 		Commands: []*cli.Command{
-			cmd.ScanCommand,
-			cmd.DiscoverCommand,
-			cmd.PatchCommand,
+			cmd.PostProcessCommand,
 			cmd.AssembleCommand,
-			cmd.ListCommand,
 			cmd.CatalogCommand,
 		},
-		Version: "1.0.0",
+		Version: "2.0.0",
 	}
 
 	if err := app.Run(os.Args); err != nil {

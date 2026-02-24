@@ -20,19 +20,18 @@ var CatalogCommand = &cli.Command{
 			Usage:    "output path for catalog JSON (e.g. site/src/data/catalog.json)",
 		},
 		&cli.StringFlag{
-			Name:    "images",
-			Aliases: []string{"i"},
-			Value:   "values.yaml",
-			Usage:   "path to images values.yaml",
+			Name:     "images-json",
+			Aliases:  []string{"j"},
+			Required: true,
+			Usage:    "path to images.json from sign-and-attest script",
 		},
 		&cli.StringFlag{
 			Name:  "registry",
 			Usage: "target registry for patched images (e.g. ghcr.io/verity-org)",
 		},
 		&cli.StringFlag{
-			Name:     "reports-dir",
-			Required: true,
-			Usage:    "directory containing Trivy vulnerability reports",
+			Name:  "reports-dir",
+			Usage: "directory containing Trivy vulnerability reports (optional, images without reports show zero vulns)",
 		},
 	},
 	Action: runCatalog,
@@ -40,12 +39,15 @@ var CatalogCommand = &cli.Command{
 
 func runCatalog(c *cli.Context) error {
 	output := c.String("output")
-	imagesFile := c.String("images")
+	imagesJSON := c.String("images-json")
 	registry := c.String("registry")
 	reportsDir := c.String("reports-dir")
 
-	if err := internal.GenerateSiteData(imagesFile, reportsDir, registry, output); err != nil {
-		return fmt.Errorf("failed to generate site data: %w", err)
+	// Note: --images-json is marked as Required in the flag definition,
+	// so the framework already validates it. No manual check needed.
+
+	if err := internal.GenerateSiteDataFromJSON(imagesJSON, reportsDir, registry, output); err != nil {
+		return fmt.Errorf("failed to generate site data from JSON: %w", err)
 	}
 	fmt.Printf("Site catalog → %s\n", output)
 	return nil

@@ -1,331 +1,221 @@
-name: Scan and Patch Images
+name: Patch and Publish Images
+
+# This workflow supports two modes:
+# 1. Production (main branch): Patches images, pushes to ghcr.io, signs with cosign, deploys site
+# 2. PR Testing: Uses local registry, skips signing, validates pipeline without publishing
 
 on:
-  # Validate PRs
-  pull_request:
-    branches: [main]
-    paths:
-      - 'values.yaml'
-
-  # Publish when PRs merge to main
-  push:
-    branches: [main]
-    paths:
-      - 'values.yaml'
-
-  # Daily vulnerability scan
   schedule:
     - cron: '0 2 * * *'
-
-  # Manual trigger
+  push:
+    branches: [main]
+    paths: ['copa-config.yaml', '.github/workflows/scan-and-patch.yaml']
+  pull_request:
+    paths: ['copa-config.yaml', '.github/workflows/scan-and-patch.yaml', 'internal/**', 'cmd/**']
   workflow_dispatch:
 
 permissions:
   contents: write
   packages: write
-  pull-requests: write
   id-token: write
-  attestations: write
-
-env:
-  REGISTRY: ghcr.io/verity-org
 
 jobs:
-  # ── Job 1: Discover images ─────────────────────────────────────────
-  discover:
-    name: Discover Images
+  patch-and-publish:
+    name: Patch, Sign & Publish
     runs-on: ubuntu-latest
-    # For PRs, only run if from same repo (security: prevent fork PRs from accessing secrets)
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    outputs:
-      matrix: ${{ steps.discover.outputs.matrix }}
-      has_images: ${{ steps.discover.outputs.has_images }}
+    env:
+      # Use local registry for PRs, production registry for main
+      REGISTRY: ${{ github.event_name == 'pull_request' && 'localhost:5000/verity-test' || 'ghcr.io/verity-org' }}
+
+    services:
+      # Local registry for PR testing
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+        options: >-
+          --health-cmd "wget -q --spider http://localhost:5000/v2/ || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
-        with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref }}
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version-file: go.mod
 
-      - name: Build verity
-        run: go build -o verity .
-
-      - name: Discover images
-        id: discover
-        run: ./.github/scripts/discover-images.sh values.yaml Chart.yaml .verity
-
-      - name: Upload manifest
-        uses: actions/upload-artifact@v6
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
         with:
-          name: verity-manifest
-          path: .verity/manifest.json
-          retention-days: 1
+          driver-opts: network=host
+          buildkitd-flags: --allow-insecure-entitlement network.host
+          buildkitd-config-inline: |
+            [registry."localhost:5000"]
+              http = true
+              insecure = true
 
-  # ── Job 2: Patch each image in parallel ────────────────────────────
-  patch:
-    name: "Patch ${{ matrix.image_name }}"
-    needs: discover
-    if: needs.discover.outputs.has_images == 'true'
-    runs-on: ubuntu-latest
-    strategy:
-      matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
-      fail-fast: false  # Continue patching other images if one fails
-    steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
-        with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref }}
-
-      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
-        with:
-          go-version-file: go.mod
-
-      - name: Login to GHCR (Docker)
+      - name: Login to GHCR
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
-
-      - name: Build verity
-        run: go build -o verity .
-
-      - name: Set up Trivy
-        uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.5
-        with:
-          version: latest
-          cache: true
-
-      - name: Install Copa
-        run: ./.github/scripts/install-copa.sh
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Patch image
+      - name: Verify local registry for PR testing
+        if: github.event_name == 'pull_request'
         run: |
-          ./verity patch \
-            --image "${{ matrix.image_ref }}" \
-            --registry "$REGISTRY" \
-            --buildkit-addr "docker-container://buildx_buildkit_${{ steps.buildx.outputs.name }}0" \
-            --report-dir .verity/reports \
-            --result-dir .verity/results
+          # Wait for registry service to be healthy
+          timeout 30 bash -c 'until curl -f http://localhost:5000/v2/; do sleep 1; done'
+          echo "✓ Local registry ready at localhost:5000"
 
-      # GHCR packages are public by default when pushed to an organization
-      # No additional step needed to make repositories public
+      - name: Get Copa fork branch and commit
+        id: copa-info
+        run: |
+          # Try verity branch first, fallback to feat/bulk-skip-detection
+          if gh api repos/verity-org/copacetic/commits/verity --jq .sha >/dev/null 2>&1; then
+            BRANCH="verity"
+            COMMIT=$(gh api repos/verity-org/copacetic/commits/verity --jq .sha)
+          else
+            BRANCH="feat/bulk-skip-detection"
+            COMMIT=$(gh api repos/verity-org/copacetic/commits/feat/bulk-skip-detection --jq .sha)
+          fi
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "hash=$COMMIT" >> "$GITHUB_OUTPUT"
+          echo "Using Copa fork branch: $BRANCH (commit: $COMMIT)"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Cache Copa binary
+        id: cache-copa
+        uses: actions/cache@v4
+        with:
+          path: ~/go/bin/copa
+          key: copa-${{ runner.os }}-${{ steps.copa-info.outputs.hash }}
+
+      - name: Build Copa from fork
+        if: steps.cache-copa.outputs.cache-hit != 'true'
+        run: |
+          echo "Building Copa from branch: ${{ steps.copa-info.outputs.branch }}"
+          git clone --branch "${{ steps.copa-info.outputs.branch }}" --depth 1 \
+            https://github.com/verity-org/copacetic.git /tmp/copa
+          cd /tmp/copa && go build -o "$(go env GOPATH)/bin/copa" .
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Install tools
+        run: |
+          go install github.com/google/go-containerregistry/cmd/crane@latest
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Install yq
+        run: |
+          VERSION=$(curl -sL https://api.github.com/repos/mikefarah/yq/releases/latest | jq -r .tag_name)
+          curl -sL "https://github.com/mikefarah/yq/releases/download/${VERSION}/yq_linux_amd64" -o /usr/local/bin/yq
+          chmod +x /usr/local/bin/yq
 
       - name: Install cosign
+        if: github.event_name != 'pull_request'
         uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
 
-      - name: Install crane
-        run: go install github.com/google/go-containerregistry/cmd/crane@latest
+      - name: Copa bulk patch
+        run: |
+          copa patch \
+            --config copa-config.yaml \
+            --push \
+            --ignore-errors \
+            --addr "docker-container://buildx_buildkit_${{ steps.buildx.outputs.name }}0" \
+            --timeout 30m
 
-      - name: Get patched image digest
-        id: digest
-        run: ./.github/scripts/get-image-digest.sh .verity/results
+      - name: Scan and sign patched images
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # PR mode: scan only, no signing
+            ./.github/scripts/sign-and-attest.sh copa-config.yaml "$REGISTRY" .verity/reports .verity/images.json --skip-signing
+          else
+            # Production mode: full signing and attestation
+            ./.github/scripts/sign-and-attest.sh copa-config.yaml "$REGISTRY" .verity/reports .verity/images.json
+          fi
 
-      - name: Sign image with cosign
-        if: steps.digest.outputs.has_image == 'true'
-        run: ./.github/scripts/sign-image.sh "${{ steps.digest.outputs.image }}" "${{ steps.digest.outputs.digest }}" "${{ secrets.GITHUB_TOKEN }}"
-
-      - name: Attest build provenance
-        if: steps.digest.outputs.has_image == 'true'
-        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
-        with:
-          subject-name: ${{ steps.digest.outputs.image }}
-          subject-digest: ${{ steps.digest.outputs.digest }}
-          push-to-registry: true
-
-      - name: Generate SBOM
-        if: steps.digest.outputs.has_image == 'true'
-        run: ./.github/scripts/generate-image-sbom.sh "${{ steps.digest.outputs.image }}" "${{ steps.digest.outputs.digest }}" .verity/sbom.cdx.json
-
-      - name: Attest SBOM
-        if: steps.digest.outputs.has_image == 'true'
-        uses: actions/attest-sbom@4651f806c01d8637787e274ac3bdf724ef169f34 # v3.0.0
-        with:
-          subject-name: ${{ steps.digest.outputs.image }}
-          subject-digest: ${{ steps.digest.outputs.digest }}
-          sbom-path: .verity/sbom.cdx.json
-          push-to-registry: true
-
-      - name: Attest vulnerability report
-        if: steps.digest.outputs.has_image == 'true'
-        run: ./.github/scripts/attest-image-vulnerability.sh "${{ steps.digest.outputs.image }}" "${{ steps.digest.outputs.digest }}" .verity/reports "${{ secrets.GITHUB_TOKEN }}"
-
-      - name: Upload patch result
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: "patch-result-${{ matrix.image_name }}"
-          path: |
-            .verity/results/*.json
-            .verity/reports/*.json
-          retention-days: 1
-
-  # ── Job 2.5: Assemble & Publish Charts ──────────────────────────────
-  assemble:
-    name: Assemble & Publish Charts
-    needs: [discover, patch]
-    if: >-
-      github.event_name != 'pull_request' &&
-      needs.discover.outputs.has_images == 'true' &&
-      needs.patch.result == 'success'
-    runs-on: ubuntu-latest
-    outputs:
-      chart_matrix: ${{ steps.assemble.outputs.chart_matrix }}
-      has_charts: ${{ steps.assemble.outputs.has_charts }}
-    steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
-      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
-        with:
-          go-version-file: go.mod
+      - name: Validate patched images
+        run: |
+          if [ ! -s .verity/images.json ]; then
+            echo "Error: No images were successfully patched (.verity/images.json is missing or empty)."
+            echo "This may indicate Copa failed to patch all images, or no images matched the config."
+            echo "Check the Copa patch logs above for errors."
+            exit 1
+          fi
+          IMAGE_COUNT=$(jq length .verity/images.json)
+          echo "✓ Successfully patched $IMAGE_COUNT image(s)"
 
       - name: Build verity
         run: go build -o verity .
 
-      - name: Login to GHCR (Helm OCI)
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
-
-      - name: Download manifest
-        uses: actions/download-artifact@v7
-        with:
-          name: verity-manifest
-          path: .verity
-
-      - name: Download all patch results
-        uses: actions/download-artifact@v7
-        with:
-          pattern: "patch-result-*"
-          path: .verity/artifacts
-          merge-multiple: false
-
-      - name: Assemble and publish charts
-        id: assemble
-        run: ./.github/scripts/assemble-charts.sh .verity/manifest.json .verity/results .verity/reports .verity/charts "$REGISTRY" true
-
-      - name: Upload chart artifacts (SBOMs + vuln predicates)
-        if: steps.assemble.outputs.has_charts == 'true'
-        uses: actions/upload-artifact@v6
-        with:
-          name: chart-attestation-data
-          path: |
-            .verity/charts/published-charts.json
-            .verity/charts/*/sbom.cdx.json
-            .verity/charts/*/vuln-predicate.json
-          retention-days: 90
-
-  # ── Job 2.6: Sign & Attest Charts (per-chart matrix) ───────────────
-  attest-charts:
-    name: "Attest ${{ matrix.name }}"
-    needs: assemble
-    if: needs.assemble.outputs.has_charts == 'true'
-    runs-on: ubuntu-latest
-    strategy:
-      matrix: ${{ fromJson(needs.assemble.outputs.chart_matrix) }}
-    steps:
-      - name: Install cosign
-        uses: sigstore/cosign-installer@c56c2d3e59e4281cc41dea2217323ba5694b171e # v3.8.0
-
-      - name: Install crane
+      - name: Generate catalog
         run: |
-          VERSION=$(curl -sL https://api.github.com/repos/google/go-containerregistry/releases/latest | jq -r .tag_name)
-          curl -sL "https://github.com/google/go-containerregistry/releases/download/${VERSION}/go-containerregistry_Linux_x86_64.tar.gz" | sudo tar -xzf - -C /usr/local/bin crane
+          ./verity catalog \
+            --images-json .verity/images.json \
+            --reports-dir .verity/reports \
+            --registry "$REGISTRY" \
+            --output site/src/data/catalog.json
 
-      - name: Download chart attestation data
-        uses: actions/download-artifact@v7
-        with:
-          name: chart-attestation-data
-          path: .verity/charts
-
-      - name: Get chart digest
-        id: digest
-        run: ./.github/scripts/get-chart-digest.sh "${{ matrix.oci_ref }}"
-
-      - name: Sign chart with cosign
-        run: ./.github/scripts/sign-chart.sh "${{ steps.digest.outputs.oci_name }}" "${{ steps.digest.outputs.digest }}" "${{ secrets.GITHUB_TOKEN }}"
-
-      - name: Attest build provenance
-        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
-        with:
-          subject-name: ${{ steps.digest.outputs.oci_name }}
-          subject-digest: ${{ steps.digest.outputs.digest }}
-          push-to-registry: true
-
-      - name: Attest SBOM
-        if: hashFiles(format('.verity/charts/{0}/sbom.cdx.json', matrix.name)) != ''
-        uses: actions/attest-sbom@4651f806c01d8637787e274ac3bdf724ef169f34 # v3.0.0
-        with:
-          subject-name: ${{ steps.digest.outputs.oci_name }}
-          subject-digest: ${{ steps.digest.outputs.digest }}
-          sbom-path: .verity/charts/${{ matrix.name }}/sbom.cdx.json
-          push-to-registry: true
-
-      - name: Attest vulnerability report
-        run: ./.github/scripts/attest-chart-vulnerability.sh "${{ steps.digest.outputs.oci_name }}" "${{ steps.digest.outputs.digest }}" "${{ matrix.name }}" .verity/charts "${{ secrets.GITHUB_TOKEN }}"
-
-  # ── Job 3: Generate site catalog (optional) ────────────────────────
-  generate-catalog:
-    name: Generate Site Catalog
-    needs: [discover, patch]
-    if: github.event_name == 'push' && needs.discover.outputs.has_images == 'true' && needs.patch.result == 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
-        with:
-          go-version-file: go.mod
-
-      - name: Build verity
-        run: go build -o verity .
-
-      - name: Download all patch results
-        uses: actions/download-artifact@v7
-        with:
-          pattern: "patch-result-*"
-          path: .verity/artifacts
-          merge-multiple: false
-
-      - name: Collect reports
+      - name: Validate PR testing results
+        if: github.event_name == 'pull_request'
         run: |
-          mkdir -p .verity/reports
-          for artifact_dir in .verity/artifacts/patch-result-*; do
-            [ -d "$artifact_dir" ] || continue
-            find "$artifact_dir" -name '*.json' -path '*/reports/*' -exec cp -n {} .verity/reports/ \; 2>/dev/null || true
-          done
-          echo "Reports: $(find .verity/reports/ -maxdepth 1 -type f 2>/dev/null | wc -l) files"
+          IMAGE_COUNT=$(jq length .verity/images.json)
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ### PR Testing Summary
 
-      - name: Generate site catalog
-        run: ./verity catalog --output site/src/data/catalog.json --images values.yaml --registry "$REGISTRY" --reports-dir .verity/reports
+          ✅ Copa bulk config pipeline tested successfully
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+          **Test Registry:** \`$REGISTRY\`
+          **Images Processed:** \`$IMAGE_COUNT\`
+
+          **Pipeline Steps Validated:**
+          - ✅ Copa bulk patch
+          - ✅ Image scanning (Trivy)
+          - ✅ Catalog generation
+          - ✅ Site build
+
+          _Note: Signing/attestation skipped in PR mode_
+
+          **Catalog Stats:**
+          EOF
+          jq -r '"- Total Images: \(.summary.totalImages)\n- Total Vulnerabilities: \(.summary.totalVulns)\n- Fixable: \(.summary.fixableVulns)"' site/src/data/catalog.json >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/setup-node@v6
         with:
           node-version-file: 'site/package.json'
           cache: 'npm'
           cache-dependency-path: site/package-lock.json
 
-      - name: Build Astro site
+      - name: Build site
         working-directory: site
         run: npm ci && npm run build
 
+      - name: Upload PR test artifacts
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-test-results
+          path: |
+            .verity/images.json
+            .verity/reports/*.json
+            site/src/data/catalog.json
+          retention-days: 7
+
       - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v4
         with:
           path: site/dist
 
-  # ── Job 4: Deploy Site ─────────────────────────────────────────────
   deploy-site:
-    name: Deploy Site to GitHub Pages
-    needs: generate-catalog
+    name: Deploy Site
+    needs: patch-and-publish
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment:
@@ -335,35 +225,5 @@ jobs:
       pages: write
       id-token: write
     steps:
-      - name: Deploy to GitHub Pages
+      - uses: actions/deploy-pages@v4
         id: deployment
-        uses: actions/deploy-pages@v4
-
-  # ── Job 5: Upload vulnerability reports ────────────────────────────
-  upload-reports:
-    name: Upload Vulnerability Reports
-    needs: [discover, patch]
-    if: always() && needs.discover.outputs.has_images == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all patch results
-        uses: actions/download-artifact@v7
-        with:
-          pattern: "patch-result-*"
-          path: .verity/artifacts
-          merge-multiple: false
-
-      - name: Collect reports
-        run: |
-          mkdir -p .verity/reports
-          for artifact_dir in .verity/artifacts/patch-result-*; do
-            [ -d "$artifact_dir" ] || continue
-            find "$artifact_dir" -name '*.json' -path '*/reports/*' -exec cp -n {} .verity/reports/ \; 2>/dev/null || true
-          done
-
-      - name: Upload vulnerability reports
-        uses: actions/upload-artifact@v6
-        with:
-          name: trivy-reports-${{ github.event_name }}-${{ github.run_number }}
-          path: .verity/reports/*.json
-          retention-days: 30

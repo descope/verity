@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   # Note: Linting moved to lint.yaml workflow for better organization
+  # Note: Image discovery, patching, and publishing moved to scan-and-patch.yaml workflow
 
   test:
     name: Unit Tests
@@ -28,116 +29,6 @@ jobs:
 
       - name: Build verity
         run: go build -o verity .
-
-  discover:
-    name: Discover Images
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
-
-      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
-        with:
-          go-version-file: go.mod
-
-      - name: Build verity
-        run: go build -o verity .
-
-      - name: Discover images
-        run: ./verity discover --images values.yaml --discover-dir .verity
-
-  site-build:
-    name: Site Build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
-
-      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
-        with:
-          go-version-file: go.mod
-
-      - name: Build verity
-        run: go build -o verity .
-
-      - name: Generate catalog
-        run: |
-          mkdir -p .verity/reports
-          ./verity catalog --output site/src/data/catalog.json --images values.yaml --registry "ghcr.io/verity-org" --reports-dir .verity/reports
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: 'site/package.json'
-          cache: 'npm'
-          cache-dependency-path: site/package-lock.json
-
-      - name: Build Astro site
-        working-directory: site
-        run: npm ci && npm run build
-
-  integration:
-    name: Integration Tests
-    runs-on: ubuntu-latest
-    services:
-      registry:
-        image: registry:2
-        ports:
-          - 5000:5000
-        options: >-
-          --health-cmd "wget -q --spider http://localhost:5000/v2/ || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
-
-      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
-        with:
-          go-version-file: go.mod
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
-        with:
-          driver-opts: network=host
-
-      - name: Build verity
-        run: go build -o verity .
-
-      - name: Install Copa
-        run: ./.github/scripts/install-copa.sh
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install Trivy
-        uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.5
-        with:
-          version: latest
-          cache: true
-
-      - name: Test patch with local registry
-        run: |
-          ./verity patch \
-            --image "docker.io/library/nginx:1.29.5" \
-            --registry "localhost:5000/verity" \
-            --buildkit-addr "docker-container://buildx_buildkit_builder0" \
-            --result-dir .verity/results \
-            --report-dir .verity/reports
-
-      - name: Verify patched image exists
-        run: |
-          # Check if image was pushed to local registry
-          curl -f http://localhost:5000/v2/verity/library/nginx/tags/list || \
-            (echo "Image not found in local registry" && exit 1)
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: integration-test-results
-          path: |
-            .verity/results/*.json
-            .verity/reports/*.json
-          retention-days: 7
 
   integration-charts:
     name: Integration Tests - Charts
