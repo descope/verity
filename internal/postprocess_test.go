@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	testChartPrometheus = "prometheus"
-	testChartStandalone = "standalone"
+	testChartPrometheus  = "prometheus"
+	testChartStandalone  = "standalone"
 	testRegistryDockerIO = "docker.io"
 )
 

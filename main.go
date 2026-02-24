@@ -16,14 +16,9 @@ func main() {
 		Commands: []*cli.Command{
 			cmd.PostProcessCommand,
 			cmd.AssembleCommand,
-			cmd.ListCommand,
 			cmd.CatalogCommand,
-			// Legacy commands (will be removed in Phase 4)
-			cmd.ScanCommand,
-			cmd.DiscoverCommand,
-			cmd.PatchCommand,
 		},
-		Version: "1.0.0",
+		Version: "2.0.0",
 	}
 
 	if err := app.Run(os.Args); err != nil {

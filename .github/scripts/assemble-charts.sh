@@ -11,6 +11,15 @@ PUBLISH="${6:-false}"
 
 # Collect results and reports
 mkdir -p "$RESULTS_DIR" "$REPORTS_DIR"
+
+# First, copy any pre-filter results from the manifest artifact (discover phase)
+# These are synthetic results for images that were skipped during pre-filtering
+if [ -d ".verity/results" ]; then
+  find .verity/results -maxdepth 1 -name '*.json' -exec cp -n {} "$RESULTS_DIR/" \; 2>/dev/null || true
+fi
+
+# Then, collect results and reports from patch job artifacts
+# The -n flag ensures patch results take precedence over pre-filter results
 for d in .verity/artifacts/patch-result-*; do
   [ -d "$d" ] || continue
   find "$d" -name '*.json' -path '*/results/*' -exec cp -n {} "$RESULTS_DIR/" \; 2>/dev/null || true

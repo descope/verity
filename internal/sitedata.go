@@ -130,12 +130,28 @@ func SaveImagePaths(results []*PatchResult, dir string) error {
 	return os.WriteFile(filepath.Join(dir, "paths.json"), data, 0o644)
 }
 
-// GenerateSiteData reads the images file to produce a catalog.json for the Astro static site.
-//
-// The images file (values.yaml) is the single source of truth for all images.
-// reportsDir optionally provides local Trivy reports (available during CI from the patch step artifacts).
-func GenerateSiteData(imagesFile, reportsDir, registry, outputPath string) error {
-	data := SiteData{
+// ImageEntry represents a single image entry from the sign-and-attest.sh output.
+type ImageEntry struct {
+	Original string `json:"original"`
+	Patched  string `json:"patched"`
+	Report   string `json:"report"`
+}
+
+// GenerateSiteDataFromJSON reads images.json (from sign-and-attest.sh) to produce a catalog.json.
+// This is the bulk config mode path that replaces values.yaml-based catalog generation.
+func GenerateSiteDataFromJSON(imagesJSON, reportsDir, registry, outputPath string) error {
+	// Read images.json
+	data, err := os.ReadFile(imagesJSON)
+	if err != nil {
+		return fmt.Errorf("reading %s: %w", imagesJSON, err)
+	}
+
+	var entries []ImageEntry
+	if err := json.Unmarshal(data, &entries); err != nil {
+		return fmt.Errorf("parsing %s: %w", imagesJSON, err)
+	}
+
+	siteData := SiteData{
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 		Registry:    registry,
 		Charts:      []SiteChart{},
@@ -143,71 +159,61 @@ func GenerateSiteData(imagesFile, reportsDir, registry, outputPath string) error
 
 	var allImages []SiteImage
 
-	// Build image list from values.yaml.
-	if imagesFile != "" { //nolint:nestif // data loading logic
-		images, err := ParseImagesFile(imagesFile)
-		if err != nil {
-			return fmt.Errorf("parsing images file %s: %w", imagesFile, err)
-		}
-		for _, img := range images {
-			ref := img.Reference()
-			sanitizedRef := sanitize(ref)
-			patchedRef := buildPatchedRef(ref, registry)
+	for _, entry := range entries {
+		// Parse the original and patched refs
+		originalRef := entry.Original
+		patchedRef := entry.Patched
+		sanitizedRef := sanitize(originalRef)
 
-			// Try to find a report in the local reports directory.
-			var si SiteImage
-			if reportsDir != "" {
-				reportPath := filepath.Join(reportsDir, sanitizedRef+".json")
-				if report, err := parseTrivyReportFull(reportPath); err == nil {
-					si = buildSiteImage(sanitizedRef, ref, patchedRef, img.Path, report)
-				}
+		// Try to find and parse the report
+		var si SiteImage
+		if entry.Report != "" && fileExists(entry.Report) {
+			if report, err := parseTrivyReportFull(entry.Report); err == nil {
+				si = buildSiteImage(sanitizedRef, originalRef, patchedRef, "", report)
 			}
-			if si.ID == "" {
-				si = SiteImage{
-					ID:          sanitizedRef,
-					OriginalRef: ref,
-					PatchedRef:  patchedRef,
-					ValuesPath:  img.Path,
-					VulnSummary: VulnSummary{
-						SeverityCounts: make(map[string]int),
-					},
-					Vulnerabilities: []SiteVuln{},
-				}
-			}
-			allImages = append(allImages, si)
 		}
+
+		// Fallback to empty site image if no report
+		if si.ID == "" {
+			si = SiteImage{
+				ID:          sanitizedRef,
+				OriginalRef: originalRef,
+				PatchedRef:  patchedRef,
+				VulnSummary: VulnSummary{
+					SeverityCounts: make(map[string]int),
+				},
+				Vulnerabilities: []SiteVuln{},
+			}
+		}
+
+		allImages = append(allImages, si)
 	}
 
-	data.Images = allImages
-	data.Summary = computeSummary(allImages)
+	siteData.Images = allImages
+	siteData.Summary = computeSummary(allImages)
 
 	// Marshal and write
 	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
 		return fmt.Errorf("creating output directory: %w", err)
 	}
 
-	out, err := json.MarshalIndent(data, "", "  ")
+	out, err := json.MarshalIndent(siteData, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshaling site data: %w", err)
 	}
 	return os.WriteFile(outputPath, out, 0o644)
 }
 
-// buildPatchedRef constructs the patched image reference.
-func buildPatchedRef(originalRef, registry string) string {
-	// Parse the original ref to get repo and tag
-	img := parseRef(originalRef)
-
-	patchedTag := img.Tag
-	if patchedTag == "" {
-		patchedTag = "latest"
-	}
-	patchedTag += "-patched"
-
-	return registry + "/" + img.Repository + ":" + patchedTag
+// fileExists checks if a file exists at the given path.
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
-// parseTrivyReportFull reads and parses a full Trivy JSON report.
+// GenerateSiteData reads the images file to produce a catalog.json for the Astro static site.
+//
+// The images file (values.yaml) is the single source of truth for all images.
+// reportsDir optionally provides local Trivy reports (available during CI from the patch step artifacts).
 func parseTrivyReportFull(path string) (*trivyReportFull, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {

@@ -9,6 +9,23 @@ import (
 	"time"
 )
 
+// Trivy report structures (for aggregating vulnerability predicates).
+type trivyReport struct {
+	Results []struct {
+		Vulnerabilities []trivyVulnerability `json:"Vulnerabilities"`
+	} `json:"Results"`
+}
+
+type trivyVulnerability struct {
+	VulnerabilityID  string `json:"VulnerabilityID"`
+	PkgName          string `json:"PkgName"`
+	Severity         string `json:"Severity"`
+	InstalledVersion string `json:"InstalledVersion"`
+	FixedVersion     string `json:"FixedVersion"`
+	Title            string `json:"Title"`
+	Description      string `json:"Description"`
+}
+
 // CycloneDX SBOM structures (simplified for chart use).
 type cycloneDXSBOM struct {
 	BOMFormat   string               `json:"bomFormat"`
