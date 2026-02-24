@@ -140,6 +140,17 @@ jobs:
             ./.github/scripts/sign-and-attest.sh copa-config.yaml "$REGISTRY" .verity/reports .verity/images.json
           fi
 
+      - name: Validate patched images
+        run: |
+          if [ ! -s .verity/images.json ]; then
+            echo "Error: No images were successfully patched (.verity/images.json is missing or empty)."
+            echo "This may indicate Copa failed to patch all images, or no images matched the config."
+            echo "Check the Copa patch logs above for errors."
+            exit 1
+          fi
+          IMAGE_COUNT=$(jq length .verity/images.json)
+          echo "✓ Successfully patched $IMAGE_COUNT image(s)"
+
       - name: Build verity
         run: go build -o verity .
 

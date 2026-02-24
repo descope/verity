@@ -26,7 +26,10 @@ fi
 # Extract target repos from copa-config.yaml
 # Copa keeps only the last path segment: quay.io/foo/bar → $REGISTRY/bar
 for source_image in $(yq -r '.images[].image' "$COPA_CONFIG"); do
-  base_name=$(echo "$source_image" | rev | cut -d'/' -f1 | rev)
+  # Derive the base repository name (last path segment, without tag or digest)
+  base_with_tag_and_digest="${source_image##*/}"   # remove everything up to last '/'
+  base_without_digest="${base_with_tag_and_digest%%@*}"  # strip optional @digest
+  base_name="${base_without_digest%%:*}"           # strip optional :tag
   target_repo="${REGISTRY}/${base_name}"
 
   # List all patched tags in the target registry
@@ -42,7 +45,9 @@ for source_image in $(yq -r '.images[].image' "$COPA_CONFIG"); do
 
     # 1. Trivy scan → vulnerability report
     report_file="${REPORTS_DIR}/${base_name}_${tag}.json"
-    trivy image --format json --output "$report_file" "${image_name}@${digest}" || true
+    if ! trivy image --format json --output "$report_file" "${image_name}@${digest}"; then
+      echo "Warning: Trivy scan failed for ${image_name}@${digest}, skipping vulnerability attestation for this image." >&2
+    fi
 
     if [ "$SKIP_SIGNING" != "true" ]; then
       # 2. Sign with cosign

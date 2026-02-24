@@ -67,15 +67,26 @@ func ParseChartImageMap(path string) (*ChartImageMap, error) {
 }
 
 // ParseImageRef parses a full image reference into registry, repository, and tag.
-// Example: "ghcr.io/verity-org/library/nginx:1.25.3-patched" ->
+// Handles both tag-based and digest-based references:
+// - "ghcr.io/verity-org/nginx:1.25.3" -> registry="ghcr.io", repository="verity-org/nginx", tag="1.25.3"
+// - "nginx@sha256:abc123" -> registry="", repository="nginx", tag="sha256:abc123"
+// - "nginx:1.25@sha256:abc" -> registry="", repository="nginx", tag="sha256:abc" (digest takes precedence)
 //
-//	registry="ghcr.io", repository="verity-org/library/nginx", tag="1.25.3-patched"
+// Note: For digest references, the entire digest (e.g., "sha256:abc123") is returned as the tag.
 func ParseImageRef(ref string) (registry, repository, tag string) {
-	// Split off tag
-	parts := strings.Split(ref, ":")
-	if len(parts) > 1 {
-		tag = parts[len(parts)-1]
-		ref = strings.Join(parts[:len(parts)-1], ":")
+	// Check for digest first (@ separator) - digests take precedence over tags
+	if idx := strings.Index(ref, "@"); idx != -1 {
+		tag = ref[idx+1:] // Everything after @ is the digest (e.g., "sha256:abc123")
+		ref = ref[:idx]   // Remove digest from ref
+	} else {
+		// No digest, check for tag (: separator)
+		// Need to be careful: registry might have port (e.g., localhost:5000)
+		// Strategy: find the last ":" after the last "/"
+		lastSlash := strings.LastIndex(ref, "/")
+		if lastColon := strings.LastIndex(ref, ":"); lastColon > lastSlash {
+			tag = ref[lastColon+1:]
+			ref = ref[:lastColon]
+		}
 	}
 
 	// Split off registry (first component before /)
