@@ -47,7 +47,6 @@ jobs:
           go-version-file: go.mod
 
       - name: Login to GHCR
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -81,22 +80,14 @@ jobs:
 
       - name: Scan all images with Trivy
         run: |
-          # In PRs, only scan source images (patched images don't exist yet)
-          # In production, scan both source and patched images
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            ./verity scan \
-              --config copa-config.yaml \
-              --trivy-server http://localhost:4954 \
-              --parallel 10 \
-              --output reports/
-          else
-            ./verity scan \
-              --config copa-config.yaml \
-              --target-registry "$TARGET_REGISTRY" \
-              --trivy-server http://localhost:4954 \
-              --parallel 10 \
-              --output reports/
-          fi
+          # Scan both source and patched images to detect if re-patching is needed
+          # Copa's skip detection checks existing patched images for new vulnerabilities
+          ./verity scan \
+            --config copa-config.yaml \
+            --target-registry "$TARGET_REGISTRY" \
+            --trivy-server http://localhost:4954 \
+            --parallel 10 \
+            --output reports/
 
       - name: Run Copa dry-run discovery
         id: discover
