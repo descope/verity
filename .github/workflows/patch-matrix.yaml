@@ -63,15 +63,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build verity
-        run: go build -o verity .
-
-      - name: Upload verity binary
-        uses: actions/upload-artifact@v4
+      - name: Setup binaries
+        uses: ./.github/actions/setup-binaries
         with:
-          name: verity-binary
-          path: verity
-          retention-days: 1
+          github-token: ${{ github.token }}
 
       - name: Setup Trivy
         uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.5
@@ -163,41 +158,10 @@ jobs:
           echo "Copa config target registry:"
           yq eval '.target.registry' copa-config.yaml
 
-      - name: Get Copa commit hash
-        id: copa-hash
-        run: |
-          COMMIT=$(gh api repos/verity-org/copacetic/commits/verity --jq .sha 2>/dev/null || \
-                   gh api repos/verity-org/copacetic/commits/feat/bulk-skip-detection --jq .sha)
-          echo "hash=$COMMIT" >> "$GITHUB_OUTPUT"
-          echo "Copa commit: $COMMIT"
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-      - name: Cache Copa binary
-        id: cache-copa
-        uses: actions/cache@v4
+      - name: Setup binaries
+        uses: ./.github/actions/setup-binaries
         with:
-          path: ~/go/bin/copa
-          key: copa-${{ runner.os }}-${{ steps.copa-hash.outputs.hash }}
-
-      - name: Build Copa from fork
-        if: steps.cache-copa.outputs.cache-hit != 'true'
-        run: |
-          echo "Building Copa from commit: ${{ steps.copa-hash.outputs.hash }}"
-          git clone --depth 1 https://github.com/verity-org/copacetic.git /tmp/copa
-          cd /tmp/copa
-          git fetch --depth 1 origin ${{ steps.copa-hash.outputs.hash }}
-          git checkout ${{ steps.copa-hash.outputs.hash }}
-          go build -o "$(go env GOPATH)/bin/copa" .
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-      - name: Upload Copa binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: copa-binary
-          path: ~/go/bin/copa
-          retention-days: 1
+          github-token: ${{ github.token }}
 
       - name: Run Copa dry-run discovery
         id: discover
@@ -291,14 +255,10 @@ jobs:
           name: trivy-reports
           path: reports/
 
-      - name: Download Copa binary
-        uses: actions/download-artifact@v4
+      - name: Setup binaries
+        uses: ./.github/actions/setup-binaries
         with:
-          name: copa-binary
-          path: ~/go/bin/
-
-      - name: Make Copa executable
-        run: chmod +x ~/go/bin/copa
+          github-token: ${{ github.token }}
 
       - name: Patch image
         run: |
@@ -334,13 +294,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download verity binary
-        uses: actions/download-artifact@v4
+      - name: Setup binaries
+        uses: ./.github/actions/setup-binaries
         with:
-          name: verity-binary
-
-      - name: Make verity executable
-        run: chmod +x verity
+          github-token: ${{ github.token }}
 
       - name: Download all patch results
         uses: actions/download-artifact@v4

@@ -1,0 +1,135 @@
+name: Setup Binaries
+description: Install Copa and Verity with cache and artifact fallback
+
+inputs:
+  github-token:
+    description: GitHub token for API access
+    required: true
+
+outputs:
+  copa-cache-hit:
+    description: Whether Copa was found in cache
+    value: ${{ steps.copa-cache.outputs.cache-hit }}
+  copa-version:
+    description: Copa commit hash
+    value: ${{ steps.copa-hash.outputs.hash }}
+  verity-cache-hit:
+    description: Whether verity was found in cache
+    value: ${{ steps.verity-cache.outputs.cache-hit }}
+  verity-version:
+    description: Verity git commit hash
+    value: ${{ steps.verity-version.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    # ── Copa Setup ────────────────────────────────────────────────────────
+    - name: Get Copa commit hash
+      id: copa-hash
+      shell: bash
+      run: |
+        COMMIT=$(gh api repos/verity-org/copacetic/commits/verity --jq .sha 2>/dev/null || \
+                 gh api repos/verity-org/copacetic/commits/feat/bulk-skip-detection --jq .sha)
+        echo "hash=$COMMIT" >> "$GITHUB_OUTPUT"
+        echo "Copa commit: $COMMIT"
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+
+    - name: Restore Copa from cache
+      id: copa-cache
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/go/bin/copa
+        key: copa-${{ runner.os }}-${{ steps.copa-hash.outputs.hash }}
+
+    - name: Download Copa artifact
+      if: steps.copa-cache.outputs.cache-hit != 'true'
+      id: copa-artifact
+      uses: actions/download-artifact@v4
+      continue-on-error: true
+      with:
+        name: copa-binary
+        path: ~/go/bin/
+
+    - name: Build Copa from source
+      if: steps.copa-cache.outputs.cache-hit != 'true' && steps.copa-artifact.outcome == 'failure'
+      shell: bash
+      run: |
+        echo "Building Copa from commit: ${{ steps.copa-hash.outputs.hash }}"
+        git clone --depth 1 https://github.com/verity-org/copacetic.git /tmp/copa
+        cd /tmp/copa
+        git fetch --depth 1 origin ${{ steps.copa-hash.outputs.hash }}
+        git checkout ${{ steps.copa-hash.outputs.hash }}
+        go build -o "$(go env GOPATH)/bin/copa" .
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+
+    - name: Make Copa executable
+      if: steps.copa-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: chmod +x ~/go/bin/copa
+
+    - name: Upload Copa artifact
+      if: steps.copa-cache.outputs.cache-hit != 'true' && steps.copa-artifact.outcome == 'failure'
+      uses: actions/upload-artifact@v4
+      with:
+        name: copa-binary
+        path: ~/go/bin/copa
+        retention-days: 1
+
+    - name: Save Copa to cache
+      if: steps.copa-cache.outputs.cache-hit != 'true' && steps.copa-artifact.outcome == 'failure'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/go/bin/copa
+        key: copa-${{ runner.os }}-${{ steps.copa-hash.outputs.hash }}
+
+    # ── Verity Setup ──────────────────────────────────────────────────────
+    - name: Get Verity version
+      id: verity-version
+      shell: bash
+      run: |
+        VERSION=$(git rev-parse HEAD)
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        echo "Verity version: $VERSION"
+
+    - name: Restore Verity from cache
+      id: verity-cache
+      uses: actions/cache/restore@v4
+      with:
+        path: ./verity
+        key: verity-${{ runner.os }}-${{ steps.verity-version.outputs.version }}
+
+    - name: Download Verity artifact
+      if: steps.verity-cache.outputs.cache-hit != 'true'
+      id: verity-artifact
+      uses: actions/download-artifact@v4
+      continue-on-error: true
+      with:
+        name: verity-binary
+        path: .
+
+    - name: Build Verity from source
+      if: steps.verity-cache.outputs.cache-hit != 'true' && steps.verity-artifact.outcome == 'failure'
+      shell: bash
+      run: go build -o verity .
+
+    - name: Make Verity executable
+      if: steps.verity-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: chmod +x verity
+
+    - name: Upload Verity artifact
+      if: steps.verity-cache.outputs.cache-hit != 'true' && steps.verity-artifact.outcome == 'failure'
+      uses: actions/upload-artifact@v4
+      with:
+        name: verity-binary
+        path: verity
+        retention-days: 1
+
+    - name: Save Verity to cache
+      if: steps.verity-cache.outputs.cache-hit != 'true' && steps.verity-artifact.outcome == 'failure'
+      uses: actions/cache/save@v4
+      with:
+        path: ./verity
+        key: verity-${{ runner.os }}-${{ steps.verity-version.outputs.version }}
