@@ -218,9 +218,9 @@ jobs:
           # Extract source tag (e.g., nginx:1.29.4 -> 1.29.4)
           SOURCE_TAG=$(echo "${{ matrix.source }}" | cut -d: -f2)
 
-          # Push platform-specific image to ephemeral registry for combining
-          # Include source tag to avoid collisions between versions
-          PLATFORM_TAG="${RUNS_ON_ECR_CACHE}/${{ matrix.image }}:${SOURCE_TAG}-patched-${PLATFORM_ARCH}"
+          # Ephemeral registry is a single repo with mutable tags
+          # Tag format: <image-name>-<version>-patched-<arch>
+          PLATFORM_TAG="${RUNS_ON_ECR_CACHE}:${{ matrix.image }}-${SOURCE_TAG}-patched-${PLATFORM_ARCH}"
 
           # Construct report filename (match how scan.go creates them)
           REPORT_FILE="reports/$(echo '${{ matrix.source }}' | sed 's/[\/:]/_/g').json"
@@ -306,12 +306,13 @@ jobs:
 
             echo "Creating manifest list for $IMAGE:$TAG..."
 
-            # Build list of platform-specific source tags
+            # Build list of platform-specific source tags from ephemeral registry
+            # Ephemeral registry uses tags, not separate repos
             SOURCE_TAGS=$(jq -r --arg img "$IMAGE" --arg tag "$TAG" \
               'map(select(.image == $img and (.source | split(":")[1]) == $tag)) |
                .[] |
                (.platform | split("/")[1]) as $arch |
-               "'"${RUNS_ON_ECR_CACHE}"'/" + $img + ":" + $tag + "-patched-" + $arch' \
+               "'"${RUNS_ON_ECR_CACHE}"':" + $img + "-" + $tag + "-patched-" + $arch' \
               all-patches.json)
 
             # Create manifest list
