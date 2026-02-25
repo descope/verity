@@ -181,8 +181,7 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@v3
         with:
-          driver-opts: network=host
-          buildkitd-flags: --allow-insecure-entitlement network.host
+          driver: docker
 
       - name: Download Trivy reports
         uses: actions/download-artifact@v4
@@ -200,8 +199,12 @@ jobs:
           # Extract platform arch for tag suffix (linux/amd64 -> amd64)
           PLATFORM_ARCH=$(echo "${{ matrix.platform }}" | cut -d/ -f2)
 
+          # Extract source tag (e.g., nginx:1.29.4 -> 1.29.4)
+          SOURCE_TAG=$(echo "${{ matrix.source }}" | cut -d: -f2)
+
           # Push platform-specific image to ephemeral registry for combining
-          PLATFORM_TAG="${RUNS_ON_ECR_CACHE}/${{ matrix.image }}:patched-${PLATFORM_ARCH}"
+          # Include source tag to avoid collisions between versions
+          PLATFORM_TAG="${RUNS_ON_ECR_CACHE}/${{ matrix.image }}:${SOURCE_TAG}-patched-${PLATFORM_ARCH}"
 
           # Construct report filename (match how scan.go creates them)
           REPORT_FILE="reports/$(echo '${{ matrix.source }}' | sed 's/[\/:]/_/g').json"
@@ -209,12 +212,12 @@ jobs:
           echo "Using report file: $REPORT_FILE"
 
           # Copa will patch the native platform of this runner (amd64 or arm64)
+          # Using docker driver, BuildKit runs in Docker daemon with access to credentials
           copa patch \
             --image "${{ matrix.source }}" \
             --tag "$PLATFORM_TAG" \
             --report "$REPORT_FILE" \
             --push \
-            --addr "docker-container://buildx_buildkit_${{ steps.buildx.outputs.name }}0" \
             --timeout 30m
 
           echo "Patched platform-specific image: $PLATFORM_TAG"
@@ -277,22 +280,25 @@ jobs:
           # Collect all patched images
           cat patch-results/*.json | jq -s '.' > all-patches.json
 
-          # Get unique images (without platform suffix)
-          IMAGES=$(jq -r '.[].image' all-patches.json | sort -u)
+          # Get unique image:tag combinations (group by image name and source tag)
+          IMAGES=$(jq -r '.[] | .image + ":" + (.source | split(":")[1])' all-patches.json | sort -u)
 
-          for IMAGE in $IMAGES; do
-            echo "Creating manifest list for $IMAGE..."
+          for IMAGE_TAG in $IMAGES; do
+            IMAGE=$(echo "$IMAGE_TAG" | cut -d: -f1)
+            TAG=$(echo "$IMAGE_TAG" | cut -d: -f2-)
+
+            echo "Creating manifest list for $IMAGE:$TAG..."
 
             # Build list of platform-specific source tags
-            SOURCE_TAGS=$(jq -r --arg img "$IMAGE" \
-              'map(select(.image == $img)) |
+            SOURCE_TAGS=$(jq -r --arg img "$IMAGE" --arg tag "$TAG" \
+              'map(select(.image == $img and (.source | split(":")[1]) == $tag)) |
                .[] |
                (.platform | split("/")[1]) as $arch |
-               "'"${RUNS_ON_ECR_CACHE}"'/" + $img + ":patched-" + $arch' \
+               "'"${RUNS_ON_ECR_CACHE}"'/" + $img + ":" + $tag + "-patched-" + $arch' \
               all-patches.json)
 
             # Create manifest list
-            TARGET_TAG="${TARGET_REGISTRY}/${IMAGE}:patched"
+            TARGET_TAG="${TARGET_REGISTRY}/${IMAGE}:${TAG}-patched"
             # shellcheck disable=SC2086
             docker manifest create "$TARGET_TAG" $SOURCE_TAGS
 
