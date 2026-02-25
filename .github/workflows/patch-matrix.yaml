@@ -165,29 +165,39 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          driver: docker-container
-          driver-opts: network=host
-          buildkitd-flags: --allow-insecure-entitlement network.host
-
-      - name: Login to ECR ephemeral registry
+      - name: Setup BuildKit with ECR credentials
+        id: buildx-setup
         run: |
-          # Extract ECR registry from RUNS_ON_ECR_CACHE
+          # Host uses IAM role to get ECR token
           REGISTRY=$(echo "$RUNS_ON_ECR_CACHE" | cut -d/ -f1)
           REGION=$(echo "$REGISTRY" | cut -d. -f4)
 
-          # Login to ECR - credentials are stored in Docker config
-          aws ecr get-login-password --region "$REGION" | \
-            docker login --username AWS --password-stdin "$REGISTRY"
+          # Get ECR auth token
+          ECR_TOKEN=$(aws ecr get-login-password --region "$REGION")
 
-          echo "✓ Logged in to ECR: $REGISTRY"
+          # Create BuildKit config with ECR credentials
+          mkdir -p /tmp/buildkit-config
+          cat > /tmp/buildkit-config/buildkitd.toml <<EOF
+          [registry."${REGISTRY}"]
+            [registry."${REGISTRY}".auth]
+              username = "AWS"
+              secret = "${ECR_TOKEN}"
+          EOF
 
-          # Restart buildx to pick up new credentials
-          docker buildx stop "${{ steps.buildx.outputs.name }}" || true
-          docker buildx inspect --bootstrap "${{ steps.buildx.outputs.name }}"
+          # Create buildx builder with config
+          docker buildx create \
+            --name copa-builder \
+            --driver docker-container \
+            --driver-opt network=host \
+            --config /tmp/buildkit-config/buildkitd.toml \
+            --buildkitd-flags '--allow-insecure-entitlement network.host' \
+            --use
+
+          docker buildx inspect --bootstrap
+
+      - name: Get buildx name
+        id: buildx
+        run: echo "name=copa-builder" >> "$GITHUB_OUTPUT"
 
       - name: Download Trivy reports
         uses: actions/download-artifact@v4
