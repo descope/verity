@@ -32,7 +32,7 @@ jobs:
   # ── Job 1: Scan all images with Trivy in parallel ──────────────────
   scan:
     name: Scan Images
-    runs-on: runs-on,runner=2cpu-linux-x64,run-id=${{ github.run_id }},extras=s3-cache
+    runs-on: runs-on,runner=4cpu-linux-x64,run-id=${{ github.run_id }},extras=s3-cache
 
     steps:
       - uses: actions/checkout@v4
@@ -106,7 +106,7 @@ jobs:
   discover:
     name: Discover Images to Patch
     needs: scan
-    runs-on: runs-on,runner=2cpu-linux-x64,run-id=${{ github.run_id }},extras=s3-cache
+    runs-on: runs-on,runner=4cpu-linux-x64,run-id=${{ github.run_id }},extras=s3-cache
     outputs:
       matrix: ${{ steps.discover.outputs.matrix }}
       has_images: ${{ steps.discover.outputs.has_images }}
@@ -222,7 +222,7 @@ jobs:
     name: Create Manifest Lists
     needs: [discover, patch]
     if: needs.discover.outputs.has_images == 'true' && needs.patch.result == 'success'
-    runs-on: runs-on,runner=2cpu-linux-x64,run-id=${{ github.run_id }},extras=ecr-cache
+    runs-on: runs-on,runner=4cpu-linux-x64,run-id=${{ github.run_id }},extras=ecr-cache
     steps:
       - uses: actions/checkout@v4
 
@@ -298,7 +298,7 @@ jobs:
     name: Generate Catalog
     needs: [discover, patch, combine]
     if: always() && needs.discover.outputs.has_images == 'true' && needs.patch.result != 'cancelled'
-    runs-on: runs-on,runner=2cpu-linux-x64,run-id=${{ github.run_id }},extras=s3-cache
+    runs-on: runs-on,runner=4cpu-linux-x64,run-id=${{ github.run_id }},extras=s3-cache
     steps:
       - uses: actions/checkout@v4
 
