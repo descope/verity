@@ -90,12 +90,22 @@ jobs:
 
       - name: Scan all images with Trivy
         run: |
-          ./verity scan \
-            --config copa-config.yaml \
-            --target-registry "$REGISTRY" \
-            --trivy-server http://localhost:4954 \
-            --parallel 10 \
-            --output reports/
+          # In PRs, only scan source images (patched images don't exist yet)
+          # In production, scan both source and patched images
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            ./verity scan \
+              --config copa-config.yaml \
+              --trivy-server http://localhost:4954 \
+              --parallel 10 \
+              --output reports/
+          else
+            ./verity scan \
+              --config copa-config.yaml \
+              --target-registry "$REGISTRY" \
+              --trivy-server http://localhost:4954 \
+              --parallel 10 \
+              --output reports/
+          fi
 
       - name: Upload Trivy reports
         uses: actions/upload-artifact@v4
