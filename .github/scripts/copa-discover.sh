@@ -47,3 +47,11 @@ else
   echo "has_images=false" >> "$OUTPUT_FILE"
   echo "✓ No images need patching (all up to date)"
 fi
+
+# Check if any images should appear in the catalog (WouldPatch or Skipped)
+catalog_count=$(jq '[.[] | select(.status == "WouldPatch" or .status == "Skipped")] | length' results.json)
+if [ "$catalog_count" -gt 0 ]; then
+  echo "has_catalog_images=true" >> "$OUTPUT_FILE"
+else
+  echo "has_catalog_images=false" >> "$OUTPUT_FILE"
+fi
