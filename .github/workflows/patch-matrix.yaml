@@ -270,14 +270,14 @@ jobs:
               continue
             fi
 
-            # In production: create manifest directly on TARGET_REGISTRY
+            # In production: copy images from staging to target and create manifest
             # In PRs: create manifest on STAGING_REGISTRY to validate
             if [ "${{ github.event_name }}" != "pull_request" ]; then
               MANIFEST_TAG="${TARGET_REGISTRY}/${IMAGE}:${TAG}-patched"
+              # imagetools copies platform images and creates manifest in one step
               # shellcheck disable=SC2086
-              docker manifest create "$MANIFEST_TAG" $SOURCE_TAGS
-              docker manifest push "$MANIFEST_TAG"
-              echo "✓ Created manifest on GHCR production: $MANIFEST_TAG"
+              docker buildx imagetools create --tag "$MANIFEST_TAG" $SOURCE_TAGS
+              echo "✓ Copied images and created manifest: $MANIFEST_TAG"
 
               # Store for signing/attestation
               echo "$MANIFEST_TAG" >> ghcr-manifests.txt
