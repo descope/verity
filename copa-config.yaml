@@ -9,8 +9,10 @@ target:
 images:
   # Copa-compatible images (Debian/Ubuntu-based)
   # Using mirror.gcr.io to avoid Docker Hub rate limits
+  # Only patch amd64 and arm64; other platforms preserved but not patched
   - name: "nginx"
     image: "mirror.gcr.io/library/nginx"
+    platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
       pattern: '^\d+\.\d+\.\d+$'
@@ -18,6 +20,7 @@ images:
 
   - name: "rabbitmq"
     image: "mirror.gcr.io/library/rabbitmq"
+    platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
       pattern: '^\d+\.\d+\.\d+$'
@@ -25,6 +28,7 @@ images:
 
   - name: "vector-debian"
     image: "mirror.gcr.io/vectordotdev/vector"
+    platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
       pattern: '^\d+\.\d+\.\d+-debian$'
@@ -32,6 +36,7 @@ images:
 
   - name: "vector-alpine"
     image: "mirror.gcr.io/vectordotdev/vector"
+    platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
       pattern: '^\d+\.\d+\.\d+-alpine$'
@@ -39,6 +44,7 @@ images:
 
   - name: "redis"
     image: "quay.io/opstree/redis"
+    platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
       pattern: '^v\d+\.\d+\.\d+$'
@@ -46,6 +52,7 @@ images:
 
   - name: "redis-sentinel"
     image: "quay.io/opstree/redis-sentinel"
+    platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
       pattern: '^v\d+\.\d+\.\d+$'
@@ -53,6 +60,7 @@ images:
 
   - name: "grafana-ubuntu"
     image: "mirror.gcr.io/grafana/grafana"
+    platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
       pattern: '^\d+\.\d+\.\d+-ubuntu$'
@@ -60,6 +68,7 @@ images:
 
   - name: "prometheus-distroless"
     image: "quay.io/prometheus/prometheus"
+    platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
       pattern: '^\d+\.\d+\.\d+-distroless$'

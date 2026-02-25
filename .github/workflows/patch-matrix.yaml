@@ -203,11 +203,16 @@ jobs:
           # Push platform-specific image to ephemeral registry for combining
           PLATFORM_TAG="${RUNS_ON_ECR_CACHE}/${{ matrix.image }}:patched-${PLATFORM_ARCH}"
 
+          # Construct report filename (match how scan.go creates them)
+          REPORT_FILE="reports/$(echo '${{ matrix.source }}' | sed 's/[\/:]/_/g').json"
+
+          echo "Using report file: $REPORT_FILE"
+
           # Copa will patch the native platform of this runner (amd64 or arm64)
           copa patch \
             --image "${{ matrix.source }}" \
             --tag "$PLATFORM_TAG" \
-            --report reports/ \
+            --report "$REPORT_FILE" \
             --push \
             --addr "docker-container://buildx_buildkit_${{ steps.buildx.outputs.name }}0" \
             --timeout 30m
