@@ -181,10 +181,6 @@ jobs:
 
           docker buildx inspect --bootstrap
 
-      - name: Get buildx name
-        id: buildx
-        run: echo "name=copa-builder" >> "$GITHUB_OUTPUT"
-
       - name: Download Trivy reports
         uses: actions/download-artifact@v4
         with:
@@ -220,7 +216,7 @@ jobs:
             --tag "$PLATFORM_TAG" \
             --report "$REPORT_FILE" \
             --push \
-            --addr "docker-container://buildx_buildkit_${{ steps.buildx.outputs.name }}0" \
+            --addr buildx://copa-builder \
             --timeout 30m
 
           echo "Patched platform-specific image: $PLATFORM_TAG"
