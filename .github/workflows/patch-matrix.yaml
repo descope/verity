@@ -38,6 +38,7 @@ jobs:
     outputs:
       matrix: ${{ steps.discover.outputs.matrix }}
       has_images: ${{ steps.discover.outputs.has_images }}
+      has_catalog_images: ${{ steps.discover.outputs.has_catalog_images }}
 
     steps:
       - uses: actions/checkout@v4
@@ -322,7 +323,7 @@ jobs:
   assemble:
     name: Generate Catalog
     needs: [scan, patch, combine]
-    if: always() && needs.scan.outputs.has_images == 'true' && needs.patch.result != 'cancelled'
+    if: always() && needs.scan.outputs.has_catalog_images == 'true' && needs.patch.result != 'cancelled'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -352,7 +353,7 @@ jobs:
           path: .
 
       - name: Generate catalog
-        run: .github/scripts/generate-catalog.sh patch-results/ reports/ "$TARGET_REGISTRY" site/src/data/catalog.json
+        run: .github/scripts/generate-catalog.sh results.json reports/ "$TARGET_REGISTRY" site/src/data/catalog.json
 
       - name: Build site
         working-directory: site

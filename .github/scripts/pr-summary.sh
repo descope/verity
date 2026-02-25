@@ -21,7 +21,7 @@ cat >> "$GITHUB_STEP_SUMMARY" <<EOF
 ✅ Copa matrix pipeline tested successfully
 
 **Test Registry:** \`$REGISTRY\`
-**Images Patched:** \`$IMAGE_COUNT\`
+**Images in Catalog:** \`$IMAGE_COUNT\`
 
 **Pipeline Steps Validated:**
 - ✅ Trivy scanning (parallel with server)

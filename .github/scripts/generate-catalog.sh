@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Collects patch results and generates vulnerability catalog
-# Usage: generate-catalog.sh <patch-results-dir> <reports-dir> <registry> <output-file>
+# Collects all image data from Copa discovery results and generates vulnerability catalog
+# Usage: generate-catalog.sh <results-json> <reports-dir> <registry> <output-file>
 
-PATCH_RESULTS_DIR="${1:-patch-results}"
+RESULTS_JSON="${1:-results.json}"
 REPORTS_DIR="${2:-reports}"
 REGISTRY="${3:-}"
 OUTPUT_FILE="${4:-site/src/data/catalog.json}"
@@ -14,26 +14,24 @@ if [ -z "$REGISTRY" ]; then
   exit 1
 fi
 
-echo "Collecting patch results from $PATCH_RESULTS_DIR..."
+echo "Building images list from $RESULTS_JSON..."
 
-# Collect all patched image names in the schema expected by `verity catalog`
+# Build images.json from results.json (all WouldPatch + Skipped images)
 # Schema: {original, patched, report}
-images_json='[]'
-for result in "$PATCH_RESULTS_DIR"/*.json; do
-  [ -f "$result" ] || continue
-  source=$(jq -r .source "$result")
-  target=$(jq -r .target "$result")
-  # Derive report filename from source (match scan.go sanitization)
-  report="$(echo "$source" | sed 's/[\/:]/_/g').json"
-  images_json=$(echo "$images_json" | jq --arg o "$source" --arg p "$target" --arg r "$report" \
-    '. += [{"original": $o, "patched": $p, "report": $r}]')
-done
+images_json=$(jq -c '[
+  .[] | select(.status == "WouldPatch" or .status == "Skipped") |
+  {
+    original: .source,
+    patched: .target,
+    report: (.source | gsub("[/:]"; "_") + ".json")
+  }
+]' "$RESULTS_JSON")
 
 mkdir -p .verity
 echo "$images_json" > .verity/images.json
 
-IMAGE_COUNT=$(jq 'length' .verity/images.json)
-echo "✓ Collected $IMAGE_COUNT patched image(s)"
+IMAGE_COUNT=$(echo "$images_json" | jq 'length')
+echo "✓ Collected $IMAGE_COUNT image(s) for catalog"
 
 echo "Generating catalog..."
 ./verity catalog \
