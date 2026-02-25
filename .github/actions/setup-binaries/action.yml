@@ -77,6 +77,7 @@ runs:
         name: copa-binary-${{ runner.arch }}-${{ steps.copa-hash.outputs.hash }}
         path: ~/go/bin/copa
         retention-days: 1
+        overwrite: true
 
     - name: Save Copa to cache
       if: steps.copa-cache.outputs.cache-hit != 'true' && steps.copa-artifact.outcome == 'failure'
@@ -128,6 +129,7 @@ runs:
         name: verity-binary-${{ runner.arch }}-${{ steps.verity-version.outputs.version }}
         path: verity
         retention-days: 1
+        overwrite: true
 
     - name: Save Verity to cache
       if: steps.verity-cache.outputs.cache-hit != 'true' && steps.verity-artifact.outcome == 'failure'
