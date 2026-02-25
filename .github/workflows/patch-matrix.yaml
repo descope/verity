@@ -31,10 +31,13 @@ env:
   PLATFORMS: linux/amd64,linux/arm64
 
 jobs:
-  # ── Job 1: Scan all images with Trivy in parallel ──────────────────
+  # ── Job 1: Scan images and discover what needs patching ────────────
   scan:
-    name: Scan Images
+    name: Scan & Discover
     runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.discover.outputs.matrix }}
+      has_images: ${{ steps.discover.outputs.has_images }}
 
     steps:
       - uses: actions/checkout@v4
@@ -95,62 +98,29 @@ jobs:
               --output reports/
           fi
 
-      - name: Upload Trivy reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-reports
-          path: reports/
-          retention-days: 30
-
-  # ── Job 2: Discover what needs patching with Copa dry-run ──────────
-  discover:
-    name: Discover Images to Patch
-    needs: scan
-    runs-on: ubuntu-24.04
-    outputs:
-      matrix: ${{ steps.discover.outputs.matrix }}
-      has_images: ${{ steps.discover.outputs.has_images }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-
-      - name: Download Trivy reports
-        uses: actions/download-artifact@v4
-        with:
-          name: trivy-reports
-          path: reports/
-
-      - name: Setup binaries
-        uses: ./.github/actions/setup-binaries
-        with:
-          github-token: ${{ github.token }}
-
       - name: Run Copa dry-run discovery
         id: discover
         run: .github/scripts/copa-discover.sh copa-config.yaml reports/
 
-      - name: Upload discovery results
+      - name: Upload scan and discovery results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: copa-discovery
+          name: scan-results
           path: |
+            reports/
             results.json
             matrix.json
-          retention-days: 7
+          retention-days: 30
 
-  # ── Job 3: Patch images in parallel per platform ───────────────────
+  # ── Job 2: Patch images in parallel per platform ───────────────────
   patch:
     name: "Patch ${{ matrix.name }}"
-    needs: [scan, discover]
-    if: needs.discover.outputs.has_images == 'true'
+    needs: scan
+    if: needs.scan.outputs.has_images == 'true'
     runs-on: ${{ matrix.runner }}
     strategy:
-      matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.scan.outputs.matrix) }}
       fail-fast: false
       max-parallel: 10
 
@@ -181,11 +151,11 @@ jobs:
 
           docker buildx inspect --bootstrap
 
-      - name: Download Trivy reports
+      - name: Download scan results
         uses: actions/download-artifact@v4
         with:
-          name: trivy-reports
-          path: reports/
+          name: scan-results
+          path: .
 
       - name: Setup binaries
         uses: ./.github/actions/setup-binaries
@@ -236,11 +206,11 @@ jobs:
           path: patch-results/
           retention-days: 7
 
-  # ── Job 4: Combine platform images into manifest lists ─────────────
+  # ── Job 3: Combine platform images into manifest lists ─────────────
   combine:
     name: Create Manifest Lists
-    needs: [discover, patch]
-    if: needs.discover.outputs.has_images == 'true' && needs.patch.result == 'success'
+    needs: [scan, patch]
+    if: needs.scan.outputs.has_images == 'true' && needs.patch.result == 'success'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -357,11 +327,11 @@ jobs:
           path: manifest-results/
           retention-days: 7
 
-  # ── Job 5: Assemble results and generate catalog ───────────────────
+  # ── Job 4: Assemble results and generate catalog ───────────────────
   assemble:
     name: Generate Catalog
-    needs: [discover, patch, combine]
-    if: always() && needs.discover.outputs.has_images == 'true' && needs.patch.result != 'cancelled'
+    needs: [scan, patch, combine]
+    if: always() && needs.scan.outputs.has_images == 'true' && needs.patch.result != 'cancelled'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -384,11 +354,11 @@ jobs:
           path: patch-results/
           merge-multiple: true
 
-      - name: Download Trivy reports
+      - name: Download scan results
         uses: actions/download-artifact@v4
         with:
-          name: trivy-reports
-          path: reports/
+          name: scan-results
+          path: .
 
       - name: Generate catalog
         run: .github/scripts/generate-catalog.sh patch-results/ reports/ "$TARGET_REGISTRY" site/src/data/catalog.json
@@ -417,6 +387,7 @@ jobs:
         with:
           path: site/dist
 
+  # ── Job 5: Deploy catalog site to GitHub Pages ─────────────────────
   deploy-site:
     name: Deploy Site
     needs: assemble
