@@ -33,7 +33,7 @@ jq -c --arg platforms "$PLATFORMS" '[
     source: $img.source,
     target: $img.target,
     platform: .,
-    runner: (if . == "linux/arm64" then "4cpu-linux-arm64" else "4cpu-linux-x64" end)
+    runner: (if . == "linux/arm64" then "ubuntu-24.04-arm" else "ubuntu-24.04" end)
   }
 ]' results.json > matrix.json
 

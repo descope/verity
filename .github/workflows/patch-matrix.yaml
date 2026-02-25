@@ -25,6 +25,8 @@ permissions:
 env:
   # Target registry for final patched images
   TARGET_REGISTRY: ghcr.io/verity-org
+  # GHCR staging registry for intermediate platform-specific images
+  STAGING_REGISTRY: ghcr.io/verity-org/cache
   # Platforms to build: always test both amd64 + arm64 (even in PRs) to catch platform-specific issues early
   PLATFORMS: linux/amd64,linux/arm64
 
@@ -32,12 +34,10 @@ jobs:
   # ── Job 1: Scan all images with Trivy in parallel ──────────────────
   scan:
     name: Scan Images
-    runs-on: runs-on,runner=4cpu-linux-x64,run-id=${{ github.run_id }},extras=s3-cache
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: runs-on/action@v2
 
       - uses: actions/setup-go@v5
         with:
@@ -106,15 +106,13 @@ jobs:
   discover:
     name: Discover Images to Patch
     needs: scan
-    runs-on: runs-on,runner=4cpu-linux-x64,run-id=${{ github.run_id }},extras=s3-cache
+    runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.discover.outputs.matrix }}
       has_images: ${{ steps.discover.outputs.has_images }}
 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: runs-on/action@v2
 
       - uses: actions/setup-go@v5
         with:
@@ -150,7 +148,7 @@ jobs:
     name: "Patch ${{ matrix.name }}"
     needs: [scan, discover]
     if: needs.discover.outputs.has_images == 'true'
-    runs-on: runs-on,runner=${{ matrix.runner }},run-id=${{ github.run_id }},extras=ecr-cache+s3-cache
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
       fail-fast: false
@@ -159,30 +157,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: runs-on/action@v2
-
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
-      - name: Setup BuildKit with ECR credentials
+      - name: Setup BuildKit with GHCR credentials
         id: buildx-setup
         run: |
-          # Host uses IAM role to get ECR token
-          REGISTRY=$(echo "$RUNS_ON_ECR_CACHE" | cut -d/ -f1)
-          REGION=$(echo "$REGISTRY" | cut -d. -f4)
-
-          # Get ECR auth token
-          ECR_TOKEN=$(aws ecr get-login-password --region "$REGION")
-
-          # Create BuildKit config with ECR credentials
+          # Create BuildKit config with GHCR credentials
           mkdir -p /tmp/buildkit-config
-          cat > /tmp/buildkit-config/buildkitd.toml <<EOF
-          [registry."${REGISTRY}"]
-            [registry."${REGISTRY}".auth]
-              username = "AWS"
-              secret = "${ECR_TOKEN}"
-          EOF
+          cat > /tmp/buildkit-config/buildkitd.toml <<TOML
+          [registry."ghcr.io"]
+            [registry."ghcr.io".auth]
+              username = "${{ github.actor }}"
+              secret = "${{ secrets.GITHUB_TOKEN }}"
+          TOML
 
           # Create buildx builder with config
           docker buildx create \
@@ -218,9 +207,9 @@ jobs:
           # Extract source tag (e.g., nginx:1.29.4 -> 1.29.4)
           SOURCE_TAG=$(echo "${{ matrix.source }}" | cut -d: -f2)
 
-          # Ephemeral registry is a single repo with mutable tags
+          # GHCR staging is a single repo with mutable tags
           # Tag format: <image-name>-<version>-patched-<arch>
-          PLATFORM_TAG="${RUNS_ON_ECR_CACHE}:${{ matrix.image }}-${SOURCE_TAG}-patched-${PLATFORM_ARCH}"
+          PLATFORM_TAG="${STAGING_REGISTRY}:${{ matrix.image }}-${SOURCE_TAG}-patched-${PLATFORM_ARCH}"
 
           # Construct report filename (match how scan.go creates them)
           REPORT_FILE="reports/$(echo '${{ matrix.source }}' | sed 's/[\/:]/_/g').json"
@@ -228,7 +217,7 @@ jobs:
           echo "Using report file: $REPORT_FILE"
 
           # Copa will patch the native platform of this runner (amd64 or arm64)
-          # BuildKit restarted after ECR login to pick up credentials
+          # BuildKit configured with GHCR credentials to push
           copa patch \
             --image "${{ matrix.source }}" \
             --tag "$PLATFORM_TAG" \
@@ -259,26 +248,11 @@ jobs:
     name: Create Manifest Lists
     needs: [discover, patch]
     if: needs.discover.outputs.has_images == 'true' && needs.patch.result == 'success'
-    runs-on: runs-on,runner=4cpu-linux-x64,run-id=${{ github.run_id }},extras=ecr-cache
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
-      - uses: runs-on/action@v2
-
-      - name: Login to ECR ephemeral registry
-        run: |
-          # Extract ECR registry from RUNS_ON_ECR_CACHE
-          REGISTRY=$(echo "$RUNS_ON_ECR_CACHE" | cut -d/ -f1)
-          REGION=$(echo "$REGISTRY" | cut -d. -f4)
-
-          # Login to ECR using instance profile credentials
-          aws ecr get-login-password --region "$REGION" | \
-            docker login --username AWS --password-stdin "$REGISTRY"
-
-          echo "✓ Logged in to ECR: $REGISTRY"
-
       - name: Login to GHCR
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -310,13 +284,13 @@ jobs:
 
             echo "Creating manifest list for $IMAGE:$TAG..."
 
-            # Build list of platform-specific source tags from ephemeral registry
-            # Ephemeral registry uses tags, not separate repos
+            # Build list of platform-specific source tags from GHCR staging
+            # Staging registry uses a single repo with mutable tags
             SOURCE_TAGS=$(jq -r --arg img "$IMAGE" --arg tag "$TAG" \
               'map(select(.image == $img and (.source | split(":")[1]) == $tag)) |
                .[] |
                (.platform | split("/")[1]) as $arch |
-               "'"${RUNS_ON_ECR_CACHE}"':" + $img + "-" + $tag + "-patched-" + $arch' \
+               "'"${STAGING_REGISTRY}"':" + $img + "-" + $tag + "-patched-" + $arch' \
               all-patches.json)
 
             # Verify all platform images exist before creating manifest
@@ -333,21 +307,23 @@ jobs:
               continue
             fi
 
-            # Create manifest list on ephemeral registry (same registry as sources)
-            EPHEMERAL_MANIFEST="${RUNS_ON_ECR_CACHE}:${IMAGE}-${TAG}-patched"
-            # shellcheck disable=SC2086
-            docker manifest create "$EPHEMERAL_MANIFEST" $SOURCE_TAGS
-            docker manifest push "$EPHEMERAL_MANIFEST"
-            echo "✓ Created manifest on ephemeral registry: $EPHEMERAL_MANIFEST"
-
-            # In production: copy manifest to GHCR
+            # In production: create manifest directly on TARGET_REGISTRY
+            # In PRs: create manifest on STAGING_REGISTRY to validate
             if [ "${{ github.event_name }}" != "pull_request" ]; then
-              GHCR_TAG="${TARGET_REGISTRY}/${IMAGE}:${TAG}-patched"
-              docker buildx imagetools create --tag "$GHCR_TAG" "$EPHEMERAL_MANIFEST"
-              echo "✓ Copied to GHCR: $GHCR_TAG"
+              MANIFEST_TAG="${TARGET_REGISTRY}/${IMAGE}:${TAG}-patched"
+              # shellcheck disable=SC2086
+              docker manifest create "$MANIFEST_TAG" $SOURCE_TAGS
+              docker manifest push "$MANIFEST_TAG"
+              echo "✓ Created manifest on GHCR production: $MANIFEST_TAG"
 
               # Store for signing/attestation
-              echo "$GHCR_TAG" >> ghcr-manifests.txt
+              echo "$MANIFEST_TAG" >> ghcr-manifests.txt
+            else
+              MANIFEST_TAG="${STAGING_REGISTRY}:${IMAGE}-${TAG}-patched"
+              # shellcheck disable=SC2086
+              docker manifest create "$MANIFEST_TAG" $SOURCE_TAGS
+              docker manifest push "$MANIFEST_TAG"
+              echo "✓ Created manifest on GHCR staging (PR): $MANIFEST_TAG"
             fi
           done
 
@@ -393,11 +369,9 @@ jobs:
     name: Generate Catalog
     needs: [discover, patch, combine]
     if: always() && needs.discover.outputs.has_images == 'true' && needs.patch.result != 'cancelled'
-    runs-on: runs-on,runner=4cpu-linux-x64,run-id=${{ github.run_id }},extras=s3-cache
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-
-      - uses: runs-on/action@v2
 
       - uses: actions/setup-node@v4
         with:
@@ -454,7 +428,7 @@ jobs:
     name: Deploy Site
     needs: assemble
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
