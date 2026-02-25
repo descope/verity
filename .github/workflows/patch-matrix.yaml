@@ -319,6 +319,20 @@ jobs:
                "'"${RUNS_ON_ECR_CACHE}"':" + $img + "-" + $tag + "-patched-" + $arch' \
               all-patches.json)
 
+            # Verify all platform images exist before creating manifest
+            ALL_EXIST=true
+            for source_tag in $SOURCE_TAGS; do
+              if ! docker manifest inspect "$source_tag" >/dev/null 2>&1; then
+                echo "⚠️  Skipping $IMAGE:$TAG - missing platform image: $source_tag"
+                ALL_EXIST=false
+                break
+              fi
+            done
+
+            if [ "$ALL_EXIST" = "false" ]; then
+              continue
+            fi
+
             # Create manifest list on ephemeral registry (same registry as sources)
             EPHEMERAL_MANIFEST="${RUNS_ON_ECR_CACHE}:${IMAGE}-${TAG}-patched"
             # shellcheck disable=SC2086
