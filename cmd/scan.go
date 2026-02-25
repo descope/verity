@@ -122,7 +122,8 @@ var ScanCommand = &cli.Command{
 
 			for _, tag := range tags {
 				sourceRef := fmt.Sprintf("%s:%s", imageSpec.Image, tag)
-				sourceFile := filepath.Join(outputDir, sanitizeFilename(fmt.Sprintf("%s_%s_source.json", imageSpec.Name, tag)))
+				// Use full image reference for filename so Copa can find it
+				sourceFile := filepath.Join(outputDir, sanitizeFilename(sourceRef)+".json")
 				jobs = append(jobs, scanJob{
 					name:       imageSpec.Name,
 					imageRef:   sourceRef,
@@ -134,7 +135,8 @@ var ScanCommand = &cli.Command{
 				if targetRegistry != "" {
 					// Construct patched image reference
 					patchedRef := fmt.Sprintf("%s/%s:%s-patched", targetRegistry, imageSpec.Name, tag)
-					patchedFile := filepath.Join(outputDir, sanitizeFilename(fmt.Sprintf("%s_%s_patched.json", imageSpec.Name, tag)))
+					// Use full patched reference for filename
+					patchedFile := filepath.Join(outputDir, sanitizeFilename(patchedRef)+".json")
 					jobs = append(jobs, scanJob{
 						name:       imageSpec.Name,
 						imageRef:   patchedRef,

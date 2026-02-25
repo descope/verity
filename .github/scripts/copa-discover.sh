@@ -23,8 +23,12 @@ jq -c --arg platforms "$PLATFORMS" '[
   .[] | select(.status == "WouldPatch") |
   . as $img |
   ($platforms | split(",")) | .[] |
+  # Extract tag from source image (e.g., nginx:1.29.3 -> 1.29.3)
+  ($img.source | split(":")[1] // "latest") as $tag |
+  # Sanitize tag for job name (replace dots/colons with dashes)
+  ($tag | gsub("[.:]"; "-")) as $safe_tag |
   {
-    name: ($img.name + "-" + (. | split("/")[1])),
+    name: ($img.name + "-" + $safe_tag + "-" + (. | split("/")[1])),
     image: $img.name,
     source: $img.source,
     target: $img.target,
