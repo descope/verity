@@ -196,9 +196,9 @@ func scanImage(imageRef, outputFile string, isPatched bool, trivyServer string) 
 	var cmd *exec.Cmd
 
 	if trivyServer != "" {
-		// Use Trivy client mode (connects to server)
-		cmd = exec.CommandContext(ctx, "trivy", "client",
-			"--remote", trivyServer,
+		// Use Trivy server mode (client pulls image, uses server's DB)
+		cmd = exec.CommandContext(ctx, "trivy", "image",
+			"--server", trivyServer,
 			"--format", "json",
 			"--quiet",
 			imageRef,
