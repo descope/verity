@@ -130,9 +130,10 @@ var ScanCommand = &cli.Command{
 				continue
 			}
 
-			// List patched tags once per image spec to avoid redundant registry calls.
+			// List all tags for the target repo once per image spec so we can
+			// identify the latest patched tag for each source tag without redundant registry calls.
 			var existingPatchedTags []string
-			if targetRegistry != "" {
+			if targetRegistry != "" && len(tags) > 0 {
 				repo, repoErr := name.NewRepository(fmt.Sprintf("%s/%s", targetRegistry, imageSpec.Name))
 				if repoErr != nil {
 					fmt.Fprintf(os.Stderr, "Warning: failed to parse target repo for %q: %v; falling back to <tag>-patched\n", imageSpec.Name, repoErr)
