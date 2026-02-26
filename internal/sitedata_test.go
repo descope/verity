@@ -111,7 +111,9 @@ func TestGenerateSiteDataFromJSON_BeforeAfter(t *testing.T) {
 		}
 	}
 
-	reportName := "docker.io_library_nginx_1.27.3.json"
+	// Pre-patch report named after source ref; post-patch report named after patched ref.
+	preReportName := "docker.io_library_nginx_1.27.3.json"
+	postReportName := "ghcr.io_verity-org_nginx_1.27.3-patched.json" // sanitize("ghcr.io/verity-org/nginx:1.27.3-patched")
 
 	// Pre-patch: 3 vulns
 	preReport := map[string]any{
@@ -135,17 +137,18 @@ func TestGenerateSiteDataFromJSON_BeforeAfter(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		dir  string
-		data any
+		dir      string
+		data     any
+		filename string
 	}{
-		{preDir, preReport},
-		{postDir, postReport},
+		{preDir, preReport, preReportName},
+		{postDir, postReport, postReportName},
 	} {
 		d, err := json.Marshal(tc.data)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(tc.dir, reportName), d, 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(tc.dir, tc.filename), d, 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -154,7 +157,7 @@ func TestGenerateSiteDataFromJSON_BeforeAfter(t *testing.T) {
 	images := []ImageEntry{{
 		Original: "docker.io/library/nginx:1.27.3",
 		Patched:  "ghcr.io/verity-org/nginx:1.27.3-patched",
-		Report:   reportName,
+		Report:   preReportName,
 	}}
 	d, err := json.Marshal(images)
 	if err != nil {

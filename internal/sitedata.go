@@ -133,9 +133,12 @@ func GenerateSiteDataFromJSON(imagesJSON, reportsDir, postReportsDir, registry, 
 			}
 		}
 
-		// Post-patch report — sets AfterVulns + remaining Vulnerabilities
-		if postReportsDir != "" && entry.Report != "" {
-			applyPostPatchReport(&si, filepath.Join(postReportsDir, entry.Report))
+		// Post-patch report — sets AfterVulns + remaining Vulnerabilities.
+		// The post-scan job scans the patched image ref, so the report filename
+		// is derived from patchedRef, not the source report name.
+		if postReportsDir != "" && patchedRef != "" {
+			postReportName := sanitize(patchedRef) + ".json"
+			applyPostPatchReport(&si, filepath.Join(postReportsDir, postReportName))
 		}
 
 		allImages = append(allImages, si)

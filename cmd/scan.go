@@ -93,6 +93,10 @@ var ScanCommand = &cli.Command{
 		trivyServer := c.String("trivy-server")
 		patchedOnly := c.Bool("patched-only")
 
+		if patchedOnly && targetRegistry == "" {
+			return errPatchedOnlyNeedsTarget
+		}
+
 		// Read and parse copa-config.yaml
 		yamlFile, err := os.ReadFile(configPath)
 		if err != nil {
@@ -248,7 +252,10 @@ func sanitizeFilename(filename string) string {
 	return filename
 }
 
-var errUnknownStrategy = errors.New("unknown tag strategy")
+var (
+	errUnknownStrategy        = errors.New("unknown tag strategy")
+	errPatchedOnlyNeedsTarget = errors.New("--patched-only requires --target-registry to be set")
+)
 
 // findTagsToPatch discovers tags for an image (reused from discover logic).
 func findTagsToPatch(spec *ImageSpec) ([]string, error) {
