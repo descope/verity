@@ -273,13 +273,19 @@ jobs:
             fi
 
             # Use Copa's computed target tag (may include a version suffix, e.g. 2.5.0-patched-1)
-            MANIFEST_TAG=$(jq -r --arg img "$IMAGE" --arg tag "$TAG" \
+            COPA_TARGET=$(jq -r --arg img "$IMAGE" --arg tag "$TAG" \
               'map(select(.image == $img and (.source | split(":")[1]) == $tag)) | first | .target' \
               all-patches.json)
 
-            # In production: copy images from staging to target and create manifest
-            # In PRs: create manifest on STAGING_REGISTRY to validate
+            if [ -z "$COPA_TARGET" ] || [ "$COPA_TARGET" = "null" ]; then
+              echo "⚠️  Skipping $IMAGE:$TAG - no target manifest tag found in all-patches.json"
+              continue
+            fi
+
+            # In production: push to target registry using Copa's computed tag
+            # In PRs: push to staging registry using Copa's computed tag (for validation)
             if [ "${{ github.event_name }}" != "pull_request" ]; then
+              MANIFEST_TAG="$COPA_TARGET"
               # imagetools copies platform images and creates manifest in one step
               # shellcheck disable=SC2086
               docker buildx imagetools create --tag "$MANIFEST_TAG" $SOURCE_TAGS
@@ -288,7 +294,8 @@ jobs:
               # Store for signing/attestation
               echo "$MANIFEST_TAG" >> ghcr-manifests.txt
             else
-              MANIFEST_TAG="${STAGING_REGISTRY}:${IMAGE}-${TAG}-patched"
+              # Rewrite target registry → staging registry so we don't pollute production
+              MANIFEST_TAG="${STAGING_REGISTRY}:${COPA_TARGET##*/}"
               # shellcheck disable=SC2086
               docker manifest create "$MANIFEST_TAG" $SOURCE_TAGS
               docker manifest push "$MANIFEST_TAG"
