@@ -43,6 +43,8 @@ jobs:
     name: Mirror BuildKit
     runs-on: ubuntu-24.04
     steps:
+      - uses: imjasonh/setup-crane@v0.4
+
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -50,30 +52,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Sync BuildKit to GHCR
+      - name: Mirror BuildKit to GHCR
+        # crane copy is idempotent: skips blobs already in GHCR, so no digest check needed.
+        # Fallback: if upstream is unreachable, succeed if the mirror already exists in GHCR.
         run: |
-          UPSTREAM="mirror.gcr.io/moby/buildkit:buildx-stable-1"
-          MIRROR="${BUILDKIT_IMAGE}"
-
-          MIRROR_DIGEST=$(docker buildx imagetools inspect "$MIRROR" \
-            --format '{{.Manifest.Digest}}' 2>/dev/null || echo "")
-
-          if UPSTREAM_DIGEST=$(docker buildx imagetools inspect "$UPSTREAM" \
-            --format '{{.Manifest.Digest}}' 2>/dev/null); then
-            if [ "$UPSTREAM_DIGEST" != "$MIRROR_DIGEST" ]; then
-              echo "Syncing BuildKit to GHCR (${UPSTREAM_DIGEST})..."
-              docker buildx imagetools create --tag "$MIRROR" "$UPSTREAM"
-              echo "✓ Synced: $MIRROR"
-            else
-              echo "✓ GHCR BuildKit already up-to-date: $UPSTREAM_DIGEST"
-            fi
-          else
-            echo "⚠️  Upstream unreachable; using existing GHCR mirror: ${MIRROR_DIGEST:-none}"
-            if [ -z "$MIRROR_DIGEST" ]; then
-              echo "Error: no BuildKit image available (upstream down, no GHCR mirror exists)"
-              exit 1
-            fi
-          fi
+          crane copy mirror.gcr.io/moby/buildkit:buildx-stable-1 "${BUILDKIT_IMAGE}" \
+            || crane digest "${BUILDKIT_IMAGE}" > /dev/null \
+            || { echo "Error: no BuildKit available (upstream down, no GHCR mirror)"; exit 1; }
 
   # ── Job 2: Scan images and discover what needs patching ────────────
   scan:
