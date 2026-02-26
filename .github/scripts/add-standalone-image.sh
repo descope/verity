@@ -22,7 +22,10 @@ if yq e '.images[] | select(.name == strenv(IMAGE_NAME)) | .name' "$COPA_CONFIG"
   exit 0
 fi
 
-# Build full image reference and add entry to copa-config.yaml using env vars to avoid injection
+# Build full image reference and add entry to copa-config.yaml using env vars to avoid injection.
+# IMAGE_TAG is used only for context in the commit/PR message; the config entry uses a pattern
+# strategy so verity continuously tracks and patches the latest semver releases rather than
+# pinning a single tag.
 IMAGE_REF="${IMAGE_REGISTRY}/${IMAGE_REPOSITORY}"
 export IMAGE_REF
 yq e '.images += [{"name": strenv(IMAGE_NAME), "image": strenv(IMAGE_REF), "platforms": ["linux/amd64", "linux/arm64"], "tags": {"strategy": "pattern", "pattern": "^\\d+\\.\\d+\\.\\d+$", "maxTags": 3}}]' -i "$COPA_CONFIG"
@@ -47,12 +50,14 @@ git push -u origin "${BRANCH}"
 
 gh pr create \
   --title "feat: add ${IMAGE_NAME} image" \
-  --body "Adds image \`${IMAGE_REGISTRY}/${IMAGE_REPOSITORY}:${IMAGE_TAG}\` to \`copa-config.yaml\`.
+  --body "Adds \`${IMAGE_REGISTRY}/${IMAGE_REPOSITORY}\` to \`copa-config.yaml\` (requested version: \`${IMAGE_TAG}\`).
+
+The entry uses a semver pattern strategy (\`^\d+\.\d+\.\d+$\`, maxTags: 3) so verity continuously tracks and patches the latest releases — not just the requested tag.
 
 ## What happens next
 
 1. This image is added to \`copa-config.yaml\` under \`images:\`
-2. **scan-and-patch workflow** will patch and publish it to GHCR
+2. **scan-and-patch workflow** will patch and publish matching tags to GHCR
 
 Closes #${ISSUE_NUMBER}" \
   --label new-image

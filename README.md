@@ -37,18 +37,17 @@ services:
 ### Run Locally
 
 ```bash
-# List images to patch
-./verity list
+# Scan images and generate Trivy reports
+./verity scan --config copa-config.yaml --output reports/
 
-# Discover images for CI
-./verity discover
+# Generate site catalog from patch results
+./verity catalog \
+  --output site/src/data/catalog.json \
+  --registry ghcr.io/verity-org \
+  --reports-dir reports/
 
-# Patch a single image
-./verity patch \
-  --image "quay.io/prometheus/prometheus:v3.9.1" \
-  --registry ghcr.io/myorg \
-  --buildkit-addr docker-container://buildkitd \
-  --result-dir ./results
+# Discover and patch images (Copa handles this directly)
+copa patch --config copa-config.yaml --report reports/<image>.json
 ```
 
 ## How It Works
@@ -227,7 +226,7 @@ go build -o verity .
 ```bash
 docker run --rm -v $(pwd):/workspace \
   ghcr.io/verity-org/verity:latest \
-  discover --config /workspace/copa-config.yaml
+  scan --config /workspace/copa-config.yaml --output /workspace/reports/
 ```
 
 ## CLI Reference
@@ -236,8 +235,7 @@ docker run --rm -v $(pwd):/workspace \
 verity - Self-maintaining registry of security-patched container images
 
 Commands:
-  discover    Scan images and output a GitHub Actions matrix
-  patch       Patch a single container image
+  scan        Scan images from copa-config.yaml and generate Trivy reports
   catalog     Generate site catalog JSON from patch reports
 
 Use "verity [command] --help" for command-specific options.
@@ -246,21 +244,17 @@ Use "verity [command] --help" for command-specific options.
 **Examples:**
 
 ```bash
-# Discover for CI
-./verity discover --discover-dir .verity
-
-# Patch single image (in CI matrix)
-./verity patch \
-  --image "quay.io/prometheus/prometheus:v3.9.1" \
-  --registry ghcr.io/myorg \
-  --buildkit-addr docker-container://buildkitd \
-  --result-dir ./results
+# Scan images and generate Trivy reports
+./verity scan \
+  --config copa-config.yaml \
+  --target-registry ghcr.io/verity-org \
+  --output reports/
 
 # Generate site catalog
 ./verity catalog \
   --output site/src/data/catalog.json \
   --registry ghcr.io/verity-org \
-  --reports-dir .verity/reports
+  --reports-dir reports/
 ```
 
 ## Development
@@ -286,15 +280,17 @@ Test patching without touching external registries using Docker Compose:
 # Start local registry + BuildKit
 make up
 
-# Patch a single image with local registry
-./verity patch \
+# Scan images to generate Trivy reports
+./verity scan --config copa-config.yaml --output reports/
+
+# Patch a single image with local registry (Copa handles patching)
+copa patch \
   --image "docker.io/library/nginx:1.29.5" \
-  --registry "localhost:5555/verity" \
-  --buildkit-addr "tcp://localhost:1234" \
-  --result-dir .verity/results
+  --report "reports/docker.io_library_nginx_1.29.5.json" \
+  --tag "localhost:5555/verity/nginx:1.29.5-patched" \
+  --addr "tcp://localhost:1234"
 
 # Check results
-ls -la .verity/results/
 curl http://localhost:5555/v2/_catalog
 
 # Stop services
