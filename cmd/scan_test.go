@@ -52,10 +52,16 @@ func TestLatestPatchedTagFromList(t *testing.T) {
 			want:      "1.29.3-patched-2",
 		},
 		{
-			name:      "explicit -patched-1 treated same as bare -patched",
+			name:      "highest numbered wins among explicit versions",
 			tags:      []string{"1.29.3-patched-1", "1.29.3-patched-2"},
 			sourceTag: "1.29.3",
 			want:      "1.29.3-patched-2",
+		},
+		{
+			name:      "explicit -patched-1 beats bare -patched",
+			tags:      []string{"2.5.0-patched", "2.5.0-patched-1"},
+			sourceTag: "2.5.0",
+			want:      "2.5.0-patched-1",
 		},
 		{
 			name:      "unparseable patch number skipped",
