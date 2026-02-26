@@ -24,6 +24,10 @@ const base = import.meta.env.BASE_URL;
 const display = shortName(image.originalRef);
 const fixed = image.beforeVulns.total - image.afterVulns.total;
 const remaining = image.afterVulns.total;
+
+// Split remaining vulns: those with an upstream fix (Copa couldn't apply) vs. no fix yet
+const pendingVulns = image.vulnerabilities.filter((v) => v.fixedVersion);
+const awaitingFixVulns = image.vulnerabilities.filter((v) => !v.fixedVersion);
 ---
 
 <BaseLayout title={`${display} — Verity`}>
@@ -123,12 +127,29 @@ const remaining = image.afterVulns.total;
   }
 
   {
-    image.vulnerabilities.length > 0 && (
-      <section>
-        <h2 class="text-lg font-semibold mb-4 text-verity-text-primary">
-          Remaining vulnerabilities
+    pendingVulns.length > 0 && (
+      <section class="mb-8">
+        <h2 class="text-lg font-semibold mb-1 text-verity-text-primary">
+          Fix available — pending patch
         </h2>
-        <VulnTable vulnerabilities={image.vulnerabilities} />
+        <p class="text-sm text-verity-text-muted mb-3">
+          These vulnerabilities have upstream fixes but could not be automatically patched.
+          Manual remediation may be required.
+        </p>
+        <VulnTable vulnerabilities={pendingVulns} />
+      </section>
+    )
+  }
+
+  {
+    awaitingFixVulns.length > 0 && (
+      <section class="mb-8">
+        <h2 class="text-lg font-semibold mb-1 text-verity-text-primary">Awaiting upstream fix</h2>
+        <p class="text-sm text-verity-text-muted mb-3">
+          No fix is available yet for these vulnerabilities. They can be suppressed in your
+          compliance tooling until an upstream fix is released.
+        </p>
+        <VulnTable vulnerabilities={awaitingFixVulns} />
       </section>
     )
   }
