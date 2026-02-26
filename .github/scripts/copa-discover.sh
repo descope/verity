@@ -30,7 +30,7 @@ jq -c --arg platforms "$PLATFORMS" '[
   # Sanitize tag for job name (replace dots/colons with dashes)
   ($tag | gsub("[.:]"; "-")) as $safe_tag |
   {
-    name: ($img.name + "-" + $safe_tag + "-" + (. | split("/")[1])),
+    name: (($img.name + "-" + $safe_tag + "-" + (. | split("/")[1])) | gsub("/"; "-")),
     image: $img.name,
     source: $img.source,
     target: $img.target,
