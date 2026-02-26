@@ -5,9 +5,6 @@
     ":semanticCommits",
     ":dependencyDashboard"
   ],
-  "ignorePaths": [
-    "charts/**"
-  ],
   "labels": [
     "dependencies"
   ],
@@ -15,30 +12,6 @@
   "separateMajorMinor": true,
   "separateMultipleMajor": true,
   "packageRules": [
-    {
-      "description": "Ignore generated wrapper charts — managed by verity",
-      "matchFileNames": [
-        "charts/**"
-      ],
-      "enabled": false
-    },
-    {
-      "description": "Helm chart dependencies in root Chart.yaml",
-      "matchManagers": [
-        "helmv3"
-      ],
-      "matchFileNames": [
-        "Chart.yaml"
-      ],
-      "labels": [
-        "helm",
-        "dependencies"
-      ],
-      "groupName": "helm charts",
-      "commitMessageTopic": "{{depName}} chart",
-      "semanticCommitType": "chore",
-      "semanticCommitScope": "charts"
-    },
     {
       "description": "Go dependencies",
       "matchManagers": [
@@ -77,20 +50,6 @@
       "automerge": true,
       "automergeType": "pr",
       "automergeStrategy": "squash"
-    },
-    {
-      "description": "Standalone container images in values.yaml",
-      "matchManagers": [
-        "helm-values"
-      ],
-      "labels": [
-        "docker",
-        "dependencies"
-      ],
-      "groupName": "standalone images",
-      "commitMessageTopic": "{{depName}} image",
-      "semanticCommitType": "chore",
-      "semanticCommitScope": "images"
     },
     {
       "description": "Automerge patch GitHub Actions updates",

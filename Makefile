@@ -1,17 +1,12 @@
-.PHONY: help build test test-coverage lint lint-vuln lint-workflows lint-yaml lint-shell lint-markdown lint-frontend fmt-frontend check-frontend clean install-tools quality test-local test-local-patch test-update-images test-scan-and-patch up down scan update-images
+.PHONY: help build test test-coverage lint lint-vuln lint-workflows lint-yaml lint-shell lint-markdown lint-frontend fmt-frontend check-frontend clean install-tools quality up down
 
 # Default target
 help:
 	@echo "Available targets:"
 	@echo "  make build            - Build the verity binary"
 	@echo "  make test             - Run unit tests"
-	@echo "  make test-local          - Run integration tests"
-	@echo "  make test-local-patch    - Quick manual patch test"
-	@echo "  make test-update-images  - Test update-images workflow with act"
-	@echo "  make test-scan-and-patch - Test scan-and-patch workflow with act"
-	@echo "  make up                  - Start local registry + BuildKit"
+	@echo "  make up               - Start local registry + BuildKit"
 	@echo "  make down             - Stop local test environment"
-	@echo "  make scan             - Scan charts and update values.yaml"
 	@echo "  make lint             - Run Go linter (golangci-lint with gofumpt, goimports, gosec)"
 	@echo "  make quality          - Run ALL linters and tests"
 	@echo "  make clean            - Clean build artifacts"
@@ -104,24 +99,6 @@ install-tools:
 	@echo ""
 	@echo "Run 'mise list' to see all installed tools"
 
-# ── Chart Scanning ───────────────────────────────────────────────────
-
-# Scan charts and update values.yaml
-scan: build
-	@echo "Downloading chart dependencies..."
-	helm dependency update .
-	@echo ""
-	@echo "Scanning charts for images..."
-	./verity scan --chart . --output values.yaml
-	@echo ""
-	@echo "✓ Updated values.yaml with images from charts"
-	@echo ""
-	@echo "Images found:"
-	@grep -c "^[a-z]" values.yaml || echo "0"
-
-# Alias for scan
-update-images: scan
-
 # ── Local Testing with Docker ────────────────────────────────────────
 
 # Start local test environment (registry + buildkit)
@@ -133,52 +110,7 @@ up:
 	@echo ""
 	@echo "✓ Local registry:  localhost:5555"
 	@echo "✓ BuildKit:        tcp://localhost:1234"
-	@echo ""
-	@echo "Use 'make test-local' to run integration tests"
 
 # Stop local test environment
 down:
 	docker compose down
-
-# Run integration tests with local registry (fast - no patching)
-test-local: build
-	@echo "Running local integration tests..."
-	@echo ""
-	@echo "→ Testing discover..."
-	./verity discover --discover-dir .verity
-	@echo ""
-	@echo "→ Testing list..."
-	./verity list | head -10
-	@echo ""
-	@echo "✓ Integration tests complete"
-
-# Test workflows locally with act
-test-update-images:
-	@which act > /dev/null || (echo "act not found. Install: brew install act" && exit 1)
-	act pull_request -W .github/workflows/update-images.yaml --container-architecture linux/amd64
-
-test-scan-and-patch:
-	@which act > /dev/null || (echo "act not found. Install: brew install act" && exit 1)
-	@echo "Note: This requires local registry running (make up)"
-	act push -W .github/workflows/scan-and-patch.yaml --container-architecture linux/amd64
-
-# Quick manual test of single image patching
-test-local-patch: build
-	@echo "Testing single image patch with local registry..."
-	@echo "Note: Make sure local registry is running (make up)"
-	@echo ""
-	./verity patch \
-		--image "docker.io/library/nginx:1.29.5" \
-		--registry "localhost:5555/verity" \
-		--buildkit-addr "tcp://localhost:1234" \
-		--result-dir .verity/results \
-		--report-dir .verity/reports
-	@echo ""
-	@echo "✓ Patch test complete"
-	@echo "Check .verity/results/ for patch results"
-
-# Lint shell scripts
-lint-scripts:
-	@echo "Linting shell scripts..."
-	@shellcheck .github/scripts/*.sh || (echo "Install shellcheck: brew install shellcheck" && exit 1)
-
