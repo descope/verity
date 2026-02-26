@@ -272,10 +272,20 @@ jobs:
               continue
             fi
 
-            # In production: copy images from staging to target and create manifest
-            # In PRs: create manifest on STAGING_REGISTRY to validate
+            # Use Copa's computed target tag (may include a version suffix, e.g. 2.5.0-patched-1)
+            COPA_TARGET=$(jq -r --arg img "$IMAGE" --arg tag "$TAG" \
+              'map(select(.image == $img and (.source | split(":")[1]) == $tag)) | first | .target' \
+              all-patches.json)
+
+            if [ -z "$COPA_TARGET" ] || [ "$COPA_TARGET" = "null" ]; then
+              echo "⚠️  Skipping $IMAGE:$TAG - no target manifest tag found in all-patches.json"
+              continue
+            fi
+
+            # In production: push to target registry using Copa's computed tag
+            # In PRs: push to staging registry using Copa's computed tag (for validation)
             if [ "${{ github.event_name }}" != "pull_request" ]; then
-              MANIFEST_TAG="${TARGET_REGISTRY}/${IMAGE}:${TAG}-patched"
+              MANIFEST_TAG="$COPA_TARGET"
               # imagetools copies platform images and creates manifest in one step
               # shellcheck disable=SC2086
               docker buildx imagetools create --tag "$MANIFEST_TAG" $SOURCE_TAGS
@@ -284,7 +294,10 @@ jobs:
               # Store for signing/attestation
               echo "$MANIFEST_TAG" >> ghcr-manifests.txt
             else
-              MANIFEST_TAG="${STAGING_REGISTRY}:${IMAGE}-${TAG}-patched"
+              # Rewrite target registry → staging registry so we don't pollute production
+              # Replace ':' with '-' so the tag is valid (e.g. k8s-sidecar:2.3.0-patched-1 → k8s-sidecar-2.3.0-patched-1)
+              STAGING_TAG="${COPA_TARGET##*/}"
+              MANIFEST_TAG="${STAGING_REGISTRY}:${STAGING_TAG//:/-}"
               # shellcheck disable=SC2086
               docker manifest create "$MANIFEST_TAG" $SOURCE_TAGS
               docker manifest push "$MANIFEST_TAG"
@@ -316,9 +329,19 @@ jobs:
       - name: Generate manifest report
         run: |
           mkdir -p manifest-results
-          # Record which images had manifest lists created
-          jq -r '.[].image' patch-results/*.json | sort -u | while read -r IMAGE; do
-            echo "{\"image\": \"$IMAGE\", \"manifest\": \"${TARGET_REGISTRY}/${IMAGE}:patched\"}" \
+          # Record Copa's computed target tag for each image that was successfully manifested
+          jq -r '[.[] | {image, target}] | unique_by(.image) | .[] | @base64' all-patches.json | \
+          while IFS= read -r row; do
+            entry=$(echo "$row" | base64 -d)
+            IMAGE=$(echo "$entry" | jq -r '.image')
+            COPA_TARGET=$(echo "$entry" | jq -r '.target')
+            if [ "${{ github.event_name }}" != "pull_request" ]; then
+              MANIFEST="${COPA_TARGET}"
+            else
+              STAGING_TAG="${COPA_TARGET##*/}"
+              MANIFEST="${STAGING_REGISTRY}:${STAGING_TAG//:/-}"
+            fi
+            echo "{\"image\": \"$IMAGE\", \"manifest\": \"$MANIFEST\"}" \
               > "manifest-results/${IMAGE}.json"
           done
 
