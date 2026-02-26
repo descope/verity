@@ -321,7 +321,7 @@ jobs:
         run: |
           mkdir -p manifest-results
           # Record which images had manifest lists created
-          jq -r '.[].image' patch-results/*.json | sort -u | while read -r IMAGE; do
+          jq -r '.image' patch-results/*.json | sort -u | while read -r IMAGE; do
             echo "{\"image\": \"$IMAGE\", \"manifest\": \"${TARGET_REGISTRY}/${IMAGE}:patched\"}" \
               > "manifest-results/${IMAGE}.json"
           done
