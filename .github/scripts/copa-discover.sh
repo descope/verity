@@ -12,6 +12,8 @@ echo "Running Copa discovery..."
 COPA_EXPERIMENTAL=1 copa patch \
   --config "$CONFIG_FILE" \
   --report "$REPORTS_DIR" \
+  --pkg-types os,library \
+  --library-patch-level minor \
   --dry-run \
   --output-json results.json
 
