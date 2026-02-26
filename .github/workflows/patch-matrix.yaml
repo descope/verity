@@ -158,7 +158,7 @@ jobs:
 
       - name: Upload scan and discovery results
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: scan-results
           path: |
@@ -214,7 +214,7 @@ jobs:
           docker buildx inspect --bootstrap
 
       - name: Download scan results
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: scan-results
           path: .
@@ -276,7 +276,7 @@ jobs:
 
       - name: Upload patch result
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: patch-result-${{ matrix.name }}
           path: patch-results/
@@ -313,7 +313,7 @@ jobs:
         uses: step-security/cosign-installer@9610e5af306c47db1756d9e09a0388449e336ab7 # v4.0.0
 
       - name: Download patch results
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           pattern: patch-result-*
           path: patch-results/
@@ -440,7 +440,7 @@ jobs:
           done
 
       - name: Upload manifest results
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: manifest-results
           path: manifest-results/
@@ -531,7 +531,7 @@ jobs:
             trivy-db-
 
       - name: Download scan results (for results.json)
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: scan-results
           path: .
@@ -547,7 +547,7 @@ jobs:
             --output post-reports/
 
       - name: Upload post-patch scan results
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: post-scan-results
           path: post-reports/
@@ -579,20 +579,20 @@ jobs:
           github-token: ${{ github.token }}
 
       - name: Download all patch results
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           pattern: patch-result-*
           path: patch-results/
           merge-multiple: true
 
       - name: Download scan results
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: scan-results
           path: .
 
       - name: Download post-patch scan results
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         continue-on-error: true
         with:
           name: post-scan-results
@@ -607,7 +607,7 @@ jobs:
 
       - name: Upload PR test artifacts
         if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: pr-test-results
           path: |
