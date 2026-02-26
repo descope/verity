@@ -15,8 +15,6 @@ func main() {
 		Usage: "Self-maintaining registry of security-patched container images",
 		Commands: []*cli.Command{
 			cmd.ScanCommand,
-			cmd.PostProcessCommand,
-			cmd.AssembleCommand,
 			cmd.CatalogCommand,
 		},
 		Version: "2.0.0",

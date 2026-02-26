@@ -31,7 +31,11 @@ var CatalogCommand = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "reports-dir",
-			Usage: "directory containing Trivy vulnerability reports (optional, images without reports show zero vulns)",
+			Usage: "directory containing pre-patch Trivy vulnerability reports",
+		},
+		&cli.StringFlag{
+			Name:  "post-reports-dir",
+			Usage: "directory containing post-patch Trivy vulnerability reports (for before/after comparison)",
 		},
 	},
 	Action: runCatalog,
@@ -42,11 +46,9 @@ func runCatalog(c *cli.Context) error {
 	imagesJSON := c.String("images-json")
 	registry := c.String("registry")
 	reportsDir := c.String("reports-dir")
+	postReportsDir := c.String("post-reports-dir")
 
-	// Note: --images-json is marked as Required in the flag definition,
-	// so the framework already validates it. No manual check needed.
-
-	if err := internal.GenerateSiteDataFromJSON(imagesJSON, reportsDir, registry, output); err != nil {
+	if err := internal.GenerateSiteDataFromJSON(imagesJSON, reportsDir, postReportsDir, registry, output); err != nil {
 		return fmt.Errorf("failed to generate site data from JSON: %w", err)
 	}
 	fmt.Printf("Site catalog → %s\n", output)

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-
-	"gopkg.in/yaml.v3"
 )
 
 // CopaOutputResult represents a single patch result from Copa's --output-json.
@@ -23,19 +21,6 @@ type CopaOutput struct {
 	Results []CopaOutputResult `json:"results"`
 }
 
-// ChartImageMap maps charts to their constituent images.
-type ChartImageMap struct {
-	Charts []ChartImageEntry `json:"charts" yaml:"charts"`
-}
-
-// ChartImageEntry represents a chart and its images.
-type ChartImageEntry struct {
-	Name       string   `json:"name" yaml:"name"`
-	Version    string   `json:"version" yaml:"version"`
-	Repository string   `json:"repository" yaml:"repository"`
-	Images     []string `json:"images" yaml:"images"`
-}
-
 // ParseCopaOutput reads Copa's --output-json file.
 func ParseCopaOutput(path string) (*CopaOutput, error) {
 	data, err := os.ReadFile(path)
@@ -49,21 +34,6 @@ func ParseCopaOutput(path string) (*CopaOutput, error) {
 	}
 
 	return &output, nil
-}
-
-// ParseChartImageMap reads the chart-image-map.yaml file.
-func ParseChartImageMap(path string) (*ChartImageMap, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("reading chart-image-map: %w", err)
-	}
-
-	var mapping ChartImageMap
-	if err := yaml.Unmarshal(data, &mapping); err != nil {
-		return nil, fmt.Errorf("parsing chart-image-map: %w", err)
-	}
-
-	return &mapping, nil
 }
 
 // ParseImageRef parses a full image reference into registry, repository, and tag.

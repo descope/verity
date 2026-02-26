@@ -80,6 +80,10 @@ var ScanCommand = &cli.Command{
 			Name:  "trivy-server",
 			Usage: "Trivy server address (e.g., http://localhost:4954) for parallel scanning. If not set, uses trivy image directly.",
 		},
+		&cli.BoolFlag{
+			Name:  "patched-only",
+			Usage: "Scan only patched images in the target registry (skip source images). Requires --target-registry.",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		configPath := c.String("config")
@@ -87,6 +91,7 @@ var ScanCommand = &cli.Command{
 		parallel := c.Int("parallel")
 		targetRegistry := c.String("target-registry")
 		trivyServer := c.String("trivy-server")
+		patchedOnly := c.Bool("patched-only")
 
 		// Read and parse copa-config.yaml
 		yamlFile, err := os.ReadFile(configPath)
@@ -121,21 +126,21 @@ var ScanCommand = &cli.Command{
 			}
 
 			for _, tag := range tags {
-				sourceRef := fmt.Sprintf("%s:%s", imageSpec.Image, tag)
-				// Use full image reference for filename so Copa can find it
-				sourceFile := filepath.Join(outputDir, sanitizeFilename(sourceRef)+".json")
-				jobs = append(jobs, scanJob{
-					name:       imageSpec.Name,
-					imageRef:   sourceRef,
-					outputFile: sourceFile,
-					isPatched:  false,
-				})
+				// Source image scan (skipped in patched-only mode)
+				if !patchedOnly {
+					sourceRef := fmt.Sprintf("%s:%s", imageSpec.Image, tag)
+					sourceFile := filepath.Join(outputDir, sanitizeFilename(sourceRef)+".json")
+					jobs = append(jobs, scanJob{
+						name:       imageSpec.Name,
+						imageRef:   sourceRef,
+						outputFile: sourceFile,
+						isPatched:  false,
+					})
+				}
 
-				// Also scan existing patched image if target registry is specified
+				// Patched image scan (when target registry is specified)
 				if targetRegistry != "" {
-					// Construct patched image reference
 					patchedRef := fmt.Sprintf("%s/%s:%s-patched", targetRegistry, imageSpec.Name, tag)
-					// Use full patched reference for filename
 					patchedFile := filepath.Join(outputDir, sanitizeFilename(patchedRef)+".json")
 					jobs = append(jobs, scanJob{
 						name:       imageSpec.Name,
@@ -201,6 +206,7 @@ func scanImage(imageRef, outputFile string, isPatched bool, trivyServer string) 
 		// Use Trivy server mode (client pulls image, uses server's DB)
 		cmd = exec.CommandContext(ctx, "trivy", "image",
 			"--server", trivyServer,
+			"--vuln-type", "os,library",
 			"--format", "json",
 			"--quiet",
 			imageRef,
@@ -208,6 +214,7 @@ func scanImage(imageRef, outputFile string, isPatched bool, trivyServer string) 
 	} else {
 		// Use Trivy standalone mode (direct DB access)
 		cmd = exec.CommandContext(ctx, "trivy", "image",
+			"--vuln-type", "os,library",
 			"--format", "json",
 			"--quiet",
 			imageRef,
