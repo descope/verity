@@ -1,14 +1,16 @@
 name: Patch Images (Matrix)
 
 # Matrix-based patching workflow for parallel execution:
-# 1. Scan: Generate fresh Trivy reports (OS + library vulns) using Trivy server
-# 2. Discover: Copa dry-run with skip detection to find what needs patching
-# 3. Patch: Parallel matrix jobs patch individual images per platform (native builds)
+# 1. Mirror BuildKit: Copy buildkit image to GHCR (avoids flaky mirror.gcr.io pulls)
+# 2. Scan: Generate fresh Trivy reports (OS + library vulns) using Trivy server
+# 3. Discover: Copa dry-run with skip detection to find what needs patching
+# 4. Patch: Parallel matrix jobs patch individual images per platform (native builds)
 #           Includes app-level patching (--pkg-types os,library, COPA_EXPERIMENTAL=1)
-# 4. Combine: Create multi-platform manifest lists
-# 5. Post-Scan: Scan patched images to capture remaining vulnerabilities
-# 6. Assemble: Collect results and generate before/after catalog
-# 7. Deploy: Publish site to GitHub Pages
+# 5. Combine: Create multi-platform manifest lists
+# 6. Attest: Attach CycloneDX SBOM attestations via actions/attest-sbom
+# 7. Post-Scan: Scan patched images to capture remaining vulnerabilities
+# 8. Assemble: Collect results and generate before/after catalog
+# 9. Deploy: Publish site to GitHub Pages
 
 on:
   schedule:
@@ -30,11 +32,50 @@ env:
   TARGET_REGISTRY: ghcr.io/verity-org
   # GHCR staging registry for intermediate platform-specific images
   STAGING_REGISTRY: ghcr.io/verity-org/cache
+  # BuildKit image mirrored to GHCR to avoid flaky pulls from mirror.gcr.io
+  BUILDKIT_IMAGE: ghcr.io/verity-org/cache/buildkit:buildx-stable-1
   # Platforms to build: always test both amd64 + arm64 (even in PRs) to catch platform-specific issues early
   PLATFORMS: linux/amd64,linux/arm64
 
 jobs:
-  # ── Job 1: Scan images and discover what needs patching ────────────
+  # ── Job 1: Mirror BuildKit image to GHCR ───────────────────────────
+  mirror-buildkit:
+    name: Mirror BuildKit
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync BuildKit to GHCR
+        run: |
+          UPSTREAM="mirror.gcr.io/moby/buildkit:buildx-stable-1"
+          MIRROR="${BUILDKIT_IMAGE}"
+
+          MIRROR_DIGEST=$(docker buildx imagetools inspect "$MIRROR" \
+            --format '{{.Manifest.Digest}}' 2>/dev/null || echo "")
+
+          if UPSTREAM_DIGEST=$(docker buildx imagetools inspect "$UPSTREAM" \
+            --format '{{.Manifest.Digest}}' 2>/dev/null); then
+            if [ "$UPSTREAM_DIGEST" != "$MIRROR_DIGEST" ]; then
+              echo "Syncing BuildKit to GHCR (${UPSTREAM_DIGEST})..."
+              docker buildx imagetools create --tag "$MIRROR" "$UPSTREAM"
+              echo "✓ Synced: $MIRROR"
+            else
+              echo "✓ GHCR BuildKit already up-to-date: $UPSTREAM_DIGEST"
+            fi
+          else
+            echo "⚠️  Upstream unreachable; using existing GHCR mirror: ${MIRROR_DIGEST:-none}"
+            if [ -z "$MIRROR_DIGEST" ]; then
+              echo "Error: no BuildKit image available (upstream down, no GHCR mirror exists)"
+              exit 1
+            fi
+          fi
+
+  # ── Job 2: Scan images and discover what needs patching ────────────
   scan:
     name: Scan & Discover
     runs-on: ubuntu-24.04
@@ -134,7 +175,7 @@ jobs:
   # ── Job 2: Patch images in parallel per platform ───────────────────
   patch:
     name: "Patch ${{ matrix.name }}"
-    needs: scan
+    needs: [scan, mirror-buildkit]
     if: needs.scan.outputs.has_images == 'true'
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -164,7 +205,7 @@ jobs:
             --name copa-builder \
             --driver docker-container \
             --driver-opt network=host \
-            --driver-opt image=mirror.gcr.io/moby/buildkit:buildx-stable-1 \
+            --driver-opt "image=${BUILDKIT_IMAGE}" \
             --buildkitd-flags '--allow-insecure-entitlement network.host' \
             --use
 
