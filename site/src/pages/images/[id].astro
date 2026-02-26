@@ -22,8 +22,8 @@ interface Props {
 const { image } = Astro.props;
 const base = import.meta.env.BASE_URL;
 const display = shortName(image.originalRef);
-const fixed = image.vulnSummary.fixable;
-const remaining = image.vulnSummary.total - fixed;
+const fixed = image.beforeVulns.total - image.afterVulns.total;
+const remaining = image.afterVulns.total;
 ---
 
 <BaseLayout title={`${display} — Verity`}>
@@ -79,25 +79,6 @@ const remaining = image.vulnSummary.total - fixed;
     </div>
   </div>
 
-  {
-    image.overriddenFrom && (
-      <div class="bg-amber-950/30 border border-amber-800/50 rounded-lg p-4 mb-4">
-        <div class="text-xs text-amber-300 uppercase tracking-wide font-medium mb-1">
-          Tag Override
-        </div>
-        <p class="text-sm text-amber-100">
-          Original tag{" "}
-          <code class="bg-amber-950/50 px-1 rounded text-amber-200">{image.overriddenFrom}</code>{" "}
-          was overridden to{" "}
-          <code class="bg-amber-950/50 px-1 rounded text-amber-200">
-            {image.originalRef.split(":").pop()}
-          </code>{" "}
-          because the original image uses a distroless/scratch base that Copa cannot patch.
-        </p>
-      </div>
-    )
-  }
-
   <div class="bg-verity-surface border border-verity-nucleus/30 rounded-lg p-4 mb-4">
     <div class="text-xs text-verity-nucleus uppercase tracking-wide font-medium mb-1">
       Patched Image
@@ -113,30 +94,30 @@ const remaining = image.vulnSummary.total - fixed;
   </div>
 
   {
-    image.vulnSummary.total > 0 && (
+    image.beforeVulns.total > 0 && (
       <div class="mb-8">
-        <h2 class="text-lg font-semibold mb-1 text-verity-text-primary">Pre-patch scan</h2>
+        <h2 class="text-lg font-semibold mb-1 text-verity-text-primary">Before patching</h2>
         <p class="text-sm text-verity-text-muted mb-3">
           {fixed > 0 ? (
             <>
-              Found {image.vulnSummary.total} vulnerabilit
-              {image.vulnSummary.total === 1 ? "y" : "ies"} in the original image.
+              Found {image.beforeVulns.total} vulnerabilit
+              {image.beforeVulns.total === 1 ? "y" : "ies"} in the original image.
               <span class="text-verity-nucleus font-medium"> {fixed} fixed by Copa.</span>
               {remaining > 0 && (
                 <span class="text-verity-text-secondary">
                   {" "}
-                  {remaining} have no upstream fix available.
+                  {remaining} remaining after patching.
                 </span>
               )}
             </>
           ) : (
             <>
-              Found {image.vulnSummary.total} vulnerabilit
-              {image.vulnSummary.total === 1 ? "y" : "ies"} — none have upstream fixes available.
+              Found {image.beforeVulns.total} vulnerabilit
+              {image.beforeVulns.total === 1 ? "y" : "ies"} — none have upstream fixes available.
             </>
           )}
         </p>
-        <SeverityBreakdown summary={image.vulnSummary} />
+        <SeverityBreakdown summary={image.beforeVulns} />
       </div>
     )
   }
@@ -144,7 +125,9 @@ const remaining = image.vulnSummary.total - fixed;
   {
     image.vulnerabilities.length > 0 && (
       <section>
-        <h2 class="text-lg font-semibold mb-4 text-verity-text-primary">Vulnerability details</h2>
+        <h2 class="text-lg font-semibold mb-4 text-verity-text-primary">
+          Remaining vulnerabilities
+        </h2>
         <VulnTable vulnerabilities={image.vulnerabilities} />
       </section>
     )

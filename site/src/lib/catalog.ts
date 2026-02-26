@@ -2,7 +2,6 @@ import rawData from "../data/catalog.json";
 
 export interface VulnSummary {
   total: number;
-  fixable: number;
   severityCounts: Record<string, number>;
 }
 
@@ -19,66 +18,30 @@ export interface SiteImage {
   id: string;
   originalRef: string;
   patchedRef: string;
-  valuesPath: string;
   os: string;
-  overriddenFrom?: string;
-  vulnSummary: VulnSummary;
+  beforeVulns: VulnSummary;
+  afterVulns: VulnSummary;
   vulnerabilities: SiteVuln[];
-  chartName?: string;
-}
-
-export interface SiteChart {
-  name: string;
-  version: string;
-  upstreamVersion: string;
-  description: string;
-  repository: string;
-  helmInstall: string;
-  images: SiteImage[];
 }
 
 export interface SiteSummary {
-  totalCharts: number;
   totalImages: number;
-  totalVulns: number;
-  fixableVulns: number;
+  totalVulnsBefore: number;
+  totalVulnsAfter: number;
+  fixedVulns: number;
 }
 
 export interface SiteData {
   generatedAt: string;
   registry: string;
   summary: SiteSummary;
-  charts: SiteChart[];
   images: SiteImage[];
 }
 
 export const catalog: SiteData = rawData as SiteData;
 
-const charts = catalog.charts ?? [];
-
-export function getChartByName(name: string): SiteChart | undefined {
-  return charts.find((c) => c.name === name);
-}
-
-/** Returns unique chart names across all versions. */
-export function getChartNames(): string[] {
-  return [...new Set(charts.map((c) => c.name))];
-}
-
-/** Returns all chart versions for a given chart name, newest first. */
-export function getChartVersions(name: string): SiteChart[] {
-  return charts.filter((c) => c.name === name);
-}
-
-/** Returns a specific chart by name and version. */
-export function getChartVersion(name: string, version: string): SiteChart | undefined {
-  return charts.find((c) => c.name === name && c.version === version);
-}
-
 export function getAllImages(): SiteImage[] {
-  const chartImages = charts.flatMap((c) => c.images.map((img) => ({ ...img, chartName: c.name })));
-  const extra = catalog.images ?? [];
-  return [...chartImages, ...extra];
+  return catalog.images ?? [];
 }
 
 export function getImageById(id: string): SiteImage | undefined {
