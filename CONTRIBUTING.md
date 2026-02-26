@@ -22,7 +22,7 @@ cd verity
 mise install
 # Installs: go, node, golangci-lint, gofumpt, govulncheck,
 #           gosec, goimports, actionlint, shellcheck, yamllint,
-#           markdownlint, helm, crane, claude-code
+#           markdownlint, crane, claude-code
 
 # Or use Makefile shortcut (also requires mise)
 make install-tools
@@ -158,30 +158,10 @@ ci: update workflows
 
 ## Common Tasks
 
-### Adding a New Chart
-
-Create a GitHub issue with the `new-chart` label, or manually:
-
-```bash
-# Add to Chart.yaml dependencies
-# Add to values.yaml with patched image config
-# Create PR
-```
-
 ### Adding an Image
 
-Create a GitHub issue with the `new-image` label, or manually add it to
-`values.yaml` and create a PR. The discover step deduplicates by image
-reference, so images shared across charts only appear once.
-
-### Updating Chart Versions
-
-Renovate handles this automatically. For manual updates:
-
-```bash
-# Update Chart.yaml dependency version
-# Create PR → scan-and-patch validates → merge → publishes
-```
+Create a GitHub issue with the `new-image` label, or manually add an entry to
+`copa-config.yaml` under `images:` and create a PR.
 
 ## Troubleshooting
 

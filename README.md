@@ -37,30 +37,25 @@ services:
 ### Run Locally
 
 ```bash
-# List images to patch
-./verity list
+# Scan images and generate Trivy reports
+./verity scan --config copa-config.yaml --output reports/
 
-# Discover images for CI
-./verity discover
+# Generate site catalog from patch results
+./verity catalog \
+  --output site/src/data/catalog.json \
+  --registry ghcr.io/verity-org \
+  --reports-dir reports/
 
-# Patch a single image
-./verity patch \
-  --image "quay.io/prometheus/prometheus:v3.9.1" \
-  --registry ghcr.io/myorg \
-  --buildkit-addr docker-container://buildkitd \
-  --result-dir ./results
+# Discover and patch images (Copa handles this directly)
+copa patch --config copa-config.yaml --report reports/<image>.json
 ```
 
 ## How It Works
 
 ```text
-Chart.yaml (chart dependencies)
+copa-config.yaml (charts + images + overrides)
         ↓
-  Scan charts (verity scan)
-        ↓
-values.yaml (discovered images)
-        ↓
-  Discover (parse + apply overrides → matrix.json)
+  Discover (Copa auto-discovers images → matrix.json)
         ↓
   Patch (parallel: trivy + copa)
         ↓
@@ -71,30 +66,30 @@ values.yaml (discovered images)
 
 ### Image Sources
 
-**Chart.yaml** - Defines Helm charts to track (Renovate updates these)
-**values.yaml** - Auto-generated list of all images from charts (single source of truth for patching)
+**`copa-config.yaml`** - Defines Helm charts and standalone images to patch.
+Copa auto-discovers all images from chart templates.
 
-**Example values.yaml:**
+**Example `copa-config.yaml`:**
 
 ```yaml
-# Image tag overrides for Copa compatibility
+charts:
+  - name: prometheus
+    version: "28.9.1"
+    repository: "oci://ghcr.io/prometheus-community/charts"
+
 overrides:
-  timberio/vector:
+  "timberio/vector":
     from: "distroless-libc"  # Copa can't patch distroless
     to: "debian"              # Use debian variant instead
 
-# Images to patch
-prometheus:
-  image:
-    registry: quay.io
-    repository: prometheus/prometheus
-    tag: "v3.9.1"
-
-grafana:
-  image:
-    registry: docker.io
-    repository: grafana/grafana
-    tag: "12.3.3"
+images:
+  - name: "nginx"
+    image: "mirror.gcr.io/library/nginx"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
 ```
 
 ### Image Naming Convention
@@ -114,16 +109,9 @@ Verity is **fully automated** with GitHub Actions:
 - Creates PR if patches available
 - Runs daily at 2 AM UTC
 
-### 2️⃣ Auto-Scan Charts (Renovate + Workflow)
+### 2️⃣ Auto-Patch Images (On copa-config.yaml Change)
 
-- Renovate updates Chart.yaml (chart versions)
-- Workflow scans charts and updates values.yaml
-- Commits to PR
-- Ready to merge!
-
-### 3️⃣ Auto-Patch Images (On values.yaml Change)
-
-- values.yaml changes trigger patching workflow
+- `copa-config.yaml` changes trigger patching workflow
 - All images patched in parallel
 - Results committed to PR
 
@@ -134,7 +122,7 @@ Verity is **fully automated** with GitHub Actions:
 - SLSA L3 provenance + SBOM + vulnerability reports attached
 - Site catalog updated
 
-See [WORKFLOWS.md](WORKFLOWS.md) for details.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development details.
 
 ## Benefits
 
@@ -162,7 +150,7 @@ See [WORKFLOWS.md](WORKFLOWS.md) for details.
 
 ```text
 ┌──────────────┐
-│  Renovate    │ Updates values.yaml
+│  Renovate    │ Updates copa-config.yaml
 └──────┬───────┘
        ↓
 ┌──────────────────────┐
@@ -182,33 +170,29 @@ Plus daily scheduled scans for continuous monitoring.
 
 ## Usage
 
-### Add Charts to Monitor
+### Add Images or Charts to Monitor
 
-Edit `Chart.yaml` to add dependencies:
+Edit `copa-config.yaml` to add a chart or standalone image:
 
 ```yaml
-dependencies:
+# Add a Helm chart — Copa auto-discovers all images from templates
+charts:
   - name: my-chart
     version: "1.2.3"
     repository: https://charts.example.com
+
+# Or add a standalone image with a pattern-based tag strategy
+images:
+  - name: "my-image"
+    image: "registry.example.com/my-image"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
 ```
 
-Then run:
-
-```bash
-make scan  # Updates values.yaml with discovered images
-```
-
-Workflows handle this automatically on merge.
-
-### Updating Image Versions
-
-Renovate handles this automatically. For manual updates:
-
-```bash
-# Update values.yaml image tags
-# Create PR → scan-and-patch validates → merge → publishes
-```
+Workflows handle patching automatically on merge.
 
 ### Configuration
 
@@ -242,7 +226,7 @@ go build -o verity .
 ```bash
 docker run --rm -v $(pwd):/workspace \
   ghcr.io/verity-org/verity:latest \
-  list --images /workspace/values.yaml
+  scan --config /workspace/copa-config.yaml --output /workspace/reports/
 ```
 
 ## CLI Reference
@@ -251,40 +235,26 @@ docker run --rm -v $(pwd):/workspace \
 verity - Self-maintaining registry of security-patched container images
 
 Commands:
-  discover    Scan images and output a GitHub Actions matrix
-  patch       Patch a single container image
-  list        List images from values.yaml (dry run)
+  scan        Scan images from copa-config.yaml and generate Trivy reports
   catalog     Generate site catalog JSON from patch reports
 
 Use "verity [command] --help" for command-specific options.
 ```
 
-**Common Options:**
-
-- `--images, -i` - Path to images values.yaml (default: "values.yaml")
-- `--registry` - Target registry for patched images (e.g. ghcr.io/verity-org)
-
 **Examples:**
 
 ```bash
-# List images
-./verity list
-
-# Discover for CI
-./verity discover --discover-dir .verity
-
-# Patch single image (in CI matrix)
-./verity patch \
-  --image "quay.io/prometheus/prometheus:v3.9.1" \
-  --registry ghcr.io/myorg \
-  --buildkit-addr docker-container://buildkitd \
-  --result-dir ./results
+# Scan images and generate Trivy reports
+./verity scan \
+  --config copa-config.yaml \
+  --target-registry ghcr.io/verity-org \
+  --output reports/
 
 # Generate site catalog
 ./verity catalog \
   --output site/src/data/catalog.json \
   --registry ghcr.io/verity-org \
-  --reports-dir .verity/reports
+  --reports-dir reports/
 ```
 
 ## Development
@@ -304,55 +274,32 @@ actionlint .github/workflows/*.yaml
 
 ### Local Testing
 
-Test without touching external registries using Docker Compose:
+Test patching without touching external registries using Docker Compose:
 
 ```bash
 # Start local registry + BuildKit
 make up
 
-# Run integration tests (fast - no patching)
-make test-local
+# Scan images to generate Trivy reports
+./verity scan --config copa-config.yaml --output reports/
 
-# Test patching with local registry
-make test-local-patch
+# Patch a single image with local registry (Copa handles patching)
+copa patch \
+  --image "docker.io/library/nginx:1.29.5" \
+  --report "reports/docker.io_library_nginx_1.29.5.json" \
+  --tag "localhost:5555/verity/nginx:1.29.5-patched" \
+  --addr "tcp://localhost:1234"
+
+# Check results
+curl http://localhost:5555/v2/_catalog
 
 # Stop services
 make down
 ```
 
-**Manual testing:**
-
-```bash
-# Start services
-docker compose up -d
-
-# Test discover
-./verity discover
-
-# Test list
-./verity list
-
-# Test patch with local registry
-./verity patch \
-  --image "docker.io/library/nginx:1.29.5" \
-  --registry "localhost:5555/verity" \
-  --buildkit-addr "tcp://localhost:1234" \
-  --result-dir .verity/results
-
-# Check results
-ls -la .verity/results/
-curl http://localhost:5555/v2/_catalog
-
-# Cleanup
-docker compose down -v
-```
-
 ## Documentation
 
-- [WORKFLOWS.md](WORKFLOWS.md) - Complete workflow automation guide
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Development setup and guidelines
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture (images-only)
-- [MIGRATION_COMPLETE.md](MIGRATION_COMPLETE.md) - Migration from charts to images
 
 ## Security
 
@@ -420,7 +367,7 @@ A: Just change the image reference to use `ghcr.io/verity-org/` instead of the o
 A: Edit `.github/renovate.json` and set `automerge: false`.
 
 **Q: How do I add more images?**
-A: Just add them to `values.yaml`. Workflows automatically handle any number of images.
+A: Add them to `copa-config.yaml` under `images:`. Workflows automatically handle any number of images.
 
 **Q: Can I run this without GitHub Actions?**
 A: Yes! Verity is a standalone CLI tool. Run it manually or integrate with any CI system.

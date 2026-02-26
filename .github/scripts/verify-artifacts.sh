@@ -9,17 +9,10 @@ set -euo pipefail
 #   - gh CLI   (https://cli.github.com/) with attestation extension
 #
 # Usage:
-#   ./verify-artifacts.sh <registry>/<org>  [chart-name:version | image:tag-patched]
+#   ./verify-artifacts.sh <registry>/<org>  [image:tag-patched]
 #
 # Examples:
-#   # Verify all wrapper charts and their images
-#   ./verify-artifacts.sh ghcr.io/verity-org
-#
-#   # Verify a specific image
 #   ./verify-artifacts.sh ghcr.io/verity-org grafana/grafana:11.6.0-patched
-#
-#   # Verify a specific chart
-#   ./verify-artifacts.sh ghcr.io/verity-org charts/prometheus:28.9.1-4
 
 REGISTRY_ORG="${1:-}"
 ARTIFACT="${2:-}"
@@ -29,9 +22,7 @@ if [ -z "$REGISTRY_ORG" ]; then
   echo "Usage: $0 <registry/org> [artifact-ref]"
   echo ""
   echo "Examples:"
-  echo "  $0 ghcr.io/verity-org"
   echo "  $0 ghcr.io/verity-org grafana/grafana:11.6.0-patched"
-  echo "  $0 ghcr.io/verity-org charts/prometheus:28.9.1-4"
   exit 1
 fi
 
@@ -85,7 +76,6 @@ else
   echo ""
   echo "Examples:"
   echo "  $0 ${REGISTRY_ORG} grafana/grafana:11.6.0-patched"
-  echo "  $0 ${REGISTRY_ORG} charts/prometheus:28.9.1-4"
   exit 0
 fi
 

@@ -1,14 +1,16 @@
 name: Patch Images (Matrix)
 
 # Matrix-based patching workflow for parallel execution:
-# 1. Scan: Generate fresh Trivy reports (OS + library vulns) using Trivy server
-# 2. Discover: Copa dry-run with skip detection to find what needs patching
-# 3. Patch: Parallel matrix jobs patch individual images per platform (native builds)
+# 1. Mirror BuildKit: Copy buildkit image to GHCR (avoids flaky mirror.gcr.io pulls)
+# 2. Scan: Generate fresh Trivy reports (OS + library vulns) using Trivy server
+# 3. Discover: Copa dry-run with skip detection to find what needs patching
+# 4. Patch: Parallel matrix jobs patch individual images per platform (native builds)
 #           Includes app-level patching (--pkg-types os,library, COPA_EXPERIMENTAL=1)
-# 4. Combine: Create multi-platform manifest lists
-# 5. Post-Scan: Scan patched images to capture remaining vulnerabilities
-# 6. Assemble: Collect results and generate before/after catalog
-# 7. Deploy: Publish site to GitHub Pages
+# 5. Combine: Create multi-platform manifest lists
+# 6. Attest: Attach CycloneDX SBOM attestations via actions/attest-sbom
+# 7. Post-Scan: Scan patched images to capture remaining vulnerabilities
+# 8. Assemble: Collect results and generate before/after catalog
+# 9. Deploy: Publish site to GitHub Pages
 
 on:
   schedule:
@@ -30,11 +32,35 @@ env:
   TARGET_REGISTRY: ghcr.io/verity-org
   # GHCR staging registry for intermediate platform-specific images
   STAGING_REGISTRY: ghcr.io/verity-org/cache
+  # BuildKit image mirrored to GHCR to avoid flaky pulls from mirror.gcr.io
+  BUILDKIT_IMAGE: ghcr.io/verity-org/cache/buildkit:buildx-stable-1
   # Platforms to build: always test both amd64 + arm64 (even in PRs) to catch platform-specific issues early
   PLATFORMS: linux/amd64,linux/arm64
 
 jobs:
-  # ── Job 1: Scan images and discover what needs patching ────────────
+  # ── Job 1: Mirror BuildKit image to GHCR ───────────────────────────
+  mirror-buildkit:
+    name: Mirror BuildKit
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: imjasonh/setup-crane@v0.4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Mirror BuildKit to GHCR
+        # crane copy is idempotent: skips blobs already in GHCR, so no digest check needed.
+        # Fallback: if upstream is unreachable, succeed if the mirror already exists in GHCR.
+        run: |
+          crane copy mirror.gcr.io/moby/buildkit:buildx-stable-1 "${BUILDKIT_IMAGE}" \
+            || crane digest "${BUILDKIT_IMAGE}" > /dev/null \
+            || { echo "Error: no BuildKit available (upstream down, no GHCR mirror)"; exit 1; }
+
+  # ── Job 2: Scan images and discover what needs patching ────────────
   scan:
     name: Scan & Discover
     runs-on: ubuntu-24.04
@@ -97,6 +123,29 @@ jobs:
         id: discover
         run: .github/scripts/copa-discover.sh copa-config.yaml reports/
 
+      - name: Scan chart-discovered images
+        run: |
+          # verity scan only processes the images: section; chart-discovered images need separate scanning.
+          # For each WouldPatch image in Copa's results, scan it if a report file is missing.
+          jq -r '.[] | select(.status == "WouldPatch") | .source' results.json | \
+          while IFS= read -r source; do
+            report="reports/$(echo "$source" | sed 's/[\/:]/_/g').json"
+            if [ ! -f "$report" ]; then
+              echo "Scanning chart image: $source"
+              if trivy image \
+                --server http://localhost:4954 \
+                --vuln-type os,library \
+                --format json \
+                --quiet \
+                "$source" > "$report"; then
+                echo "✓ Scanned: $source"
+              else
+                echo "⚠️  Failed to scan $source, creating empty report"
+                echo "{\"ArtifactName\": \"$source\", \"Results\": []}" > "$report"
+              fi
+            fi
+          done
+
       - name: Upload scan and discovery results
         if: always()
         uses: actions/upload-artifact@v4
@@ -111,7 +160,7 @@ jobs:
   # ── Job 2: Patch images in parallel per platform ───────────────────
   patch:
     name: "Patch ${{ matrix.name }}"
-    needs: scan
+    needs: [scan, mirror-buildkit]
     if: needs.scan.outputs.has_images == 'true'
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -133,6 +182,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - uses: imjasonh/setup-crane@v0.4
+
       - name: Setup BuildKit
         id: buildx-setup
         run: |
@@ -141,7 +192,7 @@ jobs:
             --name copa-builder \
             --driver docker-container \
             --driver-opt network=host \
-            --driver-opt image=mirror.gcr.io/moby/buildkit:buildx-stable-1 \
+            --driver-opt "image=${BUILDKIT_IMAGE}" \
             --buildkitd-flags '--allow-insecure-entitlement network.host' \
             --use
 
@@ -170,7 +221,9 @@ jobs:
 
           # GHCR staging is a single repo with mutable tags
           # Tag format: <image-name>-<version>-patched-<arch>
-          PLATFORM_TAG="${STAGING_REGISTRY}:${{ matrix.image }}-${SOURCE_TAG}-patched-${PLATFORM_ARCH}"
+          # Sanitize image name: chart images contain registry paths with slashes (invalid in OCI tags)
+          SAFE_IMAGE=$(echo "${{ matrix.image }}" | tr '/: ' '---')
+          PLATFORM_TAG="${STAGING_REGISTRY}:${SAFE_IMAGE}-${SOURCE_TAG}-patched-${PLATFORM_ARCH}"
 
           # Construct report filename (match how scan.go creates them)
           REPORT_FILE="reports/$(echo '${{ matrix.source }}' | sed 's/[\/:]/_/g').json"
@@ -190,6 +243,12 @@ jobs:
             --push \
             --addr buildx://copa-builder \
             --timeout 30m
+
+          # When Copa finds no OS package updates it exits 0 but does not push.
+          # Copy the source image to the staging tag so the combine step can build
+          # the multi-platform manifest regardless of whether patches were applied.
+          crane digest "$PLATFORM_TAG" > /dev/null 2>&1 \
+            || crane copy --platform "${{ matrix.platform }}" "${{ matrix.source }}" "$PLATFORM_TAG"
 
           echo "Patched platform-specific image: $PLATFORM_TAG"
 
@@ -214,6 +273,9 @@ jobs:
     needs: [scan, patch]
     if: needs.scan.outputs.has_images == 'true' && needs.patch.result == 'success'
     runs-on: ubuntu-24.04
+    outputs:
+      has_manifests: ${{ steps.attestation-matrix.outputs.has_manifests }}
+      attestation_matrix: ${{ steps.attestation-matrix.outputs.attestation_matrix }}
     steps:
       - uses: actions/checkout@v4
 
@@ -223,6 +285,8 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: imjasonh/setup-crane@v0.4
 
       - name: Install cosign
         if: github.event_name != 'pull_request'
@@ -251,17 +315,19 @@ jobs:
 
             # Build list of platform-specific source tags from GHCR staging
             # Staging registry uses a single repo with mutable tags
+            # Sanitize image name to match how PLATFORM_TAG was constructed (slashes → dashes)
             SOURCE_TAGS=$(jq -r --arg img "$IMAGE" --arg tag "$TAG" \
               'map(select(.image == $img and (.source | split(":")[1]) == $tag)) |
                .[] |
                (.platform | split("/")[1]) as $arch |
-               "'"${STAGING_REGISTRY}"':" + $img + "-" + $tag + "-patched-" + $arch' \
+               ($img | gsub("[/: ]"; "-")) as $safe_img |
+               "'"${STAGING_REGISTRY}"':" + $safe_img + "-" + $tag + "-patched-" + $arch' \
               all-patches.json)
 
             # Verify all platform images exist before creating manifest
             ALL_EXIST=true
             for source_tag in $SOURCE_TAGS; do
-              if ! docker manifest inspect "$source_tag" >/dev/null 2>&1; then
+              if ! crane digest "$source_tag" > /dev/null 2>&1; then
                 echo "⚠️  Skipping $IMAGE:$TAG - missing platform image: $source_tag"
                 ALL_EXIST=false
                 break
@@ -283,29 +349,23 @@ jobs:
             fi
 
             # In production: push to target registry using Copa's computed tag
-            # In PRs: push to staging registry using Copa's computed tag (for validation)
+            # In PRs: rewrite to staging registry so we don't pollute production
             if [ "${{ github.event_name }}" != "pull_request" ]; then
               MANIFEST_TAG="$COPA_TARGET"
-              # imagetools copies platform images and creates manifest in one step
-              # shellcheck disable=SC2086
-              docker buildx imagetools create --tag "$MANIFEST_TAG" $SOURCE_TAGS
-              echo "✓ Copied images and created manifest: $MANIFEST_TAG"
-
-              # Store for signing/attestation
-              echo "$MANIFEST_TAG" >> ghcr-manifests.txt
             else
-              # Rewrite target registry → staging registry so we don't pollute production
-              # Replace ':' with '-' so the tag is valid (e.g. k8s-sidecar:2.3.0-patched-1 → k8s-sidecar-2.3.0-patched-1)
+              # Replace ':' in tag so it's OCI-valid (e.g. k8s-sidecar:2.3.0-patched-1 → k8s-sidecar-2.3.0-patched-1)
               STAGING_TAG="${COPA_TARGET##*/}"
               MANIFEST_TAG="${STAGING_REGISTRY}:${STAGING_TAG//:/-}"
-              # shellcheck disable=SC2086
-              docker manifest create "$MANIFEST_TAG" $SOURCE_TAGS
-              docker manifest push "$MANIFEST_TAG"
-              echo "✓ Created manifest on GHCR staging (PR): $MANIFEST_TAG"
             fi
+
+            # imagetools copies platform images and creates the manifest list in one step
+            # shellcheck disable=SC2086
+            docker buildx imagetools create --tag "$MANIFEST_TAG" $SOURCE_TAGS
+            echo "✓ Created manifest: $MANIFEST_TAG"
+            echo "$MANIFEST_TAG" >> ghcr-manifests.txt
           done
 
-      - name: Sign and attest GHCR images
+      - name: Sign GHCR images
         if: github.event_name != 'pull_request'
         run: |
           if [ ! -f ghcr-manifests.txt ]; then
@@ -313,18 +373,31 @@ jobs:
             exit 0
           fi
 
-          echo "Signing and attesting GHCR manifests..."
           while IFS= read -r manifest; do
-            echo "Processing: $manifest"
-
-            # Sign with cosign
             cosign sign --yes "$manifest"
-
-            # TODO: Add SBOM attestation when available
-            # cosign attest --yes --type sbom --predicate sbom.json "$manifest"
-
             echo "✓ Signed: $manifest"
           done < ghcr-manifests.txt
+
+      - name: Build attestation matrix
+        id: attestation-matrix
+        run: |
+          MATRIX_ITEMS="[]"
+          if [ -f ghcr-manifests.txt ]; then
+            while IFS= read -r manifest; do
+              DIGEST=$(crane digest "$manifest")
+              IMAGE="${manifest%:*}"
+              MATRIX_ITEMS=$(echo "$MATRIX_ITEMS" | jq -c \
+                --arg image "$IMAGE" --arg digest "$DIGEST" \
+                '. += [{"image": $image, "digest": $digest}]')
+            done < ghcr-manifests.txt
+          fi
+          COUNT=$(echo "$MATRIX_ITEMS" | jq 'length')
+          if [ "$COUNT" -gt 0 ]; then
+            echo "has_manifests=true" >> "$GITHUB_OUTPUT"
+            echo "attestation_matrix={\"include\":$MATRIX_ITEMS}" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_manifests=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Generate manifest report
         run: |
@@ -341,8 +414,9 @@ jobs:
               STAGING_TAG="${COPA_TARGET##*/}"
               MANIFEST="${STAGING_REGISTRY}:${STAGING_TAG//:/-}"
             fi
+            SAFE_IMAGE_FILE=$(echo "$IMAGE" | tr '/: ' '___')
             echo "{\"image\": \"$IMAGE\", \"manifest\": \"$MANIFEST\"}" \
-              > "manifest-results/${IMAGE}.json"
+              > "manifest-results/${SAFE_IMAGE_FILE}.json"
           done
 
       - name: Upload manifest results
@@ -352,7 +426,42 @@ jobs:
           path: manifest-results/
           retention-days: 7
 
-  # ── Job 4: Post-patch scan ─────────────────────────────────────────
+  # ── Job 4: Attest patched images with SBOM ────────────────────────
+  attest:
+    name: "Attest ${{ matrix.image }}"
+    needs: combine
+    if: needs.combine.outputs.has_manifests == 'true'
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix: ${{ fromJson(needs.combine.outputs.attestation_matrix) }}
+      fail-fast: false
+    permissions:
+      id-token: write
+      attestations: write
+      packages: write
+    steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install syft
+        uses: anchore/sbom-action/download-syft@v0.18.0
+
+      - name: Generate SBOM
+        run: syft "${{ matrix.image }}@${{ matrix.digest }}" -o cyclonedx-json=sbom.json
+
+      - name: Attest SBOM
+        uses: actions/attest-sbom@v2
+        with:
+          subject-name: ${{ matrix.image }}
+          subject-digest: ${{ matrix.digest }}
+          sbom-path: sbom.json
+          push-to-registry: true
+
+  # ── Job 5: Post-patch scan ─────────────────────────────────────────
   post-scan:
     name: Post-Patch Scan
     needs: [scan, combine]
@@ -414,7 +523,7 @@ jobs:
           path: post-reports/
           retention-days: 30
 
-  # ── Job 5: Generate catalog ────────────────────────────────────────
+  # ── Job 6: Generate catalog ────────────────────────────────────────
   assemble:
     name: Generate Catalog
     needs: [scan, patch, combine, post-scan]
@@ -481,7 +590,7 @@ jobs:
         with:
           path: site/dist
 
-  # ── Job 6: Deploy catalog site to GitHub Pages ─────────────────────
+  # ── Job 7: Deploy catalog site to GitHub Pages ─────────────────────
   deploy-site:
     name: Deploy Site
     needs: assemble

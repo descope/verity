@@ -4,11 +4,9 @@ import CopyButton from "./CopyButton.astro";
 interface Props {
   /** Full artifact reference, e.g. ghcr.io/verity-org/grafana/grafana:11.6.0-patched */
   artifactRef: string;
-  /** 'image' shows SBOM badge; 'chart' omits it */
-  kind: "image" | "chart";
 }
 
-const { artifactRef, kind } = Astro.props;
+const { artifactRef } = Astro.props;
 const base = import.meta.env.BASE_URL;
 
 // GitHub owner/repo for attestation verification.
@@ -41,46 +39,28 @@ const ghCopy = `gh attestation verify oci://${artifactRef} --owner ${owner}`;
       </svg>
       Signed
     </span>
-    {
-      kind === "image" && (
-        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-          <svg
-            class="w-3 h-3"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2.5"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          SLSA L3
-        </span>
-      )
-    }
-    {
-      kind === "image" && (
-        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-          <svg
-            class="w-3 h-3"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2.5"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          SBOM
-        </span>
-      )
-    }
+    <span
+      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+    >
+      <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      SLSA L3
+    </span>
+    <span
+      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+    >
+      <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      SBOM
+    </span>
     <span
       class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
     >
@@ -107,17 +87,15 @@ const ghCopy = `gh attestation verify oci://${artifactRef} --owner ${owner}`;
           <CopyButton text={cosignCopy} />
         </div>
       </div>
-      {
-        kind === "image" && (
-          <div>
-            <div class="text-xs text-gray-400 mb-1">Build provenance</div>
-            <div class="bg-gray-900 text-gray-100 rounded p-3 font-mono text-xs overflow-x-auto flex items-start justify-between gap-3">
-              <pre class="whitespace-pre-wrap break-all" set:text={ghCmd} />
-              <CopyButton text={ghCopy} />
-            </div>
-          </div>
-        )
-      }
+      <div>
+        <div class="text-xs text-gray-400 mb-1">Build provenance</div>
+        <div
+          class="bg-gray-900 text-gray-100 rounded p-3 font-mono text-xs overflow-x-auto flex items-start justify-between gap-3"
+        >
+          <pre class="whitespace-pre-wrap break-all" set:text={ghCmd} />
+          <CopyButton text={ghCopy} />
+        </div>
+      </div>
     </div>
   </details>
 </div>
