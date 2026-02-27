@@ -11,8 +11,8 @@ permissions:
   pull-requests: read
 
 jobs:
-  golangci-lint:
-    name: Go Lint (gofumpt, goimports, gosec, vet)
+  go-lint:
+    name: Go Lint
     runs-on: ubuntu-latest
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -31,8 +31,11 @@ jobs:
       - name: Run golangci-lint
         run: golangci-lint run --timeout=5m
 
-  actionlint:
-    name: Workflow Lint
+      - name: Run govulncheck
+        run: govulncheck ./...
+
+  static-lint:
+    name: Static Analysis
     runs-on: ubuntu-latest
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -51,93 +54,17 @@ jobs:
       - name: Run actionlint
         run: actionlint
 
-  yaml-lint:
-    name: YAML Lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install mise
-        uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
-        with:
-          install: true
-          cache: true
-
       - name: Run yamllint
         run: yamllint -c .yamllint.yml .
-
-  shellcheck:
-    name: Shell Script Lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install mise
-        uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
-        with:
-          install: true
-          cache: true
 
       - name: Run ShellCheck
         run: shellcheck .github/scripts/*.sh
 
-  govulncheck:
-    name: Go Vulnerability Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
-        with:
-          egress-policy: audit
+      - name: Run markdownlint
+        run: markdownlint "*.md" --ignore node_modules --ignore site/node_modules
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install mise
-        uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
-        with:
-          install: true
-          cache: true
-
-      - name: Run govulncheck
-        run: govulncheck ./...
-
-  prettier:
-    name: Prettier Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install mise
-        uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
-        with:
-          install: true
-          cache: true
-
-      - name: Install site dependencies
-        working-directory: site
-        run: npm ci
-
-      - name: Check Prettier formatting
-        working-directory: site
-        run: npm run format:check
-
-  eslint:
-    name: ESLint
+  node-lint:
+    name: Node Lint
     runs-on: ubuntu-latest
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -164,26 +91,10 @@ jobs:
         working-directory: site
         run: npm ci
 
+      - name: Check Prettier formatting
+        working-directory: site
+        run: npm run format:check
+
       - name: Run ESLint
         working-directory: site
         run: npm run lint
-
-  markdown-lint:
-    name: Markdown Lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install mise
-        uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
-        with:
-          install: true
-          cache: true
-
-      - name: Run markdownlint
-        run: markdownlint "*.md" --ignore node_modules --ignore site/node_modules

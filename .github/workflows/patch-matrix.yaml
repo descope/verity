@@ -1,16 +1,14 @@
 name: Patch Images (Matrix)
 
 # Matrix-based patching workflow for parallel execution:
-# 1. Mirror BuildKit: Copy buildkit image to GHCR (avoids flaky mirror.gcr.io pulls)
-# 2. Scan: Generate fresh Trivy reports (OS + library vulns) using Trivy server
-# 3. Discover: Copa dry-run with skip detection to find what needs patching
-# 4. Patch: Parallel matrix jobs patch individual images per platform (native builds)
+# 1. Prepare: Warm mise tool caches on amd64 + arm64; mirror BuildKit image to GHCR
+# 2. Scan: Generate Trivy reports, Copa dry-run discovery
+# 3. Patch: Parallel matrix jobs patch individual images per platform (native builds)
 #           Includes app-level patching (--pkg-types os,library, COPA_EXPERIMENTAL=1)
-# 5. Combine: Create multi-platform manifest lists
-# 6. Attest: Attach CycloneDX SBOM attestations via actions/attest-sbom
-# 7. Post-Scan: Scan patched images to capture remaining vulnerabilities
-# 8. Assemble: Collect results and generate before/after catalog
-# 9. Deploy: Publish site to GitHub Pages
+# 4. Combine: Create multi-platform manifest lists, sign with cosign
+# 5. Attest: Attach CycloneDX SBOM attestations via actions/attest-sbom (parallel matrix)
+# 6. Assemble: Post-patch scan, generate before/after catalog, build and upload site
+# 7. Deploy: Publish site to GitHub Pages
 
 on:
   schedule:
@@ -38,10 +36,18 @@ env:
   PLATFORMS: linux/amd64,linux/arm64
 
 jobs:
-  # ── Job 1: Mirror BuildKit image to GHCR ───────────────────────────
-  mirror-buildkit:
-    name: Mirror BuildKit
-    runs-on: ubuntu-24.04-arm
+  # ── Job 1: Warm caches on both arches + mirror BuildKit ────────────
+  prepare:
+    name: "Prepare (${{ matrix.runner }})"
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            do-mirror: true
+          - runner: ubuntu-24.04-arm
+            do-mirror: false
+
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
@@ -49,9 +55,6 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          sparse-checkout: mise.toml
-          sparse-checkout-cone-mode: false
 
       - name: Install mise
         uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
@@ -60,6 +63,7 @@ jobs:
           cache: true
 
       - name: Login to GHCR
+        if: matrix.do-mirror
         uses: step-security/docker-login-action@c3e677aae8393bc9c81cfdf9709648720ea4bd4d # v3.6.0
         with:
           registry: ghcr.io
@@ -67,6 +71,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Mirror BuildKit to GHCR
+        if: matrix.do-mirror
         # crane copy is idempotent: skips blobs already in GHCR, so no digest check needed.
         # Fallback: if upstream is unreachable, succeed if the mirror already exists in GHCR.
         run: |
@@ -77,6 +82,7 @@ jobs:
   # ── Job 2: Scan images and discover what needs patching ────────────
   scan:
     name: Scan & Discover
+    needs: [prepare]
     runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.discover.outputs.matrix }}
@@ -152,27 +158,7 @@ jobs:
         run: .github/scripts/copa-discover.sh copa-config.yaml reports/
 
       - name: Scan chart-discovered images
-        run: |
-          # verity scan only processes the images: section; chart-discovered images need separate scanning.
-          # For each WouldPatch image in Copa's results, scan it if a report file is missing.
-          jq -r '.[] | select(.status == "WouldPatch") | .source' results.json | \
-          while IFS= read -r source; do
-            report="reports/$(echo "$source" | sed 's/[\/:]/_/g').json"
-            if [ ! -f "$report" ]; then
-              echo "Scanning chart image: $source"
-              if trivy image \
-                --server http://localhost:4954 \
-                --vuln-type os,library \
-                --format json \
-                --quiet \
-                "$source" > "$report"; then
-                echo "✓ Scanned: $source"
-              else
-                echo "⚠️  Failed to scan $source, creating empty report"
-                echo "{\"ArtifactName\": \"$source\", \"Results\": []}" > "$report"
-              fi
-            fi
-          done
+        run: .github/scripts/scan-chart-images.sh results.json reports/
 
       - name: Upload scan and discovery results
         if: always()
@@ -185,10 +171,10 @@ jobs:
             matrix.json
           retention-days: 30
 
-  # ── Job 2: Patch images in parallel per platform ───────────────────
+  # ── Job 3: Patch images in parallel per platform ───────────────────
   patch:
     name: "Patch ${{ matrix.name }}"
-    needs: [scan, mirror-buildkit]
+    needs: [scan]
     if: needs.scan.outputs.has_images == 'true'
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -203,6 +189,12 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        id: checkout
+        continue-on-error: true
+
+      - name: Retry checkout on failure
+        if: steps.checkout.outcome == 'failure'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install mise
         uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
@@ -211,7 +203,7 @@ jobs:
           cache: true
 
       - name: Cache Go modules
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: |
             ~/dev/go/pkg/mod
@@ -254,45 +246,10 @@ jobs:
       - name: Patch image
         env:
           COPA_EXPERIMENTAL: "1"
-        run: |
-          # Extract platform arch for tag suffix (linux/amd64 -> amd64)
-          PLATFORM_ARCH=$(echo "${{ matrix.platform }}" | cut -d/ -f2)
-
-          # Extract source tag (e.g., nginx:1.29.4 -> 1.29.4)
-          SOURCE_TAG=$(echo "${{ matrix.source }}" | cut -d: -f2)
-
-          # GHCR staging is a single repo with mutable tags
-          # Tag format: <image-name>-<version>-patched-<arch>
-          # Sanitize image name: chart images contain registry paths with slashes (invalid in OCI tags)
-          SAFE_IMAGE=$(echo "${{ matrix.image }}" | tr '/: ' '---')
-          PLATFORM_TAG="${STAGING_REGISTRY}:${SAFE_IMAGE}-${SOURCE_TAG}-patched-${PLATFORM_ARCH}"
-
-          # Construct report filename (match how scan.go creates them)
-          REPORT_FILE="reports/$(echo '${{ matrix.source }}' | sed 's/[\/:]/_/g').json"
-
-          echo "Using report file: $REPORT_FILE"
-
-          # Copa will patch the native platform of this runner (amd64 or arm64)
-          # BuildKit configured with GHCR credentials to push
-          # --pkg-types os,library patches both OS packages and app-level deps (pip, npm)
-          # --library-patch-level major allows major version bumps for library fixes (patch everything)
-          copa patch \
-            --image "${{ matrix.source }}" \
-            --tag "$PLATFORM_TAG" \
-            --report "$REPORT_FILE" \
-            --pkg-types os,library \
-            --library-patch-level major \
-            --push \
-            --addr buildx://copa-builder \
-            --timeout 30m
-
-          # When Copa finds no OS package updates it exits 0 but does not push.
-          # Copy the source image to the staging tag so the combine step can build
-          # the multi-platform manifest regardless of whether patches were applied.
-          crane digest "$PLATFORM_TAG" > /dev/null 2>&1 \
-            || crane copy --platform "${{ matrix.platform }}" "${{ matrix.source }}" "$PLATFORM_TAG"
-
-          echo "Patched platform-specific image: $PLATFORM_TAG"
+          PLATFORM: ${{ matrix.platform }}
+          SOURCE: ${{ matrix.source }}
+          IMAGE_NAME: ${{ matrix.image }}
+        run: .github/scripts/patch-image.sh
 
       - name: Generate patch report
         if: always()
@@ -309,7 +266,7 @@ jobs:
           path: patch-results/
           retention-days: 7
 
-  # ── Job 3: Combine platform images into manifest lists ─────────────
+  # ── Job 4: Combine platform images into manifest lists ─────────────
   combine:
     name: Create Manifest Lists
     needs: [scan, patch]
@@ -347,124 +304,22 @@ jobs:
           merge-multiple: true
 
       - name: Create manifest lists
-        run: |
-          # Collect all patched images
-          cat patch-results/*.json | jq -s '.' > all-patches.json
-
-          # Get unique image:tag combinations (group by image name and source tag)
-          IMAGES=$(jq -r '.[] | .image + ":" + (.source | split(":")[1])' all-patches.json | sort -u)
-
-          for IMAGE_TAG in $IMAGES; do
-            IMAGE=$(echo "$IMAGE_TAG" | cut -d: -f1)
-            TAG=$(echo "$IMAGE_TAG" | cut -d: -f2-)
-
-            echo "Creating manifest list for $IMAGE:$TAG..."
-
-            # Build list of platform-specific source tags from GHCR staging
-            # Staging registry uses a single repo with mutable tags
-            # Sanitize image name to match how PLATFORM_TAG was constructed (slashes → dashes)
-            SOURCE_TAGS=$(jq -r --arg img "$IMAGE" --arg tag "$TAG" \
-              'map(select(.image == $img and (.source | split(":")[1]) == $tag)) |
-               .[] |
-               (.platform | split("/")[1]) as $arch |
-               ($img | gsub("[/: ]"; "-")) as $safe_img |
-               "'"${STAGING_REGISTRY}"':" + $safe_img + "-" + $tag + "-patched-" + $arch' \
-              all-patches.json)
-
-            # Verify all platform images exist before creating manifest
-            ALL_EXIST=true
-            for source_tag in $SOURCE_TAGS; do
-              if ! crane digest "$source_tag" > /dev/null 2>&1; then
-                echo "⚠️  Skipping $IMAGE:$TAG - missing platform image: $source_tag"
-                ALL_EXIST=false
-                break
-              fi
-            done
-
-            if [ "$ALL_EXIST" = "false" ]; then
-              continue
-            fi
-
-            # Use Copa's computed target tag (may include a version suffix, e.g. 2.5.0-patched-1)
-            COPA_TARGET=$(jq -r --arg img "$IMAGE" --arg tag "$TAG" \
-              'map(select(.image == $img and (.source | split(":")[1]) == $tag)) | first | .target' \
-              all-patches.json)
-
-            if [ -z "$COPA_TARGET" ] || [ "$COPA_TARGET" = "null" ]; then
-              echo "⚠️  Skipping $IMAGE:$TAG - no target manifest tag found in all-patches.json"
-              continue
-            fi
-
-            # In production: push to target registry using Copa's computed tag
-            # In PRs: rewrite to staging registry so we don't pollute production
-            if [ "${{ github.event_name }}" != "pull_request" ]; then
-              MANIFEST_TAG="$COPA_TARGET"
-            else
-              # Replace ':' in tag so it's OCI-valid (e.g. k8s-sidecar:2.3.0-patched-1 → k8s-sidecar-2.3.0-patched-1)
-              STAGING_TAG="${COPA_TARGET##*/}"
-              MANIFEST_TAG="${STAGING_REGISTRY}:${STAGING_TAG//:/-}"
-            fi
-
-            # imagetools copies platform images and creates the manifest list in one step
-            # shellcheck disable=SC2086
-            docker buildx imagetools create --tag "$MANIFEST_TAG" $SOURCE_TAGS
-            echo "✓ Created manifest: $MANIFEST_TAG"
-            echo "$MANIFEST_TAG" >> ghcr-manifests.txt
-          done
+        env:
+          IS_PR: ${{ github.event_name == 'pull_request' }}
+        run: .github/scripts/create-manifests.sh
 
       - name: Sign GHCR images
         if: github.event_name != 'pull_request'
-        run: |
-          if [ ! -f ghcr-manifests.txt ]; then
-            echo "No manifests to sign"
-            exit 0
-          fi
-
-          while IFS= read -r manifest; do
-            cosign sign --yes "$manifest"
-            echo "✓ Signed: $manifest"
-          done < ghcr-manifests.txt
+        run: .github/scripts/sign-manifests.sh
 
       - name: Build attestation matrix
         id: attestation-matrix
-        run: |
-          MATRIX_ITEMS="[]"
-          if [ -f ghcr-manifests.txt ]; then
-            while IFS= read -r manifest; do
-              DIGEST=$(crane digest "$manifest")
-              IMAGE="${manifest%:*}"
-              MATRIX_ITEMS=$(echo "$MATRIX_ITEMS" | jq -c \
-                --arg image "$IMAGE" --arg digest "$DIGEST" \
-                '. += [{"image": $image, "digest": $digest}]')
-            done < ghcr-manifests.txt
-          fi
-          COUNT=$(echo "$MATRIX_ITEMS" | jq 'length')
-          if [ "$COUNT" -gt 0 ]; then
-            echo "has_manifests=true" >> "$GITHUB_OUTPUT"
-            echo "attestation_matrix={\"include\":$MATRIX_ITEMS}" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_manifests=false" >> "$GITHUB_OUTPUT"
-          fi
+        run: .github/scripts/build-attestation-matrix.sh
 
       - name: Generate manifest report
-        run: |
-          mkdir -p manifest-results
-          # Record Copa's computed target tag for each image that was successfully manifested
-          jq -r '[.[] | {image, target}] | unique_by(.image) | .[] | @base64' all-patches.json | \
-          while IFS= read -r row; do
-            entry=$(echo "$row" | base64 -d)
-            IMAGE=$(echo "$entry" | jq -r '.image')
-            COPA_TARGET=$(echo "$entry" | jq -r '.target')
-            if [ "${{ github.event_name }}" != "pull_request" ]; then
-              MANIFEST="${COPA_TARGET}"
-            else
-              STAGING_TAG="${COPA_TARGET##*/}"
-              MANIFEST="${STAGING_REGISTRY}:${STAGING_TAG//:/-}"
-            fi
-            SAFE_IMAGE_FILE=$(echo "$IMAGE" | tr '/: ' '___')
-            echo "{\"image\": \"$IMAGE\", \"manifest\": \"$MANIFEST\"}" \
-              > "manifest-results/${SAFE_IMAGE_FILE}.json"
-          done
+        env:
+          IS_PR: ${{ github.event_name == 'pull_request' }}
+        run: .github/scripts/generate-manifest-report.sh
 
       - name: Upload manifest results
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -473,7 +328,7 @@ jobs:
           path: manifest-results/
           retention-days: 7
 
-  # ── Job 4: Attest patched images with SBOM ────────────────────────
+  # ── Job 5: Attest patched images with SBOM ────────────────────────
   attest:
     name: "Attest ${{ matrix.image }}"
     needs: combine
@@ -521,87 +376,11 @@ jobs:
           sbom-path: sbom.json
           push-to-registry: true
 
-  # ── Job 5: Post-patch scan ─────────────────────────────────────────
-  post-scan:
-    name: Post-Patch Scan
-    needs: [scan, combine]
-    if: always() && needs.combine.result == 'success'
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install mise
-        uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
-        with:
-          install: true
-          cache: true
-
-      - name: Cache Go modules
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
-        with:
-          path: |
-            ~/dev/go/pkg/mod
-            ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
-          restore-keys: go-${{ runner.os }}-
-
-      - name: Login to GHCR
-        uses: step-security/docker-login-action@c3e677aae8393bc9c81cfdf9709648720ea4bd4d # v3.6.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup binaries
-        uses: ./.github/actions/setup-binaries
-        with:
-          github-token: ${{ github.token }}
-
-      - name: Get date for Trivy DB cache key
-        id: trivy-date
-        run: echo "date=$(date -u '+%Y-%m-%d-%H')" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Trivy database
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
-        with:
-          path: ~/.cache/trivy
-          key: trivy-db-${{ steps.trivy-date.outputs.date }}
-          restore-keys: |
-            trivy-db-
-
-      - name: Download scan results (for results.json)
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
-        with:
-          name: scan-results
-          path: .
-
-      - name: Scan patched images
-        run: |
-          # Scan only the patched manifest images to capture remaining vulnerabilities
-          ./verity scan \
-            --config copa-config.yaml \
-            --target-registry "$TARGET_REGISTRY" \
-            --patched-only \
-            --parallel 10 \
-            --output post-reports/
-
-      - name: Upload post-patch scan results
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: post-scan-results
-          path: post-reports/
-          retention-days: 30
-
-  # ── Job 6: Generate catalog ────────────────────────────────────────
+  # ── Job 6: Generate catalog (includes post-patch scan) ────────────
   assemble:
     name: Generate Catalog
-    needs: [scan, patch, combine, post-scan]
-    if: always() && needs.scan.outputs.has_catalog_images == 'true' && needs.patch.result != 'cancelled'
+    needs: [scan, combine]
+    if: always() && needs.scan.outputs.has_catalog_images == 'true' && needs.combine.result != 'cancelled'
     runs-on: ubuntu-24.04
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -624,6 +403,22 @@ jobs:
           key: npm-${{ runner.os }}-${{ hashFiles('site/package-lock.json') }}
           restore-keys: npm-${{ runner.os }}-
 
+      - name: Cache Go modules
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ~/dev/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Login to GHCR
+        uses: step-security/docker-login-action@c3e677aae8393bc9c81cfdf9709648720ea4bd4d # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Setup binaries
         uses: ./.github/actions/setup-binaries
         with:
@@ -642,12 +437,35 @@ jobs:
           name: scan-results
           path: .
 
-      - name: Download post-patch scan results
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
-        continue-on-error: true
+      - name: Get date for Trivy DB cache key
+        id: trivy-date
+        run: echo "date=$(date -u '+%Y-%m-%d-%H')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Trivy database
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
-          name: post-scan-results
-          path: post-reports/
+          path: ~/.cache/trivy
+          key: trivy-db-${{ steps.trivy-date.outputs.date }}
+          restore-keys: |
+            trivy-db-
+
+      - name: Start Trivy server
+        if: needs.combine.result == 'success'
+        run: |
+          trivy server --listen 0.0.0.0:4954 &
+          timeout 60 bash -c 'until curl -f http://localhost:4954/healthz 2>/dev/null; do sleep 1; done'
+          echo "✓ Trivy server ready"
+
+      - name: Scan patched images
+        if: needs.combine.result == 'success'
+        run: |
+          ./verity scan \
+            --config copa-config.yaml \
+            --target-registry "$TARGET_REGISTRY" \
+            --patched-only \
+            --trivy-server http://localhost:4954 \
+            --parallel 10 \
+            --output post-reports/
 
       - name: Generate catalog
         run: .github/scripts/generate-catalog.sh results.json reports/ post-reports/ "$TARGET_REGISTRY" site/src/data/catalog.json

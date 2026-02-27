@@ -12,7 +12,7 @@ permissions:
 jobs:
   add-image:
     name: Add Image to copa-config.yaml
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: contains(github.event.issue.labels.*.name, 'new-image')
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -30,6 +30,12 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           token: ${{ steps.app-token.outputs.token }}
+
+      - name: Install mise
+        uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
+        with:
+          install: true
+          cache: true
 
       - name: Parse issue form
         id: parse

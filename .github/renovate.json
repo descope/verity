@@ -5,79 +5,67 @@
     ":semanticCommits",
     ":dependencyDashboard"
   ],
-  "labels": [
-    "dependencies"
-  ],
+  "enabledManagers": ["gomod", "github-actions", "npm", "mise"],
+  "labels": ["dependencies"],
   "rangeStrategy": "pin",
   "separateMajorMinor": true,
   "separateMultipleMajor": true,
+  "automergeType": "pr",
+  "automergeStrategy": "squash",
+  "github-actions": {
+    "fileMatch": [
+      "^\\.github/workflows/[^/]+\\.ya?ml$",
+      "^\\.github/actions/[^/]+/action\\.ya?ml$"
+    ]
+  },
   "packageRules": [
     {
       "description": "Go dependencies",
-      "matchManagers": [
-        "gomod"
-      ],
-      "labels": [
-        "go",
-        "dependencies"
-      ],
+      "matchManagers": ["gomod"],
+      "labels": ["go", "dependencies"],
       "groupName": "go dependencies",
       "semanticCommitType": "chore",
       "semanticCommitScope": "deps"
     },
     {
       "description": "GitHub Actions",
-      "matchManagers": [
-        "github-actions"
-      ],
-      "labels": [
-        "github-actions",
-        "dependencies"
-      ],
+      "matchManagers": ["github-actions"],
+      "labels": ["github-actions", "dependencies"],
       "groupName": "github actions",
       "semanticCommitType": "chore",
       "semanticCommitScope": "ci"
     },
     {
-      "description": "Automerge non-major Go updates",
-      "matchManagers": [
-        "gomod"
-      ],
-      "matchUpdateTypes": [
-        "minor",
-        "patch"
-      ],
-      "automerge": true,
-      "automergeType": "pr",
-      "automergeStrategy": "squash"
+      "description": "mise tools",
+      "matchManagers": ["mise"],
+      "labels": ["tools", "dependencies"],
+      "groupName": "mise tools",
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "ci"
     },
     {
-      "description": "Automerge patch GitHub Actions updates",
-      "matchManagers": [
-        "github-actions"
-      ],
-      "matchUpdateTypes": [
-        "patch"
-      ],
-      "automerge": true,
-      "automergeType": "pr",
-      "automergeStrategy": "squash"
+      "description": "npm (site)",
+      "matchManagers": ["npm"],
+      "labels": ["npm", "dependencies"],
+      "groupName": "npm dependencies",
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "deps"
+    },
+    {
+      "description": "Automerge non-major updates",
+      "matchManagers": ["gomod", "github-actions", "mise", "npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
     }
   ],
   "vulnerabilityAlerts": {
     "enabled": true,
-    "labels": [
-      "security"
-    ],
+    "labels": ["security"],
     "automerge": true,
-    "schedule": [
-      "at any time"
-    ]
+    "schedule": ["at any time"]
   },
   "timezone": "UTC",
-  "schedule": [
-    "before 4am on Monday"
-  ],
+  "schedule": ["before 4am on Monday"],
   "prConcurrentLimit": 3,
   "prCreation": "immediate"
 }
