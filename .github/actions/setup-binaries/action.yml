@@ -24,6 +24,11 @@ runs:
   using: composite
   steps:
     # ── Copa Setup ────────────────────────────────────────────────────────
+    - name: Get GOPATH
+      id: gopath
+      shell: bash
+      run: echo "path=$(go env GOPATH)" >> "$GITHUB_OUTPUT"
+
     - name: Get Copa commit hash
       id: copa-hash
       shell: bash
@@ -39,7 +44,7 @@ runs:
       id: copa-cache
       uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
       with:
-        path: ${{ env.GOPATH }}/bin/copa
+        path: ${{ steps.gopath.outputs.path }}/bin/copa
         key: copa-${{ runner.os }}-${{ runner.arch }}-${{ steps.copa-hash.outputs.hash }}
 
     - name: Download Copa artifact
@@ -49,7 +54,7 @@ runs:
       continue-on-error: true
       with:
         name: copa-binary-${{ runner.arch }}-${{ steps.copa-hash.outputs.hash }}
-        path: ${{ env.GOPATH }}/bin/
+        path: ${{ steps.gopath.outputs.path }}/bin/
 
     - name: Build Copa from source
       if: steps.copa-cache.outputs.cache-hit != 'true' && steps.copa-artifact.outcome == 'failure'
@@ -67,7 +72,7 @@ runs:
     - name: Make Copa executable
       if: steps.copa-cache.outputs.cache-hit != 'true'
       shell: bash
-      run: chmod +x "$GOPATH/bin/copa"
+      run: chmod +x "$(go env GOPATH)/bin/copa"
 
     - name: Upload Copa artifact
       if: steps.copa-cache.outputs.cache-hit != 'true' && steps.copa-artifact.outcome == 'failure'
@@ -75,7 +80,7 @@ runs:
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: copa-binary-${{ runner.arch }}-${{ steps.copa-hash.outputs.hash }}
-        path: ${{ env.GOPATH }}/bin/copa
+        path: ${{ steps.gopath.outputs.path }}/bin/copa
         retention-days: 1
         overwrite: true
 
@@ -83,7 +88,7 @@ runs:
       if: steps.copa-cache.outputs.cache-hit != 'true' && steps.copa-artifact.outcome == 'failure'
       uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
       with:
-        path: ${{ env.GOPATH }}/bin/copa
+        path: ${{ steps.gopath.outputs.path }}/bin/copa
         key: copa-${{ runner.os }}-${{ runner.arch }}-${{ steps.copa-hash.outputs.hash }}
 
     # ── Verity Setup ──────────────────────────────────────────────────────
