@@ -1,8 +1,25 @@
 apiVersion: copa.sh/v1alpha1
 kind: PatchConfig
 
-# Strategy: Pattern-based with maxTags to automatically patch the latest 3 versions
-# This auto-updates as new versions are released without manual version updates
+# ==============================================================================
+# Copa Patch Config — Verity
+# ==============================================================================
+# Covers:
+#   - Helm charts (patched via copa chart workflow)
+#   - Upstream source images (patched individually)
+#
+# Prioritises ghcr.io > quay.io > mirror.gcr.io (docker.io mirror) to avoid
+# Docker Hub rate-limits wherever possible.
+#
+# Copa patchability matrix:
+#   dpkg (Debian/Ubuntu)          ✓  patchable
+#   apk  (full Alpine w/ apk)     ✓  patchable
+#   rpm  (RHEL/UBI/Fedora)        ✓  patchable
+#   distroless (dpkg under hood)  ✓  patchable via tooling container
+#   Alpine-distroless (apk gone)  ✗  NOT patchable
+#   scratch / busybox / Wolfi     ✗  NOT patchable
+# ==============================================================================
+
 target:
   registry: "ghcr.io/verity-org"
 
@@ -20,14 +37,216 @@ charts:
     repository: "https://opensource.zalando.com/postgres-operator/charts/postgres-operator"
 
 overrides:
-  "timberio/vector":
+
+  # ---------------------------------------------------------------------------
+  #  BUSYBOX-BASED → Copa can't patch busybox; override to -distroless variant
+  #  (Copa CAN patch dpkg-based distroless images via tooling containers)
+  # ---------------------------------------------------------------------------
+  # Prometheus ecosystem ships on quay.io/prometheus/busybox by default.
+  # All Prometheus projects publish a -distroless suffixed tag as well.
+  "prometheus/prometheus":
+    from: "busybox"
+    to: "distroless"
+
+  "prometheus/alertmanager":
+    from: "busybox"
+    to: "distroless"
+
+  "prometheus/node-exporter":
+    from: "busybox"
+    to: "distroless"
+
+  "prometheus/mysqld-exporter":
+    from: "busybox"
+    to: "distroless"
+
+  # Thanos also builds on quay.io/prometheus/busybox
+  "thanos/thanos":
+    from: "busybox"
+    to: "distroless"
+
+  # ---------------------------------------------------------------------------
+  #  DISTROLESS/SCRATCH-LIBC → override to a debian/alpine patchable variant
+  # ---------------------------------------------------------------------------
+  # Vector ships -distroless-libc (default), -debian, -alpine suffixed tags
+  "vectordotdev/vector":
     from: "distroless-libc"
     to: "debian"
 
+  # ---------------------------------------------------------------------------
+  #  ALPINE-BASED — Copa CAN patch full Alpine (apk present).
+  #  Override to ubuntu for dpkg-based patching.
+  # ---------------------------------------------------------------------------
+  "grafana/grafana":
+    from: "alpine"
+    to: "ubuntu"
+
 images:
-  # Copa-compatible images (8 total across Debian/Ubuntu/Alpine/distroless bases)
-  # Using mirror.gcr.io to avoid Docker Hub rate limits
-  # Only patch amd64 and arm64; other platforms preserved but not patched
+
+  # ============================================================================
+  #  BASE / STATIC IMAGES
+  # ============================================================================
+
+  - name: "static-distroless"
+    image: "gcr.io/distroless/static"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d{4}-\d{2}-\d{2}.*$'
+      maxTags: 3
+
+  - name: "busybox"
+    image: "mirror.gcr.io/library/busybox"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # ============================================================================
+  #  LANGUAGE RUNTIMES & SDKs
+  # ============================================================================
+
+  - name: "node"
+    image: "mirror.gcr.io/library/node"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "python"
+    image: "mirror.gcr.io/library/python"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "golang"
+    image: "mirror.gcr.io/library/golang"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "ruby"
+    image: "mirror.gcr.io/library/ruby"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "rust"
+    image: "mirror.gcr.io/library/rust"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "php"
+    image: "mirror.gcr.io/library/php"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "eclipse-temurin-jdk"
+    image: "mirror.gcr.io/library/eclipse-temurin"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+.*-jdk$'
+      maxTags: 3
+
+  - name: "eclipse-temurin-jre"
+    image: "mirror.gcr.io/library/eclipse-temurin"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+.*-jre$'
+      maxTags: 3
+
+  - name: "deno"
+    image: "ghcr.io/denoland/deno"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "dotnet-sdk"
+    image: "mirror.gcr.io/library/dotnet/sdk"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "dotnet-runtime"
+    image: "mirror.gcr.io/library/dotnet/runtime"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "aspnet-runtime"
+    image: "mirror.gcr.io/library/dotnet/aspnet"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "erlang"
+    image: "mirror.gcr.io/library/erlang"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "gcc"
+    image: "mirror.gcr.io/library/gcc"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "graalvm-native-image"
+    image: "ghcr.io/graalvm/native-image"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "maven"
+    image: "mirror.gcr.io/library/maven"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "gradle"
+    image: "mirror.gcr.io/library/gradle"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # ============================================================================
+  #  WEB SERVERS & PROXIES
+  # ============================================================================
+
   - name: "nginx"
     image: "mirror.gcr.io/library/nginx"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -36,8 +255,692 @@ images:
       pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
 
+  - name: "nginx-s3-gateway"
+    image: "ghcr.io/nginxinc/nginx-s3-gateway"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "haproxy"
+    image: "mirror.gcr.io/library/haproxy"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "haproxy-ingress"
+    image: "quay.io/jcmoraisjr/haproxy-ingress"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "envoy"
+    image: "mirror.gcr.io/envoyproxy/envoy"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "httpd"
+    image: "mirror.gcr.io/library/httpd"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "traefik"
+    image: "mirror.gcr.io/library/traefik"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "ingress-nginx-controller"
+    image: "ghcr.io/kubernetes/ingress-nginx/controller"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "kube-webhook-certgen"
+    image: "ghcr.io/kubernetes/ingress-nginx/kube-webhook-certgen"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "kubernetes-ingress-defaultbackend"
+    image: "ghcr.io/kubernetes/ingress-nginx/defaultbackend"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+$'
+      maxTags: 3
+
+  # ============================================================================
+  #  DATABASES
+  # ============================================================================
+
+  - name: "postgres"
+    image: "mirror.gcr.io/library/postgres"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+$'
+      maxTags: 3
+
+  - name: "mariadb"
+    image: "mirror.gcr.io/library/mariadb"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "mongodb"
+    image: "mirror.gcr.io/library/mongo"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "redis"
+    image: "mirror.gcr.io/library/redis"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "valkey"
+    image: "mirror.gcr.io/valkey/valkey"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "cockroach"
+    image: "mirror.gcr.io/cockroachdb/cockroach"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "elasticsearch"
+    image: "mirror.gcr.io/library/elasticsearch"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "eck-operator"
+    image: "mirror.gcr.io/elastic/eck-operator"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "opensearch"
+    image: "mirror.gcr.io/opensearchproject/opensearch"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "opensearch-dashboards"
+    image: "mirror.gcr.io/opensearchproject/opensearch-dashboards"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "pgbouncer"
+    image: "mirror.gcr.io/pgbouncer/pgbouncer"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "memcached"
+    image: "mirror.gcr.io/library/memcached"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "etcd"
+    image: "quay.io/coreos/etcd"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "influxdb"
+    image: "mirror.gcr.io/library/influxdb"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "rqlite"
+    image: "mirror.gcr.io/rqlite/rqlite"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "clickhouse"
+    image: "mirror.gcr.io/clickhouse/clickhouse-server"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "redisinsight"
+    image: "mirror.gcr.io/redis/redisinsight"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # -- Redis Operator (opstree) --
+  - name: "redis-opstree"
+    image: "quay.io/opstree/redis"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "redis-sentinel-opstree"
+    image: "quay.io/opstree/redis-sentinel"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # ============================================================================
+  #  MESSAGING & STREAMING
+  # ============================================================================
+
   - name: "rabbitmq"
     image: "mirror.gcr.io/library/rabbitmq"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "rabbitmq-cluster-operator"
+    image: "mirror.gcr.io/rabbitmqoperator/cluster-operator"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "rabbitmq-messaging-topology-operator"
+    image: "mirror.gcr.io/rabbitmqoperator/messaging-topology-operator"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "kafka"
+    image: "mirror.gcr.io/confluentinc/cp-kafka"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "nats"
+    image: "mirror.gcr.io/library/nats"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "zookeeper"
+    image: "mirror.gcr.io/library/zookeeper"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # ============================================================================
+  #  KUBERNETES TOOLS
+  # ============================================================================
+
+  - name: "helm"
+    image: "ghcr.io/helm/helm"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "karpenter"
+    image: "ghcr.io/aws/karpenter"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v?\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "cluster-autoscaler"
+    image: "ghcr.io/kubernetes/autoscaler/cluster-autoscaler"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "external-dns"
+    image: "ghcr.io/kubernetes-sigs/external-dns"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "coredns"
+    image: "ghcr.io/coredns/coredns"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v?\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "kube-state-metrics"
+    image: "ghcr.io/kubernetes/kube-state-metrics/kube-state-metrics"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "kubernetes-reflector"
+    image: "ghcr.io/emberstack/kubernetes-reflector"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "secrets-store-csi-driver"
+    image: "ghcr.io/kubernetes-sigs/secrets-store-csi-driver"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "secrets-store-csi-driver-provider-gcp"
+    image: "ghcr.io/googlecloudplatform/secrets-store-csi-driver-provider-gcp"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "k8s-sidecar"
+    image: "ghcr.io/kiwigrid/k8s-sidecar"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "configmap-reload"
+    image: "ghcr.io/jimmidyson/configmap-reload"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "node-feature-discovery"
+    image: "ghcr.io/kubernetes-sigs/node-feature-discovery"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "kubectl"
+    image: "mirror.gcr.io/bitnami/kubectl"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "k3s"
+    image: "mirror.gcr.io/rancher/k3s"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+\+k3s\d+$'
+      maxTags: 3
+
+  # ============================================================================
+  #  EKS DISTRO
+  # ============================================================================
+
+  - name: "eks-distro-coredns"
+    image: "ghcr.io/aws/eks-distro/coredns/coredns"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+-eks-.*$'
+      maxTags: 3
+
+  - name: "eks-distro-kube-apiserver"
+    image: "ghcr.io/aws/eks-distro/kubernetes/kube-apiserver"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+-eks-.*$'
+      maxTags: 3
+
+  - name: "eks-distro-kube-scheduler"
+    image: "ghcr.io/aws/eks-distro/kubernetes/kube-scheduler"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+-eks-.*$'
+      maxTags: 3
+
+  - name: "eks-distro-kube-proxy"
+    image: "ghcr.io/aws/eks-distro/kubernetes/kube-proxy"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+-eks-.*$'
+      maxTags: 3
+
+  - name: "eks-distro-csi-node-driver-registrar"
+    image: "ghcr.io/aws/eks-distro/kubernetes-csi/node-driver-registrar"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+-eks-.*$'
+      maxTags: 3
+
+  # ============================================================================
+  #  SERVICE MESH & NETWORKING
+  # ============================================================================
+
+  # -- Istio --
+  - name: "istio-proxy"
+    image: "mirror.gcr.io/istio/proxyv2"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "istio-pilot"
+    image: "mirror.gcr.io/istio/pilot"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "istio-install-cni"
+    image: "mirror.gcr.io/istio/install-cni"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # -- Cilium --
+  - name: "cilium-agent"
+    image: "quay.io/cilium/cilium"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "cilium-envoy"
+    image: "quay.io/cilium/cilium-envoy"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+.*$'
+      maxTags: 3
+
+  - name: "cilium-operator-generic"
+    image: "quay.io/cilium/operator-generic"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "cilium-hubble-ui"
+    image: "quay.io/cilium/hubble-ui"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # -- Calico --
+  - name: "calico-node"
+    image: "quay.io/calico/node"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "calico-cni"
+    image: "quay.io/calico/cni"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "calico-kube-controllers"
+    image: "quay.io/calico/kube-controllers"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "calico-typha"
+    image: "quay.io/calico/typha"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "calico-apiserver"
+    image: "quay.io/calico/apiserver"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "calico-csi"
+    image: "quay.io/calico/csi"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "calico-calicoctl"
+    image: "quay.io/calico/ctl"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "calico-node-driver-registrar"
+    image: "quay.io/calico/node-driver-registrar"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "calico-key-cert-provisioner"
+    image: "quay.io/calico/key-cert-provisioner"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # ============================================================================
+  #  MONITORING & OBSERVABILITY
+  # ============================================================================
+
+  # -- Prometheus ecosystem --
+  # NOTE: Default Prometheus tags are busybox-based → NOT patchable.
+  # Use -distroless suffixed tags (Copa patches dpkg-distroless via tooling container).
+  # See overrides section above.
+
+  - name: "prometheus"
+    image: "quay.io/prometheus/prometheus"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+-distroless$'
+      maxTags: 3
+
+  - name: "prometheus-alertmanager"
+    image: "quay.io/prometheus/alertmanager"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+-distroless$'
+      maxTags: 3
+
+  - name: "prometheus-node-exporter"
+    image: "quay.io/prometheus/node-exporter"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+-distroless$'
+      maxTags: 3
+
+  - name: "prometheus-mysqld-exporter"
+    image: "quay.io/prometheus/mysqld-exporter"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+-distroless$'
+      maxTags: 3
+
+  - name: "prometheus-elasticsearch-exporter"
+    image: "quay.io/prometheuscommunity/elasticsearch-exporter"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # -- Grafana ecosystem --
+  - name: "grafana"
+    image: "mirror.gcr.io/grafana/grafana"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "grafana-ubuntu"
+    image: "mirror.gcr.io/grafana/grafana"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+-ubuntu$'
+      maxTags: 3
+
+  - name: "grafana-operator"
+    image: "ghcr.io/grafana/grafana-operator"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "loki"
+    image: "mirror.gcr.io/grafana/loki"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "promtail"
+    image: "mirror.gcr.io/grafana/promtail"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "grafana-mimir"
+    image: "mirror.gcr.io/grafana/mimir"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # -- Thanos (busybox-based by default → use -distroless variant) --
+  - name: "thanos"
+    image: "quay.io/thanos/thanos"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+-distroless$'
+      maxTags: 3
+
+  # -- Agents & Pipelines --
+  - name: "telegraf"
+    image: "mirror.gcr.io/library/telegraf"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -60,42 +963,532 @@ images:
       pattern: '^\d+\.\d+\.\d+-alpine$'
       maxTags: 3
 
-  - name: "redis"
-    image: "quay.io/opstree/redis"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "redis-sentinel"
-    image: "quay.io/opstree/redis-sentinel"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "grafana-ubuntu"
-    image: "mirror.gcr.io/grafana/grafana"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+-ubuntu$'
-      maxTags: 3
-
-  - name: "prometheus-distroless"
-    image: "quay.io/prometheus/prometheus"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+-distroless$'
-      maxTags: 3
-
-  - name: "k8s-sidecar"
-    image: "ghcr.io/kiwigrid/k8s-sidecar"
+  - name: "datadog-agent"
+    image: "ghcr.io/datadog/agent"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
       pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "datadog-cluster-agent"
+    image: "ghcr.io/datadog/cluster-agent"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "newrelic-infrastructure-bundle"
+    image: "mirror.gcr.io/newrelic/infrastructure-bundle"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # ============================================================================
+  #  LOGGING
+  # ============================================================================
+
+  - name: "fluent-bit"
+    image: "ghcr.io/fluent/fluent-bit"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "fluentd"
+    image: "mirror.gcr.io/fluent/fluentd"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+-debian.*$'
+      maxTags: 3
+
+  - name: "fluentd-kubernetes-daemonset"
+    image: "mirror.gcr.io/fluent/fluentd-kubernetes-daemonset"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+-debian.*$'
+      maxTags: 3
+
+  - name: "fluent-operator"
+    image: "ghcr.io/fluent/fluent-operator"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "logstash-oss-with-opensearch"
+    image: "mirror.gcr.io/opensearchproject/logstash-oss-with-opensearch-output-plugin"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # ============================================================================
+  #  CI/CD & GITOPS
+  # ============================================================================
+
+  - name: "argocd"
+    image: "quay.io/argoproj/argocd"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "jenkins"
+    image: "mirror.gcr.io/jenkins/jenkins"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+(-lts)?$'
+      maxTags: 3
+
+  - name: "tekton-cli"
+    image: "ghcr.io/tektoncd/cli"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "renovate"
+    image: "ghcr.io/renovatebot/renovate"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # ============================================================================
+  #  SECURITY & IDENTITY
+  # ============================================================================
+
+  - name: "vault"
+    image: "mirror.gcr.io/hashicorp/vault"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "vault-k8s"
+    image: "mirror.gcr.io/hashicorp/vault-k8s"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "consul"
+    image: "mirror.gcr.io/hashicorp/consul"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "keycloak"
+    image: "quay.io/keycloak/keycloak"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "keycloak-operator"
+    image: "quay.io/keycloak/keycloak-operator"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # ⚠ SPIRE images are scratch-based since ~v1.8+. Copa CANNOT patch these.
+  # Kept for tracking; Copa will no-op on them.
+  - name: "spire-server"
+    image: "ghcr.io/spiffe/spire-server"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "spire-agent"
+    image: "ghcr.io/spiffe/spire-agent"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "spiffe-helper"
+    image: "ghcr.io/spiffe/spiffe-helper"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "teleport"
+    image: "quay.io/gravitational/teleport"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "openbao"
+    image: "ghcr.io/openbao/openbao"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # ============================================================================
+  #  POLICY & COMPLIANCE
+  # ============================================================================
+
+  - name: "kyverno"
+    image: "ghcr.io/kyverno/kyverno"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "kyverno-cli"
+    image: "ghcr.io/kyverno/kyverno-cli"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "kyverno-background-controller"
+    image: "ghcr.io/kyverno/background-controller"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "kyverno-reports-controller"
+    image: "ghcr.io/kyverno/reports-controller"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "kyverno-policy-reporter-ui"
+    image: "ghcr.io/kyverno/policy-reporter-ui"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "gatekeeper"
+    image: "mirror.gcr.io/openpolicyagent/gatekeeper"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # ============================================================================
+  #  INFRASTRUCTURE & IaC
+  # ============================================================================
+
+  - name: "terraform"
+    image: "mirror.gcr.io/hashicorp/terraform"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "crossplane"
+    image: "mirror.gcr.io/crossplane/crossplane"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # ============================================================================
+  #  SUPPLY CHAIN SECURITY
+  # ============================================================================
+
+  - name: "cosign"
+    image: "ghcr.io/sigstore/cosign"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "crane"
+    image: "ghcr.io/google/go-containerregistry/crane"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "grype"
+    image: "mirror.gcr.io/anchore/grype"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "ko"
+    image: "ghcr.io/ko-build/ko"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "dive"
+    image: "ghcr.io/wagoodman/dive"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # ============================================================================
+  #  CONTAINER REGISTRIES
+  # ============================================================================
+
+  - name: "harbor-registry"
+    image: "ghcr.io/goharbor/registry-photon"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "harbor-portal"
+    image: "ghcr.io/goharbor/harbor-portal"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "zot"
+    image: "ghcr.io/project-zot/zot-linux-amd64"
+    platforms: ["linux/amd64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # ============================================================================
+  #  CERT MANAGEMENT
+  # ============================================================================
+
+  - name: "cert-manager-controller"
+    image: "quay.io/jetstack/cert-manager-controller"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "cert-manager-cainjector"
+    image: "quay.io/jetstack/cert-manager-cainjector"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "cert-manager-acmesolver"
+    image: "quay.io/jetstack/cert-manager-acmesolver"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "cert-manager-cmctl"
+    image: "quay.io/jetstack/cert-manager-cmctl"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "cert-manager-openshift-routes"
+    image: "ghcr.io/cert-manager/cert-manager-openshift-routes"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # ============================================================================
+  #  DATA / ML
+  # ============================================================================
+
+  - name: "airflow"
+    image: "mirror.gcr.io/apache/airflow"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "spark-operator"
+    image: "ghcr.io/kubeflow/spark-operator"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "mlflow"
+    image: "ghcr.io/mlflow/mlflow"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # ============================================================================
+  #  DEV / CLI TOOLS
+  # ============================================================================
+
+  - name: "git"
+    image: "mirror.gcr.io/alpine/git"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "curl"
+    image: "mirror.gcr.io/curlimages/curl"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "bash"
+    image: "mirror.gcr.io/library/bash"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "google-cloud-sdk"
+    image: "mirror.gcr.io/google/cloud-sdk"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "powershell"
+    image: "ghcr.io/powershell/powershell"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "bazel"
+    image: "ghcr.io/bazelbuild/bazel"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "docker-cli"
+    image: "mirror.gcr.io/library/docker"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "tomcat"
+    image: "mirror.gcr.io/library/tomcat"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "wordpress"
+    image: "mirror.gcr.io/library/wordpress"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "sonarqube"
+    image: "mirror.gcr.io/library/sonarqube"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+-community$'
+      maxTags: 3
+
+  - name: "sonar-scanner-cli"
+    image: "mirror.gcr.io/sonarsource/sonar-scanner-cli"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "hugo"
+    image: "mirror.gcr.io/klakegg/hugo"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "minio"
+    image: "quay.io/minio/minio"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^RELEASE\.\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z$'
+      maxTags: 3
+
+  - name: "minio-client"
+    image: "quay.io/minio/mc"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^RELEASE\.\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z$'
+      maxTags: 3
+
+  - name: "ntpd-rs"
+    image: "ghcr.io/pendulum-project/ntpd-rs"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
       maxTags: 3
