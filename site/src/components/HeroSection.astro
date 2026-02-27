@@ -1,24 +1,40 @@
 ---
 import { catalog } from "../lib/catalog";
+import CopyButton from "./CopyButton.astro";
 
 const { summary } = catalog;
+const base = import.meta.env.BASE_URL;
+
+// Pick the first image with vulns fixed for the example, otherwise just the first image
+const exampleImage =
+  catalog.images?.find((img) => img.beforeVulns.total - img.afterVulns.total > 0) ??
+  catalog.images?.[0];
+const exampleRef =
+  exampleImage?.patchedRef ?? "ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched";
 ---
 
-<div class="mb-10">
-  <div class="mb-6">
-    <h1 class="text-4xl font-bold mb-3 tracking-[0.3em]">VERITY</h1>
-    <p class="text-verity-text-muted text-lg mb-2">
-      Security-patched container images, automatically maintained with
-      <a
-        href="https://github.com/project-copacetic/copacetic"
-        class="text-verity-nucleus hover:text-verity-teal-light transition-colors underline decoration-verity-orbit"
-        >Copa</a
-      >.
+<div class="mb-12">
+  <!-- Title -->
+  <h1 class="text-4xl font-bold mb-6 tracking-[0.3em]">VERITY</h1>
+
+  <!-- Problem + value prop — the lead -->
+  <div class="bg-verity-surface border-l-4 border-verity-nucleus rounded-r-lg p-6 mb-8">
+    <p class="text-verity-text-primary text-base leading-relaxed mb-3">
+      Container images ship with packages — OS and application-level — that accumulate CVEs daily.
+      Upstream maintainers patch on their own schedule — if at all. That leaves you choosing between
+      manually rebuilding every image or running known-vulnerable containers in production.
     </p>
-    <div class="h-px w-32 bg-gradient-to-r from-verity-nucleus to-transparent"></div>
+    <p class="text-verity-nucleus text-base leading-relaxed font-medium">
+      Verity eliminates that trade-off. It continuously scans images, patches them in-place with <a
+        href="https://github.com/project-copacetic/copacetic"
+        class="underline decoration-verity-orbit hover:text-verity-teal-light transition-colors"
+        >Copa</a
+      > (no Dockerfile rebuild), and publishes signed, attested, drop-in replacements.
+    </p>
   </div>
 
-  <div class="grid grid-cols-3 gap-4">
+  <!-- Stats -->
+  <div class="grid grid-cols-3 gap-4 mb-10">
     <div
       class="bg-verity-surface border border-verity-border rounded-lg p-4 text-center hover:border-verity-orbit transition-colors"
     >
@@ -36,6 +52,91 @@ const { summary } = catalog;
     >
       <div class="text-2xl font-bold text-verity-nucleus">{summary.fixedVulns}</div>
       <div class="text-sm text-verity-nucleus tracking-wider uppercase opacity-80">Fixed</div>
+    </div>
+  </div>
+
+  <!-- How it works + Quick start side by side -->
+  <div class="grid md:grid-cols-2 gap-6 mb-4">
+    <!-- Pipeline -->
+    <div class="bg-verity-surface border border-verity-border rounded-lg p-5">
+      <h2 class="text-sm font-semibold text-verity-text-primary tracking-wider uppercase mb-4">
+        How it works
+      </h2>
+      <div class="space-y-3 text-sm">
+        <div class="flex items-start gap-3">
+          <span class="text-verity-nucleus font-bold shrink-0 w-5 text-right">1</span>
+          <div>
+            <span class="text-verity-text-primary font-medium">Discover</span>
+            <span class="text-verity-text-muted">
+              — images from Helm charts and copa-config.yaml</span
+            >
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="text-verity-nucleus font-bold shrink-0 w-5 text-right">2</span>
+          <div>
+            <span class="text-verity-text-primary font-medium">Scan</span>
+            <span class="text-verity-text-muted"> — Trivy detects known CVEs</span>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="text-verity-nucleus font-bold shrink-0 w-5 text-right">3</span>
+          <div>
+            <span class="text-verity-text-primary font-medium">Patch</span>
+            <span class="text-verity-text-muted"> — Copa fixes packages in-place (no rebuild)</span>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="text-verity-nucleus font-bold shrink-0 w-5 text-right">4</span>
+          <div>
+            <span class="text-verity-text-primary font-medium">Sign</span>
+            <span class="text-verity-text-muted"> — cosign + SLSA L3 + SBOM attestations</span>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="text-verity-nucleus font-bold shrink-0 w-5 text-right">5</span>
+          <div>
+            <span class="text-verity-text-primary font-medium">Publish</span>
+            <span class="text-verity-text-muted"> — pushed to GHCR with </span>
+            <code class="text-verity-text-primary text-xs">-patched</code>
+            <span class="text-verity-text-muted"> suffix</span>
+          </div>
+        </div>
+      </div>
+      <div class="mt-4 pt-3 border-t border-verity-border text-xs text-verity-text-muted">
+        Runs daily at 02:00 UTC and on every config change.
+        <a
+          href="https://github.com/verity-org/verity"
+          class="text-verity-orbit hover:text-verity-nucleus transition-colors underline ml-1"
+          >Source</a
+        >
+      </div>
+    </div>
+
+    <!-- Quick start -->
+    <div class="bg-verity-surface border border-verity-border rounded-lg p-5">
+      <h2 class="text-sm font-semibold text-verity-text-primary tracking-wider uppercase mb-4">
+        Use a patched image
+      </h2>
+      <p class="text-sm text-verity-text-muted mb-3">Replace your image reference. That's it.</p>
+      <div
+        class="bg-verity-void border border-verity-border rounded p-3 font-mono text-xs text-verity-text-primary overflow-x-auto mb-3"
+      >
+        <div class="text-verity-text-muted"># Pull a patched image</div>
+        <div>docker pull {exampleRef}</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <CopyButton text={`docker pull ${exampleRef}`} />
+      </div>
+      <div class="mt-4 pt-3 border-t border-verity-border flex items-center justify-between">
+        <span class="text-xs text-verity-text-muted"> Every image is signed and attested. </span>
+        <a
+          href={`${base}compliance/`}
+          class="text-xs text-verity-orbit hover:text-verity-nucleus transition-colors underline"
+        >
+          Compliance details
+        </a>
+      </div>
     </div>
   </div>
 </div>

@@ -139,22 +139,55 @@ ci: update workflows
 
 ## Architecture Overview
 
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full system design.
+
 ### Workflows
 
-- **scan-and-patch.yaml**: Main workflow for scanning, patching, and publishing
-  - Triggers: PR validation, push to main, scheduled scans
-- **publish.yaml**: Site deployment only
-- **new-issue.yaml**: Automated chart/image additions via GitHub issues
+- **patch-matrix.yaml**: Main pipeline (scan → patch → sign → publish)
+  - Triggers: PR validation, push to main, daily scheduled scans
+- **ci.yaml**: Unit tests on pull requests
+- **lint.yaml**: Code quality checks (8 linters)
+- **new-issue.yaml**: Automated image additions via GitHub issues
 
 ### Key Components
 
-- **cmd/**: CLI entry point
+- **cmd/**: CLI commands
+  - `scan.go`: Parallel Trivy scanning
+  - `catalog.go`: Site catalog generation
 - **internal/**: Core logic
-  - `patcher.go`: Image patching with Copa
-  - `sitedata.go`: Site catalog generation
-  - `discover.go`: Image discovery
+  - `copaconfig.go`: `copa-config.yaml` parsing and image discovery
+  - `sitedata.go`: Catalog JSON generation from Trivy reports
+  - `types.go`: Image reference models and parsing
 - **.github/scripts/**: Workflow helper scripts
 - **site/**: Astro-based static site
+
+## Local Testing
+
+Test patching without touching external registries:
+
+```bash
+# Start local registry + BuildKit
+make up
+
+# Scan images to generate Trivy reports
+./verity scan --config copa-config.yaml --output reports/
+
+# Patch a single image with local registry (Copa handles patching)
+copa patch \
+  --image "docker.io/library/nginx:1.29.5" \
+  --report "reports/docker.io_library_nginx_1.29.5.json" \
+  --tag "localhost:5555/verity/nginx:1.29.5-patched" \
+  --addr "tcp://localhost:1234"
+
+# Check results
+curl http://localhost:5555/v2/_catalog
+
+# Stop services
+make down
+```
+
+See [.github/PR-TESTING.md](.github/PR-TESTING.md) for how PR validation works
+in CI.
 
 ## Common Tasks
 
@@ -171,7 +204,7 @@ Ensure all slice returns use empty slices (`[]Type{}`), not `nil`.
 
 ### Empty charts on site
 
-Charts need reports embedded. Trigger scan-and-patch workflow manually.
+Charts need reports embedded. Trigger the patch-matrix workflow manually.
 
 ### OCI authentication issues
 

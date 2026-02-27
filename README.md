@@ -5,28 +5,42 @@
 <h1 align="center">Verity</h1>
 <p align="center"><strong>Self-maintaining registry of security-patched container images</strong></p>
 <p align="center">
+  <a href="#the-problem">The Problem</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#how-it-works">How It Works</a> •
-  <a href="#benefits">Benefits</a> •
-  <a href="#documentation">Documentation</a>
+  <a href="#verify-the-supply-chain">Verify</a> •
+  <a href="ARCHITECTURE.md">Architecture</a>
 </p>
 
 ---
 
-Verity automatically scans container images for vulnerabilities, patches them using
-[Copa](https://github.com/project-copacetic/copacetic), and publishes patched versions to GitHub Container Registry (GHCR).
+## The Problem
+
+Container images ship with packages that accumulate CVEs daily — both OS-level
+(apt, yum, apk) and application-level (pip, etc.).
+Upstream maintainers patch on their own schedule — if at all.
+Organizations are left choosing between manually rebuilding every image
+they depend on or running known-vulnerable containers in production.
+
+Verity eliminates that trade-off. It continuously scans container images for
+vulnerabilities, patches them in-place using [Copa](https://github.com/project-copacetic/copacetic)
+(no Dockerfile rebuild required), and publishes signed, attested, drop-in
+replacements to GitHub Container Registry.
+
+**Browse the catalog:** [verity-org.github.io/verity](https://verity-org.github.io/verity/)
 
 ## Quick Start
 
-### Use a Patched Image
+Replace your image reference. That's it.
 
 ```bash
 # Pull a patched image
 docker pull ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
+```
 
+```yaml
 # Use in Kubernetes
-kubectl set image deployment/prometheus \
-  prometheus=ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
+image: ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
 
 # Use in Docker Compose
 services:
@@ -34,54 +48,91 @@ services:
     image: ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
 ```
 
-### Run Locally
+All patched images follow the same convention:
 
-```bash
-# Scan images and generate Trivy reports
-./verity scan --config copa-config.yaml --output reports/
-
-# Generate site catalog from patch results
-./verity catalog \
-  --output site/src/data/catalog.json \
-  --registry ghcr.io/verity-org \
-  --reports-dir reports/
-
-# Discover and patch images (Copa handles this directly)
-copa patch --config copa-config.yaml --report reports/<image>.json
-```
+| Original | Patched |
+| --- | --- |
+| `quay.io/prometheus/prometheus:v3.9.1` | `ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched` |
+| `docker.io/library/nginx:1.29.5` | `ghcr.io/verity-org/library/nginx:1.29.5-patched` |
 
 ## How It Works
 
 ```text
-copa-config.yaml (charts + images + overrides)
-        ↓
-  Discover (Copa auto-discovers images → matrix.json)
-        ↓
-  Patch (parallel: trivy + copa)
-        ↓
-  Sign & Attest (cosign + SLSA + SBOM)
-        ↓
-  Published to ghcr.io/verity-org
+  copa-config.yaml
+        │
+        ▼
+   ┌─────────┐     Define Helm charts, standalone images, and tag strategies.
+   │ Discover │     Copa auto-discovers all images from chart templates.
+   └────┬────┘
+        ▼
+   ┌─────────┐     Trivy scans every image for known CVEs.
+   │  Scan   │     Only images with fixable vulnerabilities proceed.
+   └────┬────┘
+        ▼
+   ┌─────────┐     Copa patches packages in-place —
+   │  Patch  │     no Dockerfile rebuild needed.
+   └────┬────┘     Parallel matrix jobs across amd64 and arm64.
+        ▼
+   ┌─────────┐     cosign signs with keyless OIDC (Sigstore).
+   │  Sign   │     SLSA L3 provenance, CycloneDX SBOM, and vulnerability
+   └────┬────┘     reports attached as in-toto attestations.
+        ▼
+   ┌─────────┐
+   │ Publish │     Pushed to ghcr.io/verity-org with -patched suffix.
+   └─────────┘
 ```
 
-### Image Sources
+This pipeline runs daily at 02:00 UTC and on every `copa-config.yaml` change.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full technical breakdown.
 
-**`copa-config.yaml`** - Defines Helm charts and standalone images to patch.
-Copa auto-discovers all images from chart templates.
+### What Can (and Can't) Be Patched
 
-**Example `copa-config.yaml`:**
+Copa patches **OS-level packages** (`apt`, `yum`/`dnf`, `apk`) and
+**Python packages** installed via `pip` (experimental). This covers the majority
+of container CVEs.
+
+It **cannot** patch:
+
+- Compiled binaries with statically-linked vulnerable libraries (e.g. Go modules)
+- Vulnerabilities without an available upstream package fix
+- Distroless images (Verity uses base-image overrides for these)
+
+## Verify the Supply Chain
+
+Every patched image is signed and attested. Verify it yourself:
+
+```bash
+# Verify signature (cosign)
+cosign verify \
+  --certificate-identity-regexp "https://github.com/verity-org/verity/.github/workflows/" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
+
+# Verify build provenance (GitHub CLI)
+gh attestation verify \
+  oci://ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched \
+  --owner verity-org
+```
+
+Full compliance details (SLSA, FedRAMP, SOC 2, ISO 27001, NIST, OWASP):
+[verity-org.github.io/verity/compliance](https://verity-org.github.io/verity/compliance/)
+
+## Adding Images
+
+### Via GitHub Issue
+
+Open an issue with the **Request New Image** template. Verity creates a PR automatically.
+
+### Via `copa-config.yaml`
 
 ```yaml
+# Helm chart — Copa auto-discovers all container images from templates
 charts:
   - name: prometheus
     version: "28.9.1"
     repository: "oci://ghcr.io/prometheus-community/charts"
 
-overrides:
-  "timberio/vector":
-    from: "distroless-libc"  # Copa can't patch distroless
-    to: "debian"              # Use debian variant instead
-
+# Standalone image with tag strategy
 images:
   - name: "nginx"
     image: "mirror.gcr.io/library/nginx"
@@ -90,297 +141,45 @@ images:
       strategy: "pattern"
       pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
+
+# Base-image override for images Copa can't patch directly
+overrides:
+  "timberio/vector":
+    from: "distroless-libc"
+    to: "debian"
 ```
 
-### Image Naming Convention
+Merge the PR and the pipeline handles the rest.
 
-- **Source**: `quay.io/prometheus/prometheus:v3.9.1`
-- **Patched**: `ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched`
-
-All patched images get a `-patched` suffix.
-
-## Automation
-
-Verity is **fully automated** with GitHub Actions:
-
-### 1️⃣ Daily Vulnerability Scans
-
-- Scans for new vulnerabilities
-- Creates PR if patches available
-- Runs daily at 2 AM UTC
-
-### 2️⃣ Auto-Patch Images (On copa-config.yaml Change)
-
-- `copa-config.yaml` changes trigger patching workflow
-- All images patched in parallel
-- Results committed to PR
-
-### 4️⃣ Publish to GHCR (On Merge)
-
-- Patched images pushed to GitHub Container Registry
-- Images signed with cosign (keyless)
-- SLSA L3 provenance + SBOM + vulnerability reports attached
-- Site catalog updated
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development details.
-
-## Benefits
-
-### For Image Consumers
-
-✅ Security-patched container images
-✅ Automated vulnerability monitoring
-✅ Drop-in replacements for upstream images
-✅ SLSA L3 build provenance
-✅ Signed with cosign (Sigstore)
-✅ Full SBOM attestations
-✅ Zero-trust supply chain (verify everything yourself)
-
-## Architecture
-
-### Components
-
-- **Verity** (Go) - Image scanner and patcher
-- **Trivy** - Vulnerability scanner
-- **Copa** - Microsoft's container patching tool
-- **BuildKit** - Image building
-- **Cosign** - Image signing (Sigstore)
-
-### Workflow System
-
-```text
-┌──────────────┐
-│  Renovate    │ Updates copa-config.yaml
-└──────┬───────┘
-       ↓
-┌──────────────────────┐
-│ scan-and-patch.yaml  │ Auto-patches (matrix)
-└──────┬───────────────┘
-       ↓
-┌────────────────┐
-│ Merge to main  │
-└──────┬─────────┘
-       ↓
-┌────────────────┐
-│ Push to GHCR   │ Signed + attested
-└────────────────┘
-```
-
-Plus daily scheduled scans for continuous monitoring.
-
-## Usage
-
-### Add Images or Charts to Monitor
-
-Edit `copa-config.yaml` to add a chart or standalone image:
-
-```yaml
-# Add a Helm chart — Copa auto-discovers all images from templates
-charts:
-  - name: my-chart
-    version: "1.2.3"
-    repository: https://charts.example.com
-
-# Or add a standalone image with a pattern-based tag strategy
-images:
-  - name: "my-image"
-    image: "registry.example.com/my-image"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-```
-
-Workflows handle patching automatically on merge.
-
-### Configuration
-
-**Registry:**
-Set via `-registry` flag (e.g. `ghcr.io/your-org`).
-
-**Scan Schedule:**
-Edit `.github/workflows/scan-and-patch.yaml`:
-
-```yaml
-schedule:
-  - cron: '0 2 * * *'  # Daily at 2 AM UTC
-```
-
-## Installation
-
-### Prerequisites
-
-- Go 1.25+
-- Docker
-- BuildKit (for patching)
-
-### Build
+## Running Verity Locally
 
 ```bash
+# Build
 go build -o verity .
-```
 
-### Docker
-
-```bash
-docker run --rm -v $(pwd):/workspace \
-  ghcr.io/verity-org/verity:latest \
-  scan --config /workspace/copa-config.yaml --output /workspace/reports/
-```
-
-## CLI Reference
-
-```text
-verity - Self-maintaining registry of security-patched container images
-
-Commands:
-  scan        Scan images from copa-config.yaml and generate Trivy reports
-  catalog     Generate site catalog JSON from patch reports
-
-Use "verity [command] --help" for command-specific options.
-```
-
-**Examples:**
-
-```bash
 # Scan images and generate Trivy reports
-./verity scan \
-  --config copa-config.yaml \
-  --target-registry ghcr.io/verity-org \
-  --output reports/
+./verity scan --config copa-config.yaml --output reports/
 
-# Generate site catalog
+# Generate site catalog from patch results
 ./verity catalog \
+  --images-json images.json \
   --output site/src/data/catalog.json \
   --registry ghcr.io/verity-org \
   --reports-dir reports/
 ```
 
-## Development
-
-### Run Tests
-
-```bash
-go test ./...
-```
-
-### Validate Workflows
-
-```bash
-# Check YAML syntax
-actionlint .github/workflows/*.yaml
-```
-
-### Local Testing
-
-Test patching without touching external registries using Docker Compose:
-
-```bash
-# Start local registry + BuildKit
-make up
-
-# Scan images to generate Trivy reports
-./verity scan --config copa-config.yaml --output reports/
-
-# Patch a single image with local registry (Copa handles patching)
-copa patch \
-  --image "docker.io/library/nginx:1.29.5" \
-  --report "reports/docker.io_library_nginx_1.29.5.json" \
-  --tag "localhost:5555/verity/nginx:1.29.5-patched" \
-  --addr "tcp://localhost:1234"
-
-# Check results
-curl http://localhost:5555/v2/_catalog
-
-# Stop services
-make down
-```
+For local patching with a Docker registry and BuildKit, see the
+[development guide](CONTRIBUTING.md#local-testing).
 
 ## Documentation
 
-- [CONTRIBUTING.md](CONTRIBUTING.md) - Development setup and guidelines
-
-## Security
-
-### Vulnerability Scanning
-
-Every patch run includes:
-
-- Trivy vulnerability reports attached as **in-toto attestations**
-- SBOM (CycloneDX) attestations
-- SLSA L3 build provenance attestations
-- CVE details and CVSS scores
-- Fixable vs unfixable vulnerabilities
-
-### Image Trust
-
-Patched images are:
-
-1. Built from official upstream images
-2. Scanned with Trivy (open source)
-3. Patched with Copa (Microsoft, open source)
-4. Pushed to GHCR with `-patched` suffix
-5. Signed with cosign (keyless, Sigstore)
-6. Attested with build provenance, SBOM, and vulnerability reports
-7. Never modify upstream images
-
-### Supply Chain
-
-Verify patches yourself:
-
-```bash
-# Verify image signature
-cosign verify \
-  --certificate-identity-regexp "https://github.com/verity-org/verity/" \
-  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-  ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
-
-# Verify build provenance
-gh attestation verify \
-  oci://ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched \
-  --owner verity-org
-
-# View vulnerability report attestation
-cosign verify-attestation --type vuln \
-  --certificate-identity-regexp "https://github.com/verity-org/verity/" \
-  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-  ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
-
-# Compare to original
-docker pull quay.io/prometheus/prometheus:v3.9.1
-docker pull ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
-```
-
-## FAQ
-
-**Q: What types of vulnerabilities can Copa patch?**
-A: Copa patches OS-level packages (apt, yum, apk). It cannot patch application vulnerabilities in compiled binaries.
-
-**Q: Will this patch ALL vulnerabilities?**
-A: No. Only vulnerabilities with available package updates. Some images may have unfixable CVEs.
-
-**Q: How do I use patched images in my deployments?**
-A: Just change the image reference to use `ghcr.io/verity-org/` instead of the original registry.
-
-**Q: What if I don't want to auto-merge security updates?**
-A: Edit `.github/renovate.json` and set `automerge: false`.
-
-**Q: How do I add more images?**
-A: Add them to `copa-config.yaml` under `images:`. Workflows automatically handle any number of images.
-
-**Q: Can I run this without GitHub Actions?**
-A: Yes! Verity is a standalone CLI tool. Run it manually or integrate with any CI system.
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Open a pull request
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+| Document | Description |
+| --- | --- |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System design, components, pipeline, CLI reference |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup, code quality, PR guidelines |
+| [Compliance](https://verity-org.github.io/verity/compliance/) | SLSA, FedRAMP, SOC 2, ISO 27001, OWASP mappings |
+| [.github/RENOVATE.md](.github/RENOVATE.md) | Automated dependency update configuration |
+| [.github/PR-TESTING.md](.github/PR-TESTING.md) | How PR validation works |
 
 ## License
 
@@ -388,14 +187,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## Acknowledgments
 
-- [Copa](https://github.com/project-copacetic/copacetic) - Microsoft's container patching tool
-- [Trivy](https://github.com/aquasecurity/trivy) - Vulnerability scanner
-- [Sigstore](https://www.sigstore.dev/) - Keyless signing infrastructure
-- [SLSA](https://slsa.dev/) - Supply-chain Levels for Software Artifacts
-
----
-
-<p align="center">
-  <strong>Built to make Kubernetes more secure</strong><br>
-  <sub>Powered by Copa, Trivy, and Sigstore</sub>
-</p>
+- [Copa](https://github.com/project-copacetic/copacetic) — Microsoft's container patching tool
+- [Trivy](https://github.com/aquasecurity/trivy) — Vulnerability scanner
+- [Sigstore](https://www.sigstore.dev/) — Keyless signing infrastructure
+- [SLSA](https://slsa.dev/) — Supply-chain Levels for Software Artifacts
