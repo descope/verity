@@ -1,9 +1,14 @@
 [tools]
 # Core tools
-go = "1.25.7"  # Latest patch release (fixes 13 stdlib vulnerabilities)
-node = "24.14.0"
+go = "1.25.7"
+node = { version = "24.14.0", postinstall = "corepack enable" }
 crane = "0.21.0"
-claude-code = "2.1.59"
+claude-code = {version = "2.1.59", os = ["darwin"]}
+
+# Security & container tools (used in patch-matrix.yaml)
+trivy = "0.68.2"
+cosign = "2.6.2"
+syft = "1.21.0"
 
 # Go tools (pinned for reproducibility)
 "go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint" = "2"
