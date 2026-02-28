@@ -223,14 +223,14 @@ func scanImage(imageRef, outputFile string, isPatched bool, trivyServer string) 
 	return os.WriteFile(outputFile, output, 0o644)
 }
 
-// latestPatchedTagFromList finds the highest-versioned patched tag matching
-// "<sourceTag>-patched" or "<sourceTag>-patched-N" from a list of tags.
-func latestPatchedTagFromList(tags []string, sourceTag string) string {
+// highestPatchedN returns the highest numeric suffix N from tags matching
+// "<sourceTag>-patched" (N=0) or "<sourceTag>-patched-N".
+// Returns -1 if no matching tag is found.
+func highestPatchedN(tags []string, sourceTag string) int {
 	base := regexp.QuoteMeta(sourceTag) + `-patched`
 	pattern := regexp.MustCompile(`^` + base + `(-(\d+))?$`)
 
-	bestN := -1
-	bestTag := ""
+	best := -1
 	for _, t := range tags {
 		m := pattern.FindStringSubmatch(t)
 		if m == nil {
@@ -244,12 +244,37 @@ func latestPatchedTagFromList(tags []string, sourceTag string) string {
 			}
 			n = parsed
 		}
-		if n > bestN {
-			bestN = n
-			bestTag = t
+		if n > best {
+			best = n
 		}
 	}
-	return bestTag
+	return best
+}
+
+// latestPatchedTagFromList finds the highest-versioned patched tag matching
+// "<sourceTag>-patched" or "<sourceTag>-patched-N" from a list of tags.
+func latestPatchedTagFromList(tags []string, sourceTag string) string {
+	n := highestPatchedN(tags, sourceTag)
+	if n < 0 {
+		return ""
+	}
+	if n == 0 {
+		return sourceTag + "-patched"
+	}
+	return sourceTag + "-patched-" + strconv.Itoa(n)
+}
+
+// nextPatchedTag returns the tag to use when publishing a newly patched image.
+// It finds the current highest-versioned patched tag and increments:
+//   - no existing patched tag        → "<sourceTag>-patched"
+//   - existing "<sourceTag>-patched" → "<sourceTag>-patched-1"
+//   - existing "<sourceTag>-patched-N" → "<sourceTag>-patched-<N+1>"
+func nextPatchedTag(tags []string, sourceTag string) string {
+	n := highestPatchedN(tags, sourceTag)
+	if n < 0 {
+		return sourceTag + "-patched"
+	}
+	return sourceTag + "-patched-" + strconv.Itoa(n+1)
 }
 
 func sanitizeFilename(filename string) string {

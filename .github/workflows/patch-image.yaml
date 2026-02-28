@@ -343,7 +343,9 @@ jobs:
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          sparse-checkout: mise.toml
+          sparse-checkout: |
+            mise.toml
+            .github/scripts/push-reports.sh
           sparse-checkout-cone-mode: false
 
       - name: Install mise
@@ -371,8 +373,6 @@ jobs:
           IMAGE_NAME: ${{ inputs.image-name }}
           SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
           STAGING_REGISTRY: ${{ needs.scan.outputs.staging-registry }}
-          TARGET_REGISTRY: ${{ inputs.target-registry }}
-          IS_PR: ${{ inputs.is-pr }}
           PLATFORMS: ${{ inputs.platforms }}
         run: |
           SAFE_IMAGE=$(echo "$IMAGE_NAME" | tr '/: ' '---')
@@ -391,12 +391,10 @@ jobs:
             fi
           done
 
-          # Determine target tag
-          if [ "$IS_PR" = "true" ]; then
-            MANIFEST_TAG="${STAGING_REGISTRY}:${SAFE_IMAGE}-${SOURCE_TAG}-patched"
-          else
-            MANIFEST_TAG="${TARGET_REGISTRY}/${IMAGE_NAME}:${SOURCE_TAG}-patched"
-          fi
+          # Always stage the manifest — non-PR runs promote to target (with
+          # the correct versioned tag) only after the compare step confirms
+          # the vuln set changed. This prevents target registry writes on no-ops.
+          MANIFEST_TAG="${STAGING_REGISTRY}:${SAFE_IMAGE}-${SOURCE_TAG}-patched"
 
           # shellcheck disable=SC2086
           docker buildx imagetools create --tag "${MANIFEST_TAG}" ${SOURCE_TAGS}
@@ -442,9 +440,25 @@ jobs:
           TARGET_REGISTRY: ${{ inputs.target-registry }}
           MANIFEST_TAG: ${{ steps.manifest.outputs.manifest-tag }}
         run: |
-          # Promote from staging manifest tag to target registry
+          # Promote from staging to target with the next versioned patched tag.
+          # Scheme: {tag}-patched (first), {tag}-patched-1, -2, … (re-patches).
           FINAL_REPO="${TARGET_REGISTRY}/${IMAGE_NAME}"
-          FINAL_TAG="${FINAL_REPO}:${SOURCE_TAG}-patched"
+          LATEST_N=$(crane ls "${FINAL_REPO}" 2>/dev/null \
+            | awk -v src="${SOURCE_TAG}-patched" '
+                length($0) >= length(src) && substr($0,1,length(src)) == src {
+                  suffix = substr($0, length(src)+1)
+                  if (suffix == "" || suffix ~ /^-[0-9]{1,9}$/) {
+                    n = (suffix ~ /^-[0-9]{1,9}$/) ? substr(suffix,2)+0 : 0
+                    print n
+                  }
+                }' \
+            | sort -n \
+            | tail -1 || true)
+          if [ -z "$LATEST_N" ]; then
+            FINAL_TAG="${FINAL_REPO}:${SOURCE_TAG}-patched"
+          else
+            FINAL_TAG="${FINAL_REPO}:${SOURCE_TAG}-patched-$((LATEST_N + 1))"
+          fi
           crane copy "${MANIFEST_TAG}" "${FINAL_TAG}"
           DIGEST=$(crane digest "${FINAL_TAG}")
           echo "✓ Pushed to target: ${FINAL_TAG} (${DIGEST})"
