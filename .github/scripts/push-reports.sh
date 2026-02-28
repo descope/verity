@@ -4,7 +4,7 @@ set -euo pipefail
 # Pushes pre/post Trivy scan reports to the reports branch via the GitHub API.
 # Concurrent-safe: uses PUT with SHA for updates, no git operations.
 # Usage: push-reports.sh <name> <tag> <pre-json> <post-json>
-# Required env: GITHUB_TOKEN (via gh auth), GITHUB_REPOSITORY
+# Required env: GH_TOKEN (used by gh), GITHUB_REPOSITORY
 
 NAME="$1"
 TAG="$2"

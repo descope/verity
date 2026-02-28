@@ -8,6 +8,7 @@ import (
 	"io"
 	"os/exec"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 
@@ -29,7 +30,9 @@ func ExtractChartImages(chart config.ChartSpec, overrides map[string]config.Over
 	}
 
 	args := helmTemplateArgs(chart)
-	cmd := exec.CommandContext(context.Background(), "helm", args...)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "helm", args...)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

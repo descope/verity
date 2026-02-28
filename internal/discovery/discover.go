@@ -98,7 +98,7 @@ func LoadVerityConfig(path string) (*config.VerityConfig, error) {
 
 // LoadChartsFile reads chart dependencies from a Helm Chart.yaml file.
 // Only the `dependencies:` field is read; all other Chart.yaml fields are ignored.
-// Returns an empty slice (not an error) if the file does not exist, so callers
+// Returns a nil slice (not an error) if the file does not exist, so callers
 // can pass a default path unconditionally.
 func LoadChartsFile(path string) ([]config.ChartSpec, error) {
 	data, err := os.ReadFile(path)

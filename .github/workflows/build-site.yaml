@@ -104,12 +104,14 @@ jobs:
             # Find the latest patched image in target registry
             REPO="${REGISTRY}/${NAME}"
             PATCHED_TAG=$(crane ls "${REPO}" 2>/dev/null \
-              | grep -E "^${TAG}-patched(-[0-9]+)?$" \
-              | awk -v src="${TAG}-patched" '{
-                  suffix = substr($0, length(src)+1)
-                  n = (suffix ~ /^-[0-9]+$/) ? substr(suffix,2)+0 : 0
-                  print n, $0
-                }' \
+              | awk -v src="${TAG}-patched" '
+                  length($0) >= length(src) && substr($0,1,length(src)) == src {
+                    suffix = substr($0, length(src)+1)
+                    if (suffix == "" || suffix ~ /^-[0-9]+$/) {
+                      n = (suffix ~ /^-[0-9]+$/) ? substr(suffix,2)+0 : 0
+                      print n, $0
+                    }
+                  }' \
               | sort -k1 -n \
               | awk '{print $2}' \
               | tail -1 || true)

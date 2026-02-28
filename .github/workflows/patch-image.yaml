@@ -138,12 +138,14 @@ jobs:
           # Find the latest patched tag for this source tag
           REPO="${TARGET_REGISTRY}/${IMAGE_NAME}"
           PATCHED_TAG=$(crane ls "${REPO}" 2>/dev/null \
-            | grep -E "^${SOURCE_TAG}-patched(-[0-9]+)?$" \
-            | awk -v src="${SOURCE_TAG}-patched" '{
-                suffix = substr($0, length(src)+1)
-                n = (suffix ~ /^-[0-9]+$/) ? substr(suffix,2)+0 : 0
-                print n, $0
-              }' \
+            | awk -v src="${SOURCE_TAG}-patched" '
+                length($0) >= length(src) && substr($0,1,length(src)) == src {
+                  suffix = substr($0, length(src)+1)
+                  if (suffix == "" || suffix ~ /^-[0-9]+$/) {
+                    n = (suffix ~ /^-[0-9]+$/) ? substr(suffix,2)+0 : 0
+                    print n, $0
+                  }
+                }' \
             | sort -k1 -n \
             | awk '{print $2}' \
             | tail -1 || true)
@@ -167,7 +169,11 @@ jobs:
             exit 0
           fi
 
-          VULN_COUNT=$(jq '[.Results[]?.Vulnerabilities // [] | .[]] | length' patched-existing.json 2>/dev/null || echo 0)
+          if ! VULN_COUNT=$(jq '[.Results[]?.Vulnerabilities // [] | .[]] | length' patched-existing.json 2>/dev/null); then
+            echo "Failed to parse Trivy JSON — treating as needs-patch to be safe"
+            echo "needs-patch=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           echo "Existing patched image vulnerabilities: ${VULN_COUNT}"
 
           if [ "$VULN_COUNT" -gt 0 ]; then
