@@ -252,6 +252,39 @@ func latestPatchedTagFromList(tags []string, sourceTag string) string {
 	return bestTag
 }
 
+// nextPatchedTag returns the tag to use when publishing a newly patched image.
+// It finds the current highest-versioned patched tag and increments:
+//   - no existing patched tag      → "<sourceTag>-patched"
+//   - existing "<sourceTag>-patched"   → "<sourceTag>-patched-1"
+//   - existing "<sourceTag>-patched-N" → "<sourceTag>-patched-<N+1>"
+func nextPatchedTag(tags []string, sourceTag string) string {
+	base := regexp.QuoteMeta(sourceTag) + `-patched`
+	pattern := regexp.MustCompile(`^` + base + `(-(\d+))?$`)
+
+	bestN := -1
+	for _, t := range tags {
+		m := pattern.FindStringSubmatch(t)
+		if m == nil {
+			continue
+		}
+		n := 0
+		if m[2] != "" {
+			parsed, err := strconv.Atoi(m[2])
+			if err != nil {
+				continue
+			}
+			n = parsed
+		}
+		if n > bestN {
+			bestN = n
+		}
+	}
+	if bestN < 0 {
+		return sourceTag + "-patched"
+	}
+	return sourceTag + "-patched-" + strconv.Itoa(bestN+1)
+}
+
 func sanitizeFilename(filename string) string {
 	filename = strings.ReplaceAll(filename, "/", "_")
 	filename = strings.ReplaceAll(filename, ":", "_")
