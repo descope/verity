@@ -1,0 +1,155 @@
+name: Orchestrator
+
+# Discovers all images from copa-config.yaml and dispatches an independent
+# patch-image.yaml run for each image+tag combo. Fire-and-forget — does NOT
+# wait for individual patch runs to complete.
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # Nightly at 02:00 UTC
+  push:
+    branches: [main]
+    paths:
+      - 'copa-config.yaml'
+      - '.github/workflows/orchestrator.yaml'
+      - '.github/workflows/patch-image.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  actions: write   # needed to dispatch patch-image.yaml
+
+env:
+  TARGET_REGISTRY: ghcr.io/verity-org
+  STAGING_REGISTRY: ghcr.io/verity-org/cache
+  BUILDKIT_IMAGE: ghcr.io/verity-org/cache/buildkit:buildx-stable-1
+
+jobs:
+  # ── Job 1: Warm caches on both arches + mirror BuildKit ────────────
+  prepare:
+    name: "Prepare (${{ matrix.runner }})"
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            do-mirror: true
+          - runner: ubuntu-24.04-arm
+            do-mirror: false
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install mise
+        uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
+        with:
+          install: true
+          cache: true
+
+      - name: Login to GHCR
+        if: matrix.do-mirror
+        uses: step-security/docker-login-action@c3e677aae8393bc9c81cfdf9709648720ea4bd4d # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Mirror BuildKit to GHCR
+        if: matrix.do-mirror
+        run: |
+          crane copy mirror.gcr.io/moby/buildkit:buildx-stable-1 "${BUILDKIT_IMAGE}" \
+            || crane digest "${BUILDKIT_IMAGE}" > /dev/null \
+            || { echo "Error: no BuildKit available (upstream down, no GHCR mirror)"; exit 1; }
+
+  # ── Job 2: Discover image+tag combos ───────────────────────────────
+  discover:
+    name: Discover Images
+    needs: prepare
+    runs-on: ubuntu-24.04
+    outputs:
+      images: ${{ steps.discover.outputs.images }}
+      count: ${{ steps.discover.outputs.count }}
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install mise
+        uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
+        with:
+          install: true
+          cache: true
+
+      - name: Cache Go modules
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ~/dev/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Build verity
+        run: go build -o verity .
+
+      - name: Discover images
+        id: discover
+        run: |
+          ./verity discover \
+            --config copa-config.yaml \
+            --target-registry "${TARGET_REGISTRY}" \
+            > images.json
+
+          COUNT=$(jq 'length' images.json)
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+          echo "images=$(jq -c . images.json)" >> "$GITHUB_OUTPUT"
+          echo "✓ Discovered ${COUNT} image+tag combos"
+          jq -r '.[] | "  - \(.name): \(.source)"' images.json
+
+  # ── Job 3: Dispatch one patch-image.yaml run per image+tag ─────────
+  dispatch:
+    name: Dispatch Patches
+    needs: discover
+    runs-on: ubuntu-24.04
+    if: needs.discover.outputs.count != '0'
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - name: Dispatch patch-image.yaml for each image
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGES: ${{ needs.discover.outputs.images }}
+        run: |
+          echo "$IMAGES" | jq -c '.[]' | while IFS= read -r image; do
+            NAME=$(echo "$image" | jq -r '.name')
+            SOURCE=$(echo "$image" | jq -r '.source')
+            REGISTRY=$(echo "$image" | jq -r '."target-registry"')
+            PLATFORMS=$(echo "$image" | jq -r '.platforms')
+
+            echo "Dispatching patch for ${NAME}: ${SOURCE}..."
+            gh workflow run patch-image.yaml \
+              --repo "${{ github.repository }}" \
+              --ref "${{ github.ref_name }}" \
+              --field "image-name=${NAME}" \
+              --field "source-ref=${SOURCE}" \
+              --field "target-registry=${REGISTRY}" \
+              --field "platforms=${PLATFORMS}"
+
+            # Throttle to avoid GitHub API rate limits
+            sleep 2
+          done
+          echo "✓ Dispatched ${{ needs.discover.outputs.count }} patch runs"

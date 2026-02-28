@@ -1,85 +1,10 @@
 apiVersion: copa.sh/v1alpha1
 kind: PatchConfig
 
-# ==============================================================================
-# Copa Patch Config — Verity
-# ==============================================================================
-# Covers:
-#   - Helm charts (patched via copa chart workflow)
-#   - Upstream source images (patched individually)
-#
-# Prioritises ghcr.io > quay.io > mirror.gcr.io (docker.io mirror) to avoid
-# Docker Hub rate-limits wherever possible.
-#
-# Copa patchability matrix:
-#   dpkg (Debian/Ubuntu)          ✓  patchable
-#   apk  (full Alpine w/ apk)     ✓  patchable
-#   rpm  (RHEL/UBI/Fedora)        ✓  patchable
-#   distroless (dpkg under hood)  ✓  patchable via tooling container
-#   Alpine-distroless (apk gone)  ✗  NOT patchable
-#   scratch / busybox / Wolfi     ✗  NOT patchable
-# ==============================================================================
-
+# Standalone images to patch. Chart-sourced images are declared in Chart.yaml
+# (dependencies:) and picked up automatically by `verity discover`.
 target:
   registry: "ghcr.io/verity-org"
-
-charts:
-  - name: prometheus
-    version: "28.9.1"
-    repository: "oci://ghcr.io/prometheus-community/charts"
-
-  - name: victoria-logs-single
-    version: "0.11.26"
-    repository: "https://victoriametrics.github.io/helm-charts"
-
-  - name: postgres-operator
-    version: "1.15.1"
-    repository: "https://opensource.zalando.com/postgres-operator/charts/postgres-operator"
-
-overrides:
-
-  # ---------------------------------------------------------------------------
-  #  BUSYBOX-BASED → Copa can't patch busybox; override to -distroless variant
-  #  (Copa CAN patch dpkg-based distroless images via tooling containers)
-  # ---------------------------------------------------------------------------
-  # Prometheus ecosystem ships on quay.io/prometheus/busybox by default.
-  # All Prometheus projects publish a -distroless suffixed tag as well.
-  "prometheus/prometheus":
-    from: "busybox"
-    to: "distroless"
-
-  "prometheus/alertmanager":
-    from: "busybox"
-    to: "distroless"
-
-  "prometheus/node-exporter":
-    from: "busybox"
-    to: "distroless"
-
-  "prometheus/mysqld-exporter":
-    from: "busybox"
-    to: "distroless"
-
-  # Thanos also builds on quay.io/prometheus/busybox
-  "thanos/thanos":
-    from: "busybox"
-    to: "distroless"
-
-  # ---------------------------------------------------------------------------
-  #  DISTROLESS/SCRATCH-LIBC → override to a debian/alpine patchable variant
-  # ---------------------------------------------------------------------------
-  # Vector ships -distroless-libc (default), -debian, -alpine suffixed tags
-  "vectordotdev/vector":
-    from: "distroless-libc"
-    to: "debian"
-
-  # ---------------------------------------------------------------------------
-  #  ALPINE-BASED — Copa CAN patch full Alpine (apk present).
-  #  Override to ubuntu for dpkg-based patching.
-  # ---------------------------------------------------------------------------
-  "grafana/grafana":
-    from: "alpine"
-    to: "ubuntu"
 
 images:
 
