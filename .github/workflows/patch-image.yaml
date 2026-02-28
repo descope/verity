@@ -447,8 +447,8 @@ jobs:
             | awk -v src="${SOURCE_TAG}-patched" '
                 length($0) >= length(src) && substr($0,1,length(src)) == src {
                   suffix = substr($0, length(src)+1)
-                  if (suffix == "" || suffix ~ /^-[0-9]+$/) {
-                    n = (suffix ~ /^-[0-9]+$/) ? substr(suffix,2)+0 : 0
+                  if (suffix == "" || suffix ~ /^-[0-9]{1,9}$/) {
+                    n = (suffix ~ /^-[0-9]{1,9}$/) ? substr(suffix,2)+0 : 0
                     print n
                   }
                 }' \
