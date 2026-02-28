@@ -1,4 +1,5 @@
 name: Patch Image
+run-name: "Patch ${{ inputs.image-name }} (${{ inputs.source-ref }})"
 
 # Reusable per-image lifecycle: scan → patch (matrix) → finalize.
 # Supports both workflow_call (PR inline) and workflow_dispatch (orchestrator).
@@ -442,13 +443,17 @@ jobs:
           MANIFEST_TAG: ${{ steps.manifest.outputs.manifest-tag }}
         run: |
           # Promote from staging manifest tag to target registry
-          FINAL_TAG="${TARGET_REGISTRY}/${IMAGE_NAME}:${SOURCE_TAG}-patched"
+          FINAL_REPO="${TARGET_REGISTRY}/${IMAGE_NAME}"
+          FINAL_TAG="${FINAL_REPO}:${SOURCE_TAG}-patched"
           crane copy "${MANIFEST_TAG}" "${FINAL_TAG}"
           DIGEST=$(crane digest "${FINAL_TAG}")
           echo "✓ Pushed to target: ${FINAL_TAG} (${DIGEST})"
           echo "${FINAL_TAG}" > final-manifest.txt
-          echo "DIGEST=${DIGEST}" >> "$GITHUB_ENV"
-          echo "FINAL_TAG=${FINAL_TAG}" >> "$GITHUB_ENV"
+          {
+            echo "DIGEST=${DIGEST}"
+            echo "FINAL_TAG=${FINAL_TAG}"
+            echo "FINAL_REPO=${FINAL_REPO}"
+          } >> "$GITHUB_ENV"
 
       - name: Sign manifest with cosign
         if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false
@@ -463,7 +468,7 @@ jobs:
         if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
-          subject-name: ${{ env.FINAL_TAG }}
+          subject-name: ${{ env.FINAL_REPO }}
           subject-digest: ${{ env.DIGEST }}
           predicate-type: https://cyclonedx.org/bom
           predicate-path: sbom.json
