@@ -1,0 +1,242 @@
+name: PR Test
+
+# Inline PR validation: discover → patch (via workflow_call matrix) → validate.
+# Uses the reusable patch-image.yaml at PR scale (<60 combos × 4 jobs = <240 < 256 limit).
+
+on:
+  pull_request:
+    paths:
+      - 'copa-config.yaml'
+      - '.github/workflows/**'
+      - 'internal/**'
+      - 'cmd/**'
+      - 'main.go'
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  pull-requests: write
+
+env:
+  TARGET_REGISTRY: ghcr.io/verity-org
+  STAGING_REGISTRY: ghcr.io/verity-org/cache
+
+jobs:
+  # ── Job 1: Discover image+tag combos ───────────────────────────────
+  discover:
+    name: Discover Images
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.discover.outputs.matrix }}
+      count: ${{ steps.discover.outputs.count }}
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install mise
+        uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
+        with:
+          install: true
+          cache: true
+
+      - name: Cache Go modules
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ~/dev/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Build verity
+        run: go build -o verity .
+
+      - name: Discover images
+        id: discover
+        run: |
+          ./verity discover \
+            --config copa-config.yaml \
+            --target-registry "${TARGET_REGISTRY}" \
+            > images.json
+
+          COUNT=$(jq 'length' images.json)
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+          echo "✓ Discovered ${COUNT} image+tag combos for PR testing"
+
+          # Build workflow_call matrix from discovered images
+          MATRIX=$(jq -c '[.[] | {
+            "image-name": .name,
+            "source-ref": .source,
+            "target-registry": ."target-registry",
+            "platforms": .platforms,
+            "artifact-suffix": ("-" + .name + "-" + (.source | split(":") | .[-1]))
+          }]' images.json)
+          echo "matrix={\"include\":${MATRIX}}" >> "$GITHUB_OUTPUT"
+
+  # ── Job 2: Patch each image via reusable workflow ──────────────────
+  patch-image:
+    name: "Patch ${{ matrix.image-name }}"
+    needs: discover
+    if: needs.discover.outputs.count != '0'
+    uses: ./.github/workflows/patch-image.yaml
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
+    with:
+      image-name: ${{ matrix.image-name }}
+      source-ref: ${{ matrix.source-ref }}
+      target-registry: ${{ matrix.target-registry }}
+      platforms: ${{ matrix.platforms }}
+      is-pr: true
+      artifact-suffix: ${{ matrix.artifact-suffix }}
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write
+
+  # ── Job 3: Validate and write PR summary ───────────────────────────
+  validate:
+    name: Validate PR
+    needs: [discover, patch-image]
+    if: always() && needs.discover.outputs.count != '0'
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install mise
+        uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
+        with:
+          install: true
+          cache: true
+
+      - name: Cache Go modules
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ~/dev/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Cache npm dependencies
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('site/package-lock.json') }}
+          restore-keys: npm-${{ runner.os }}-
+
+      - name: Build verity
+        run: go build -o verity .
+
+      - name: Download all PR patch artifacts
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          pattern: pr-patch-*
+          path: ./pr-artifacts/
+          merge-multiple: false
+
+      - name: Build images.json from discovered combos
+        run: |
+          mkdir -p .verity reports post-reports
+
+          # Reconstruct images.json from discovered images
+          ./verity discover \
+            --config copa-config.yaml \
+            --target-registry "${TARGET_REGISTRY}" \
+            > discovered.json
+
+          jq '[.[] | {
+            original: .source,
+            patched: (."target-registry" + "/" + .name + ":" + (.source | split(":") | .[-1]) + "-patched"),
+            report: ((.source | gsub("[/:]"; "_")) + ".json")
+          }]' discovered.json > .verity/images.json
+
+          # Copy pre-reports: filename must match sanitize(source) to align with images.json "report" field
+          find ./pr-artifacts -name "pre.json" | while IFS= read -r f; do
+            artifact_dir=$(basename "$(dirname "$f")")
+            # Match artifact dir to images.json entry by name+tag
+            source_ref=$(jq -r --arg d "$artifact_dir" \
+              '.[] | select((.name + "-" + (.source | split(":") | .[-1])) == ($d | ltrimstr("pr-patch-"))) | .source' \
+              discovered.json 2>/dev/null | head -1)
+            if [ -n "$source_ref" ] && [ "$source_ref" != "null" ]; then
+              safe=$(echo "$source_ref" | sed 's/[\/:]/_/g')
+              cp "$f" "reports/${safe}.json" 2>/dev/null || true
+            fi
+          done
+
+          # Copy post-reports: filename must be sanitize(patchedRef).json
+          find ./pr-artifacts -name "post.json" | while IFS= read -r f; do
+            artifact_dir=$(basename "$(dirname "$f")")
+            patched_ref=$(jq -r --arg d "$artifact_dir" \
+              '.[] | select((.name + "-" + (.source | split(":") | .[-1])) == ($d | ltrimstr("pr-patch-"))) | .patched' \
+              .verity/images.json 2>/dev/null | head -1)
+            if [ -n "$patched_ref" ] && [ "$patched_ref" != "null" ]; then
+              safe=$(echo "$patched_ref" | sed 's/[\/:]/_/g')
+              cp "$f" "post-reports/${safe}.json" 2>/dev/null || true
+            fi
+          done
+
+      - name: Generate catalog
+        run: |
+          ./verity catalog \
+            --images-json .verity/images.json \
+            --reports-dir ./reports \
+            --post-reports-dir ./post-reports \
+            --registry "${TARGET_REGISTRY}" \
+            --output site/src/data/catalog.json
+
+      - name: Build site
+        working-directory: site
+        run: npm ci && npm run build
+
+      - name: Write PR summary
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PATCH_RESULT: ${{ needs.patch-image.result }}
+        run: |
+          {
+            echo "## Verity PR Test Results"
+            echo ""
+            if [ "$PATCH_RESULT" = "success" ]; then
+              echo "✅ All patch jobs succeeded"
+            else
+              echo "⚠️ Some patch jobs did not succeed (result: ${PATCH_RESULT})"
+            fi
+            echo ""
+            echo "### Images Discovered"
+            echo ""
+            echo "| Name | Source | Platforms |"
+            echo "|------|--------|-----------|"
+            jq -r '.[] | "| \(.name) | \(.source) | \(.platforms) |"' discovered.json
+            echo ""
+            echo "### Vulnerability Summary"
+            echo ""
+            TOTAL_BEFORE=$(jq '.summary.totalVulnsBefore' site/src/data/catalog.json)
+            TOTAL_AFTER=$(jq '.summary.totalVulnsAfter' site/src/data/catalog.json)
+            FIXED=$(jq '.summary.fixedVulns' site/src/data/catalog.json)
+            echo "- **Before patching:** ${TOTAL_BEFORE} vulnerabilities"
+            echo "- **After patching:** ${TOTAL_AFTER} vulnerabilities"
+            echo "- **Fixed:** ${FIXED} vulnerabilities"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload PR test artifacts
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: pr-validation-results
+          path: |
+            .verity/images.json
+            site/src/data/catalog.json
+          retention-days: 7

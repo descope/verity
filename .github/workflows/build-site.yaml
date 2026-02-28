@@ -1,0 +1,188 @@
+name: Build Site
+
+# Assembles the vulnerability catalog from three independent sources:
+#   1. copa-config.yaml  — source of truth for intended images (verity discover)
+#   2. reports branch    — pre/post Trivy scan reports written by patch-image.yaml
+#   3. Registry          — crane to confirm patched images are actually published
+#
+# Fully decoupled from patching; runs on its own schedule or manually.
+
+on:
+  schedule:
+    - cron: '30 3 * * *'   # 30 min after nightly patches start
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+  pages: write
+  id-token: write
+
+env:
+  TARGET_REGISTRY: ghcr.io/verity-org
+
+jobs:
+  # ── Job 1: Build catalog and site ──────────────────────────────────
+  catalog:
+    name: Build Catalog
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout main (copa-config + source)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: main
+
+      - name: Checkout reports branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: reports
+          path: ./reports-branch
+          # Clone only the reports directory (sparse checkout)
+          sparse-checkout: reports
+          sparse-checkout-cone-mode: false
+
+      - name: Install mise
+        uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
+        with:
+          install: true
+          cache: true
+
+      - name: Cache npm dependencies
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('site/package-lock.json') }}
+          restore-keys: npm-${{ runner.os }}-
+
+      - name: Cache Go modules
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ~/dev/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Login to GHCR
+        uses: step-security/docker-login-action@c3e677aae8393bc9c81cfdf9709648720ea4bd4d # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build verity
+        run: go build -o verity .
+
+      - name: Discover intended images
+        run: |
+          ./verity discover \
+            --config copa-config.yaml \
+            --target-registry "${TARGET_REGISTRY}" \
+            > discovered.json
+
+          COUNT=$(jq 'length' discovered.json)
+          echo "✓ Discovered ${COUNT} image+tag combos"
+
+      - name: Build images.json (cross-reference registry with reports)
+        run: |
+          mkdir -p .verity
+
+          jq -c '.[]' discovered.json | while IFS= read -r img; do
+            NAME=$(echo "$img" | jq -r '.name')
+            SOURCE=$(echo "$img" | jq -r '.source')
+            TAG="${SOURCE##*:}"
+            REGISTRY=$(echo "$img" | jq -r '."target-registry"')
+
+            # Find the latest patched image in target registry
+            REPO="${REGISTRY}/${NAME}"
+            PATCHED_TAG=$(crane ls "${REPO}" 2>/dev/null \
+              | awk -v src="${TAG}-patched" '
+                  length($0) >= length(src) && substr($0,1,length(src)) == src {
+                    suffix = substr($0, length(src)+1)
+                    if (suffix == "" || suffix ~ /^-[0-9]+$/) {
+                      n = (suffix ~ /^-[0-9]+$/) ? substr(suffix,2)+0 : 0
+                      print n, $0
+                    }
+                  }' \
+              | sort -k1 -n \
+              | awk '{print $2}' \
+              | tail -1 || true)
+
+            if [ -n "$PATCHED_TAG" ]; then
+              PATCHED_REF="${REPO}:${PATCHED_TAG}"
+            else
+              PATCHED_REF=""
+            fi
+
+            jq -n \
+              --arg original "$SOURCE" \
+              --arg patched "$PATCHED_REF" \
+              --arg report "${NAME}/${TAG}/pre.json" \
+              --arg post_report "reports/${NAME}/${TAG}/post.json" \
+              '{original: $original, patched: $patched, report: $report, "post-report": $post_report}'
+
+          done | jq -s '.' > .verity/images.json
+
+          echo "✓ Built images.json with $(jq 'length' .verity/images.json) entries"
+
+      - name: Flatten post-reports for catalog
+        run: |
+          mkdir -p .verity/post-reports
+          jq -c '.[]' .verity/images.json | while IFS= read -r entry; do
+            patched=$(echo "$entry" | jq -r '.patched')
+            post_report=$(echo "$entry" | jq -r '."post-report"')
+            if [ -n "$patched" ] && [ "$patched" != "null" ] && [ -f "./reports-branch/${post_report}" ]; then
+              safe=$(echo "$patched" | sed 's/[\/:]/_/g')
+              cp "./reports-branch/${post_report}" ".verity/post-reports/${safe}.json"
+            fi
+          done
+          echo "✓ Flattened $(find .verity/post-reports/ -name '*.json' 2>/dev/null | wc -l | tr -d ' ') post-reports"
+
+      - name: Generate catalog
+        run: |
+          ./verity catalog \
+            --images-json .verity/images.json \
+            --reports-dir ./reports-branch/reports \
+            --post-reports-dir .verity/post-reports \
+            --registry "${TARGET_REGISTRY}" \
+            --output site/src/data/catalog.json
+          echo "✓ Catalog generated"
+
+      - name: Build site
+        working-directory: site
+        run: npm ci && npm run build
+
+      - name: Upload Pages artifact
+        uses: ./.github/actions/upload-pages-artifact
+        with:
+          path: site/dist
+          overwrite: "true"
+
+  # ── Job 2: Deploy to GitHub Pages ──────────────────────────────────
+  deploy:
+    name: Deploy Site
+    needs: catalog
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
+        id: deployment

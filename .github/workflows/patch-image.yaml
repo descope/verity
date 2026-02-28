@@ -1,0 +1,493 @@
+name: Patch Image
+
+# Reusable per-image lifecycle: scan → patch (matrix) → finalize.
+# Supports both workflow_call (PR inline) and workflow_dispatch (orchestrator).
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        description: "Short name of the image (e.g., nginx)"
+        required: true
+        type: string
+      source-ref:
+        description: "Full source image reference (e.g., mirror.gcr.io/library/nginx:1.29.3)"
+        required: true
+        type: string
+      target-registry:
+        description: "Target registry for final patched images (e.g., ghcr.io/verity-org)"
+        required: true
+        type: string
+      platforms:
+        description: "Comma-separated platforms (e.g., linux/amd64,linux/arm64)"
+        required: false
+        type: string
+        default: "linux/amd64,linux/arm64"
+      is-pr:
+        description: "Set true when called from a PR; skips signing/attestation and reports branch push"
+        required: false
+        type: boolean
+        default: false
+      artifact-suffix:
+        description: "Unique suffix appended to artifact names to avoid collisions in matrix runs"
+        required: false
+        type: string
+        default: ""
+
+  workflow_dispatch:
+    inputs:
+      image-name:
+        description: "Short name of the image (e.g., nginx)"
+        required: true
+        type: string
+      source-ref:
+        description: "Full source image reference (e.g., mirror.gcr.io/library/nginx:1.29.3)"
+        required: true
+        type: string
+      target-registry:
+        description: "Target registry for final patched images (e.g., ghcr.io/verity-org)"
+        required: true
+        type: string
+      platforms:
+        description: "Comma-separated platforms (e.g., linux/amd64,linux/arm64)"
+        required: false
+        type: string
+        default: "linux/amd64,linux/arm64"
+
+permissions:
+  contents: write       # push to reports branch
+  packages: write       # push images to GHCR
+  id-token: write       # cosign keyless signing + actions/attest
+  attestations: write   # actions/attest
+
+jobs:
+  # ── Job 1: Scan ────────────────────────────────────────────────────
+  scan:
+    name: "Scan ${{ inputs.image-name }}"
+    runs-on: ubuntu-24.04
+    outputs:
+      needs-patch: ${{ steps.check.outputs.needs-patch }}
+      source-tag: ${{ steps.parse.outputs.source-tag }}
+      staging-registry: ${{ steps.parse.outputs.staging-registry }}
+      prev-report-exists: ${{ steps.prev-report.outputs.exists }}
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: |
+            mise.toml
+            .github/
+          sparse-checkout-cone-mode: false
+
+      - name: Install mise
+        uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
+        with:
+          install: true
+          cache: true
+
+      - name: Login to GHCR
+        uses: step-security/docker-login-action@c3e677aae8393bc9c81cfdf9709648720ea4bd4d # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Parse inputs
+        id: parse
+        run: |
+          SOURCE_REF="${{ inputs.source-ref }}"
+          SOURCE_TAG="${SOURCE_REF##*:}"
+          echo "source-tag=${SOURCE_TAG}" >> "$GITHUB_OUTPUT"
+
+          TARGET_REGISTRY="${{ inputs.target-registry }}"
+          STAGING_REGISTRY="${TARGET_REGISTRY}/cache"
+          echo "staging-registry=${STAGING_REGISTRY}" >> "$GITHUB_OUTPUT"
+
+      - name: Get Trivy cache date key
+        id: trivy-date
+        run: echo "date=$(date -u '+%Y-%m-%d-%H')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Trivy database
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ steps.trivy-date.outputs.date }}
+          restore-keys: trivy-db-
+
+      - name: Scan source image
+        run: |
+          trivy image \
+            --vuln-type os,library \
+            --format json \
+            --quiet \
+            "${{ inputs.source-ref }}" > pre.json
+          echo "✓ Source scan: $(jq '[.Results[].Vulnerabilities // [] | .[]] | length' pre.json) vulnerabilities"
+
+      - name: Check existing patched image for vulnerabilities
+        id: check
+        env:
+          IMAGE_NAME: ${{ inputs.image-name }}
+          SOURCE_TAG: ${{ steps.parse.outputs.source-tag }}
+          TARGET_REGISTRY: ${{ inputs.target-registry }}
+        run: |
+          # Find the latest patched tag for this source tag
+          REPO="${TARGET_REGISTRY}/${IMAGE_NAME}"
+          PATCHED_TAG=$(crane ls "${REPO}" 2>/dev/null \
+            | awk -v src="${SOURCE_TAG}-patched" '
+                length($0) >= length(src) && substr($0,1,length(src)) == src {
+                  suffix = substr($0, length(src)+1)
+                  if (suffix == "" || suffix ~ /^-[0-9]+$/) {
+                    n = (suffix ~ /^-[0-9]+$/) ? substr(suffix,2)+0 : 0
+                    print n, $0
+                  }
+                }' \
+            | sort -k1 -n \
+            | awk '{print $2}' \
+            | tail -1 || true)
+
+          if [ -z "$PATCHED_TAG" ]; then
+            echo "No existing patched image found — needs patching"
+            echo "needs-patch=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Found existing patched image: ${REPO}:${PATCHED_TAG}"
+
+          # Scan existing patched image
+          if ! trivy image \
+            --vuln-type os,library \
+            --format json \
+            --quiet \
+            "${REPO}:${PATCHED_TAG}" > patched-existing.json 2>/dev/null; then
+            echo "Trivy scan failed — treating as needs-patch to be safe"
+            echo "needs-patch=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! VULN_COUNT=$(jq '[.Results[]?.Vulnerabilities // [] | .[]] | length' patched-existing.json 2>/dev/null); then
+            echo "Failed to parse Trivy JSON — treating as needs-patch to be safe"
+            echo "needs-patch=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Existing patched image vulnerabilities: ${VULN_COUNT}"
+
+          if [ "$VULN_COUNT" -gt 0 ]; then
+            echo "Vulnerabilities found in patched image — needs re-patching"
+            echo "needs-patch=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Patched image is clean — skipping"
+            echo "needs-patch=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download previous post-patch report from reports branch
+        id: prev-report
+        if: steps.check.outputs.needs-patch == 'true'
+        env:
+          IMAGE_NAME: ${{ inputs.image-name }}
+          SOURCE_TAG: ${{ steps.parse.outputs.source-tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh api \
+            "repos/${{ github.repository }}/contents/reports/${IMAGE_NAME}/${SOURCE_TAG}/post.json?ref=reports" \
+            --jq '.content' 2>/dev/null \
+            | base64 -d > prev-post.json; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "✓ Previous post report downloaded ($(wc -c < prev-post.json) bytes)"
+          else
+            echo '{"Results":[]}' > prev-post.json
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No previous post report found — treating as first-time patch"
+          fi
+
+      - name: Upload scan artifacts
+        if: steps.check.outputs.needs-patch == 'true'
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: scan-${{ inputs.image-name }}-${{ steps.parse.outputs.source-tag }}${{ inputs.artifact-suffix }}
+          path: |
+            pre.json
+            prev-post.json
+          retention-days: 1
+
+  # ── Job 2: Patch (per-platform matrix) ────────────────────────────
+  patch:
+    name: "Patch ${{ inputs.image-name }} (${{ matrix.platform }})"
+    needs: scan
+    if: needs.scan.outputs.needs-patch == 'true'
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    # Filter to only requested platforms
+    # (uses the include list but skips platforms not in inputs.platforms)
+
+    steps:
+      - name: Check if this platform is requested
+        id: platform-check
+        run: |
+          if echo "${{ inputs.platforms }}" | grep -q "${{ matrix.platform }}"; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Harden the runner (Audit all outbound calls)
+        if: steps.platform-check.outputs.enabled == 'true'
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        if: steps.platform-check.outputs.enabled == 'true'
+        id: checkout
+        continue-on-error: true
+
+      - name: Retry checkout on failure
+        if: steps.platform-check.outputs.enabled == 'true' && steps.checkout.outcome == 'failure'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install mise
+        if: steps.platform-check.outputs.enabled == 'true'
+        uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
+        with:
+          install: true
+          cache: true
+
+      - name: Cache Go modules
+        if: steps.platform-check.outputs.enabled == 'true'
+        uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ~/dev/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Login to GHCR
+        if: steps.platform-check.outputs.enabled == 'true'
+        uses: step-security/docker-login-action@c3e677aae8393bc9c81cfdf9709648720ea4bd4d # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup BuildKit
+        if: steps.platform-check.outputs.enabled == 'true'
+        run: |
+          BUILDKIT_IMAGE="${{ needs.scan.outputs.staging-registry }}/buildkit:buildx-stable-1"
+          docker buildx create \
+            --name copa-builder \
+            --driver docker-container \
+            --driver-opt network=host \
+            --driver-opt "image=${BUILDKIT_IMAGE}" \
+            --buildkitd-flags '--allow-insecure-entitlement network.host' \
+            --use
+          docker buildx inspect --bootstrap
+
+      - name: Download scan artifacts
+        if: steps.platform-check.outputs.enabled == 'true'
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: scan-${{ inputs.image-name }}-${{ needs.scan.outputs.source-tag }}${{ inputs.artifact-suffix }}
+          path: .
+
+      - name: Setup binaries
+        if: steps.platform-check.outputs.enabled == 'true'
+        uses: ./.github/actions/setup-binaries
+        with:
+          github-token: ${{ github.token }}
+
+      - name: Patch image
+        if: steps.platform-check.outputs.enabled == 'true'
+        env:
+          COPA_EXPERIMENTAL: "1"
+          PLATFORM: ${{ matrix.platform }}
+          SOURCE: ${{ inputs.source-ref }}
+          IMAGE_NAME: ${{ inputs.image-name }}
+          STAGING_REGISTRY: ${{ needs.scan.outputs.staging-registry }}
+        run: |
+          # copa-discover.sh wrote the report at reports/<sanitized-source>.json;
+          # patch-image.sh expects REPORT_FILE derived the same way.
+          mkdir -p reports
+          cp pre.json "reports/$(echo "${SOURCE}" | sed 's/[\/:]/_/g').json"
+          .github/scripts/patch-image.sh
+
+  # ── Job 3: Finalize ───────────────────────────────────────────────
+  finalize:
+    name: "Finalize ${{ inputs.image-name }}"
+    needs: [scan, patch]
+    if: needs.scan.outputs.needs-patch == 'true' && needs.patch.result == 'success'
+    runs-on: ubuntu-24.04
+    # Serialize report writes for the same image+tag to prevent SHA-based TOCTOU
+    # conflicts in push-reports.sh (GitHub Contents API requires the current SHA).
+    concurrency:
+      group: reports-${{ inputs.image-name }}-${{ needs.scan.outputs.source-tag }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: mise.toml
+          sparse-checkout-cone-mode: false
+
+      - name: Install mise
+        uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
+        with:
+          install: true
+          cache: true
+
+      - name: Login to GHCR
+        uses: step-security/docker-login-action@c3e677aae8393bc9c81cfdf9709648720ea4bd4d # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download scan artifacts
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: scan-${{ inputs.image-name }}-${{ needs.scan.outputs.source-tag }}${{ inputs.artifact-suffix }}
+          path: .
+
+      - name: Create multi-arch manifest
+        id: manifest
+        env:
+          IMAGE_NAME: ${{ inputs.image-name }}
+          SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
+          STAGING_REGISTRY: ${{ needs.scan.outputs.staging-registry }}
+          TARGET_REGISTRY: ${{ inputs.target-registry }}
+          IS_PR: ${{ inputs.is-pr }}
+          PLATFORMS: ${{ inputs.platforms }}
+        run: |
+          SAFE_IMAGE=$(echo "$IMAGE_NAME" | tr '/: ' '---')
+
+          # Collect platform-specific staging images
+          SOURCE_TAGS=""
+          IFS=',' read -ra PLATS <<< "$PLATFORMS"
+          for plat in "${PLATS[@]}"; do
+            arch=$(echo "$plat" | cut -d/ -f2)
+            tag="${STAGING_REGISTRY}:${SAFE_IMAGE}-${SOURCE_TAG}-patched-${arch}"
+            if crane digest "$tag" > /dev/null 2>&1; then
+              SOURCE_TAGS="${SOURCE_TAGS} ${tag}"
+            else
+              echo "⚠️  Missing platform image: $tag"
+              exit 1
+            fi
+          done
+
+          # Determine target tag
+          if [ "$IS_PR" = "true" ]; then
+            MANIFEST_TAG="${STAGING_REGISTRY}:${SAFE_IMAGE}-${SOURCE_TAG}-patched"
+          else
+            MANIFEST_TAG="${TARGET_REGISTRY}/${IMAGE_NAME}:${SOURCE_TAG}-patched"
+          fi
+
+          # shellcheck disable=SC2086
+          docker buildx imagetools create --tag "${MANIFEST_TAG}" ${SOURCE_TAGS}
+          echo "✓ Created manifest: ${MANIFEST_TAG}"
+          echo "manifest-tag=${MANIFEST_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Post-scan new patched image
+        id: postscan
+        env:
+          MANIFEST_TAG: ${{ steps.manifest.outputs.manifest-tag }}
+        run: |
+          trivy image \
+            --vuln-type os,library \
+            --format json \
+            --quiet \
+            "${MANIFEST_TAG}" > post.json
+          NEW_VULNS=$(jq '[.Results[]?.Vulnerabilities // [] | .[]] | length' post.json)
+          echo "Post-patch vulnerabilities: ${NEW_VULNS}"
+          echo "vuln-count=${NEW_VULNS}" >> "$GITHUB_OUTPUT"
+
+      - name: Compare with previous post-patch report
+        id: compare
+        run: |
+          # Extract sorted vuln IDs from both reports for comparison
+          NEW_IDS=$(jq -r '[.Results[]?.Vulnerabilities // [] | .[] | .VulnerabilityID] | sort | .[]' post.json | sha256sum)
+          PREV_IDS=$(jq -r '[.Results[]?.Vulnerabilities // [] | .[] | .VulnerabilityID] | sort | .[]' prev-post.json 2>/dev/null | sha256sum || echo "")
+
+          PREV_EXISTED="${{ needs.scan.outputs.prev-report-exists }}"
+
+          if [ "$PREV_EXISTED" = "true" ] && [ "$NEW_IDS" = "$PREV_IDS" ]; then
+            echo "Vuln set unchanged — discarding new image (no-op)"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Vuln set changed (or first time) — publishing"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push manifest to target registry
+        if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false
+        env:
+          IMAGE_NAME: ${{ inputs.image-name }}
+          SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
+          TARGET_REGISTRY: ${{ inputs.target-registry }}
+          MANIFEST_TAG: ${{ steps.manifest.outputs.manifest-tag }}
+        run: |
+          # Promote from staging manifest tag to target registry
+          FINAL_TAG="${TARGET_REGISTRY}/${IMAGE_NAME}:${SOURCE_TAG}-patched"
+          crane copy "${MANIFEST_TAG}" "${FINAL_TAG}"
+          DIGEST=$(crane digest "${FINAL_TAG}")
+          echo "✓ Pushed to target: ${FINAL_TAG} (${DIGEST})"
+          echo "${FINAL_TAG}" > final-manifest.txt
+          echo "DIGEST=${DIGEST}" >> "$GITHUB_ENV"
+          echo "FINAL_TAG=${FINAL_TAG}" >> "$GITHUB_ENV"
+
+      - name: Sign manifest with cosign
+        if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false
+        run: cosign sign --yes "${{ env.FINAL_TAG }}"
+
+      - name: Generate SBOM
+        if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false
+        run: |
+          syft "${{ env.FINAL_TAG }}@${{ env.DIGEST }}" -o cyclonedx-json=sbom.json
+
+      - name: Attest SBOM
+        if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-name: ${{ env.FINAL_TAG }}
+          subject-digest: ${{ env.DIGEST }}
+          predicate-type: https://cyclonedx.org/bom
+          predicate-path: sbom.json
+          push-to-registry: true
+
+      - name: Push reports to reports branch
+        if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false
+        env:
+          IMAGE_NAME: ${{ inputs.image-name }}
+          SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash .github/scripts/push-reports.sh \
+            "$IMAGE_NAME" \
+            "$SOURCE_TAG" \
+            pre.json \
+            post.json
+
+      - name: Upload PR scan artifacts
+        if: inputs.is-pr == true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: pr-patch-${{ inputs.image-name }}-${{ needs.scan.outputs.source-tag }}${{ inputs.artifact-suffix }}
+          path: |
+            pre.json
+            post.json
+          retention-days: 7

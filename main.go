@@ -16,6 +16,7 @@ func main() {
 		Commands: []*cli.Command{
 			cmd.ScanCommand,
 			cmd.CatalogCommand,
+			cmd.DiscoverCommand,
 		},
 		Version: "2.0.0",
 	}

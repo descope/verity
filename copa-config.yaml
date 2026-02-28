@@ -1,28 +1,10 @@
 apiVersion: copa.sh/v1alpha1
 kind: PatchConfig
 
-# Strategy: Pattern-based with maxTags to automatically patch the latest 3 versions
-# This auto-updates as new versions are released without manual version updates
+# Standalone images to patch. Chart-sourced images are declared in Chart.yaml
+# (dependencies:) and picked up automatically by `verity discover`.
 target:
   registry: "ghcr.io/verity-org"
-
-charts:
-  - name: prometheus
-    version: "28.9.1"
-    repository: "oci://ghcr.io/prometheus-community/charts"
-
-  - name: victoria-logs-single
-    version: "0.11.26"
-    repository: "https://victoriametrics.github.io/helm-charts"
-
-  - name: postgres-operator
-    version: "1.15.1"
-    repository: "https://opensource.zalando.com/postgres-operator/charts/postgres-operator"
-
-overrides:
-  "timberio/vector":
-    from: "distroless-libc"
-    to: "debian"
 
 images:
   # Copa-compatible images (8 total across Debian/Ubuntu/Alpine/distroless bases)

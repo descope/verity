@@ -1,0 +1,21 @@
+apiVersion: v2
+name: verity
+description: Helm charts whose images Verity patches and re-publishes
+type: application
+version: 0.1.0
+
+# Verity extracts all container image references from these charts via
+# `helm template` and patches them alongside the standalone images in
+# copa-config.yaml. This is standard Helm Chart.yaml dependency format.
+dependencies:
+  - name: prometheus
+    version: "28.9.1"
+    repository: "oci://ghcr.io/prometheus-community/charts"
+
+  - name: victoria-logs-single
+    version: "0.11.26"
+    repository: "https://victoriametrics.github.io/helm-charts"
+
+  - name: postgres-operator
+    version: "1.15.1"
+    repository: "https://opensource.zalando.com/postgres-operator/charts/postgres-operator"
