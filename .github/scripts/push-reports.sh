@@ -23,8 +23,13 @@ push_file() {
   local local_file="$2"
   local message="$3"
 
-  local content
-  content=$(base64 < "$local_file" | tr -d '\n')
+  # Write base64 content to a temp file — passing it as a shell argument
+  # fails with "Argument list too long" for large Trivy reports.
+  local tmpfile
+  tmpfile=$(mktemp)
+  # shellcheck disable=SC2064
+  trap "rm -f '${tmpfile}'" RETURN
+  base64 < "$local_file" | tr -d '\n' > "$tmpfile"
 
   # Get current file SHA (required for updates, absent for creates).
   local sha=""
@@ -38,14 +43,14 @@ push_file() {
   if [ -n "$sha" ]; then
     gh api --method PUT "repos/${OWNER}/${REPO}/contents/${remote_path}" \
       --field "message=${message}" \
-      --field "content=${content}" \
+      --field "content=@${tmpfile}" \
       --field "sha=${sha}" \
       --field "branch=${BRANCH}" \
       --silent
   else
     gh api --method PUT "repos/${OWNER}/${REPO}/contents/${remote_path}" \
       --field "message=${message}" \
-      --field "content=${content}" \
+      --field "content=@${tmpfile}" \
       --field "branch=${BRANCH}" \
       --silent
   fi
