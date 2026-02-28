@@ -322,6 +322,11 @@ jobs:
     needs: [scan, patch]
     if: needs.scan.outputs.needs-patch == 'true' && needs.patch.result == 'success'
     runs-on: ubuntu-24.04
+    # Serialize report writes for the same image+tag to prevent SHA-based TOCTOU
+    # conflicts in push-reports.sh (GitHub Contents API requires the current SHA).
+    concurrency:
+      group: reports-${{ inputs.image-name }}-${{ needs.scan.outputs.source-tag }}
+      cancel-in-progress: false
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
