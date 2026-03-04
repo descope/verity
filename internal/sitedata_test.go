@@ -7,7 +7,17 @@ import (
 	"testing"
 )
 
-func TestGenerateSiteDataFromJSON_WithReportsDir(t *testing.T) {
+// generateAndWrite is a test helper that wraps GenerateSiteData + WriteSiteData
+// using the same signature as the old generateAndWrite, so tests remain concise.
+func generateAndWrite(imagesJSON, reportsDir, postReportsDir, registry, outputPath string) error {
+	sd, err := GenerateSiteData(imagesJSON, reportsDir, postReportsDir, registry)
+	if err != nil {
+		return err
+	}
+	return WriteSiteData(sd, outputPath)
+}
+
+func TestGenerateSiteData_WithReportsDir(t *testing.T) {
 	tmpDir := t.TempDir()
 	reportsDir := filepath.Join(tmpDir, "reports")
 	if err := os.MkdirAll(reportsDir, 0o755); err != nil {
@@ -64,9 +74,9 @@ func TestGenerateSiteDataFromJSON_WithReportsDir(t *testing.T) {
 	}
 
 	outputPath := filepath.Join(tmpDir, "catalog.json")
-	err = GenerateSiteDataFromJSON(imagesJSON, reportsDir, "", "ghcr.io/verity-org", outputPath)
+	err = generateAndWrite(imagesJSON, reportsDir, "", "ghcr.io/verity-org", outputPath)
 	if err != nil {
-		t.Fatalf("GenerateSiteDataFromJSON failed: %v", err)
+		t.Fatalf("generateAndWrite failed: %v", err)
 	}
 
 	catalogData, err := os.ReadFile(outputPath)
@@ -101,7 +111,7 @@ func TestGenerateSiteDataFromJSON_WithReportsDir(t *testing.T) {
 	}
 }
 
-func TestGenerateSiteDataFromJSON_BeforeAfter(t *testing.T) {
+func TestGenerateSiteData_BeforeAfter(t *testing.T) {
 	tmpDir := t.TempDir()
 	preDir := filepath.Join(tmpDir, "pre")
 	postDir := filepath.Join(tmpDir, "post")
@@ -168,8 +178,8 @@ func TestGenerateSiteDataFromJSON_BeforeAfter(t *testing.T) {
 	}
 
 	outputPath := filepath.Join(tmpDir, "catalog.json")
-	if err := GenerateSiteDataFromJSON(imagesJSON, preDir, postDir, "ghcr.io/verity-org", outputPath); err != nil {
-		t.Fatalf("GenerateSiteDataFromJSON failed: %v", err)
+	if err := generateAndWrite(imagesJSON, preDir, postDir, "ghcr.io/verity-org", outputPath); err != nil {
+		t.Fatalf("generateAndWrite failed: %v", err)
 	}
 
 	var catalog SiteData
@@ -199,7 +209,7 @@ func TestGenerateSiteDataFromJSON_BeforeAfter(t *testing.T) {
 	}
 }
 
-func TestGenerateSiteDataFromJSON_FallbackWithoutReportsDir(t *testing.T) {
+func TestGenerateSiteData_FallbackWithoutReportsDir(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	imagesJSON := filepath.Join(tmpDir, "images.json")
@@ -219,9 +229,9 @@ func TestGenerateSiteDataFromJSON_FallbackWithoutReportsDir(t *testing.T) {
 	}
 
 	outputPath := filepath.Join(tmpDir, "catalog.json")
-	err = GenerateSiteDataFromJSON(imagesJSON, "", "", "ghcr.io/verity-org", outputPath)
+	err = generateAndWrite(imagesJSON, "", "", "ghcr.io/verity-org", outputPath)
 	if err != nil {
-		t.Fatalf("GenerateSiteDataFromJSON failed: %v", err)
+		t.Fatalf("generateAndWrite failed: %v", err)
 	}
 
 	catalogData, err := os.ReadFile(outputPath)

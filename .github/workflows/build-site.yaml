@@ -150,11 +150,14 @@ jobs:
         run: |
           # integer publishes catalog.json to its own reports branch nightly.
           # A missing file (first run, outage) is a soft failure — section omitted.
-          curl -sf \
+          if curl -sf \
             "https://raw.githubusercontent.com/verity-org/integer/reports/catalog.json" \
-            -o integer-catalog.json \
-            && echo "✓ Fetched integer catalog ($(jq '.images|length' integer-catalog.json) images)" \
-            || { echo "⚠ integer catalog unavailable — skipping integer section"; rm -f integer-catalog.json; }
+            -o integer-catalog.json; then
+            echo "✓ Fetched integer catalog ($(jq '.images|length' integer-catalog.json) images)"
+          else
+            echo "⚠ integer catalog unavailable — skipping integer section"
+            rm -f integer-catalog.json
+          fi
 
       - name: Generate catalog
         run: |

@@ -11,14 +11,14 @@ const { image } = Astro.props;
 const types = [...new Set(image.versions.flatMap((v) => v.variants.map((r) => r.type)))];
 
 // Latest version for the primary ref display
-const latestVersion = image.versions.find((v) => v.latest) ?? image.versions[image.versions.length - 1];
-const defaultVariant = latestVersion?.variants.find((r) => r.type === "default") ?? latestVersion?.variants[0];
+const latestVersion =
+  image.versions.find((v) => v.latest) ?? image.versions[image.versions.length - 1];
+const defaultVariant =
+  latestVersion?.variants.find((r) => r.type === "default") ?? latestVersion?.variants[0];
 // Strip registry prefix (e.g. "ghcr.io/verity-org/") from the ref
 const primaryRef = defaultVariant?.ref?.replace(/^[^/]+\/[^/]+\//, "") ?? "";
 
-const allSuccess = image.versions.every((v) =>
-  v.variants.every((r) => r.status === "success")
-);
+const allSuccess = image.versions.every((v) => v.variants.every((r) => r.status === "success"));
 ---
 
 <div
