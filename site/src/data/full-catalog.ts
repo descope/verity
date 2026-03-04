@@ -48,9 +48,21 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "envoy", source: "integer" },
       { name: "nginx-s3-gateway", source: "copa", upstream: "ghcr.io/nginxinc/nginx-s3-gateway" },
       { name: "haproxy-ingress", source: "copa", upstream: "quay.io/jcmoraisjr/haproxy-ingress" },
-      { name: "ingress-nginx-controller", source: "copa", upstream: "ghcr.io/kubernetes/ingress-nginx/controller" },
-      { name: "kube-webhook-certgen", source: "copa", upstream: "ghcr.io/kubernetes/ingress-nginx/kube-webhook-certgen" },
-      { name: "ingress-defaultbackend", source: "copa", upstream: "ghcr.io/kubernetes/ingress-nginx/defaultbackend" },
+      {
+        name: "ingress-nginx-controller",
+        source: "copa",
+        upstream: "ghcr.io/kubernetes/ingress-nginx/controller",
+      },
+      {
+        name: "kube-webhook-certgen",
+        source: "copa",
+        upstream: "ghcr.io/kubernetes/ingress-nginx/kube-webhook-certgen",
+      },
+      {
+        name: "ingress-defaultbackend",
+        source: "copa",
+        upstream: "ghcr.io/kubernetes/ingress-nginx/defaultbackend",
+      },
       { name: "tomcat", source: "copa", upstream: "mirror.gcr.io/library/tomcat" },
     ],
   },
@@ -65,10 +77,22 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "mongodb", source: "copa", upstream: "mirror.gcr.io/library/mongo" },
       { name: "mariadb", source: "integer" },
       { name: "elasticsearch", source: "copa", upstream: "mirror.gcr.io/library/elasticsearch" },
-      { name: "opensearch", source: "copa", upstream: "mirror.gcr.io/opensearchproject/opensearch" },
-      { name: "opensearch-dashboards", source: "copa", upstream: "mirror.gcr.io/opensearchproject/opensearch-dashboards" },
+      {
+        name: "opensearch",
+        source: "copa",
+        upstream: "mirror.gcr.io/opensearchproject/opensearch",
+      },
+      {
+        name: "opensearch-dashboards",
+        source: "copa",
+        upstream: "mirror.gcr.io/opensearchproject/opensearch-dashboards",
+      },
       { name: "cockroachdb", source: "copa", upstream: "mirror.gcr.io/cockroachdb/cockroach" },
-      { name: "clickhouse", source: "copa", upstream: "mirror.gcr.io/clickhouse/clickhouse-server" },
+      {
+        name: "clickhouse",
+        source: "copa",
+        upstream: "mirror.gcr.io/clickhouse/clickhouse-server",
+      },
       { name: "rqlite", source: "copa", upstream: "mirror.gcr.io/rqlite/rqlite" },
       { name: "influxdb", source: "integer" },
       { name: "memcached", source: "integer" },
@@ -76,7 +100,11 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "redisinsight", source: "copa", upstream: "mirror.gcr.io/redis/redisinsight" },
       { name: "eck-operator", source: "copa", upstream: "mirror.gcr.io/elastic/eck-operator" },
       { name: "redis (opstree)", source: "copa", upstream: "quay.io/opstree/redis" },
-      { name: "redis-sentinel (opstree)", source: "copa", upstream: "quay.io/opstree/redis-sentinel" },
+      {
+        name: "redis-sentinel (opstree)",
+        source: "copa",
+        upstream: "quay.io/opstree/redis-sentinel",
+      },
       { name: "minio", source: "integer" },
       { name: "minio-client", source: "integer" },
     ],
@@ -87,9 +115,21 @@ export const fullCatalog: FullCatalogCategory[] = [
     label: "Messaging & Streaming",
     images: [
       { name: "rabbitmq", source: "integer" },
-      { name: "rabbitmq-cluster-operator", source: "copa", upstream: "mirror.gcr.io/rabbitmqoperator/cluster-operator" },
-      { name: "rabbitmq-topology-operator", source: "copa", upstream: "mirror.gcr.io/rabbitmqoperator/messaging-topology-operator" },
-      { name: "kafka (confluent)", source: "copa", upstream: "mirror.gcr.io/confluentinc/cp-kafka" },
+      {
+        name: "rabbitmq-cluster-operator",
+        source: "copa",
+        upstream: "mirror.gcr.io/rabbitmqoperator/cluster-operator",
+      },
+      {
+        name: "rabbitmq-topology-operator",
+        source: "copa",
+        upstream: "mirror.gcr.io/rabbitmqoperator/messaging-topology-operator",
+      },
+      {
+        name: "kafka (confluent)",
+        source: "copa",
+        upstream: "mirror.gcr.io/confluentinc/cp-kafka",
+      },
       { name: "strimzi-kafka", source: "copa", upstream: "quay.io/strimzi/kafka" },
       { name: "nats", source: "integer" },
       { name: "zookeeper", source: "copa", upstream: "mirror.gcr.io/library/zookeeper" },
@@ -104,23 +144,67 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "helm", source: "integer" },
       { name: "etcd", source: "integer" },
       { name: "karpenter", source: "copa", upstream: "ghcr.io/aws/karpenter" },
-      { name: "cluster-autoscaler", source: "copa", upstream: "ghcr.io/kubernetes/autoscaler/cluster-autoscaler" },
+      {
+        name: "cluster-autoscaler",
+        source: "copa",
+        upstream: "ghcr.io/kubernetes/autoscaler/cluster-autoscaler",
+      },
       { name: "external-dns", source: "copa", upstream: "ghcr.io/kubernetes-sigs/external-dns" },
-      { name: "kube-state-metrics", source: "copa", upstream: "ghcr.io/kubernetes/kube-state-metrics/kube-state-metrics" },
-      { name: "kubernetes-reflector", source: "copa", upstream: "ghcr.io/emberstack/kubernetes-reflector" },
-      { name: "secrets-store-csi-driver", source: "copa", upstream: "ghcr.io/kubernetes-sigs/secrets-store-csi-driver" },
-      { name: "secrets-store-csi-provider-gcp", source: "copa", upstream: "ghcr.io/googlecloudplatform/secrets-store-csi-driver-provider-gcp" },
+      {
+        name: "kube-state-metrics",
+        source: "copa",
+        upstream: "ghcr.io/kubernetes/kube-state-metrics/kube-state-metrics",
+      },
+      {
+        name: "kubernetes-reflector",
+        source: "copa",
+        upstream: "ghcr.io/emberstack/kubernetes-reflector",
+      },
+      {
+        name: "secrets-store-csi-driver",
+        source: "copa",
+        upstream: "ghcr.io/kubernetes-sigs/secrets-store-csi-driver",
+      },
+      {
+        name: "secrets-store-csi-provider-gcp",
+        source: "copa",
+        upstream: "ghcr.io/googlecloudplatform/secrets-store-csi-driver-provider-gcp",
+      },
       { name: "k8s-sidecar", source: "copa", upstream: "ghcr.io/kiwigrid/k8s-sidecar" },
       { name: "configmap-reload", source: "copa", upstream: "ghcr.io/jimmidyson/configmap-reload" },
-      { name: "node-feature-discovery", source: "copa", upstream: "ghcr.io/kubernetes-sigs/node-feature-discovery" },
+      {
+        name: "node-feature-discovery",
+        source: "copa",
+        upstream: "ghcr.io/kubernetes-sigs/node-feature-discovery",
+      },
       { name: "k3s", source: "copa", upstream: "mirror.gcr.io/rancher/k3s" },
       { name: "crossplane", source: "copa", upstream: "mirror.gcr.io/crossplane/crossplane" },
       { name: "terraform", source: "integer" },
-      { name: "eks-distro-coredns", source: "copa", upstream: "ghcr.io/aws/eks-distro/coredns/coredns" },
-      { name: "eks-distro-kube-apiserver", source: "copa", upstream: "ghcr.io/aws/eks-distro/kubernetes/kube-apiserver" },
-      { name: "eks-distro-kube-scheduler", source: "copa", upstream: "ghcr.io/aws/eks-distro/kubernetes/kube-scheduler" },
-      { name: "eks-distro-kube-proxy", source: "copa", upstream: "ghcr.io/aws/eks-distro/kubernetes/kube-proxy" },
-      { name: "eks-distro-csi-node-driver-registrar", source: "copa", upstream: "ghcr.io/aws/eks-distro/kubernetes-csi/node-driver-registrar" },
+      {
+        name: "eks-distro-coredns",
+        source: "copa",
+        upstream: "ghcr.io/aws/eks-distro/coredns/coredns",
+      },
+      {
+        name: "eks-distro-kube-apiserver",
+        source: "copa",
+        upstream: "ghcr.io/aws/eks-distro/kubernetes/kube-apiserver",
+      },
+      {
+        name: "eks-distro-kube-scheduler",
+        source: "copa",
+        upstream: "ghcr.io/aws/eks-distro/kubernetes/kube-scheduler",
+      },
+      {
+        name: "eks-distro-kube-proxy",
+        source: "copa",
+        upstream: "ghcr.io/aws/eks-distro/kubernetes/kube-proxy",
+      },
+      {
+        name: "eks-distro-csi-node-driver-registrar",
+        source: "copa",
+        upstream: "ghcr.io/aws/eks-distro/kubernetes-csi/node-driver-registrar",
+      },
     ],
   },
 
@@ -137,13 +221,25 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "cilium-hubble-ui", source: "copa", upstream: "quay.io/cilium/hubble-ui" },
       { name: "calico-node", source: "copa", upstream: "quay.io/calico/node" },
       { name: "calico-cni", source: "copa", upstream: "quay.io/calico/cni" },
-      { name: "calico-kube-controllers", source: "copa", upstream: "quay.io/calico/kube-controllers" },
+      {
+        name: "calico-kube-controllers",
+        source: "copa",
+        upstream: "quay.io/calico/kube-controllers",
+      },
       { name: "calico-typha", source: "copa", upstream: "quay.io/calico/typha" },
       { name: "calico-apiserver", source: "copa", upstream: "quay.io/calico/apiserver" },
       { name: "calico-csi", source: "copa", upstream: "quay.io/calico/csi" },
       { name: "calico-calicoctl", source: "copa", upstream: "quay.io/calico/ctl" },
-      { name: "calico-node-driver-registrar", source: "copa", upstream: "quay.io/calico/node-driver-registrar" },
-      { name: "calico-key-cert-provisioner", source: "copa", upstream: "quay.io/calico/key-cert-provisioner" },
+      {
+        name: "calico-node-driver-registrar",
+        source: "copa",
+        upstream: "quay.io/calico/node-driver-registrar",
+      },
+      {
+        name: "calico-key-cert-provisioner",
+        source: "copa",
+        upstream: "quay.io/calico/key-cert-provisioner",
+      },
     ],
   },
 
@@ -160,13 +256,29 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "telegraf", source: "integer" },
       { name: "vector", source: "integer" },
       { name: "grafana-operator", source: "copa", upstream: "ghcr.io/grafana/grafana-operator" },
-      { name: "prometheus-node-exporter", source: "copa", upstream: "quay.io/prometheus/node-exporter" },
-      { name: "prometheus-mysqld-exporter", source: "copa", upstream: "quay.io/prometheus/mysqld-exporter" },
-      { name: "prometheus-es-exporter", source: "copa", upstream: "quay.io/prometheuscommunity/elasticsearch-exporter" },
+      {
+        name: "prometheus-node-exporter",
+        source: "copa",
+        upstream: "quay.io/prometheus/node-exporter",
+      },
+      {
+        name: "prometheus-mysqld-exporter",
+        source: "copa",
+        upstream: "quay.io/prometheus/mysqld-exporter",
+      },
+      {
+        name: "prometheus-es-exporter",
+        source: "copa",
+        upstream: "quay.io/prometheuscommunity/elasticsearch-exporter",
+      },
       { name: "promtail", source: "copa", upstream: "mirror.gcr.io/grafana/promtail" },
       { name: "datadog-agent", source: "copa", upstream: "ghcr.io/datadog/agent" },
       { name: "datadog-cluster-agent", source: "copa", upstream: "ghcr.io/datadog/cluster-agent" },
-      { name: "newrelic-infra-bundle", source: "copa", upstream: "mirror.gcr.io/newrelic/infrastructure-bundle" },
+      {
+        name: "newrelic-infra-bundle",
+        source: "copa",
+        upstream: "mirror.gcr.io/newrelic/infrastructure-bundle",
+      },
     ],
   },
 
@@ -176,9 +288,17 @@ export const fullCatalog: FullCatalogCategory[] = [
     images: [
       { name: "fluent-bit", source: "integer" },
       { name: "fluentd", source: "copa", upstream: "mirror.gcr.io/fluent/fluentd" },
-      { name: "fluentd-k8s-daemonset", source: "copa", upstream: "mirror.gcr.io/fluent/fluentd-kubernetes-daemonset" },
+      {
+        name: "fluentd-k8s-daemonset",
+        source: "copa",
+        upstream: "mirror.gcr.io/fluent/fluentd-kubernetes-daemonset",
+      },
       { name: "fluent-operator", source: "copa", upstream: "ghcr.io/fluent/fluent-operator" },
-      { name: "logstash-oss-opensearch", source: "copa", upstream: "mirror.gcr.io/opensearchproject/logstash-oss-with-opensearch-output-plugin" },
+      {
+        name: "logstash-oss-opensearch",
+        source: "copa",
+        upstream: "mirror.gcr.io/opensearchproject/logstash-oss-with-opensearch-output-plugin",
+      },
     ],
   },
 
@@ -217,9 +337,21 @@ export const fullCatalog: FullCatalogCategory[] = [
     images: [
       { name: "kyverno", source: "copa", upstream: "ghcr.io/kyverno/kyverno" },
       { name: "kyverno-cli", source: "copa", upstream: "ghcr.io/kyverno/kyverno-cli" },
-      { name: "kyverno-background-controller", source: "copa", upstream: "ghcr.io/kyverno/background-controller" },
-      { name: "kyverno-reports-controller", source: "copa", upstream: "ghcr.io/kyverno/reports-controller" },
-      { name: "kyverno-policy-reporter-ui", source: "copa", upstream: "ghcr.io/kyverno/policy-reporter-ui" },
+      {
+        name: "kyverno-background-controller",
+        source: "copa",
+        upstream: "ghcr.io/kyverno/background-controller",
+      },
+      {
+        name: "kyverno-reports-controller",
+        source: "copa",
+        upstream: "ghcr.io/kyverno/reports-controller",
+      },
+      {
+        name: "kyverno-policy-reporter-ui",
+        source: "copa",
+        upstream: "ghcr.io/kyverno/policy-reporter-ui",
+      },
       { name: "gatekeeper", source: "copa", upstream: "mirror.gcr.io/openpolicyagent/gatekeeper" },
     ],
   },
@@ -228,11 +360,31 @@ export const fullCatalog: FullCatalogCategory[] = [
     id: "certs",
     label: "Cert Management",
     images: [
-      { name: "cert-manager-controller", source: "copa", upstream: "quay.io/jetstack/cert-manager-controller" },
-      { name: "cert-manager-cainjector", source: "copa", upstream: "quay.io/jetstack/cert-manager-cainjector" },
-      { name: "cert-manager-acmesolver", source: "copa", upstream: "quay.io/jetstack/cert-manager-acmesolver" },
-      { name: "cert-manager-cmctl", source: "copa", upstream: "quay.io/jetstack/cert-manager-cmctl" },
-      { name: "cert-manager-openshift-routes", source: "copa", upstream: "ghcr.io/cert-manager/cert-manager-openshift-routes" },
+      {
+        name: "cert-manager-controller",
+        source: "copa",
+        upstream: "quay.io/jetstack/cert-manager-controller",
+      },
+      {
+        name: "cert-manager-cainjector",
+        source: "copa",
+        upstream: "quay.io/jetstack/cert-manager-cainjector",
+      },
+      {
+        name: "cert-manager-acmesolver",
+        source: "copa",
+        upstream: "quay.io/jetstack/cert-manager-acmesolver",
+      },
+      {
+        name: "cert-manager-cmctl",
+        source: "copa",
+        upstream: "quay.io/jetstack/cert-manager-cmctl",
+      },
+      {
+        name: "cert-manager-openshift-routes",
+        source: "copa",
+        upstream: "ghcr.io/cert-manager/cert-manager-openshift-routes",
+      },
     ],
   },
 
@@ -271,7 +423,11 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "hugo", source: "copa", upstream: "mirror.gcr.io/klakegg/hugo" },
       { name: "wordpress", source: "copa", upstream: "mirror.gcr.io/library/wordpress" },
       { name: "sonarqube", source: "copa", upstream: "mirror.gcr.io/library/sonarqube" },
-      { name: "sonar-scanner-cli", source: "copa", upstream: "mirror.gcr.io/sonarsource/sonar-scanner-cli" },
+      {
+        name: "sonar-scanner-cli",
+        source: "copa",
+        upstream: "mirror.gcr.io/sonarsource/sonar-scanner-cli",
+      },
       { name: "ntpd-rs", source: "copa", upstream: "ghcr.io/pendulum-project/ntpd-rs" },
       { name: "dive", source: "copa", upstream: "ghcr.io/wagoodman/dive" },
       { name: "crane", source: "integer" },
@@ -285,9 +441,9 @@ export const totalImages = fullCatalog.reduce((sum, cat) => sum + cat.images.len
 export const totalCategories = fullCatalog.length;
 export const copaCount = fullCatalog.reduce(
   (sum, cat) => sum + cat.images.filter((i) => i.source === "copa").length,
-  0,
+  0
 );
 export const integerCount = fullCatalog.reduce(
   (sum, cat) => sum + cat.images.filter((i) => i.source === "integer").length,
-  0,
+  0
 );

@@ -25,7 +25,7 @@ export function getStaticPaths() {
       const scanData = catalog.images?.find(
         (ci) =>
           ci.originalRef.toLowerCase().includes(image.name.toLowerCase()) ||
-          ci.patchedRef.toLowerCase().includes(image.name.toLowerCase()),
+          ci.patchedRef.toLowerCase().includes(image.name.toLowerCase())
       );
 
       paths.push({
@@ -63,30 +63,36 @@ const awaitingFixVulns = scanData?.vulnerabilities.filter((v) => !v.fixedVersion
       <h1 class="text-2xl font-bold font-mono text-verity-text-primary">
         {image.name}
       </h1>
-      {image.source === "integer" ? (
-        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-950/30 text-green-400 border border-green-800/40 uppercase tracking-wide">
-          <span class="w-1.5 h-1.5 rounded-full bg-green-400" />
-          Zero-CVE
-        </span>
-      ) : (
-        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-verity-surface text-verity-nucleus border border-verity-orbit/30 uppercase tracking-wide">
-          <span class="w-1.5 h-1.5 rounded-full bg-verity-nucleus" />
-          Patched
-        </span>
-      )}
-      {image.variants?.includes("fips") && (
-        <span class="text-xs px-2 py-0.5 rounded-full bg-amber-950/40 text-amber-400 border border-amber-800/50 uppercase font-semibold">
-          FIPS
-        </span>
-      )}
+      {
+        image.source === "integer" ? (
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-950/30 text-green-400 border border-green-800/40 uppercase tracking-wide">
+            <span class="w-1.5 h-1.5 rounded-full bg-green-400" />
+            Zero-CVE
+          </span>
+        ) : (
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-verity-surface text-verity-nucleus border border-verity-orbit/30 uppercase tracking-wide">
+            <span class="w-1.5 h-1.5 rounded-full bg-verity-nucleus" />
+            Patched
+          </span>
+        )
+      }
+      {
+        image.variants?.includes("fips") && (
+          <span class="text-xs px-2 py-0.5 rounded-full bg-amber-950/40 text-amber-400 border border-amber-800/50 uppercase font-semibold">
+            FIPS
+          </span>
+        )
+      }
     </div>
     <div class="text-sm text-verity-text-secondary">
       {category.label}
-      {image.upstream && (
-        <span class="text-verity-text-muted ml-2">
-          from <code class="text-xs">{image.upstream}</code>
-        </span>
-      )}
+      {
+        image.upstream && (
+          <span class="text-verity-text-muted ml-2">
+            from <code class="text-xs">{image.upstream}</code>
+          </span>
+        )
+      }
     </div>
   </div>
 
@@ -103,99 +109,156 @@ const awaitingFixVulns = scanData?.vulnerabilities.filter((v) => !v.fixedVersion
     <CopyButton text={dockerPull} />
   </div>
 
-  {image.variants && image.variants.length > 0 && (
-    <div class="bg-verity-surface border border-verity-border rounded-lg p-4 mb-6">
-      <div class="text-xs text-verity-text-secondary uppercase tracking-wide font-medium mb-3">
-        Available Variants
+  {
+    image.variants && image.variants.length > 0 && (
+      <div class="bg-verity-surface border border-verity-border rounded-lg p-4 mb-6">
+        <div class="text-xs text-verity-text-secondary uppercase tracking-wide font-medium mb-3">
+          Available Variants
+        </div>
+        <div class="flex flex-wrap gap-2">
+          {image.variants.map((variant) => (
+            <div class="flex items-center gap-2 px-3 py-2 rounded-lg border border-verity-border bg-verity-void/50">
+              <span class="text-sm text-verity-text-primary font-medium">{variant}</span>
+              <code class="text-xs text-verity-text-muted">
+                {pullRef}:{variant}
+              </code>
+            </div>
+          ))}
+        </div>
       </div>
-      <div class="flex flex-wrap gap-2">
-        {image.variants.map((variant) => (
-          <div class="flex items-center gap-2 px-3 py-2 rounded-lg border border-verity-border bg-verity-void/50">
-            <span class="text-sm text-verity-text-primary font-medium">{variant}</span>
-            <code class="text-xs text-verity-text-muted">{pullRef}:{variant}</code>
-          </div>
-        ))}
+    )
+  }
+
+  {
+    image.source === "integer" ? (
+      <div class="bg-verity-surface border border-verity-border rounded-lg p-4 mb-6">
+        <div class="flex items-center gap-2 mb-2">
+          <svg
+            class="w-4 h-4 text-green-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2.5"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <span class="text-sm font-medium text-green-400">Zero-CVE Image</span>
+        </div>
+        <p class="text-sm text-verity-text-secondary">
+          Built from scratch using
+          <a
+            href="https://github.com/wolfi-dev"
+            class="text-verity-orbit hover:text-verity-nucleus underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Wolfi
+          </a>
+          packages. Contains only the minimum packages needed to run — no shell, no package manager,
+          no known CVEs at build time.
+        </p>
       </div>
-    </div>
-  )}
-
-  {image.source === "integer" ? (
-    <div class="bg-verity-surface border border-verity-border rounded-lg p-4 mb-6">
-      <div class="flex items-center gap-2 mb-2">
-        <svg class="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span class="text-sm font-medium text-green-400">Zero-CVE Image</span>
+    ) : (
+      <div class="bg-verity-surface border border-verity-border rounded-lg p-4 mb-6">
+        <div class="flex items-center gap-2 mb-2">
+          <svg
+            class="w-4 h-4 text-verity-nucleus"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2.5"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <span class="text-sm font-medium text-verity-nucleus">Copa-Patched Image</span>
+        </div>
+        <p class="text-sm text-verity-text-secondary">
+          Patched in-place from the upstream image using
+          <a
+            href="https://github.com/project-copacetic/copacetic"
+            class="text-verity-orbit hover:text-verity-nucleus underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Copa
+          </a>
+          . OS-level vulnerabilities are fixed without rebuilding — same layers, same behavior,
+          fewer CVEs.
+        </p>
       </div>
-      <p class="text-sm text-verity-text-secondary">
-        Built from scratch using
-        <a href="https://github.com/wolfi-dev" class="text-verity-orbit hover:text-verity-nucleus underline" target="_blank" rel="noopener noreferrer">Wolfi</a>
-        packages. Contains only the minimum packages needed to run — no shell, no package manager, no known CVEs at build time.
-      </p>
-    </div>
-  ) : (
-    <div class="bg-verity-surface border border-verity-border rounded-lg p-4 mb-6">
-      <div class="flex items-center gap-2 mb-2">
-        <svg class="w-4 h-4 text-verity-nucleus" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span class="text-sm font-medium text-verity-nucleus">Copa-Patched Image</span>
+    )
+  }
+
+  {
+    scanData && (
+      <div class="mb-6">
+        <SupplyChainBadges artifactRef={scanData.patchedRef} />
       </div>
-      <p class="text-sm text-verity-text-secondary">
-        Patched in-place from the upstream image using
-        <a href="https://github.com/project-copacetic/copacetic" class="text-verity-orbit hover:text-verity-nucleus underline" target="_blank" rel="noopener noreferrer">Copa</a>.
-        OS-level vulnerabilities are fixed without rebuilding — same layers, same behavior, fewer CVEs.
-      </p>
-    </div>
-  )}
+    )
+  }
 
-  {scanData && (
-    <div class="mb-6">
-      <SupplyChainBadges artifactRef={scanData.patchedRef} />
-    </div>
-  )}
+  {
+    scanData && scanData.beforeVulns.total > 0 && (
+      <div class="mb-8">
+        <h2 class="text-lg font-semibold mb-1 text-verity-text-primary">Vulnerability Scan</h2>
+        <p class="text-sm text-verity-text-muted mb-3">
+          {fixed > 0 ? (
+            <>
+              Found {scanData.beforeVulns.total} vulnerabilit
+              {scanData.beforeVulns.total === 1 ? "y" : "ies"} in the original image.
+              <span class="text-verity-nucleus font-medium"> {fixed} fixed by Copa.</span>
+              {remaining > 0 && (
+                <span class="text-verity-text-secondary">
+                  {" "}
+                  {remaining} remaining after patching.
+                </span>
+              )}
+            </>
+          ) : (
+            <>
+              Found {scanData.beforeVulns.total} vulnerabilit
+              {scanData.beforeVulns.total === 1 ? "y" : "ies"} — none have upstream fixes available.
+            </>
+          )}
+        </p>
+        <SeverityBreakdown summary={scanData.beforeVulns} />
+      </div>
+    )
+  }
 
-  {scanData && scanData.beforeVulns.total > 0 && (
-    <div class="mb-8">
-      <h2 class="text-lg font-semibold mb-1 text-verity-text-primary">Vulnerability Scan</h2>
-      <p class="text-sm text-verity-text-muted mb-3">
-        {fixed > 0 ? (
-          <>
-            Found {scanData.beforeVulns.total} vulnerabilit{scanData.beforeVulns.total === 1 ? "y" : "ies"} in the original image.
-            <span class="text-verity-nucleus font-medium"> {fixed} fixed by Copa.</span>
-            {remaining > 0 && (
-              <span class="text-verity-text-secondary"> {remaining} remaining after patching.</span>
-            )}
-          </>
-        ) : (
-          <>
-            Found {scanData.beforeVulns.total} vulnerabilit{scanData.beforeVulns.total === 1 ? "y" : "ies"} — none have upstream fixes available.
-          </>
-        )}
-      </p>
-      <SeverityBreakdown summary={scanData.beforeVulns} />
-    </div>
-  )}
+  {
+    pendingVulns.length > 0 && (
+      <section class="mb-8">
+        <h2 class="text-lg font-semibold mb-1 text-verity-text-primary">
+          Fix available — pending patch
+        </h2>
+        <p class="text-sm text-verity-text-muted mb-3">
+          These vulnerabilities have upstream fixes but could not be automatically patched.
+        </p>
+        <VulnTable vulnerabilities={pendingVulns} />
+      </section>
+    )
+  }
 
-  {pendingVulns.length > 0 && (
-    <section class="mb-8">
-      <h2 class="text-lg font-semibold mb-1 text-verity-text-primary">Fix available — pending patch</h2>
-      <p class="text-sm text-verity-text-muted mb-3">
-        These vulnerabilities have upstream fixes but could not be automatically patched.
-      </p>
-      <VulnTable vulnerabilities={pendingVulns} />
-    </section>
-  )}
-
-  {awaitingFixVulns.length > 0 && (
-    <section class="mb-8">
-      <h2 class="text-lg font-semibold mb-1 text-verity-text-primary">Awaiting upstream fix</h2>
-      <p class="text-sm text-verity-text-muted mb-3">
-        No fix is available yet for these vulnerabilities.
-      </p>
-      <VulnTable vulnerabilities={awaitingFixVulns} />
-    </section>
-  )}
+  {
+    awaitingFixVulns.length > 0 && (
+      <section class="mb-8">
+        <h2 class="text-lg font-semibold mb-1 text-verity-text-primary">Awaiting upstream fix</h2>
+        <p class="text-sm text-verity-text-muted mb-3">
+          No fix is available yet for these vulnerabilities.
+        </p>
+        <VulnTable vulnerabilities={awaitingFixVulns} />
+      </section>
+    )
+  }
 
   <div class="grid grid-cols-2 gap-4 mt-8 pt-6 border-t border-verity-border text-sm">
     <div>
@@ -212,11 +275,13 @@ const awaitingFixVulns = scanData?.vulnerabilities.filter((v) => !v.fixedVersion
       <div class="text-verity-text-muted mb-1">Registry</div>
       <div class="text-verity-text-primary font-mono text-xs">{REGISTRY}</div>
     </div>
-    {image.upstream && (
-      <div>
-        <div class="text-verity-text-muted mb-1">Upstream</div>
-        <div class="text-verity-text-primary font-mono text-xs">{image.upstream}</div>
-      </div>
-    )}
+    {
+      image.upstream && (
+        <div>
+          <div class="text-verity-text-muted mb-1">Upstream</div>
+          <div class="text-verity-text-primary font-mono text-xs">{image.upstream}</div>
+        </div>
+      )
+    }
   </div>
 </BaseLayout>

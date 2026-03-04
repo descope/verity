@@ -15,78 +15,80 @@ const base = import.meta.env.BASE_URL;
   />
 
   <div id="catalog-grid" class="space-y-10">
-    {fullCatalog.map((category) => (
-      <div class="catalog-category" data-category={category.id}>
-        <div class="flex items-center gap-3 mb-4 pb-2 border-b border-verity-border">
-          <h3 class="text-sm font-semibold text-verity-text-primary tracking-wider uppercase">
-            {category.label}
-          </h3>
-          <span class="text-xs px-2 py-0.5 rounded-full bg-verity-surface border border-verity-border text-verity-text-muted">
-            {category.images.length}
-          </span>
-        </div>
+    {
+      fullCatalog.map((category) => (
+        <div class="catalog-category" data-category={category.id}>
+          <div class="flex items-center gap-3 mb-4 pb-2 border-b border-verity-border">
+            <h3 class="text-sm font-semibold text-verity-text-primary tracking-wider uppercase">
+              {category.label}
+            </h3>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-verity-surface border border-verity-border text-verity-text-muted">
+              {category.images.length}
+            </span>
+          </div>
 
-        <div class="hidden sm:grid sm:grid-cols-[1fr_auto_1fr] gap-x-4 px-3 pb-2 text-xs text-verity-text-muted uppercase tracking-wider">
-          <span>Image</span>
-          <span>Type</span>
-          <span>Pull Reference</span>
-        </div>
+          <div class="hidden sm:grid sm:grid-cols-[1fr_auto_1fr] gap-x-4 px-3 pb-2 text-xs text-verity-text-muted uppercase tracking-wider">
+            <span>Image</span>
+            <span>Type</span>
+            <span>Pull Reference</span>
+          </div>
 
-        <div>
-          {category.images.map((image: FullCatalogImage) => (
-            <a
-              href={`${base}catalog/${image.name}/`}
-              class="catalog-row grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-x-4 gap-y-1 items-center px-3 py-3 border-b border-verity-border/50 transition-colors hover:bg-verity-surface/80"
-              data-searchable={
-                image.name.toLowerCase() +
-                " " +
-                (image.upstream ?? "").toLowerCase() +
-                " " +
-                (image.variants?.join(" ") ?? "") +
-                " " +
-                category.label.toLowerCase()
-              }
-            >
-              <div class="flex items-center gap-3 min-w-0">
-                <span class="text-sm text-verity-text-primary font-medium truncate">
-                  {image.name}
-                </span>
-                <div class="flex items-center gap-1.5 shrink-0">
-                  {image.variants?.includes("fips") && (
-                    <span class="text-[0.65rem] leading-none px-1.5 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-800/50 uppercase font-semibold">
-                      FIPS
+          <div>
+            {category.images.map((image: FullCatalogImage) => (
+              <a
+                href={`${base}catalog/${image.name}/`}
+                class="catalog-row grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-x-4 gap-y-1 items-center px-3 py-3 border-b border-verity-border/50 transition-colors hover:bg-verity-surface/80"
+                data-searchable={
+                  image.name.toLowerCase() +
+                  " " +
+                  (image.upstream ?? "").toLowerCase() +
+                  " " +
+                  (image.variants?.join(" ") ?? "") +
+                  " " +
+                  category.label.toLowerCase()
+                }
+              >
+                <div class="flex items-center gap-3 min-w-0">
+                  <span class="text-sm text-verity-text-primary font-medium truncate">
+                    {image.name}
+                  </span>
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    {image.variants?.includes("fips") && (
+                      <span class="text-[0.65rem] leading-none px-1.5 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-800/50 uppercase font-semibold">
+                        FIPS
+                      </span>
+                    )}
+                    {image.variants && image.variants.length > 1 && (
+                      <span class="text-[0.65rem] leading-none px-1.5 py-0.5 rounded bg-verity-surface text-verity-text-muted border border-verity-border">
+                        {image.variants.length} variants
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div class="flex items-center">
+                  {image.source === "integer" ? (
+                    <span class="inline-flex items-center gap-1 text-[0.65rem] leading-none px-2 py-1 rounded-full bg-green-950/30 text-green-400 border border-green-800/40 uppercase font-semibold tracking-wide">
+                      <span class="w-1.5 h-1.5 rounded-full bg-green-400" />
+                      Zero-CVE
                     </span>
-                  )}
-                  {image.variants && image.variants.length > 1 && (
-                    <span class="text-[0.65rem] leading-none px-1.5 py-0.5 rounded bg-verity-surface text-verity-text-muted border border-verity-border">
-                      {image.variants.length} variants
+                  ) : (
+                    <span class="inline-flex items-center gap-1 text-[0.65rem] leading-none px-2 py-1 rounded-full bg-verity-surface text-verity-nucleus border border-verity-orbit/30 uppercase font-semibold tracking-wide">
+                      <span class="w-1.5 h-1.5 rounded-full bg-verity-nucleus" />
+                      Patched
                     </span>
                   )}
                 </div>
-              </div>
 
-              <div class="flex items-center">
-                {image.source === "integer" ? (
-                  <span class="inline-flex items-center gap-1 text-[0.65rem] leading-none px-2 py-1 rounded-full bg-green-950/30 text-green-400 border border-green-800/40 uppercase font-semibold tracking-wide">
-                    <span class="w-1.5 h-1.5 rounded-full bg-green-400" />
-                    Zero-CVE
-                  </span>
-                ) : (
-                  <span class="inline-flex items-center gap-1 text-[0.65rem] leading-none px-2 py-1 rounded-full bg-verity-surface text-verity-nucleus border border-verity-orbit/30 uppercase font-semibold tracking-wide">
-                    <span class="w-1.5 h-1.5 rounded-full bg-verity-nucleus" />
-                    Patched
-                  </span>
-                )}
-              </div>
-
-              <div class="text-xs text-verity-text-secondary font-mono truncate">
-                {REGISTRY}/{image.name}
-              </div>
-            </a>
-          ))}
+                <div class="text-xs text-verity-text-secondary font-mono truncate">
+                  {REGISTRY}/{image.name}
+                </div>
+              </a>
+            ))}
+          </div>
         </div>
-      </div>
-    ))}
+      ))
+    }
   </div>
 </div>
 
