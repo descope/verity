@@ -1,58 +1,23 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import HeroSection from "../components/HeroSection.astro";
-import ImageRow from "../components/ImageRow.astro";
-import IntegerImageRow from "../components/IntegerImageRow.astro";
-import SearchFilter from "../components/SearchFilter.astro";
-import { catalog } from "../lib/catalog";
+import ImageCatalog from "../components/ImageCatalog.astro";
 ---
 
-<BaseLayout title="Verity — Security-Patched Registry">
+<BaseLayout title="Verity — Security-Patched Container Registry">
   <HeroSection />
 
-  {
-    (catalog.images ?? []).length > 0 && (
-      <section>
-        <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
-          <h2 class="text-xl font-semibold text-verity-text-primary tracking-wider">Images</h2>
-          <SearchFilter targetId="images-list" />
-        </div>
-        <div id="images-list" class="space-y-2">
-          {(catalog.images ?? []).map((image) => (
-            <ImageRow image={image} />
-          ))}
-        </div>
-      </section>
-    )
-  }
-
-  {
-    (catalog.integerImages ?? []).length > 0 && (
-      <section class="mt-10">
-        <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
-          <h2 class="text-xl font-semibold text-verity-text-primary tracking-wider">
-            Integer Images
-          </h2>
-          <SearchFilter targetId="integer-images-list" />
-        </div>
-        <p class="text-sm text-verity-text-secondary mb-4">
-          Zero-CVE container images built from Wolfi packages by
-          <a
-            href="https://github.com/verity-org/integer"
-            class="text-verity-nucleus hover:underline"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            integer
-          </a>
-          .
-        </p>
-        <div id="integer-images-list" class="space-y-2">
-          {(catalog.integerImages ?? []).map((image) => (
-            <IntegerImageRow image={image} />
-          ))}
-        </div>
-      </section>
-    )
-  }
+  <section>
+    <div class="mb-6">
+      <h2 class="text-xl font-semibold text-verity-text-primary tracking-wider mb-2">
+        Image Catalog
+      </h2>
+      <p class="text-sm text-verity-text-secondary">
+        Covering the full cloud-native stack — from language runtimes to service mesh, databases to
+        CI/CD. Every image is scanned, patched, signed, and published to
+        <code class="text-verity-text-primary text-xs">ghcr.io/verity-org</code>.
+      </p>
+    </div>
+    <ImageCatalog />
+  </section>
 </BaseLayout>
