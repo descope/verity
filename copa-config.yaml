@@ -3,6 +3,11 @@ kind: PatchConfig
 
 # Standalone images to patch. Chart-sourced images are declared in Chart.yaml
 # (dependencies:) and picked up automatically by `verity discover`.
+#
+# NOTE: Basic core images (node, python, golang, nginx, postgres, etc.) are
+# maintained as zero-CVE Wolfi rebuilds in github.com/verity-org/integer.
+# Only complex upstream images that cannot be trivially rebuilt from Wolfi
+# packages belong here.
 target:
   registry: "ghcr.io/verity-org"
 
@@ -32,128 +37,8 @@ images:
   #  LANGUAGE RUNTIMES & SDKs
   # ============================================================================
 
-  - name: "node"
-    image: "mirror.gcr.io/library/node"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "python"
-    image: "mirror.gcr.io/library/python"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "golang"
-    image: "mirror.gcr.io/library/golang"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "ruby"
-    image: "mirror.gcr.io/library/ruby"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "rust"
-    image: "mirror.gcr.io/library/rust"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "php"
-    image: "mirror.gcr.io/library/php"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "eclipse-temurin-jdk"
-    image: "mirror.gcr.io/library/eclipse-temurin"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+.*-jdk$'
-      maxTags: 3
-
-  - name: "eclipse-temurin-jre"
-    image: "mirror.gcr.io/library/eclipse-temurin"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+.*-jre$'
-      maxTags: 3
-
-  - name: "deno"
-    image: "ghcr.io/denoland/deno"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "dotnet-sdk"
-    image: "mirror.gcr.io/library/dotnet/sdk"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "dotnet-runtime"
-    image: "mirror.gcr.io/library/dotnet/runtime"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "aspnet-runtime"
-    image: "mirror.gcr.io/library/dotnet/aspnet"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "erlang"
-    image: "mirror.gcr.io/library/erlang"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "gcc"
-    image: "mirror.gcr.io/library/gcc"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
   - name: "graalvm-native-image"
     image: "ghcr.io/graalvm/native-image"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "maven"
-    image: "mirror.gcr.io/library/maven"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -172,14 +57,6 @@ images:
   #  WEB SERVERS & PROXIES
   # ============================================================================
 
-  - name: "nginx"
-    image: "mirror.gcr.io/library/nginx"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
   - name: "nginx-s3-gateway"
     image: "ghcr.io/nginxinc/nginx-s3-gateway"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -188,40 +65,8 @@ images:
       pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
 
-  - name: "haproxy"
-    image: "mirror.gcr.io/library/haproxy"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
   - name: "haproxy-ingress"
     image: "quay.io/jcmoraisjr/haproxy-ingress"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "envoy"
-    image: "mirror.gcr.io/envoyproxy/envoy"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "httpd"
-    image: "mirror.gcr.io/library/httpd"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "traefik"
-    image: "mirror.gcr.io/library/traefik"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -256,30 +101,6 @@ images:
   #  DATABASES
   # ============================================================================
 
-  - name: "postgres"
-    image: "mirror.gcr.io/library/postgres"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+$'
-      maxTags: 3
-
-  - name: "mariadb"
-    image: "mirror.gcr.io/library/mariadb"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "mongodb"
-    image: "mirror.gcr.io/library/mongo"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
   - name: "redis"
     image: "mirror.gcr.io/library/redis"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -288,8 +109,8 @@ images:
       pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
 
-  - name: "valkey"
-    image: "mirror.gcr.io/valkey/valkey"
+  - name: "mongodb"
+    image: "mirror.gcr.io/library/mongo"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -330,38 +151,6 @@ images:
 
   - name: "opensearch-dashboards"
     image: "mirror.gcr.io/opensearchproject/opensearch-dashboards"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "pgbouncer"
-    image: "mirror.gcr.io/pgbouncer/pgbouncer"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "memcached"
-    image: "mirror.gcr.io/library/memcached"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "etcd"
-    image: "quay.io/coreos/etcd"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "influxdb"
-    image: "mirror.gcr.io/library/influxdb"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -413,14 +202,6 @@ images:
   #  MESSAGING & STREAMING
   # ============================================================================
 
-  - name: "rabbitmq"
-    image: "mirror.gcr.io/library/rabbitmq"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
   - name: "rabbitmq-cluster-operator"
     image: "mirror.gcr.io/rabbitmqoperator/cluster-operator"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -453,14 +234,6 @@ images:
       pattern: '^\d+\.\d+\.\d+-kafka-\d+\.\d+\.\d+$'
       maxTags: 3
 
-  - name: "nats"
-    image: "mirror.gcr.io/library/nats"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
   - name: "zookeeper"
     image: "mirror.gcr.io/library/zookeeper"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -472,14 +245,6 @@ images:
   # ============================================================================
   #  KUBERNETES TOOLS
   # ============================================================================
-
-  - name: "helm"
-    image: "ghcr.io/helm/helm"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
 
   - name: "karpenter"
     image: "ghcr.io/aws/karpenter"
@@ -503,14 +268,6 @@ images:
     tags:
       strategy: "pattern"
       pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "coredns"
-    image: "ghcr.io/coredns/coredns"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v?\d+\.\d+\.\d+$'
       maxTags: 3
 
   - name: "kube-state-metrics"
@@ -567,14 +324,6 @@ images:
     tags:
       strategy: "pattern"
       pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "kubectl"
-    image: "mirror.gcr.io/bitnami/kubectl"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
 
   - name: "k3s"
@@ -771,24 +520,6 @@ images:
   # -- Prometheus ecosystem --
   # NOTE: Default Prometheus tags are busybox-based → NOT patchable.
   # Use -distroless suffixed tags (Copa patches dpkg-distroless via tooling container).
-  # See overrides section above.
-
-  - name: "prometheus"
-    image: "quay.io/prometheus/prometheus"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+-distroless$'
-      maxTags: 3
-
-  - name: "prometheus-alertmanager"
-    image: "quay.io/prometheus/alertmanager"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+-distroless$'
-      maxTags: 3
-
   - name: "prometheus-node-exporter"
     image: "quay.io/prometheus/node-exporter"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -814,36 +545,12 @@ images:
       maxTags: 3
 
   # -- Grafana ecosystem --
-  - name: "grafana"
-    image: "mirror.gcr.io/grafana/grafana"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "grafana-ubuntu"
-    image: "mirror.gcr.io/grafana/grafana"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+-ubuntu$'
-      maxTags: 3
-
   - name: "grafana-operator"
     image: "ghcr.io/grafana/grafana-operator"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
       pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "loki"
-    image: "mirror.gcr.io/grafana/loki"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
 
   - name: "promtail"
@@ -854,48 +561,7 @@ images:
       pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
 
-  - name: "grafana-mimir"
-    image: "mirror.gcr.io/grafana/mimir"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  # -- Thanos (busybox-based by default → use -distroless variant) --
-  - name: "thanos"
-    image: "quay.io/thanos/thanos"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+-distroless$'
-      maxTags: 3
-
-  # -- Agents & Pipelines --
-  - name: "telegraf"
-    image: "mirror.gcr.io/library/telegraf"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "vector-debian"
-    image: "ghcr.io/vectordotdev/vector"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+-debian$'
-      maxTags: 3
-
-  - name: "vector-alpine"
-    image: "ghcr.io/vectordotdev/vector"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+-alpine$'
-      maxTags: 3
-
+  # -- Agents --
   - name: "datadog-agent"
     image: "ghcr.io/datadog/agent"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -923,14 +589,6 @@ images:
   # ============================================================================
   #  LOGGING
   # ============================================================================
-
-  - name: "fluent-bit"
-    image: "ghcr.io/fluent/fluent-bit"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
 
   - name: "fluentd"
     image: "mirror.gcr.io/fluent/fluentd"
@@ -1003,14 +661,6 @@ images:
   # ============================================================================
   #  SECURITY & IDENTITY
   # ============================================================================
-
-  - name: "vault"
-    image: "mirror.gcr.io/hashicorp/vault"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
 
   - name: "vault-k8s"
     image: "mirror.gcr.io/hashicorp/vault-k8s"
@@ -1142,14 +792,6 @@ images:
   #  INFRASTRUCTURE & IaC
   # ============================================================================
 
-  - name: "terraform"
-    image: "mirror.gcr.io/hashicorp/terraform"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
   - name: "crossplane"
     image: "mirror.gcr.io/crossplane/crossplane"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -1161,38 +803,6 @@ images:
   # ============================================================================
   #  SUPPLY CHAIN SECURITY
   # ============================================================================
-
-  - name: "cosign"
-    image: "ghcr.io/sigstore/cosign"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "crane"
-    image: "ghcr.io/google/go-containerregistry/crane"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "grype"
-    image: "mirror.gcr.io/anchore/grype"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "ko"
-    image: "ghcr.io/ko-build/ko"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
 
   - name: "dive"
     image: "ghcr.io/wagoodman/dive"
@@ -1306,22 +916,6 @@ images:
   #  DEV / CLI TOOLS
   # ============================================================================
 
-  - name: "git"
-    image: "mirror.gcr.io/alpine/git"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "curl"
-    image: "mirror.gcr.io/curlimages/curl"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
   - name: "bash"
     image: "mirror.gcr.io/library/bash"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -1400,22 +994,6 @@ images:
     tags:
       strategy: "pattern"
       pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "minio"
-    image: "quay.io/minio/minio"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^RELEASE\.\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z$'
-      maxTags: 3
-
-  - name: "minio-client"
-    image: "quay.io/minio/mc"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^RELEASE\.\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z$'
       maxTags: 3
 
   - name: "ntpd-rs"
