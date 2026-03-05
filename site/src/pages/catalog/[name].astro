@@ -8,15 +8,17 @@ import { fullCatalog, upstreamPath, stripTag, REGISTRY } from "../../data/full-c
 import type { FullCatalogImage, FullCatalogCategory } from "../../data/full-catalog";
 import SourceBadge from "../../components/SourceBadge.astro";
 import { catalog } from "../../lib/catalog";
-import type { SiteImage } from "../../lib/catalog";
+import type { SiteImage, IntegerImage } from "../../lib/catalog";
+import { getIntegerImage } from "../../data/integer-catalog";
 
 interface CatalogPageProps {
   image: FullCatalogImage;
   category: FullCatalogCategory;
   scanData?: SiteImage;
+  integerData?: IntegerImage;
 }
 
-export function getStaticPaths() {
+export async function getStaticPaths() {
   const paths: { params: { name: string }; props: CatalogPageProps }[] = [];
 
   for (const category of fullCatalog) {
@@ -27,9 +29,15 @@ export function getStaticPaths() {
         return origPath === imgPath;
       });
 
+      // Fetch integer version data for integer source images
+      let integerData: IntegerImage | undefined;
+      if (image.source === "integer") {
+        integerData = await getIntegerImage(image.name);
+      }
+
       paths.push({
         params: { name: image.name },
-        props: { image, category, scanData },
+        props: { image, category, scanData, integerData },
       });
     }
   }
@@ -37,7 +45,7 @@ export function getStaticPaths() {
   return paths;
 }
 
-const { image, category, scanData } = Astro.props;
+const { image, category, scanData, integerData } = Astro.props;
 const base = import.meta.env.BASE_URL;
 const pullRef = scanData?.patchedRef
   ? stripTag(scanData.patchedRef)
@@ -117,6 +125,61 @@ const awaitingFixVulns = scanData?.vulnerabilities.filter((v) => !v.fixedVersion
       </div>
     )
   }
+  {
+    integerData && integerData.versions.length > 0 && (
+      <div class="bg-verity-surface border border-verity-border rounded-lg p-4 mb-6">
+        <div class="text-xs text-verity-text-secondary uppercase tracking-wide font-medium mb-3">
+          Available Versions
+        </div>
+        <div class="space-y-3">
+          {[...integerData.versions]
+            .sort((a, b) => {
+              // Latest first, then by version descending
+              if (a.latest && !b.latest) return -1;
+              if (!a.latest && b.latest) return 1;
+              return b.version.localeCompare(a.version, undefined, { numeric: true });
+            })
+            .map((version) => {
+            const isLatest = version.latest ?? false;
+            const defaultVariant = version.variants.find((v) => v.type === "default") ?? version.variants[0];
+            const variantTypes = [...new Set(version.variants.map((v) => v.type))];
+            return (
+              <div class="flex items-start justify-between gap-4 p-3 rounded-lg border border-verity-border bg-verity-void/50">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="font-mono text-sm font-medium text-verity-text-primary">
+                      {version.version}
+                    </span>
+                    {isLatest && (
+                      <span class="text-xs px-1.5 py-0.5 rounded bg-green-950/40 text-green-400 border border-green-800/50 font-medium">
+                        latest
+                      </span>
+                    )}
+                    {version.eol && new Date(version.eol) < new Date() && (
+                      <span class="text-xs px-1.5 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-800/50 font-medium">
+                        EOL: {version.eol}
+                      </span>
+                    )}
+                  </div>
+                  <code class="text-xs text-verity-text-muted break-all">
+                    {defaultVariant?.ref ?? `${REGISTRY}/${image.name}:${version.version}`}
+                  </code>
+                </div>
+                <div class="flex flex-wrap gap-1.5 shrink-0">
+                  {variantTypes.map((type) => (
+                    <span class="text-xs px-1.5 py-0.5 rounded border border-verity-border text-verity-text-secondary font-mono">
+                      {type}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    )
+  }
+
 
   {
     image.source === "integer" ? (
