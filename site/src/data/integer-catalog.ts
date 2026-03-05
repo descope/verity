@@ -36,8 +36,7 @@ interface CatalogResult {
   registry: string;
 }
 
-const CATALOG_URL =
-  "https://raw.githubusercontent.com/verity-org/integer/reports/catalog.json";
+const CATALOG_URL = "https://raw.githubusercontent.com/verity-org/integer/reports/catalog.json";
 
 /** Cache the in-flight promise to prevent concurrent fetches during parallel SSG */
 let cachedPromise: Promise<CatalogResult> | null = null;
@@ -109,10 +108,7 @@ async function fetchWithRetry(): Promise<CatalogResult> {
     }
   }
 
-  console.warn(
-    `[integer-catalog] All ${MAX_RETRIES} fetch attempts failed:`,
-    lastError
-  );
+  console.warn(`[integer-catalog] All ${MAX_RETRIES} fetch attempts failed:`, lastError);
   // Don't cache failure - reset promise so next call can retry
   cachedPromise = null;
   return { images: [], registry: "" };
@@ -122,9 +118,7 @@ interface IntegerImageWithRegistry extends IntegerImage {
   registry: string;
 }
 
-export async function getIntegerImage(
-  name: string
-): Promise<IntegerImageWithRegistry | undefined> {
+export async function getIntegerImage(name: string): Promise<IntegerImageWithRegistry | undefined> {
   const { images, registry } = await getIntegerCatalog();
   const image = images.find((img) => img.name === name);
   if (!image) return undefined;

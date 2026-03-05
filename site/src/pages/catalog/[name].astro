@@ -49,7 +49,7 @@ function getUniqueVariantTypes(variants: IntegerVariant[]): string[] {
 
 export async function getStaticPaths() {
   const paths: { params: { name: string }; props: CatalogPageProps }[] = [];
-  
+
   // Pre-compute set of integer image names for upgrade banner logic
   const integerImageNames = new Set(
     fullCatalog.flatMap((cat) =>
@@ -199,7 +199,8 @@ const sortedVersions = integerData ? sortVersionsLatestFirst(integerData.version
                     )}
                   </div>
                   <code class="text-xs text-verity-text-muted break-all">
-                    {defaultVariant?.ref ?? `${integerData.registry || REGISTRY}/${image.name}:${version.version}`}
+                    {defaultVariant?.ref ??
+                      `${integerData.registry || REGISTRY}/${image.name}:${version.version}`}
                   </code>
                 </div>
                 <div class="flex flex-wrap gap-1.5 shrink-0">
@@ -216,7 +217,6 @@ const sortedVersions = integerData ? sortVersionsLatestFirst(integerData.version
       </div>
     )
   }
-
 
   {
     image.source === "integer" ? (
@@ -304,19 +304,28 @@ const sortedVersions = integerData ? sortVersionsLatestFirst(integerData.version
             />
           </svg>
           <div>
-            <p class="text-sm font-medium text-green-400 mb-1">
-              Zero-CVE Alternative Available
-            </p>
+            <p class="text-sm font-medium text-green-400 mb-1">Zero-CVE Alternative Available</p>
             <p class="text-sm text-verity-text-secondary">
-              A hardened version of this image built from scratch with Wolfi is available with zero known CVEs.
+              A hardened version of this image built from scratch with Wolfi is available with zero
+              known CVEs.
             </p>
             <a
               href={`${base}catalog/${hardenedEquivalent}/?filter=integer`}
               class="inline-flex items-center gap-1.5 mt-2 text-sm font-medium text-green-400 hover:text-green-300 transition-colors"
             >
               View hardened version
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+                />
               </svg>
             </a>
           </div>
@@ -374,7 +383,8 @@ const sortedVersions = integerData ? sortVersionsLatestFirst(integerData.version
               ) : (
                 <>
                   Found {scanData.beforeVulns.total} vulnerabilit
-                  {scanData.beforeVulns.total === 1 ? "y" : "ies"} — none have upstream fixes available.
+                  {scanData.beforeVulns.total === 1 ? "y" : "ies"} — none have upstream fixes
+                  available.
                 </>
               )}
             </p>
@@ -395,9 +405,7 @@ const sortedVersions = integerData ? sortVersionsLatestFirst(integerData.version
                 d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <p class="text-sm text-green-400">
-              No vulnerabilities detected in the latest scan.
-            </p>
+            <p class="text-sm text-green-400">No vulnerabilities detected in the latest scan.</p>
           </div>
         )}
       </div>

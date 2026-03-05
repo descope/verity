@@ -34,7 +34,10 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary | undefined {
       id="catalog-search"
     />
 
-    <div class="flex items-center p-1 bg-verity-surface border border-verity-border rounded-lg text-sm" id="catalog-filter">
+    <div
+      class="flex items-center p-1 bg-verity-surface border border-verity-border rounded-lg text-sm"
+      id="catalog-filter"
+    >
       <button
         class="filter-btn px-3 py-1.5 rounded-md font-medium transition-colors"
         data-filter="all"
@@ -80,61 +83,61 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary | undefined {
             {category.images.map((image: FullCatalogImage) => {
               const vulnSummary = getVulnSummary(image);
               return (
-              <a
-                href={`${base}catalog/${image.name}/`}
-                class="catalog-row grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_1fr] gap-x-4 gap-y-1 items-center px-3 py-3 border-b border-verity-border/50 transition-colors hover:bg-verity-surface/80"
-                data-source={image.source}
-                data-searchable={
-                  image.name.toLowerCase() +
-                  " " +
-                  (image.label ?? "").toLowerCase() +
-                  " " +
-                  (image.upstream ?? "").toLowerCase() +
-                  " " +
-                  (image.variants?.join(" ") ?? "") +
-                  " " +
-                  category.label.toLowerCase()
-                }
-              >
-                <div class="flex items-center gap-3 min-w-0">
-                  <span class="text-sm text-verity-text-primary font-medium truncate">
-                    {image.label ?? image.name}
-                  </span>
-                  <div class="flex items-center gap-1.5 shrink-0">
-                    {image.variants?.includes("fips") && (
-                      <span class="text-[0.65rem] leading-none px-1.5 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-800/50 uppercase font-semibold">
-                        FIPS
+                <a
+                  href={`${base}catalog/${image.name}/`}
+                  class="catalog-row grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_1fr] gap-x-4 gap-y-1 items-center px-3 py-3 border-b border-verity-border/50 transition-colors hover:bg-verity-surface/80"
+                  data-source={image.source}
+                  data-searchable={
+                    image.name.toLowerCase() +
+                    " " +
+                    (image.label ?? "").toLowerCase() +
+                    " " +
+                    (image.upstream ?? "").toLowerCase() +
+                    " " +
+                    (image.variants?.join(" ") ?? "") +
+                    " " +
+                    category.label.toLowerCase()
+                  }
+                >
+                  <div class="flex items-center gap-3 min-w-0">
+                    <span class="text-sm text-verity-text-primary font-medium truncate">
+                      {image.label ?? image.name}
+                    </span>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                      {image.variants?.includes("fips") && (
+                        <span class="text-[0.65rem] leading-none px-1.5 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-800/50 uppercase font-semibold">
+                          FIPS
+                        </span>
+                      )}
+                      {image.variants && image.variants.length > 1 && (
+                        <span class="text-[0.65rem] leading-none px-1.5 py-0.5 rounded bg-verity-surface text-verity-text-muted border border-verity-border">
+                          {image.variants.length} variants
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div class="flex items-center">
+                    <SourceBadge source={image.source} />
+                  </div>
+
+                  <div class="flex items-center">
+                    {image.source === "integer" ? (
+                      <span class="text-[0.6rem] leading-none px-1.5 py-0.5 rounded bg-green-950/30 text-green-400 border border-green-800/40 font-medium">
+                        0 CVE
                       </span>
-                    )}
-                    {image.variants && image.variants.length > 1 && (
-                      <span class="text-[0.65rem] leading-none px-1.5 py-0.5 rounded bg-verity-surface text-verity-text-muted border border-verity-border">
-                        {image.variants.length} variants
-                      </span>
+                    ) : vulnSummary ? (
+                      <SeverityBadges summary={vulnSummary} />
+                    ) : (
+                      <span class="text-[0.6rem] leading-none text-verity-text-muted">—</span>
                     )}
                   </div>
-                </div>
 
-                <div class="flex items-center">
-                  <SourceBadge source={image.source} />
-                </div>
-
-                <div class="flex items-center">
-                  {image.source === "integer" ? (
-                    <span class="text-[0.6rem] leading-none px-1.5 py-0.5 rounded bg-green-950/30 text-green-400 border border-green-800/40 font-medium">
-                      0 CVE
-                    </span>
-                  ) : vulnSummary ? (
-                    <SeverityBadges summary={vulnSummary} />
-                  ) : (
-                    <span class="text-[0.6rem] leading-none text-verity-text-muted">—</span>
-                  )}
-                </div>
-
-                <div class="text-xs text-verity-text-secondary font-mono truncate">
-                  {REGISTRY}/{upstreamPath(image)}
-                </div>
-              </a>
-            );
+                  <div class="text-xs text-verity-text-secondary font-mono truncate">
+                    {REGISTRY}/{upstreamPath(image)}
+                  </div>
+                </a>
+              );
             })}
           </div>
         </div>
@@ -147,24 +150,24 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary | undefined {
   const input = document.getElementById("catalog-search") as HTMLInputElement;
   const filterContainer = document.getElementById("catalog-filter");
   const filterBtns = filterContainer?.querySelectorAll<HTMLButtonElement>(".filter-btn");
-  
+
   type FilterValue = "all" | "integer" | "copa";
   const VALID_FILTERS = new Set<FilterValue>(["all", "integer", "copa"]);
   let currentFilter: FilterValue = "all";
-  
+
   function normalizeFilter(value: string | null): FilterValue {
     return VALID_FILTERS.has(value as FilterValue) ? (value as FilterValue) : "all";
   }
-  
+
   // Initialize from URL or localStorage
   const urlParams = new URLSearchParams(window.location.search);
   const rawFilter = urlParams.get("filter") || localStorage.getItem("catalog-filter");
   setFilter(normalizeFilter(rawFilter));
-  
+
   function setFilter(filter: FilterValue) {
     currentFilter = filter;
     localStorage.setItem("catalog-filter", filter);
-    
+
     // Update URL without reload
     const url = new URL(window.location.href);
     if (filter === "all") {
@@ -173,7 +176,7 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary | undefined {
       url.searchParams.set("filter", filter);
     }
     window.history.replaceState({}, "", url);
-    
+
     // Update button styles
     filterBtns?.forEach((btn) => {
       const btnFilter = btn.getAttribute("data-filter");
@@ -185,18 +188,18 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary | undefined {
         btn.classList.add("text-verity-text-secondary", "hover:bg-verity-void");
       }
     });
-    
+
     applyFilters();
   }
-  
+
   function applyFilters() {
     const query = input?.value.toLowerCase() ?? "";
     const categories = document.querySelectorAll<HTMLElement>(".catalog-category");
-    
+
     categories.forEach((cat) => {
       const rows = cat.querySelectorAll<HTMLElement>(".catalog-row");
       let visible = 0;
-      
+
       rows.forEach((row) => {
         const text = row.getAttribute("data-searchable") ?? "";
         const source = row.getAttribute("data-source") ?? "";
@@ -206,11 +209,11 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary | undefined {
         row.style.display = show ? "" : "none";
         if (show) visible++;
       });
-      
+
       cat.style.display = visible > 0 ? "" : "none";
     });
   }
-  
+
   // Event listeners
   filterBtns?.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -218,7 +221,7 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary | undefined {
       setFilter(filter);
     });
   });
-  
+
   if (input) {
     input.addEventListener("input", applyFilters);
   }
