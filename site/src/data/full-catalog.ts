@@ -2,9 +2,18 @@ export type ImageSource = "copa" | "integer";
 
 export interface FullCatalogImage {
   name: string;
+  label?: string;
   source: ImageSource;
   upstream?: string;
   variants?: string[];
+}
+
+/** Extract the path portion after the registry host from an upstream ref. */
+export function upstreamPath(image: FullCatalogImage): string {
+  if (image.upstream) {
+    return image.upstream.split("/").slice(1).join("/");
+  }
+  return image.name;
 }
 
 export interface FullCatalogCategory {
@@ -99,9 +108,15 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "pgbouncer", source: "integer" },
       { name: "redisinsight", source: "copa", upstream: "mirror.gcr.io/redis/redisinsight" },
       { name: "eck-operator", source: "copa", upstream: "mirror.gcr.io/elastic/eck-operator" },
-      { name: "redis (opstree)", source: "copa", upstream: "quay.io/opstree/redis" },
       {
-        name: "redis-sentinel (opstree)",
+        name: "redis-opstree",
+        label: "Redis (OpsTree)",
+        source: "copa",
+        upstream: "quay.io/opstree/redis",
+      },
+      {
+        name: "redis-sentinel-opstree",
+        label: "Redis Sentinel (OpsTree)",
         source: "copa",
         upstream: "quay.io/opstree/redis-sentinel",
       },
@@ -126,7 +141,8 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "mirror.gcr.io/rabbitmqoperator/messaging-topology-operator",
       },
       {
-        name: "kafka (confluent)",
+        name: "kafka-confluent",
+        label: "Kafka (Confluent)",
         source: "copa",
         upstream: "mirror.gcr.io/confluentinc/cp-kafka",
       },

@@ -1,6 +1,7 @@
 ---
-import { fullCatalog, totalImages } from "../data/full-catalog";
+import { fullCatalog, totalImages, upstreamPath } from "../data/full-catalog";
 import type { FullCatalogImage } from "../data/full-catalog";
+import SourceBadge from "./SourceBadge.astro";
 
 const REGISTRY = "ghcr.io/verity-org";
 const base = import.meta.env.BASE_URL;
@@ -50,7 +51,7 @@ const base = import.meta.env.BASE_URL;
               >
                 <div class="flex items-center gap-3 min-w-0">
                   <span class="text-sm text-verity-text-primary font-medium truncate">
-                    {image.name}
+                    {image.label ?? image.name}
                   </span>
                   <div class="flex items-center gap-1.5 shrink-0">
                     {image.variants?.includes("fips") && (
@@ -67,21 +68,11 @@ const base = import.meta.env.BASE_URL;
                 </div>
 
                 <div class="flex items-center">
-                  {image.source === "integer" ? (
-                    <span class="inline-flex items-center gap-1 text-[0.65rem] leading-none px-2 py-1 rounded-full bg-green-950/30 text-green-400 border border-green-800/40 uppercase font-semibold tracking-wide">
-                      <span class="w-1.5 h-1.5 rounded-full bg-green-400" />
-                      Zero-CVE
-                    </span>
-                  ) : (
-                    <span class="inline-flex items-center gap-1 text-[0.65rem] leading-none px-2 py-1 rounded-full bg-verity-surface text-verity-nucleus border border-verity-orbit/30 uppercase font-semibold tracking-wide">
-                      <span class="w-1.5 h-1.5 rounded-full bg-verity-nucleus" />
-                      Patched
-                    </span>
-                  )}
+                  <SourceBadge source={image.source} />
                 </div>
 
                 <div class="text-xs text-verity-text-secondary font-mono truncate">
-                  {REGISTRY}/{image.name}
+                  {REGISTRY}/{upstreamPath(image)}
                 </div>
               </a>
             ))}
