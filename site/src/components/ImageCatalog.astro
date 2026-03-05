@@ -2,17 +2,62 @@
 import { fullCatalog, totalImages, upstreamPath, REGISTRY } from "../data/full-catalog";
 import type { FullCatalogImage } from "../data/full-catalog";
 import SourceBadge from "./SourceBadge.astro";
+import SeverityBadges from "./SeverityBadges.astro";
+import { catalog } from "../lib/catalog";
+import type { SiteImage, VulnSummary } from "../lib/catalog";
 
 const base = import.meta.env.BASE_URL;
+
+// Build a map of image path -> scan data for quick lookups
+const scanDataMap = new Map<string, SiteImage>();
+for (const img of catalog.images ?? []) {
+  // Extract path portion from originalRef (e.g., "quay.io/foo/bar:v1" -> "foo/bar")
+  const origPath = img.originalRef.split("/").slice(1).join("/").split(":")[0];
+  scanDataMap.set(origPath, img);
+}
+
+// Helper to get vulnerability summary for an image
+function getVulnSummary(image: FullCatalogImage): VulnSummary | undefined {
+  if (image.source !== "copa") return undefined;
+  const imgPath = upstreamPath(image);
+  const scanData = scanDataMap.get(imgPath);
+  return scanData?.afterVulns;
+}
 ---
 
 <div>
-  <input
-    type="text"
-    placeholder={`Search ${totalImages} images...`}
-    class="w-full sm:w-96 px-3 py-2 mb-8 border border-verity-border rounded-lg text-sm bg-verity-surface text-verity-text-primary placeholder-verity-text-secondary focus:outline-none focus:ring-2 focus:ring-verity-nucleus focus:border-verity-nucleus"
-    id="catalog-search"
-  />
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+    <input
+      type="text"
+      placeholder={`Search ${totalImages} images...`}
+      class="w-full sm:w-96 px-3 py-2 border border-verity-border rounded-lg text-sm bg-verity-surface text-verity-text-primary placeholder-verity-text-secondary focus:outline-none focus:ring-2 focus:ring-verity-nucleus focus:border-verity-nucleus"
+      id="catalog-search"
+    />
+
+    <div
+      class="flex items-center p-1 bg-verity-surface border border-verity-border rounded-lg text-sm"
+      id="catalog-filter"
+    >
+      <button
+        class="filter-btn px-3 py-1.5 rounded-md font-medium transition-colors"
+        data-filter="all"
+      >
+        All
+      </button>
+      <button
+        class="filter-btn px-3 py-1.5 rounded-md font-medium transition-colors"
+        data-filter="integer"
+      >
+        Hardened (Zero-CVE)
+      </button>
+      <button
+        class="filter-btn px-3 py-1.5 rounded-md font-medium transition-colors"
+        data-filter="copa"
+      >
+        Patched
+      </button>
+    </div>
+  </div>
 
   <div id="catalog-grid" class="space-y-10">
     {
@@ -27,56 +72,73 @@ const base = import.meta.env.BASE_URL;
             </span>
           </div>
 
-          <div class="hidden sm:grid sm:grid-cols-[1fr_auto_1fr] gap-x-4 px-3 pb-2 text-xs text-verity-text-muted uppercase tracking-wider">
+          <div class="hidden sm:grid sm:grid-cols-[1fr_auto_auto_1fr] gap-x-4 px-3 pb-2 text-xs text-verity-text-muted uppercase tracking-wider">
             <span>Image</span>
             <span>Type</span>
+            <span>Vulns</span>
             <span>Pull Reference</span>
           </div>
 
           <div>
-            {category.images.map((image: FullCatalogImage) => (
-              <a
-                href={`${base}catalog/${image.name}/`}
-                class="catalog-row grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-x-4 gap-y-1 items-center px-3 py-3 border-b border-verity-border/50 transition-colors hover:bg-verity-surface/80"
-                data-searchable={
-                  image.name.toLowerCase() +
-                  " " +
-                  (image.label ?? "").toLowerCase() +
-                  " " +
-                  (image.upstream ?? "").toLowerCase() +
-                  " " +
-                  (image.variants?.join(" ") ?? "") +
-                  " " +
-                  category.label.toLowerCase()
-                }
-              >
-                <div class="flex items-center gap-3 min-w-0">
-                  <span class="text-sm text-verity-text-primary font-medium truncate">
-                    {image.label ?? image.name}
-                  </span>
-                  <div class="flex items-center gap-1.5 shrink-0">
-                    {image.variants?.includes("fips") && (
-                      <span class="text-[0.65rem] leading-none px-1.5 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-800/50 uppercase font-semibold">
-                        FIPS
+            {category.images.map((image: FullCatalogImage) => {
+              const vulnSummary = getVulnSummary(image);
+              return (
+                <a
+                  href={`${base}catalog/${image.name}/`}
+                  class="catalog-row grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_1fr] gap-x-4 gap-y-1 items-center px-3 py-3 border-b border-verity-border/50 transition-colors hover:bg-verity-surface/80"
+                  data-source={image.source}
+                  data-searchable={
+                    image.name.toLowerCase() +
+                    " " +
+                    (image.label ?? "").toLowerCase() +
+                    " " +
+                    (image.upstream ?? "").toLowerCase() +
+                    " " +
+                    (image.variants?.join(" ") ?? "") +
+                    " " +
+                    category.label.toLowerCase()
+                  }
+                >
+                  <div class="flex items-center gap-3 min-w-0">
+                    <span class="text-sm text-verity-text-primary font-medium truncate">
+                      {image.label ?? image.name}
+                    </span>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                      {image.variants?.includes("fips") && (
+                        <span class="text-[0.65rem] leading-none px-1.5 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-800/50 uppercase font-semibold">
+                          FIPS
+                        </span>
+                      )}
+                      {image.variants && image.variants.length > 1 && (
+                        <span class="text-[0.65rem] leading-none px-1.5 py-0.5 rounded bg-verity-surface text-verity-text-muted border border-verity-border">
+                          {image.variants.length} variants
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div class="flex items-center">
+                    <SourceBadge source={image.source} />
+                  </div>
+
+                  <div class="flex items-center">
+                    {image.source === "integer" ? (
+                      <span class="text-[0.6rem] leading-none px-1.5 py-0.5 rounded bg-green-950/30 text-green-400 border border-green-800/40 font-medium">
+                        0 CVE
                       </span>
-                    )}
-                    {image.variants && image.variants.length > 1 && (
-                      <span class="text-[0.65rem] leading-none px-1.5 py-0.5 rounded bg-verity-surface text-verity-text-muted border border-verity-border">
-                        {image.variants.length} variants
-                      </span>
+                    ) : vulnSummary ? (
+                      <SeverityBadges summary={vulnSummary} />
+                    ) : (
+                      <span class="text-[0.6rem] leading-none text-verity-text-muted">—</span>
                     )}
                   </div>
-                </div>
 
-                <div class="flex items-center">
-                  <SourceBadge source={image.source} />
-                </div>
-
-                <div class="text-xs text-verity-text-secondary font-mono truncate">
-                  {REGISTRY}/{upstreamPath(image)}
-                </div>
-              </a>
-            ))}
+                  <div class="text-xs text-verity-text-secondary font-mono truncate">
+                    {REGISTRY}/{upstreamPath(image)}
+                  </div>
+                </a>
+              );
+            })}
           </div>
         </div>
       ))
@@ -86,24 +148,81 @@ const base = import.meta.env.BASE_URL;
 
 <script>
   const input = document.getElementById("catalog-search") as HTMLInputElement;
-  if (input) {
-    input.addEventListener("input", () => {
-      const query = input.value.toLowerCase();
-      const categories = document.querySelectorAll<HTMLElement>(".catalog-category");
+  const filterContainer = document.getElementById("catalog-filter");
+  const filterBtns = filterContainer?.querySelectorAll<HTMLButtonElement>(".filter-btn");
 
-      categories.forEach((cat) => {
-        const rows = cat.querySelectorAll<HTMLElement>(".catalog-row");
-        let visible = 0;
+  type FilterValue = "all" | "integer" | "copa";
+  const VALID_FILTERS = new Set<FilterValue>(["all", "integer", "copa"]);
+  let currentFilter: FilterValue = "all";
 
-        rows.forEach((row) => {
-          const text = row.getAttribute("data-searchable") ?? "";
-          const match = !query || text.includes(query);
-          row.style.display = match ? "" : "none";
-          if (match) visible++;
-        });
+  function normalizeFilter(value: string | null): FilterValue {
+    return VALID_FILTERS.has(value as FilterValue) ? (value as FilterValue) : "all";
+  }
 
-        cat.style.display = visible > 0 ? "" : "none";
-      });
+  // Initialize from URL or localStorage
+  const urlParams = new URLSearchParams(window.location.search);
+  const rawFilter = urlParams.get("filter") || localStorage.getItem("catalog-filter");
+  setFilter(normalizeFilter(rawFilter));
+
+  function setFilter(filter: FilterValue) {
+    currentFilter = filter;
+    localStorage.setItem("catalog-filter", filter);
+
+    // Update URL without reload
+    const url = new URL(window.location.href);
+    if (filter === "all") {
+      url.searchParams.delete("filter");
+    } else {
+      url.searchParams.set("filter", filter);
+    }
+    window.history.replaceState({}, "", url);
+
+    // Update button styles
+    filterBtns?.forEach((btn) => {
+      const btnFilter = btn.getAttribute("data-filter");
+      if (btnFilter === filter) {
+        btn.classList.add("bg-verity-nucleus", "text-white");
+        btn.classList.remove("text-verity-text-secondary", "hover:bg-verity-void");
+      } else {
+        btn.classList.remove("bg-verity-nucleus", "text-white");
+        btn.classList.add("text-verity-text-secondary", "hover:bg-verity-void");
+      }
     });
+
+    applyFilters();
+  }
+
+  function applyFilters() {
+    const query = input?.value.toLowerCase() ?? "";
+    const categories = document.querySelectorAll<HTMLElement>(".catalog-category");
+
+    categories.forEach((cat) => {
+      const rows = cat.querySelectorAll<HTMLElement>(".catalog-row");
+      let visible = 0;
+
+      rows.forEach((row) => {
+        const text = row.getAttribute("data-searchable") ?? "";
+        const source = row.getAttribute("data-source") ?? "";
+        const matchesSearch = !query || text.includes(query);
+        const matchesFilter = currentFilter === "all" || source === currentFilter;
+        const show = matchesSearch && matchesFilter;
+        row.style.display = show ? "" : "none";
+        if (show) visible++;
+      });
+
+      cat.style.display = visible > 0 ? "" : "none";
+    });
+  }
+
+  // Event listeners
+  filterBtns?.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const filter = normalizeFilter(btn.getAttribute("data-filter"));
+      setFilter(filter);
+    });
+  });
+
+  if (input) {
+    input.addEventListener("input", applyFilters);
   }
 </script>

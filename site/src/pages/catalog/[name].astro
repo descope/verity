@@ -8,16 +8,54 @@ import { fullCatalog, upstreamPath, stripTag, REGISTRY } from "../../data/full-c
 import type { FullCatalogImage, FullCatalogCategory } from "../../data/full-catalog";
 import SourceBadge from "../../components/SourceBadge.astro";
 import { catalog } from "../../lib/catalog";
-import type { SiteImage } from "../../lib/catalog";
+import type { SiteImage, IntegerImage, IntegerVersion, IntegerVariant } from "../../lib/catalog";
+import { getIntegerImage } from "../../data/integer-catalog";
+
+interface IntegerDataWithRegistry extends IntegerImage {
+  registry: string;
+}
 
 interface CatalogPageProps {
   image: FullCatalogImage;
   category: FullCatalogCategory;
   scanData?: SiteImage;
+  integerData?: IntegerDataWithRegistry;
+  hardenedEquivalent?: string;
 }
 
-export function getStaticPaths() {
+function isEolPassed(eolDateStr: string): boolean {
+  const [year, month, day] = eolDateStr.split("-").map(Number);
+  const eolDate = new Date(Date.UTC(year, month - 1, day));
+  const today = new Date();
+  const todayUtc = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+  return todayUtc >= eolDate;
+}
+
+function sortVersionsLatestFirst(versions: IntegerVersion[]): IntegerVersion[] {
+  return [...versions].sort((a, b) => {
+    if (a.latest && !b.latest) return -1;
+    if (!a.latest && b.latest) return 1;
+    return b.version.localeCompare(a.version, undefined, { numeric: true });
+  });
+}
+
+function getDefaultVariant(variants: IntegerVariant[]): IntegerVariant | undefined {
+  return variants.find((v) => v.type === "default") ?? variants[0];
+}
+
+function getUniqueVariantTypes(variants: IntegerVariant[]): string[] {
+  return [...new Set(variants.map((v) => v.type))];
+}
+
+export async function getStaticPaths() {
   const paths: { params: { name: string }; props: CatalogPageProps }[] = [];
+
+  // Pre-compute set of integer image names for upgrade banner logic
+  const integerImageNames = new Set(
+    fullCatalog.flatMap((cat) =>
+      cat.images.filter((img) => img.source === "integer").map((img) => img.name)
+    )
+  );
 
   for (const category of fullCatalog) {
     for (const image of category.images) {
@@ -27,9 +65,21 @@ export function getStaticPaths() {
         return origPath === imgPath;
       });
 
+      // Fetch integer version data for integer source images
+      let integerData: IntegerImage | undefined;
+      if (image.source === "integer") {
+        integerData = await getIntegerImage(image.name);
+      }
+
+      // Check if copa image has a hardened (integer) equivalent
+      let hardenedEquivalent: string | undefined;
+      if (image.source === "copa" && integerImageNames.has(image.name)) {
+        hardenedEquivalent = image.name;
+      }
+
       paths.push({
         params: { name: image.name },
-        props: { image, category, scanData },
+        props: { image, category, scanData, integerData, hardenedEquivalent },
       });
     }
   }
@@ -37,7 +87,7 @@ export function getStaticPaths() {
   return paths;
 }
 
-const { image, category, scanData } = Astro.props;
+const { image, category, scanData, integerData, hardenedEquivalent } = Astro.props;
 const base = import.meta.env.BASE_URL;
 const pullRef = scanData?.patchedRef
   ? stripTag(scanData.patchedRef)
@@ -48,6 +98,8 @@ const fixed = scanData ? scanData.beforeVulns.total - scanData.afterVulns.total 
 const remaining = scanData?.afterVulns.total ?? 0;
 const pendingVulns = scanData?.vulnerabilities.filter((v) => v.fixedVersion) ?? [];
 const awaitingFixVulns = scanData?.vulnerabilities.filter((v) => !v.fixedVersion) ?? [];
+
+const sortedVersions = integerData ? sortVersionsLatestFirst(integerData.versions) : [];
 ---
 
 <BaseLayout title={`${image.label ?? image.name} — Verity`}>
@@ -113,6 +165,54 @@ const awaitingFixVulns = scanData?.vulnerabilities.filter((v) => !v.fixedVersion
               </code>
             </div>
           ))}
+        </div>
+      </div>
+    )
+  }
+  {
+    integerData && sortedVersions.length > 0 && (
+      <div class="bg-verity-surface border border-verity-border rounded-lg p-4 mb-6">
+        <div class="text-xs text-verity-text-secondary uppercase tracking-wide font-medium mb-3">
+          Available Versions
+        </div>
+        <div class="space-y-3">
+          {sortedVersions.map((version) => {
+            const isLatest = version.latest ?? false;
+            const defaultVariant = getDefaultVariant(version.variants);
+            const variantTypes = getUniqueVariantTypes(version.variants);
+            return (
+              <div class="flex items-start justify-between gap-4 p-3 rounded-lg border border-verity-border bg-verity-void/50">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="font-mono text-sm font-medium text-verity-text-primary">
+                      {version.version}
+                    </span>
+                    {isLatest && (
+                      <span class="text-xs px-1.5 py-0.5 rounded bg-green-950/40 text-green-400 border border-green-800/50 font-medium">
+                        latest
+                      </span>
+                    )}
+                    {version.eol && isEolPassed(version.eol) && (
+                      <span class="text-xs px-1.5 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-800/50 font-medium">
+                        EOL: {version.eol}
+                      </span>
+                    )}
+                  </div>
+                  <code class="text-xs text-verity-text-muted break-all">
+                    {defaultVariant?.ref ??
+                      `${integerData.registry || REGISTRY}/${image.name}:${version.version}`}
+                  </code>
+                </div>
+                <div class="flex flex-wrap gap-1.5 shrink-0">
+                  {variantTypes.map((type) => (
+                    <span class="text-xs px-1.5 py-0.5 rounded border border-verity-border text-verity-text-secondary font-mono">
+                      {type}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     )
@@ -187,6 +287,54 @@ const awaitingFixVulns = scanData?.vulnerabilities.filter((v) => !v.fixedVersion
   }
 
   {
+    hardenedEquivalent && (
+      <div class="bg-green-950/20 border border-green-800/40 rounded-lg p-4 mb-6">
+        <div class="flex items-start gap-3">
+          <svg
+            class="w-5 h-5 text-green-400 shrink-0 mt-0.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"
+            />
+          </svg>
+          <div>
+            <p class="text-sm font-medium text-green-400 mb-1">Zero-CVE Alternative Available</p>
+            <p class="text-sm text-verity-text-secondary">
+              A hardened version of this image built from scratch with Wolfi is available with zero
+              known CVEs.
+            </p>
+            <a
+              href={`${base}catalog/${hardenedEquivalent}/?filter=integer`}
+              class="inline-flex items-center gap-1.5 mt-2 text-sm font-medium text-green-400 hover:text-green-300 transition-colors"
+            >
+              View hardened version
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+                />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  {
     scanData && (
       <div class="mb-6">
         <SupplyChainBadges artifactRef={scanData.patchedRef} />
@@ -195,30 +343,71 @@ const awaitingFixVulns = scanData?.vulnerabilities.filter((v) => !v.fixedVersion
   }
 
   {
-    scanData && scanData.beforeVulns.total > 0 && (
+    image.source === "copa" && (
       <div class="mb-8">
         <h2 class="text-lg font-semibold mb-1 text-verity-text-primary">Vulnerability Scan</h2>
-        <p class="text-sm text-verity-text-muted mb-3">
-          {fixed > 0 ? (
-            <>
-              Found {scanData.beforeVulns.total} vulnerabilit
-              {scanData.beforeVulns.total === 1 ? "y" : "ies"} in the original image.
-              <span class="text-verity-nucleus font-medium"> {fixed} fixed by Copa.</span>
-              {remaining > 0 && (
-                <span class="text-verity-text-secondary">
-                  {" "}
-                  {remaining} remaining after patching.
-                </span>
+        {!scanData ? (
+          <div class="flex items-center gap-2 p-3 bg-verity-surface border border-verity-border rounded-lg">
+            <svg
+              class="w-5 h-5 text-verity-text-muted shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"
+              />
+            </svg>
+            <p class="text-sm text-verity-text-muted">
+              Scan data not yet available for this image.
+            </p>
+          </div>
+        ) : scanData.beforeVulns.total > 0 ? (
+          <>
+            <p class="text-sm text-verity-text-muted mb-3">
+              {fixed > 0 ? (
+                <>
+                  Found {scanData.beforeVulns.total} vulnerabilit
+                  {scanData.beforeVulns.total === 1 ? "y" : "ies"} in the original image.
+                  <span class="text-verity-nucleus font-medium"> {fixed} fixed by Copa.</span>
+                  {remaining > 0 && (
+                    <span class="text-verity-text-secondary">
+                      {" "}
+                      {remaining} remaining after patching.
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  Found {scanData.beforeVulns.total} vulnerabilit
+                  {scanData.beforeVulns.total === 1 ? "y" : "ies"} — none have upstream fixes
+                  available.
+                </>
               )}
-            </>
-          ) : (
-            <>
-              Found {scanData.beforeVulns.total} vulnerabilit
-              {scanData.beforeVulns.total === 1 ? "y" : "ies"} — none have upstream fixes available.
-            </>
-          )}
-        </p>
-        <SeverityBreakdown summary={scanData.beforeVulns} />
+            </p>
+            <SeverityBreakdown summary={scanData.beforeVulns} />
+          </>
+        ) : (
+          <div class="flex items-center gap-2 p-3 bg-green-950/20 border border-green-800/40 rounded-lg">
+            <svg
+              class="w-5 h-5 text-green-400 shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <p class="text-sm text-green-400">No vulnerabilities detected in the latest scan.</p>
+          </div>
+        )}
       </div>
     )
   }
