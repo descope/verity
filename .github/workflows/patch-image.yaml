@@ -496,10 +496,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           bash .github/scripts/push-reports.sh \
-            "$IMAGE_NAME" \
-            "$SOURCE_TAG" \
-            pre.json \
-            post.json
+            "reports/${IMAGE_NAME}/${SOURCE_TAG}/pre.json" pre.json \
+            "reports/${IMAGE_NAME}/${SOURCE_TAG}/post.json" post.json
 
       - name: Upload PR scan artifacts
         if: inputs.is-pr == true

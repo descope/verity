@@ -23,7 +23,7 @@ on:
         default: "ghcr.io/verity-org"
 
 permissions:
-  contents: write          # push-integer-reports.sh writes to reports branch via GitHub API
+  contents: write          # push-reports.sh writes to reports branch via GitHub API
   packages: write          # push to GHCR
   id-token: write          # keyless cosign signing
   attestations: write      # actions/attest SBOM
@@ -258,7 +258,6 @@ jobs:
               built_at: $built_at, run_id: $run_id}')
 
           echo "$report" > report.json
-          bash .github/scripts/push-integer-reports.sh \
-            "$INPUT_IMAGE" \
-            "$INPUT_VERSION/$INPUT_TYPE" \
+          bash .github/scripts/push-reports.sh \
+            "reports/${INPUT_IMAGE}/${INPUT_VERSION}/${INPUT_TYPE}/latest.json" \
             report.json
