@@ -397,3 +397,32 @@ versions:
 		}
 	}
 }
+
+func TestGenerate_UnversionedPackageNoDuplicateTags(t *testing.T) {
+	imagesDir := t.TempDir()
+
+	const curlYAML = `
+name: curl
+description: "curl"
+upstream:
+  package: curl
+types:
+  default:
+    base: wolfi-base
+    packages: [curl]
+    entrypoint: /usr/bin/curl
+versions:
+  "latest": {}
+`
+	writeFile(t, imagesDir, "curl.yaml", curlYAML)
+
+	pkgs := []apkindex.Package{{Name: "curl"}}
+
+	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", pkgs, nil)
+	require.NoError(t, err)
+
+	require.Len(t, cat.Images[0].Versions, 1)
+	v := cat.Images[0].Versions[0]
+	assert.True(t, v.Latest)
+	assert.Equal(t, []string{"latest"}, v.Variants[0].Tags)
+}

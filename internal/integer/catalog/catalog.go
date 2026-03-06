@@ -171,13 +171,15 @@ func buildImage(def *config.ImageDef, registry, reportsDir string, pkgs []apkind
 	latestIdx := findLatestVersion(img.Versions)
 	if latestIdx >= 0 {
 		img.Versions[latestIdx].Latest = true
-		for i := range img.Versions[latestIdx].Variants {
-			v := &img.Versions[latestIdx].Variants[i]
-			latestTag := "latest"
-			if v.Type != "default" {
-				latestTag = "latest-" + v.Type
+		if img.Versions[latestIdx].Version != "latest" {
+			for i := range img.Versions[latestIdx].Variants {
+				v := &img.Versions[latestIdx].Variants[i]
+				latestTag := "latest"
+				if v.Type != "default" {
+					latestTag = "latest-" + v.Type
+				}
+				v.Tags = append(v.Tags, latestTag)
 			}
-			v.Tags = append(v.Tags, latestTag)
 		}
 	}
 
@@ -213,27 +215,21 @@ func findLatestVersion(versions []Version) int {
 		return -1
 	}
 
-	bestIdx := -1
+	bestNonEOL := -1
+	bestOverall := 0
 	for i, v := range versions {
-		if isEOL(v.EOL) {
-			continue
+		if i > 0 && apkindex.VersionLess(versions[bestOverall].Version, v.Version) {
+			bestOverall = i
 		}
-		if bestIdx < 0 || apkindex.VersionLess(versions[bestIdx].Version, v.Version) {
-			bestIdx = i
+		if !isEOL(v.EOL) && (bestNonEOL < 0 || apkindex.VersionLess(versions[bestNonEOL].Version, v.Version)) {
+			bestNonEOL = i
 		}
 	}
 
-	if bestIdx >= 0 {
-		return bestIdx
+	if bestNonEOL >= 0 {
+		return bestNonEOL
 	}
-
-	bestIdx = 0
-	for i := 1; i < len(versions); i++ {
-		if apkindex.VersionLess(versions[bestIdx].Version, versions[i].Version) {
-			bestIdx = i
-		}
-	}
-	return bestIdx
+	return bestOverall
 }
 
 func isEOL(eolDate string) bool {

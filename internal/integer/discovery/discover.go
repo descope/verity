@@ -176,12 +176,17 @@ func DeriveTags(version, latestVersion string) []string {
 	return tags
 }
 
-// FindLatestVersion returns the highest version string from a sorted slice.
-// Versions are assumed sorted ascending by apkindex.SortVersions.
-// Returns empty string if the slice is empty.
+// FindLatestVersion returns the highest numeric version from a sorted slice.
+// The literal "latest" sentinel (used by unversioned packages) is skipped when
+// numeric versions are present. Returns empty string if the slice is empty.
 func FindLatestVersion(versions []string) string {
 	if len(versions) == 0 {
 		return ""
+	}
+	for i := len(versions) - 1; i >= 0; i-- {
+		if versions[i] != "latest" {
+			return versions[i]
+		}
 	}
 	return versions[len(versions)-1]
 }
