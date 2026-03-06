@@ -14,7 +14,7 @@ type SiteData struct {
 	Registry      string         `json:"registry"`
 	Summary       SiteSummary    `json:"summary"`
 	Images        []SiteImage    `json:"images"`
-	IntegerImages []IntegerImage `json:"integerImages"` // zero-CVE Wolfi rebuilds from integer
+	IntegerImages []IntegerImage `json:"integerImages"` // Wolfi-based rebuilds from integer pipeline
 }
 
 // IntegerImage describes a single image from github.com/verity-org/integer.

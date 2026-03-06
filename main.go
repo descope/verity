@@ -17,6 +17,7 @@ func main() {
 			cmd.ScanCommand,
 			cmd.CatalogCommand,
 			cmd.DiscoverCommand,
+			cmd.IntegerCommand,
 		},
 		Version: "2.0.0",
 	}

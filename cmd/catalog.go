@@ -39,7 +39,7 @@ var CatalogCommand = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "integer-catalog",
-			Usage: "path to catalog.json from integer repo (adds zero-CVE rebuilds section)",
+			Usage: "path to integer catalog.json (adds Wolfi-based rebuilds section)",
 		},
 	},
 	Action: runCatalog,

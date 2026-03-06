@@ -1,10 +1,11 @@
 module github.com/verity-org/verity
 
-go 1.25.7
+go 1.26.0
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/google/go-containerregistry v0.21.1
+	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v2 v2.27.7
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -25,7 +26,6 @@ require (
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
-	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/vbatts/tar-split v0.12.2 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	golang.org/x/sync v0.19.0 // indirect
