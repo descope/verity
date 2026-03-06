@@ -15,8 +15,10 @@ import (
 	"github.com/verity-org/verity/internal/integer/render"
 )
 
-var errIntegerVariantNotFound = errors.New("version/type not found")
-var errIntegerNoVersions = errors.New("no versions found")
+var (
+	errIntegerVariantNotFound = errors.New("version/type not found")
+	errIntegerNoVersions      = errors.New("no versions found")
+)
 
 var integerBuildCmd = &cli.Command{
 	Name:  "build",

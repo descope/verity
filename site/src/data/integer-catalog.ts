@@ -1,5 +1,6 @@
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
+import process from "node:process";
 import type { IntegerImage, IntegerVariant, IntegerVersion } from "../lib/catalog";
 
 interface RawIntegerCatalog {
@@ -41,8 +42,14 @@ function loadCatalog(): CatalogResult {
     return { images: [], registry: "" };
   }
 
-  const raw = readFileSync(CATALOG_PATH, "utf-8");
-  const data: RawIntegerCatalog = JSON.parse(raw);
+  let data: RawIntegerCatalog;
+  try {
+    const raw = readFileSync(CATALOG_PATH, "utf-8");
+    data = JSON.parse(raw);
+  } catch (err) {
+    console.warn(`[integer-catalog] Failed to parse ${CATALOG_PATH}:`, err);
+    return { images: [], registry: "" };
+  }
 
   const images = data.images.map((img) => ({
     name: img.name,

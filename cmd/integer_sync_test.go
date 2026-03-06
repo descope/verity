@@ -29,11 +29,19 @@ func intMakeAPKINDEXServer(t *testing.T, content string) *httptest.Server {
 		gz := gzip.NewWriter(&buf)
 		tw := tar.NewWriter(gz)
 		data := []byte(content)
-		_ = tw.WriteHeader(&tar.Header{Name: "APKINDEX", Mode: 0o644, Size: int64(len(data))})
-		_, _ = tw.Write(data)
+		if err := tw.WriteHeader(&tar.Header{Name: "APKINDEX", Mode: 0o644, Size: int64(len(data))}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if _, err := tw.Write(data); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		tw.Close()
 		gz.Close()
-		_, _ = w.Write(buf.Bytes())
+		if _, err := w.Write(buf.Bytes()); err != nil {
+			return
+		}
 	}))
 	t.Cleanup(srv.Close)
 	return srv
