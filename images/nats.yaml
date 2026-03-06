@@ -1,0 +1,17 @@
+name: nats
+description: "NATS messaging server — Wolfi rebuild eliminates persistent Debian CVEs"
+upstream:
+  package: nats-server
+
+types:
+  default:
+    base: wolfi-base
+    packages: ["nats-server"]
+    entrypoint: nats-server
+    paths:
+      - {path: /etc/nats, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+      - {path: /data/nats, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+
+versions:
+  "2":
+    latest: true

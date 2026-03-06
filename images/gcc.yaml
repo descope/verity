@@ -1,0 +1,17 @@
+name: gcc
+description: "GCC compiler toolchain — official image carries 1400+ CVEs from Debian; Wolfi rebuild starts clean"
+upstream:
+  package: gcc
+
+types:
+  default:
+    base: wolfi-dev
+    packages: ["gcc", "build-base", "binutils", "make", "glibc-dev"]
+    entrypoint: /usr/bin/gcc
+    work-dir: /usr/src
+    paths:
+      - {path: /usr/src, type: directory, uid: 0, gid: 0, permissions: 0o755}
+
+versions:
+  "15":
+    latest: true

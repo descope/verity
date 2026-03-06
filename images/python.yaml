@@ -1,0 +1,40 @@
+name: python
+description: "Python runtime — minimal Wolfi-based image"
+upstream:
+  package: "python-{{version}}"
+
+types:
+  default:
+    base: wolfi-base
+    packages: ["python-{{version}}", "libstdc++"]
+    entrypoint: /usr/bin/python3
+    work-dir: /app
+    paths:
+      - {path: /app, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+
+  dev:
+    base: wolfi-dev
+    packages: ["python-{{version}}", "py3-pip", "python-{{version}}-dev", "libstdc++", "build-base", "git"]
+    entrypoint: /usr/bin/python3
+    work-dir: /app
+    paths:
+      - {path: /app, type: directory, uid: 0, gid: 0, permissions: 0o755}
+
+  fips:
+    base: wolfi-fips
+    packages: ["python-{{version}}", "libstdc++"]
+    entrypoint: /usr/bin/python3
+    work-dir: /app
+    environment:
+      OPENSSL_MODULES: /usr/lib/ossl-modules
+      OPENSSL_CONF: /etc/ssl/openssl-fips.cnf
+    paths:
+      - {path: /app, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+
+versions:
+  "3.10": {}
+  "3.11": {}
+  "3.12": {}
+  "3.13": {}
+  "3.14":
+    latest: true

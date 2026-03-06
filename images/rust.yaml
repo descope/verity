@@ -1,0 +1,50 @@
+name: rust
+description: "Rust toolchain — Copa leaves unfixable CVEs in Debian base; Wolfi rebuilds from source"
+upstream:
+  package: rust
+
+types:
+  default:
+    base: wolfi-base
+    packages: ["rust-1.86"]
+    entrypoint: /usr/bin/rustc
+    work-dir: /app
+    environment:
+      RUST_BACKTRACE: "1"
+      CARGO_HOME: /usr/local/cargo
+      PATH: /usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    paths:
+      - {path: /app, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+      - {path: /usr/local/cargo, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+
+  dev:
+    base: wolfi-dev
+    packages: ["rust-1.86", "build-base", "git", "pkgconf", "openssl-dev"]
+    entrypoint: /usr/bin/rustc
+    work-dir: /app
+    environment:
+      RUST_BACKTRACE: "1"
+      CARGO_HOME: /usr/local/cargo
+      PATH: /usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    paths:
+      - {path: /app, type: directory, uid: 0, gid: 0, permissions: 0o755}
+      - {path: /usr/local/cargo, type: directory, uid: 0, gid: 0, permissions: 0o755}
+
+  fips:
+    base: wolfi-fips
+    packages: ["rust-1.86"]
+    entrypoint: /usr/bin/rustc
+    work-dir: /app
+    environment:
+      RUST_BACKTRACE: "1"
+      CARGO_HOME: /usr/local/cargo
+      OPENSSL_MODULES: /usr/lib/ossl-modules
+      OPENSSL_CONF: /etc/ssl/openssl-fips.cnf
+      PATH: /usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    paths:
+      - {path: /app, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+      - {path: /usr/local/cargo, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+
+versions:
+  "1":
+    latest: true

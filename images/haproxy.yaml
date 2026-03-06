@@ -1,0 +1,33 @@
+name: haproxy
+description: "HAProxy load balancer — Wolfi rebuild from source with <24hr CVE response"
+upstream:
+  package: haproxy
+
+types:
+  default:
+    base: wolfi-base
+    packages: ["haproxy-{{version}}", "libssl3"]
+    entrypoint: "haproxy -f /etc/haproxy/haproxy.cfg"
+    paths:
+      - {path: /etc/haproxy, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+      - {path: /var/lib/haproxy, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+      - {path: /var/run/haproxy, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+
+  fips:
+    base: wolfi-fips
+    packages: ["haproxy-{{version}}", "libssl3"]
+    entrypoint: "haproxy -f /etc/haproxy/haproxy.cfg"
+    environment:
+      OPENSSL_MODULES: /usr/lib/ossl-modules
+      OPENSSL_CONF: /etc/ssl/openssl-fips.cnf
+    paths:
+      - {path: /etc/haproxy, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+      - {path: /var/lib/haproxy, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+      - {path: /var/run/haproxy, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+
+versions:
+  "3.0": {}
+  "3.1": {}
+  "3.2": {}
+  "3.3":
+    latest: true

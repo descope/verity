@@ -1,0 +1,19 @@
+name: opensearch-dashboards
+description: "OpenSearch Dashboards — Wolfi rebuild eliminates upstream CVEs"
+upstream:
+  package: "opensearch-dashboards-{{version}}"
+
+types:
+  default:
+    base: wolfi-base
+    packages: ["opensearch-dashboards-{{version}}"]
+    entrypoint: /usr/share/opensearch-dashboards/opensearch-dashboards-docker-entrypoint.sh
+    environment:
+      OPENSEARCH_DASHBOARDS_HOME: /usr/share/opensearch-dashboards
+    paths:
+      - {path: /usr/share/opensearch-dashboards/data, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+      - {path: /usr/share/opensearch-dashboards/config, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+
+versions:
+  "3":
+    latest: true

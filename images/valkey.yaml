@@ -1,0 +1,28 @@
+name: valkey
+description: "Valkey (Redis fork) — Wolfi rebuild eliminates persistent Debian CVEs"
+upstream:
+  package: "valkey-{{version}}"
+
+types:
+  default:
+    base: wolfi-base
+    packages: ["valkey-{{version}}"]
+    entrypoint: /usr/bin/valkey-server
+    paths:
+      - {path: /data, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+
+  fips:
+    base: wolfi-fips
+    packages: ["valkey-{{version}}"]
+    entrypoint: /usr/bin/valkey-server
+    environment:
+      OPENSSL_MODULES: /usr/lib/ossl-modules
+      OPENSSL_CONF: /etc/ssl/openssl-fips.cnf
+    paths:
+      - {path: /data, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+
+versions:
+  "8.1":
+    {}
+  "9.0":
+    latest: true

@@ -1,0 +1,25 @@
+name: etcd
+description: "etcd distributed key-value store — Copa can't patch Alpine/scratch-based official image; Wolfi rebuild"
+upstream:
+  package: "etcd-{{version}}"
+
+types:
+  default:
+    base: wolfi-base
+    packages: ["etcd-{{version}}"]
+    entrypoint: /usr/bin/etcd
+    paths:
+      - {path: /var/lib/etcd, type: directory, uid: 65532, gid: 65532, permissions: 0o700}
+
+  fips:
+    base: wolfi-fips
+    packages: ["etcd-{{version}}"]
+    entrypoint: /usr/bin/etcd
+    paths:
+      - {path: /var/lib/etcd, type: directory, uid: 65532, gid: 65532, permissions: 0o700}
+
+versions:
+  "3.5":
+    {}
+  "3.6":
+    latest: true

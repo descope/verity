@@ -1,0 +1,17 @@
+name: teleport
+description: "Teleport access platform — Wolfi rebuild eliminates upstream CVEs"
+upstream:
+  package: "teleport-{{version}}"
+
+types:
+  default:
+    base: wolfi-base
+    packages: ["teleport-{{version}}"]
+    entrypoint: /usr/bin/teleport start
+    paths:
+      - {path: /var/lib/teleport, type: directory, uid: 65532, gid: 65532, permissions: 0o700}
+      - {path: /etc/teleport, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+
+versions:
+  "18.6":
+    latest: true

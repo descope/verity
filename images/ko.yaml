@@ -1,0 +1,18 @@
+name: ko
+description: "ko Go container builder — Copa can't patch distroless-based official image; Wolfi rebuild"
+upstream:
+  package: ko
+
+types:
+  default:
+    base: wolfi-base
+    packages: ["ko", "go-1.26"]
+    entrypoint: /usr/bin/ko
+    work-dir: /app
+    environment:
+      GOPATH: /go
+      KO_DEFAULTBASEIMAGE: cgr.dev/chainguard/static:latest
+
+versions:
+  "0":
+    latest: true

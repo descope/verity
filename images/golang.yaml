@@ -1,0 +1,50 @@
+name: golang
+description: "Go build toolchain — minimal Wolfi-based image"
+upstream:
+  package: "go-{{version}}"
+
+types:
+  default:
+    base: wolfi-base
+    packages: ["go-{{version}}", "build-base"]
+    entrypoint: /usr/bin/go
+    work-dir: /go/src
+    environment:
+      GOPATH: /go
+      PATH: /go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    paths:
+      - {path: /go, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+      - {path: /go/src, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+
+  dev:
+    base: wolfi-dev
+    packages: ["go-{{version}}", "build-base", "git", "curl", "bash"]
+    entrypoint: /usr/bin/go
+    work-dir: /go/src
+    environment:
+      GOPATH: /go
+      PATH: /go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    paths:
+      - {path: /go, type: directory, uid: 0, gid: 0, permissions: 0o755}
+      - {path: /go/src, type: directory, uid: 0, gid: 0, permissions: 0o755}
+
+  fips:
+    base: wolfi-base
+    packages: ["go-{{version}}", "build-base"]
+    entrypoint: /usr/bin/go
+    work-dir: /go/src
+    environment:
+      GOPATH: /go
+      GOTOOLCHAIN: local
+      GOFIPS140: latest
+      PATH: /go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    paths:
+      - {path: /go, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+      - {path: /go/src, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+
+versions:
+  "1.23": {}
+  "1.24": {}
+  "1.25": {}
+  "1.26":
+    latest: true
