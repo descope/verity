@@ -5,15 +5,16 @@ on:
     branches: [main]
     paths-ignore:
       - '**.md'
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
 
 permissions:
   contents: read
   packages: write
 
 jobs:
-  # Note: Linting moved to lint.yaml workflow for better organization
-  # Note: Image discovery, patching, and publishing moved to scan-and-patch.yaml workflow
-
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -41,9 +42,48 @@ jobs:
           restore-keys: go-${{ runner.os }}-
 
       - name: Run tests
-        run: go test -v ./...
+        run: go test -race -coverprofile=coverage.out ./...
+
+      - name: Check coverage
+        run: |
+          coverage=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
+          echo "Coverage: ${coverage}%"
+          if (( $(echo "$coverage < 80" | bc -l) )); then
+            echo "Coverage ${coverage}% is below required 80%"
+            exit 1
+          fi
 
       - name: Build verity
         run: go build -o verity .
 
+  validate:
+    name: Validate image configs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
 
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install mise
+        uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
+        with:
+          install: true
+          cache: true
+
+      - name: Cache Go modules
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ~/dev/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Build verity CLI
+        run: go build -o verity .
+
+      - name: Validate all image configs
+        run: ./verity integer validate

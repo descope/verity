@@ -7,6 +7,9 @@ on:
   pull_request:
     paths:
       - 'copa-config.yaml'
+      - 'images/*.yaml'
+      - 'images/_base/*.yaml'
+      - 'integer.yaml'
       - '.github/workflows/**'
       - 'internal/**'
       - 'cmd/**'
@@ -239,4 +242,80 @@ jobs:
           path: |
             .verity/images.json
             site/src/data/catalog.json
+          retention-days: 7
+
+  # ── Integer (Wolfi-based) smoke test ─────────────────────────────────
+  integer-smoke-test:
+    name: "Integer ${{ matrix.image }}:${{ matrix.version }}-${{ matrix.type }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: golang
+            version: "1.24"
+            type: fips
+          - image: node
+            version: "22"
+            type: dev
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install mise
+        uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
+        with:
+          install: true
+          cache: true
+
+      - name: Cache Go modules
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ~/dev/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Build verity CLI
+        run: go build -o verity .
+
+      - name: Generate apko config and build image (local, no push)
+        run: |
+          ./verity integer discover --gen-dir ./gen
+
+          config="gen/${{ matrix.image }}/${{ matrix.version }}/${{ matrix.type }}.apko.yaml"
+          if [ ! -f "$config" ]; then
+            echo "Config not found: $config" >&2
+            exit 1
+          fi
+
+          apko build \
+            --arch amd64 \
+            "$config" \
+            "${{ matrix.image }}:smoke-test" \
+            "$GITHUB_WORKSPACE/image.tar"
+
+      - name: Trivy vulnerability scan
+        run: |
+          trivy image \
+            --exit-code 0 \
+            --severity CRITICAL,HIGH,MEDIUM,LOW \
+            --vuln-type os,library \
+            --format json \
+            --output trivy-report.json \
+            --input image.tar
+        continue-on-error: true
+
+      - name: Upload Trivy report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: "trivy-${{ matrix.image }}-${{ matrix.version }}-${{ matrix.type }}"
+          path: trivy-report.json
           retention-days: 7
