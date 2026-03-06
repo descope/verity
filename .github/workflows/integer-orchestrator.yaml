@@ -1,0 +1,125 @@
+name: Integer Orchestrator
+
+on:
+  schedule:
+    # Daily at 03:00 UTC (offset from verity's 02:00 to avoid resource contention)
+    - cron: "0 3 * * *"
+  push:
+    branches: [main]
+    paths:
+      - "images/*.yaml"
+      - "images/_base/*.yaml"
+      - "integer.yaml"
+      - ".github/workflows/integer-orchestrator.yaml"
+      - ".github/workflows/integer-build-image.yaml"
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "Image name to build (empty = all)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  actions: write    # required to dispatch integer-build-image.yaml
+
+jobs:
+  discover:
+    name: Discover images
+    runs-on: ubuntu-latest
+    outputs:
+      images: ${{ steps.discover.outputs.images }}
+      count: ${{ steps.discover.outputs.count }}
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install mise
+        uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
+        with:
+          install: true
+          cache: true
+
+      - name: Cache Go modules
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ~/dev/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Build verity CLI
+        run: go build -o verity .
+
+      - name: Discover image×version×type combos
+        id: discover
+        run: |
+          all=$(./verity integer discover)
+
+          # Filter to a single image if requested via workflow_dispatch
+          filter="${{ github.event.inputs.image }}"
+          if [ -n "$filter" ]; then
+            all=$(echo "$all" | jq --arg f "$filter" '[.[] | select(.name == $f)]')
+          fi
+
+          count=$(echo "$all" | jq 'length')
+          echo "count=${count}" >> "$GITHUB_OUTPUT"
+          echo "images=$(echo "$all" | jq -c .)" >> "$GITHUB_OUTPUT"
+
+          echo "✓ Discovered ${count} image+version+type combos"
+          echo "$all" | jq -r '.[] | "  - \(.name):\(.version)-\(.type) → \(.registry)/\(.name):\(.tags[0])"'
+
+  dispatch:
+    name: Dispatch builds
+    needs: discover
+    runs-on: ubuntu-latest
+    if: needs.discover.outputs.count != '0'
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - name: Dispatch integer-build-image.yaml for each image
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGES: ${{ needs.discover.outputs.images }}
+        run: |
+          echo "$IMAGES" | jq -c '.[]' | while IFS= read -r image; do
+            NAME=$(echo "$image" | jq -r '.name')
+            VERSION=$(echo "$image" | jq -r '.version')
+            TYPE=$(echo "$image" | jq -r '.type')
+            TAGS=$(echo "$image" | jq -r '[.tags[]] | join(",")')
+            REGISTRY=$(echo "$image" | jq -r '.registry')
+
+            # Validate field values before shell interpolation
+            for field in "$NAME" "$VERSION" "$TYPE" "$REGISTRY"; do
+              if [[ ! "$field" =~ ^[a-zA-Z0-9][a-zA-Z0-9.:/_-]*$ ]]; then
+                echo "Unsafe field value rejected: ${field}" >&2
+                exit 1
+              fi
+            done
+            if [[ ! "$TAGS" =~ ^[a-zA-Z0-9.,_-]+$ ]]; then
+              echo "Unsafe tags value rejected: ${TAGS}" >&2
+              exit 1
+            fi
+
+            echo "Dispatching build for ${NAME}:${VERSION}-${TYPE}..."
+            gh workflow run integer-build-image.yaml \
+              --repo "${{ github.repository }}" \
+              --ref "${{ github.ref_name }}" \
+              --field "image=${NAME}" \
+              --field "version=${VERSION}" \
+              --field "type=${TYPE}" \
+              --field "tags=${TAGS}" \
+              --field "registry=${REGISTRY}"
+
+            # Throttle to avoid GitHub API rate limits
+            sleep 1
+          done
+          echo "✓ Dispatched ${{ needs.discover.outputs.count }} build runs"

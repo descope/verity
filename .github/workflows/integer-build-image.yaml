@@ -1,0 +1,264 @@
+name: Integer Build Image
+run-name: "Build ${{ inputs.image }}:${{ inputs.version }}-${{ inputs.type }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "Image name (e.g., node)"
+        required: true
+      version:
+        description: "Version (e.g., 22)"
+        required: true
+      type:
+        description: "Type (e.g., default, dev, fips)"
+        required: true
+        default: "default"
+      tags:
+        description: "Comma-separated tags to publish (e.g., 22,latest)"
+        required: true
+      registry:
+        description: "Target registry"
+        required: true
+        default: "ghcr.io/verity-org"
+
+permissions:
+  contents: write          # push-integer-reports.sh writes to reports branch via GitHub API
+  packages: write          # push to GHCR
+  id-token: write          # keyless cosign signing
+  attestations: write      # actions/attest SBOM
+
+jobs:
+  build:
+    name: "Build ${{ inputs.image }}:${{ inputs.version }}-${{ inputs.type }}"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install mise
+        uses: step-security/mise-action@d65cf9dcb78b983ae2530c89fd28e72286713505 # v3.5.1
+        with:
+          install: true
+          cache: true
+
+      # ── Setup ──────────────────────────────────────────────────────────────
+
+      - name: Validate inputs
+        env:
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TYPE: ${{ inputs.type }}
+          INPUT_TAGS: ${{ inputs.tags }}
+          INPUT_REGISTRY: ${{ inputs.registry }}
+        run: |
+          # Guard against shell injection via workflow_dispatch inputs.
+          # Inputs are passed through env vars (not interpolated into the script)
+          # and validated against their expected character sets before any use.
+          check() {
+            local label="$1" value="$2" pattern="$3"
+            if [[ ! "$value" =~ $pattern ]]; then
+              echo "Invalid ${label}: ${value}" >&2
+              exit 1
+            fi
+          }
+          check image    "$INPUT_IMAGE"    '^[a-z][a-z0-9-]*$'
+          check version  "$INPUT_VERSION"  '^[a-zA-Z0-9][a-zA-Z0-9._-]*$'
+          check type     "$INPUT_TYPE"     '^[a-z][a-z0-9-]*$'
+          check tags     "$INPUT_TAGS"     '^[a-zA-Z0-9.,_-]+$'
+          check registry "$INPUT_REGISTRY" '^[a-zA-Z0-9./:_-]+$'
+
+      - name: Log in to GHCR
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cache Go modules
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ~/dev/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Build verity CLI
+        run: go build -o verity .
+
+      - name: Generate apko configs
+        id: gen
+        env:
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TYPE: ${{ inputs.type }}
+          INPUT_TAGS: ${{ inputs.tags }}
+          INPUT_REGISTRY: ${{ inputs.registry }}
+        run: |
+          # Generate all apko configs into ./gen/ with absolute include: paths
+          # so apko can resolve them from any working directory.
+          ./verity integer discover --gen-dir ./gen
+
+          config="gen/${INPUT_IMAGE}/${INPUT_VERSION}/${INPUT_TYPE}.apko.yaml"
+          if [ ! -f "$config" ]; then
+            echo "Config not found: $config (image/version/type combination may not exist)" >&2
+            exit 1
+          fi
+          echo "path=$config" >> "$GITHUB_OUTPUT"
+
+          # Build space-separated image refs for all tags.
+          refs=""
+          IFS=',' read -ra TAGS <<< "$INPUT_TAGS"
+          for tag in "${TAGS[@]}"; do
+            tag="${tag// /}"
+            ref="${INPUT_REGISTRY}/${INPUT_IMAGE}:${tag}"
+            refs="${refs:+$refs }$ref"
+          done
+          echo "refs=$refs" >> "$GITHUB_OUTPUT"
+          echo "primary_tag=${TAGS[0]// /}" >> "$GITHUB_OUTPUT"
+
+      - name: Read image metadata
+        id: meta
+        env:
+          INPUT_IMAGE: ${{ inputs.image }}
+        run: |
+          image_yaml="images/${INPUT_IMAGE}.yaml"
+          title=$(yq '.name' "$image_yaml")
+          description=$(yq '.description' "$image_yaml")
+          echo "title=${title}" >> "$GITHUB_OUTPUT"
+          echo "description=${description}" >> "$GITHUB_OUTPUT"
+
+      # ── Build ──────────────────────────────────────────────────────────────
+
+      - name: Build and publish multi-arch image
+        id: build
+        env:
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_REGISTRY: ${{ inputs.registry }}
+          PRIMARY_TAG: ${{ steps.gen.outputs.primary_tag }}
+          REFS: ${{ steps.gen.outputs.refs }}
+          OCI_TITLE: ${{ steps.meta.outputs.title }}
+          OCI_DESCRIPTION: ${{ steps.meta.outputs.description }}
+          CONFIG_PATH: ${{ steps.gen.outputs.path }}
+        run: |
+          # Inject dynamic OCI annotations into a temp copy of the generated config.
+          # The generated config uses absolute include: paths so apko can resolve
+          # them without needing to cd into the config directory.
+          BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          export BUILD_TIMESTAMP
+          tmpconfig=$(mktemp --suffix=.apko.yaml)
+          cp "$CONFIG_PATH" "$tmpconfig"
+          yq -i '
+            .annotations["org.opencontainers.image.title"]       = strenv(OCI_TITLE) |
+            .annotations["org.opencontainers.image.description"] = strenv(OCI_DESCRIPTION) |
+            .annotations["org.opencontainers.image.version"]     = strenv(INPUT_VERSION) |
+            .annotations["org.opencontainers.image.revision"]    = strenv(GITHUB_SHA) |
+            .annotations["org.opencontainers.image.created"]     = strenv(BUILD_TIMESTAMP)
+          ' "$tmpconfig"
+
+          # Split refs into an array for safe expansion (one arg per ref).
+          read -ra REFSARR <<< "$REFS"
+
+          apko publish \
+            --arch amd64,arm64 \
+            --sbom-path "$GITHUB_WORKSPACE" \
+            "$tmpconfig" \
+            "${REFSARR[@]}"
+
+          rm -f "$tmpconfig"
+
+          # Capture the digest of the published index for signing
+          digest=$(crane digest "${INPUT_REGISTRY}/${INPUT_IMAGE}:${PRIMARY_TAG}")
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      # ── Security scan ──────────────────────────────────────────────────────
+
+      - name: Trivy vulnerability scan
+        env:
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_REGISTRY: ${{ inputs.registry }}
+          PRIMARY_TAG: ${{ steps.gen.outputs.primary_tag }}
+        run: |
+          trivy image \
+            --exit-code 0 \
+            --severity CRITICAL,HIGH,MEDIUM,LOW \
+            --vuln-type os,library \
+            --format json \
+            --output trivy-report.json \
+            "${INPUT_REGISTRY}/${INPUT_IMAGE}:${PRIMARY_TAG}"
+        continue-on-error: true  # Report only — images publish even with CVEs
+
+      - name: Upload Trivy report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: "trivy-${{ inputs.image }}-${{ inputs.version }}-${{ inputs.type }}"
+          path: trivy-report.json
+          retention-days: 30
+
+      # ── Sign & attest ──────────────────────────────────────────────────────
+
+      - name: Sign image with cosign (keyless)
+        env:
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_REGISTRY: ${{ inputs.registry }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          # Sign by digest — immutable reference that covers all tags pointing to this image.
+          cosign sign --yes "${INPUT_REGISTRY}/${INPUT_IMAGE}@${DIGEST}"
+
+      - name: Attest SBOM
+        if: hashFiles('sbom-amd64.spdx.json') != ''
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-name: ${{ inputs.registry }}/${{ inputs.image }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          predicate-type: https://spdx.dev/Document
+          predicate-path: sbom-amd64.spdx.json
+          push-to-registry: true
+
+      # ── Report ─────────────────────────────────────────────────────────────
+
+      - name: Push build report to reports branch
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TYPE: ${{ inputs.type }}
+          INPUT_TAGS: ${{ inputs.tags }}
+          INPUT_REGISTRY: ${{ inputs.registry }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+          JOB_STATUS: ${{ job.status }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          status="success"
+          if [ "$JOB_STATUS" != "success" ]; then
+            status="failure"
+          fi
+
+          report=$(jq -n \
+            --arg image    "$INPUT_IMAGE" \
+            --arg version  "$INPUT_VERSION" \
+            --arg type     "$INPUT_TYPE" \
+            --arg tags     "$INPUT_TAGS" \
+            --arg registry "$INPUT_REGISTRY" \
+            --arg digest   "$DIGEST" \
+            --arg status   "$status" \
+            --arg built_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg run_id   "$RUN_ID" \
+            '{image: $image, version: $version, type: $type, tags: ($tags | split(",")),
+              registry: $registry, digest: $digest, status: $status,
+              built_at: $built_at, run_id: $run_id}')
+
+          echo "$report" > report.json
+          bash .github/scripts/push-integer-reports.sh \
+            "$INPUT_IMAGE" \
+            "$INPUT_VERSION/$INPUT_TYPE" \
+            report.json
