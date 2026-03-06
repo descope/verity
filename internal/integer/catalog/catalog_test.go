@@ -209,7 +209,6 @@ func TestGenerate_AutoDiscoveredVersion(t *testing.T) {
 	imagesDir := t.TempDir()
 	writeFile(t, imagesDir, "node.yaml", nodeYAML)
 
-	// APKINDEX has nodejs-26 which is NOT in the versions map.
 	pkgs := []apkindex.Package{
 		{Name: "nodejs-22"},
 		{Name: "nodejs-24"},
@@ -219,8 +218,16 @@ func TestGenerate_AutoDiscoveredVersion(t *testing.T) {
 	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", pkgs, nil)
 	require.NoError(t, err)
 
-	// 3 versions should appear
-	assert.Len(t, cat.Images[0].Versions, 3)
+	require.Len(t, cat.Images[0].Versions, 3)
+
+	v22 := cat.Images[0].Versions[0]
+	v24 := cat.Images[0].Versions[1]
+	v26 := cat.Images[0].Versions[2]
+
+	assert.False(t, v22.Latest)
+	assert.False(t, v24.Latest)
+	assert.True(t, v26.Latest)
+	assert.Equal(t, []string{"26", "latest"}, v26.Variants[0].Tags)
 }
 
 type stubEOLFetcher struct {
@@ -305,4 +312,88 @@ func TestGenerate_EOLFetcherFallsBackToYAML(t *testing.T) {
 
 	assert.Equal(t, "2027-04-30", cat.Images[0].Versions[0].EOL)
 	assert.Equal(t, "2028-04-30", cat.Images[0].Versions[1].EOL)
+}
+
+func TestGenerate_LatestSkipsEOLVersions(t *testing.T) {
+	imagesDir := t.TempDir()
+
+	const eolYAML = `
+name: node
+description: "Node.js runtime"
+upstream:
+  package: "nodejs-{{version}}"
+types:
+  default:
+    base: wolfi-base
+    packages: ["nodejs-{{version}}"]
+    entrypoint: /usr/bin/node
+versions:
+  "20":
+    eol: "2028-04-30"
+  "22":
+    eol: "2029-04-30"
+  "24":
+    eol: "2020-01-01"
+`
+	writeFile(t, imagesDir, "node.yaml", eolYAML)
+
+	pkgs := []apkindex.Package{
+		{Name: "nodejs-20"},
+		{Name: "nodejs-22"},
+		{Name: "nodejs-24"},
+	}
+
+	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", pkgs, nil)
+	require.NoError(t, err)
+
+	require.Len(t, cat.Images[0].Versions, 3)
+
+	v20 := cat.Images[0].Versions[0]
+	v22 := cat.Images[0].Versions[1]
+	v24 := cat.Images[0].Versions[2]
+
+	assert.False(t, v20.Latest)
+	assert.True(t, v22.Latest, "v22 should be latest (v24 is EOL)")
+	assert.False(t, v24.Latest, "v24 is EOL so should not be latest")
+	assert.Equal(t, []string{"22", "latest"}, v22.Variants[0].Tags)
+}
+
+func TestGenerate_LatestIgnoresYAMLFlag(t *testing.T) {
+	imagesDir := t.TempDir()
+
+	const prometheusLike = `
+name: prometheus
+description: "Prometheus"
+upstream:
+  package: "prometheus-{{version}}"
+types:
+  default:
+    base: wolfi-base
+    packages: ["prometheus-{{version}}"]
+    entrypoint: /usr/bin/prometheus
+versions:
+  "2.55": {}
+  "3.9":
+    latest: true
+`
+	writeFile(t, imagesDir, "prometheus.yaml", prometheusLike)
+
+	pkgs := []apkindex.Package{
+		{Name: "prometheus-2.55"},
+		{Name: "prometheus-3.9"},
+		{Name: "prometheus-3.10"},
+	}
+
+	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", pkgs, nil)
+	require.NoError(t, err)
+
+	require.Len(t, cat.Images[0].Versions, 3)
+
+	for _, v := range cat.Images[0].Versions {
+		if v.Version == "3.10" {
+			assert.True(t, v.Latest, "3.10 should be latest (highest non-EOL)")
+		} else {
+			assert.False(t, v.Latest, "%s should not be latest", v.Version)
+		}
+	}
 }
