@@ -59,10 +59,9 @@ export async function getStaticPaths() {
 
   for (const category of fullCatalog) {
     for (const image of category.images) {
-      const imgPath = upstreamPath(image);
       const scanData = catalog.images?.find((ci) => {
-        const origPath = ci.originalRef.split("/").slice(1).join("/").split(":")[0];
-        return origPath === imgPath;
+        const name = ci.patchedRef?.split("/").pop()?.split(":")[0] ?? "";
+        return name === image.name;
       });
 
       // Fetch integer version data for integer source images

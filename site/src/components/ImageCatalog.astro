@@ -8,20 +8,22 @@ import type { SiteImage, VulnSummary } from "../lib/catalog";
 
 const base = import.meta.env.BASE_URL;
 
-// Build a map of image path -> scan data for quick lookups
+// Build a map of image name -> scan data for quick lookups.
+// The name is extracted from patchedRef (ghcr.io/verity-org/{name}:{tag} -> {name})
+// which matches the `name` field in full-catalog.ts.
 const scanDataMap = new Map<string, SiteImage>();
 for (const img of catalog.images ?? []) {
-  // Extract path portion from originalRef (e.g., "quay.io/foo/bar:v1" -> "foo/bar")
-  const origPath = img.originalRef.split("/").slice(1).join("/").split(":")[0];
-  scanDataMap.set(origPath, img);
+  const name = img.patchedRef?.split("/").pop()?.split(":")[0] ?? "";
+  if (name) scanDataMap.set(name, img);
 }
 
 // Helper to get vulnerability summary for an image
-function getVulnSummary(image: FullCatalogImage): VulnSummary | undefined {
-  if (image.source !== "copa" && image.source !== "integer") return undefined;
-  const imgPath = upstreamPath(image);
-  const scanData = scanDataMap.get(imgPath);
-  return scanData?.afterVulns;
+function getVulnSummary(image: FullCatalogImage): VulnSummary {
+  const scanData = scanDataMap.get(image.name);
+  if (scanData) return scanData.afterVulns;
+  // No scan data yet — treat as clean (integer images are built from scratch;
+  // copa images without scan data are either newly added or awaiting first scan)
+  return { total: 0, severityCounts: {} };
 }
 ---
 
@@ -72,7 +74,7 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary | undefined {
             </span>
           </div>
 
-          <div class="hidden sm:grid sm:grid-cols-[1fr_auto_auto_1fr] gap-x-4 px-3 pb-2 text-xs text-verity-text-muted uppercase tracking-wider">
+          <div class="hidden sm:grid sm:grid-cols-[1fr_7.5rem_4.5rem_1fr] gap-x-4 px-3 pb-2 text-xs text-verity-text-muted uppercase tracking-wider">
             <span>Image</span>
             <span>Type</span>
             <span>Vulns</span>
@@ -85,7 +87,7 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary | undefined {
               return (
                 <a
                   href={`${base}catalog/${image.name}/`}
-                  class="catalog-row grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_1fr] gap-x-4 gap-y-1 items-center px-3 py-3 border-b border-verity-border/50 transition-colors hover:bg-verity-surface/80"
+                  class="catalog-row grid grid-cols-1 sm:grid-cols-[1fr_7.5rem_4.5rem_1fr] gap-x-4 gap-y-1 items-center px-3 py-3 border-b border-verity-border/50 transition-colors hover:bg-verity-surface/80"
                   data-source={image.source}
                   data-searchable={
                     image.name.toLowerCase() +
@@ -122,11 +124,7 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary | undefined {
                   </div>
 
                   <div class="flex items-center">
-                    {vulnSummary ? (
-                      <SeverityBadges summary={vulnSummary} />
-                    ) : (
-                      <span class="text-[0.6rem] leading-none text-verity-text-muted">—</span>
-                    )}
+                    <SeverityBadges summary={vulnSummary} />
                   </div>
 
                   <div class="text-xs text-verity-text-secondary font-mono truncate">
