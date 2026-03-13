@@ -7,6 +7,7 @@ require (
 	github.com/google/go-containerregistry v0.21.1
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v2 v2.27.7
+	github.com/urfave/cli/v3 v3.7.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
