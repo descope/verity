@@ -11,3 +11,16 @@ overrides:
     from: "distroless-libc"
     to: "debian"
     valuePath: "image"  # explicit hint for chart-gen value path resolution
+
+# Image replacements for chart-gen.
+# Maps upstream image path patterns to Verity Integer (Wolfi) images.
+# When chart-gen discovers a chart image matching the key, it generates
+# an override pointing to the replacement image instead of looking for
+# a Copa-patched version.
+replacements:
+  "kube-state-metrics/kube-state-metrics":
+    registry: "ghcr.io/verity-org"
+    image: "kube-state-metrics"
+  "prometheus/pushgateway":
+    registry: "ghcr.io/verity-org"
+    image: "pushgateway"

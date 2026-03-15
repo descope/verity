@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"path/filepath"
 	"testing"
+
+	"github.com/verity-org/verity/internal/config"
 )
 
 func TestDryRunResultJSON(t *testing.T) {
@@ -87,5 +89,77 @@ func TestRunDryRunNoCharts(t *testing.T) {
 	}
 	if len(res.Charts) != 0 {
 		t.Fatalf("Run() charts length = %d, want 0", len(res.Charts))
+	}
+}
+
+func TestApplyReplacements(t *testing.T) {
+	refs := []string{
+		"registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0",
+		"quay.io/prometheus/pushgateway:v1.11.2",
+		"quay.io/prometheus/prometheus:v3.9.1",
+	}
+
+	vc := &config.VerityConfig{
+		Replacements: map[string]config.Replacement{
+			"kube-state-metrics/kube-state-metrics": {Registry: "ghcr.io/verity-org", Image: "kube-state-metrics"},
+			"prometheus/pushgateway":                {Registry: "ghcr.io/verity-org", Image: "pushgateway", Tag: "1.11"},
+		},
+	}
+
+	remaining, replacements := applyReplacements(refs, vc, nil)
+
+	if len(remaining) != 1 {
+		t.Fatalf("remaining = %d, want 1", len(remaining))
+	}
+	if remaining[0] != "quay.io/prometheus/prometheus:v3.9.1" {
+		t.Errorf("remaining[0] = %q, want prometheus ref", remaining[0])
+	}
+
+	if len(replacements) != 2 {
+		t.Fatalf("replacements = %d, want 2", len(replacements))
+	}
+
+	// kube-state-metrics: no Tag override, uses source tag
+	ksm := replacements[0]
+	if ksm.PatchedRepo != "ghcr.io/verity-org/kube-state-metrics" {
+		t.Errorf("ksm PatchedRepo = %q", ksm.PatchedRepo)
+	}
+	if ksm.PatchedTag != "v2.18.0" {
+		t.Errorf("ksm PatchedTag = %q, want v2.18.0", ksm.PatchedTag)
+	}
+
+	// pushgateway: Tag override
+	pg := replacements[1]
+	if pg.PatchedRepo != "ghcr.io/verity-org/pushgateway" {
+		t.Errorf("pg PatchedRepo = %q", pg.PatchedRepo)
+	}
+	if pg.PatchedTag != "1.11" {
+		t.Errorf("pg PatchedTag = %q, want 1.11", pg.PatchedTag)
+	}
+}
+
+func TestApplyReplacementsNilConfig(t *testing.T) {
+	refs := []string{"quay.io/foo/bar:v1.0"}
+	remaining, replacements := applyReplacements(refs, nil, nil)
+	if len(remaining) != 1 || len(replacements) != 0 {
+		t.Fatalf("nil config: remaining=%d replacements=%d", len(remaining), len(replacements))
+	}
+}
+
+func TestApplyReplacementsExcluded(t *testing.T) {
+	refs := []string{"quay.io/prometheus/pushgateway:v1.11.2"}
+	vc := &config.VerityConfig{
+		Replacements: map[string]config.Replacement{
+			"prometheus/pushgateway": {Registry: "ghcr.io/verity-org", Image: "pushgateway"},
+		},
+	}
+	exclude := map[string]struct{}{"pushgateway": {}}
+
+	remaining, replacements := applyReplacements(refs, vc, exclude)
+	if len(remaining) != 0 {
+		t.Errorf("remaining = %d, want 0 (excluded)", len(remaining))
+	}
+	if len(replacements) != 0 {
+		t.Errorf("replacements = %d, want 0 (excluded)", len(replacements))
 	}
 }

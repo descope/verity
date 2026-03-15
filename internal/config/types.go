@@ -13,7 +13,16 @@ type CopaConfig struct {
 // VerityConfig represents verity.yaml — verity-specific settings that belong
 // neither in Copa's copa-config.yaml nor in the standard Helm Chart.yaml.
 type VerityConfig struct {
-	Overrides map[string]Override `yaml:"overrides,omitempty"`
+	Overrides    map[string]Override    `yaml:"overrides,omitempty"`
+	Replacements map[string]Replacement `yaml:"replacements,omitempty"`
+}
+
+// Replacement maps a chart-discovered image to a Verity Integer (Wolfi) image.
+// The key in the map is a substring that matches the upstream image ref's repo path.
+type Replacement struct {
+	Registry string `yaml:"registry"`
+	Image    string `yaml:"image"`
+	Tag      string `yaml:"tag,omitempty"` // optional; defaults to upstream chart tag
 }
 
 // ImageSpec describes a single image to patch.

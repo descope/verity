@@ -194,6 +194,12 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "mirror.gcr.io/elastic/eck-operator",
       },
       {
+        name: "zalando/postgres-operator",
+        label: "postgres-operator",
+        source: "copa",
+        upstream: "ghcr.io/zalando/postgres-operator",
+      },
+      {
         name: "opstree/redis",
         label: "Redis (OpsTree)",
         source: "copa",
@@ -278,7 +284,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       {
         name: "kubernetes/kube-state-metrics/kube-state-metrics",
         label: "kube-state-metrics",
-        source: "copa",
+        source: "integer",
         upstream: "ghcr.io/kubernetes/kube-state-metrics/kube-state-metrics",
       },
       {
@@ -458,6 +464,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "thanos", source: "integer" },
       { name: "telegraf", source: "integer" },
       { name: "vector", source: "integer" },
+      { name: "pushgateway", source: "integer" },
       {
         name: "grafana/grafana-operator",
         label: "grafana-operator",
@@ -475,6 +482,12 @@ export const fullCatalog: FullCatalogCategory[] = [
         label: "prometheus-mysqld-exporter",
         source: "copa",
         upstream: "quay.io/prometheus/mysqld-exporter",
+      },
+      {
+        name: "prometheus-operator/prometheus-config-reloader",
+        label: "prometheus-config-reloader",
+        source: "copa",
+        upstream: "quay.io/prometheus-operator/prometheus-config-reloader",
       },
       {
         name: "prometheuscommunity/elasticsearch-exporter",

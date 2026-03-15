@@ -3,6 +3,8 @@ package chartgen
 import (
 	"fmt"
 	"os"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/verity-org/verity/internal/config"
@@ -73,12 +75,17 @@ func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) 
 		return ChartResult{}, false, fmt.Errorf("extract images for chart %s: %w", chart.Name, err)
 	}
 
-	mappings, err := BuildImageMappings(imageRefs, cfg.TargetRegistry, cfg.ExcludeNames)
+	remainingRefs, replacementMappings := applyReplacements(imageRefs, vc, cfg.ExcludeNames)
+
+	mappings, err := BuildImageMappings(remainingRefs, cfg.TargetRegistry, cfg.ExcludeNames)
 	if err != nil {
 		return ChartResult{}, false, fmt.Errorf("build image mappings for chart %s: %w", chart.Name, err)
 	}
+	allMappings := make([]ImageMapping, 0, len(replacementMappings)+len(mappings))
+	allMappings = append(allMappings, replacementMappings...)
+	allMappings = append(allMappings, mappings...)
 
-	if len(mappings) == 0 {
+	if len(allMappings) == 0 {
 		fmt.Fprintf(os.Stderr, "warning: no patched image mappings for chart %s@%s; skipping\n", chart.Name, chart.Version)
 		return ChartResult{}, false, nil
 	}
@@ -88,7 +95,7 @@ func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) 
 		return ChartResult{}, false, fmt.Errorf("get chart values for %s: %w", chart.Name, err)
 	}
 
-	valueOverrides, err := ResolveValuePaths(valuesYAML, mappings, vc.Overrides)
+	valueOverrides, err := ResolveValuePaths(valuesYAML, allMappings, vc.Overrides)
 	if err != nil {
 		return ChartResult{}, false, fmt.Errorf("resolve value paths for %s: %w", chart.Name, err)
 	}
@@ -105,7 +112,7 @@ func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) 
 		WrapperVersion: wrapper.Version,
 		Repository:     chart.Repository,
 		Registry:       cfg.ChartRegistry,
-		ImageMappings:  mappings,
+		ImageMappings:  allMappings,
 		ValueOverrides: valueOverrides,
 	}
 
@@ -129,4 +136,57 @@ func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) 
 	}
 
 	return chartResult, true, nil
+}
+
+func applyReplacements(imageRefs []string, vc *config.VerityConfig, excludeNames map[string]struct{}) ([]string, []ImageMapping) {
+	if vc == nil || len(vc.Replacements) == 0 {
+		return imageRefs, nil
+	}
+
+	// Sort patterns for deterministic match order.
+	patterns := make([]string, 0, len(vc.Replacements))
+	for p := range vc.Replacements {
+		patterns = append(patterns, p)
+	}
+	sort.Strings(patterns)
+
+	remaining := make([]string, 0, len(imageRefs))
+	var replacements []ImageMapping
+
+	for _, imageRef := range imageRefs {
+		name := repoPath(imageRef)
+		sourceRepo, sourceTag := splitRef(imageRef)
+
+		if isExcluded(name, imageRef, excludeNames) {
+			fmt.Fprintf(os.Stderr, "warning: skipping excluded image %q (%s)\n", name, imageRef)
+			continue
+		}
+
+		matched := false
+		for _, pattern := range patterns {
+			if name != pattern && !strings.Contains(name, pattern) {
+				continue
+			}
+			repl := vc.Replacements[pattern]
+			patchedRepo := repl.Registry + "/" + repl.Image
+			patchedTag := sourceTag
+			if repl.Tag != "" {
+				patchedTag = repl.Tag
+			}
+			replacements = append(replacements, ImageMapping{
+				OriginalRepo: sourceRepo,
+				OriginalTag:  sourceTag,
+				PatchedRepo:  patchedRepo,
+				PatchedTag:   patchedTag,
+			})
+			fmt.Fprintf(os.Stderr, "info: replacing %q with Integer image %s:%s\n", imageRef, patchedRepo, patchedTag)
+			matched = true
+			break
+		}
+		if !matched {
+			remaining = append(remaining, imageRef)
+		}
+	}
+
+	return remaining, replacements
 }
