@@ -1,11 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 
 	"github.com/verity-org/verity/internal/integer/apkindex"
 	"github.com/verity-org/verity/internal/integer/catalog"
@@ -58,15 +59,15 @@ var integerCatalogCmd = &cli.Command{
 	Action: runIntegerCatalog,
 }
 
-func runIntegerCatalog(c *cli.Context) error {
-	cfg, err := intconfig.LoadConfig(c.String("config"))
+func runIntegerCatalog(_ context.Context, cmd *cli.Command) error {
+	cfg, err := intconfig.LoadConfig(cmd.String("config"))
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
 	var pkgs []apkindex.Package
-	if url := c.String("apkindex-url"); url != "" {
-		pkgs, err = apkindex.Fetch(url, c.String("cache-dir"), apkindex.DefaultCacheMaxAge)
+	if url := cmd.String("apkindex-url"); url != "" {
+		pkgs, err = apkindex.Fetch(url, cmd.String("cache-dir"), apkindex.DefaultCacheMaxAge)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "warning: APKINDEX unavailable (%v) — using versions map only\n", err)
 			pkgs = nil
@@ -74,13 +75,13 @@ func runIntegerCatalog(c *cli.Context) error {
 	}
 
 	var eolClient *eol.Client
-	if c.Bool("fetch-eol") {
+	if cmd.Bool("fetch-eol") {
 		eolClient = eol.NewClient()
 	}
 
 	cat, err := catalog.Generate(
-		c.String("images-dir"),
-		c.String("reports-dir"),
+		cmd.String("images-dir"),
+		cmd.String("reports-dir"),
 		cfg.Target.Registry,
 		pkgs,
 		eolClient,
@@ -94,7 +95,7 @@ func runIntegerCatalog(c *cli.Context) error {
 		return fmt.Errorf("marshalling catalog: %w", err)
 	}
 
-	output := c.String("output")
+	output := cmd.String("output")
 	if output == "-" {
 		fmt.Println(string(out))
 		return nil

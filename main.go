@@ -1,16 +1,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 
 	"github.com/verity-org/verity/cmd"
 )
 
 func main() {
-	app := &cli.App{
+	root := &cli.Command{
 		Name:  "verity",
 		Usage: "Self-maintaining registry of security-patched container images",
 		Commands: []*cli.Command{
@@ -24,7 +25,7 @@ func main() {
 		Version: "2.0.0",
 	}
 
-	if err := app.Run(os.Args); err != nil {
+	if err := root.Run(context.Background(), os.Args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

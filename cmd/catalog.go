@@ -1,9 +1,10 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 
 	"github.com/verity-org/verity/internal"
 )
@@ -45,13 +46,13 @@ var CatalogCommand = &cli.Command{
 	Action: runCatalog,
 }
 
-func runCatalog(c *cli.Context) error {
-	output := c.String("output")
-	imagesJSON := c.String("images-json")
-	registry := c.String("registry")
-	reportsDir := c.String("reports-dir")
-	postReportsDir := c.String("post-reports-dir")
-	integerCatalog := c.String("integer-catalog")
+func runCatalog(_ context.Context, cmd *cli.Command) error {
+	output := cmd.String("output")
+	imagesJSON := cmd.String("images-json")
+	registry := cmd.String("registry")
+	reportsDir := cmd.String("reports-dir")
+	postReportsDir := cmd.String("post-reports-dir")
+	integerCatalog := cmd.String("integer-catalog")
 
 	siteData, err := internal.GenerateSiteData(imagesJSON, reportsDir, postReportsDir, registry)
 	if err != nil {

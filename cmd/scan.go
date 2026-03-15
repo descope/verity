@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 
 	"github.com/verity-org/verity/internal/discovery"
 )
@@ -53,13 +53,13 @@ var ScanCommand = &cli.Command{
 			Usage: "Scan only patched images in the target registry (skip source images). Requires --target-registry.",
 		},
 	},
-	Action: func(c *cli.Context) error {
-		configPath := c.String("config")
-		outputDir := c.String("output")
-		parallel := c.Int("parallel")
-		targetRegistry := c.String("target-registry")
-		trivyServer := c.String("trivy-server")
-		patchedOnly := c.Bool("patched-only")
+	Action: func(_ context.Context, cmd *cli.Command) error {
+		configPath := cmd.String("config")
+		outputDir := cmd.String("output")
+		parallel := cmd.Int("parallel")
+		targetRegistry := cmd.String("target-registry")
+		trivyServer := cmd.String("trivy-server")
+		patchedOnly := cmd.Bool("patched-only")
 
 		if patchedOnly && targetRegistry == "" {
 			return errPatchedOnlyNeedsTarget

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 
 	"github.com/verity-org/verity/internal/discovery"
 	"github.com/verity-org/verity/internal/preflight"
@@ -66,19 +67,19 @@ var DiscoverCommand = &cli.Command{
 			Value: "reports",
 		},
 	},
-	Action: func(c *cli.Context) error {
-		cfg, err := discovery.LoadConfig(c.String("config"))
+	Action: func(_ context.Context, cmd *cli.Command) error {
+		cfg, err := discovery.LoadConfig(cmd.String("config"))
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
 		}
 
-		charts, err := discovery.LoadChartsFile(c.String("charts-file"))
+		charts, err := discovery.LoadChartsFile(cmd.String("charts-file"))
 		if err != nil {
 			return fmt.Errorf("failed to load charts file: %w", err)
 		}
 		cfg.Charts = append(cfg.Charts, charts...)
 
-		vc, err := discovery.LoadVerityConfig(c.String("verity-config"))
+		vc, err := discovery.LoadVerityConfig(cmd.String("verity-config"))
 		if err != nil {
 			return fmt.Errorf("failed to load verity config: %w", err)
 		}
@@ -91,26 +92,26 @@ var DiscoverCommand = &cli.Command{
 			maps.Copy(overrides, vc.Overrides)
 		}
 		// Parse --exclude-names into a set for chart image filtering.
-		excludeNames := parseNameSet(c.String("exclude-names"))
+		excludeNames := parseNameSet(cmd.String("exclude-names"))
 
-		images, err := discovery.Discover(cfg, c.String("target-registry"), overrides, excludeNames)
+		images, err := discovery.Discover(cfg, cmd.String("target-registry"), overrides, excludeNames)
 		if err != nil {
 			return fmt.Errorf("failed to discover images: %w", err)
 		}
 
 		// --only: filter to specific image names
-		if only := c.String("only"); only != "" {
+		if only := cmd.String("only"); only != "" {
 			images = filterCopaImagesByName(images, only)
 			fmt.Fprintf(os.Stderr, "Filtered to %d images matching --only=%s\n", len(images), only)
 		}
 
 		// --preflight: skip images that don't need work
-		if c.Bool("preflight") {
-			repo := c.String("github-repo")
+		if cmd.Bool("preflight") {
+			repo := cmd.String("github-repo")
 			if repo == "" {
 				return errMissingGithubRepo
 			}
-			branch := c.String("reports-branch")
+			branch := cmd.String("reports-branch")
 			token := os.Getenv("GH_TOKEN")
 			if token == "" {
 				token = os.Getenv("GITHUB_TOKEN")

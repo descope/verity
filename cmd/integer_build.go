@@ -7,7 +7,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 
 	"github.com/verity-org/verity/internal/integer/apkindex"
 	intconfig "github.com/verity-org/verity/internal/integer/config"
@@ -63,11 +63,11 @@ var integerBuildCmd = &cli.Command{
 			Value: apkindex.DefaultAPKINDEXURL,
 		},
 	},
-	Action: func(c *cli.Context) error {
-		imageName := c.String("image")
-		version := c.String("version")
-		typeName := c.String("type")
-		imagesDir := c.String("images-dir")
+	Action: func(ctx context.Context, cmd *cli.Command) error {
+		imageName := cmd.String("image")
+		version := cmd.String("version")
+		typeName := cmd.String("type")
+		imagesDir := cmd.String("images-dir")
 
 		def, err := intconfig.LoadImage(fmt.Sprintf("%s/%s.yaml", imagesDir, imageName))
 		if err != nil {
@@ -80,7 +80,7 @@ var integerBuildCmd = &cli.Command{
 		}
 
 		if version == "latest" {
-			version, err = integerResolveLatestVersion(def, c.String("apkindex-url"))
+			version, err = integerResolveLatestVersion(def, cmd.String("apkindex-url"))
 			if err != nil {
 				return err
 			}
@@ -102,10 +102,10 @@ var integerBuildCmd = &cli.Command{
 		}
 		tmp.Close()
 
-		output := c.String("output")
-		arch := c.String("arch")
+		output := cmd.String("output")
+		arch := cmd.String("arch")
 		fmt.Fprintf(os.Stderr, "Building %s:%s-%s (%s) → %s\n", imageName, version, typeName, arch, output)
-		return integerRunApkoBuild(c.Context, tmp.Name(), output, arch)
+		return integerRunApkoBuild(ctx, tmp.Name(), output, arch)
 	},
 }
 

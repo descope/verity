@@ -1,11 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 
 	"github.com/verity-org/verity/internal/preflight"
 )
@@ -17,7 +18,7 @@ var errMissingToken = errors.New("GH_TOKEN or GITHUB_TOKEN must be set")
 var PreflightCommand = &cli.Command{
 	Name:  "preflight",
 	Usage: "Manage preflight manifest for build skipping",
-	Subcommands: []*cli.Command{
+	Commands: []*cli.Command{
 		{
 			Name:  "update-manifest",
 			Usage: "Update the preflight manifest with a new image entry",
@@ -52,7 +53,7 @@ var PreflightCommand = &cli.Command{
 					Value: 0,
 				},
 			},
-			Action: func(c *cli.Context) error {
+			Action: func(_ context.Context, cmd *cli.Command) error {
 				token := os.Getenv("GH_TOKEN")
 				if token == "" {
 					token = os.Getenv("GITHUB_TOKEN")
@@ -62,15 +63,15 @@ var PreflightCommand = &cli.Command{
 				}
 
 				entry := preflight.UpdateEntry{
-					ImageName:      c.String("image"),
-					Tag:            c.String("tag"),
-					UpstreamDigest: c.String("upstream-digest"),
-					PatchedVulns:   c.Int("patched-vulns"),
+					ImageName:      cmd.String("image"),
+					Tag:            cmd.String("tag"),
+					UpstreamDigest: cmd.String("upstream-digest"),
+					PatchedVulns:   cmd.Int("patched-vulns"),
 				}
 
 				err := preflight.UpdateManifest(
-					c.String("github-repo"),
-					c.String("reports-branch"),
+					cmd.String("github-repo"),
+					cmd.String("reports-branch"),
 					token,
 					entry,
 				)

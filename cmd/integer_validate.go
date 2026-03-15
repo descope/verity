@@ -1,12 +1,13 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 
 	"github.com/verity-org/verity/internal/integer/apkindex"
 	intconfig "github.com/verity-org/verity/internal/integer/config"
@@ -43,14 +44,14 @@ var integerValidateCmd = &cli.Command{
 	Action: runIntegerValidate,
 }
 
-func runIntegerValidate(c *cli.Context) error {
-	cfgPath := c.String("config")
-	imagesDir := c.String("images-dir")
+func runIntegerValidate(_ context.Context, cmd *cli.Command) error {
+	cfgPath := cmd.String("config")
+	imagesDir := cmd.String("images-dir")
 
 	var pkgs []apkindex.Package
-	if url := c.String("apkindex-url"); url != "" {
+	if url := cmd.String("apkindex-url"); url != "" {
 		var err error
-		pkgs, err = apkindex.Fetch(url, c.String("cache-dir"), apkindex.DefaultCacheMaxAge)
+		pkgs, err = apkindex.Fetch(url, cmd.String("cache-dir"), apkindex.DefaultCacheMaxAge)
 		if err != nil {
 			return fmt.Errorf("fetching APKINDEX: %w", err)
 		}

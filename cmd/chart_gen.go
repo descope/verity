@@ -1,11 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 
 	"github.com/verity-org/verity/internal/chartgen"
 )
@@ -45,14 +46,14 @@ var ChartGenCommand = &cli.Command{
 			Usage: "Output JSON plan without pushing charts",
 		},
 	},
-	Action: func(c *cli.Context) error {
+	Action: func(_ context.Context, cmd *cli.Command) error {
 		cfg := &chartgen.Config{
-			ChartsFile:     c.String("charts-file"),
-			VerityConfig:   c.String("verity-config"),
-			TargetRegistry: c.String("target-registry"),
-			ChartRegistry:  c.String("chart-registry"),
-			ExcludeNames:   parseNameSet(c.String("exclude-names")),
-			DryRun:         c.Bool("dry-run"),
+			ChartsFile:     cmd.String("charts-file"),
+			VerityConfig:   cmd.String("verity-config"),
+			TargetRegistry: cmd.String("target-registry"),
+			ChartRegistry:  cmd.String("chart-registry"),
+			ExcludeNames:   parseNameSet(cmd.String("exclude-names")),
+			DryRun:         cmd.Bool("dry-run"),
 		}
 
 		result, err := chartgen.Run(cfg)

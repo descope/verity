@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"os"
@@ -9,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 const intTestIntegerYAML = `
@@ -61,7 +62,7 @@ func TestIntegerDiscoverCommand(t *testing.T) {
 	imagesDir, cfgPath := intSetupCmdImages(t)
 	genDir := t.TempDir()
 
-	app := &cli.App{Commands: []*cli.Command{IntegerCommand}}
+	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
 
 	r, w, err := os.Pipe()
 	require.NoError(t, err)
@@ -69,7 +70,7 @@ func TestIntegerDiscoverCommand(t *testing.T) {
 	origStdout := os.Stdout
 	os.Stdout = w
 
-	runErr := app.Run([]string{
+	runErr := root.Run(context.Background(), []string{
 		"verity", "integer", "discover",
 		"--config", cfgPath,
 		"--images-dir", imagesDir,
@@ -101,8 +102,8 @@ func TestIntegerDiscoverCommand(t *testing.T) {
 }
 
 func TestIntegerDiscoverCommand_MissingConfig(t *testing.T) {
-	app := &cli.App{Commands: []*cli.Command{IntegerCommand}}
-	err := app.Run([]string{"verity", "integer", "discover", "--config", "/nonexistent/integer.yaml"})
+	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
+	err := root.Run(context.Background(), []string{"verity", "integer", "discover", "--config", "/nonexistent/integer.yaml"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "loading config")
 }
@@ -112,8 +113,8 @@ func TestIntegerDiscoverCommand_MissingImagesDir(t *testing.T) {
 	cfgPath := filepath.Join(dir, "integer.yaml")
 	intWriteFile(t, cfgPath, intTestIntegerYAML)
 
-	app := &cli.App{Commands: []*cli.Command{IntegerCommand}}
-	err := app.Run([]string{
+	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
+	err := root.Run(context.Background(), []string{
 		"verity", "integer", "discover",
 		"--config", cfgPath,
 		"--images-dir", "/nonexistent/images",
