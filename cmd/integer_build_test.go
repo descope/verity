@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 
 	intconfig "github.com/verity-org/verity/internal/integer/config"
 )
@@ -51,8 +51,8 @@ func intFakeApko(t *testing.T, exitCode int) {
 func TestIntegerBuildCommand_UnknownType(t *testing.T) {
 	imagesDir := intSetupBuildImages(t)
 
-	app := &cli.App{Commands: []*cli.Command{IntegerCommand}}
-	err := app.Run([]string{
+	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
+	err := root.Run(context.Background(), []string{
 		"verity", "integer", "build",
 		"--image", "myapp",
 		"--version", "latest",
@@ -66,8 +66,8 @@ func TestIntegerBuildCommand_UnknownType(t *testing.T) {
 func TestIntegerBuildCommand_MissingImage(t *testing.T) {
 	imagesDir := intSetupBuildImages(t)
 
-	app := &cli.App{Commands: []*cli.Command{IntegerCommand}}
-	err := app.Run([]string{
+	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
+	err := root.Run(context.Background(), []string{
 		"verity", "integer", "build",
 		"--image", "nonexistent",
 		"--version", "latest",

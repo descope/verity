@@ -1,12 +1,13 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 
 	"github.com/verity-org/verity/internal/integer/apkindex"
 	intconfig "github.com/verity-org/verity/internal/integer/config"
@@ -60,22 +61,22 @@ var integerDiscoverCmd = &cli.Command{
 			Value: "reports",
 		},
 	},
-	Action: func(c *cli.Context) error {
-		cfg, err := intconfig.LoadConfig(c.String("config"))
+	Action: func(_ context.Context, cmd *cli.Command) error {
+		cfg, err := intconfig.LoadConfig(cmd.String("config"))
 		if err != nil {
 			return fmt.Errorf("loading config: %w", err)
 		}
 
 		var pkgs []apkindex.Package
-		if url := c.String("apkindex-url"); url != "" {
-			pkgs, err = apkindex.Fetch(url, c.String("cache-dir"), apkindex.DefaultCacheMaxAge)
+		if url := cmd.String("apkindex-url"); url != "" {
+			pkgs, err = apkindex.Fetch(url, cmd.String("cache-dir"), apkindex.DefaultCacheMaxAge)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "warning: APKINDEX unavailable (%v) — using versions map only\n", err)
 				pkgs = nil
 			}
 		}
 
-		imagesDir, err := filepath.Abs(c.String("images-dir"))
+		imagesDir, err := filepath.Abs(cmd.String("images-dir"))
 		if err != nil {
 			return fmt.Errorf("resolving images dir: %w", err)
 		}
@@ -84,14 +85,14 @@ var integerDiscoverCmd = &cli.Command{
 			ImagesDir: imagesDir,
 			Registry:  cfg.Target.Registry,
 			Packages:  pkgs,
-			GenDir:    c.String("gen-dir"),
+			GenDir:    cmd.String("gen-dir"),
 		})
 		if err != nil {
 			return fmt.Errorf("discovering images: %w", err)
 		}
 
 		// --only: filter to specific image names
-		if only := c.String("only"); only != "" {
+		if only := cmd.String("only"); only != "" {
 			imgs = filterIntegerImagesByName(imgs, only)
 			fmt.Fprintf(os.Stderr, "Filtered to %d images matching --only=%s\n", len(imgs), only)
 		}
@@ -99,7 +100,7 @@ var integerDiscoverCmd = &cli.Command{
 		// --preflight: for Integer images, preflight is a no-op for now since
 		// Integer builds from source (no upstream digest to compare). The flag
 		// is accepted for workflow symmetry but currently just logs.
-		if c.Bool("preflight") {
+		if cmd.Bool("preflight") {
 			fmt.Fprintf(os.Stderr, "Preflight: Integer images build from source — no digest filtering applied\n")
 		}
 

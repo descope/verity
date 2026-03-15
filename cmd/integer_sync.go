@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"os"
@@ -10,7 +11,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 
 	"github.com/verity-org/verity/internal/integer/apkindex"
 	intconfig "github.com/verity-org/verity/internal/integer/config"
@@ -43,14 +44,14 @@ var integerSyncCmd = &cli.Command{
 	Action: runIntegerSync,
 }
 
-func runIntegerSync(c *cli.Context) error {
-	imagesDir := c.String("images-dir")
-	apply := c.Bool("apply")
+func runIntegerSync(_ context.Context, cmd *cli.Command) error {
+	imagesDir := cmd.String("images-dir")
+	apply := cmd.Bool("apply")
 
 	var pkgs []apkindex.Package
-	if url := c.String("apkindex-url"); url != "" {
+	if url := cmd.String("apkindex-url"); url != "" {
 		var err error
-		pkgs, err = apkindex.Fetch(url, c.String("cache-dir"), apkindex.DefaultCacheMaxAge)
+		pkgs, err = apkindex.Fetch(url, cmd.String("cache-dir"), apkindex.DefaultCacheMaxAge)
 		if err != nil {
 			return fmt.Errorf("fetching APKINDEX: %w", err)
 		}

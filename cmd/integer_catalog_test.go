@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -8,13 +9,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 func intRunCatalogApp(t *testing.T, args []string) error {
 	t.Helper()
-	app := &cli.App{Commands: []*cli.Command{IntegerCommand}}
-	return app.Run(append([]string{"verity", "integer"}, args...))
+	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
+	return root.Run(context.Background(), append([]string{"verity", "integer"}, args...))
 }
 
 func TestIntegerCatalogCommand_Basic(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -11,15 +12,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 
 	intconfig "github.com/verity-org/verity/internal/integer/config"
 )
 
 func intRunSyncApp(t *testing.T, args []string) error {
 	t.Helper()
-	app := &cli.App{Commands: []*cli.Command{IntegerCommand}}
-	return app.Run(append([]string{"verity", "integer"}, args...))
+	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
+	return root.Run(context.Background(), append([]string{"verity", "integer"}, args...))
 }
 
 func intMakeAPKINDEXServer(t *testing.T, content string) *httptest.Server {
