@@ -3,6 +3,7 @@ package chartgen
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -74,7 +75,7 @@ func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) 
 		return ChartResult{}, false, fmt.Errorf("extract images for chart %s: %w", chart.Name, err)
 	}
 
-	remainingRefs, replacementMappings := applyReplacements(imageRefs, vc)
+	remainingRefs, replacementMappings := applyReplacements(imageRefs, vc, cfg.ExcludeNames)
 
 	mappings, err := BuildImageMappings(remainingRefs, cfg.TargetRegistry, cfg.ExcludeNames)
 	if err != nil {
@@ -137,41 +138,55 @@ func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) 
 	return chartResult, true, nil
 }
 
-func applyReplacements(imageRefs []string, vc *config.VerityConfig) ([]string, []ImageMapping) {
-	remainingRefs := make([]string, 0, len(imageRefs))
-	replacementMappings := make([]ImageMapping, 0, len(imageRefs))
+func applyReplacements(imageRefs []string, vc *config.VerityConfig, excludeNames map[string]struct{}) ([]string, []ImageMapping) {
+	if vc == nil || len(vc.Replacements) == 0 {
+		return imageRefs, nil
+	}
+
+	// Sort patterns for deterministic match order.
+	patterns := make([]string, 0, len(vc.Replacements))
+	for p := range vc.Replacements {
+		patterns = append(patterns, p)
+	}
+	sort.Strings(patterns)
+
+	remaining := make([]string, 0, len(imageRefs))
+	var replacements []ImageMapping
 
 	for _, imageRef := range imageRefs {
 		name := repoPath(imageRef)
 		sourceRepo, sourceTag := splitRef(imageRef)
 
-		if vc == nil || vc.Replacements == nil {
-			remainingRefs = append(remainingRefs, imageRef)
+		if isExcluded(name, imageRef, excludeNames) {
+			fmt.Fprintf(os.Stderr, "warning: skipping excluded image %q (%s)\n", name, imageRef)
 			continue
 		}
 
 		matched := false
-		for pattern, replacement := range vc.Replacements {
-			if !strings.Contains(name, pattern) && name != pattern {
+		for _, pattern := range patterns {
+			if name != pattern && !strings.Contains(name, pattern) {
 				continue
 			}
-
-			patchedRepo := replacement.Registry + "/" + replacement.Image
-			replacementMappings = append(replacementMappings, ImageMapping{
+			repl := vc.Replacements[pattern]
+			patchedRepo := repl.Registry + "/" + repl.Image
+			patchedTag := sourceTag
+			if repl.Tag != "" {
+				patchedTag = repl.Tag
+			}
+			replacements = append(replacements, ImageMapping{
 				OriginalRepo: sourceRepo,
 				OriginalTag:  sourceTag,
 				PatchedRepo:  patchedRepo,
-				PatchedTag:   sourceTag,
+				PatchedTag:   patchedTag,
 			})
-			fmt.Fprintf(os.Stderr, "info: replacing %q with Integer image %s:%s\n", imageRef, patchedRepo, sourceTag)
+			fmt.Fprintf(os.Stderr, "info: replacing %q with Integer image %s:%s\n", imageRef, patchedRepo, patchedTag)
 			matched = true
 			break
 		}
-
 		if !matched {
-			remainingRefs = append(remainingRefs, imageRef)
+			remaining = append(remaining, imageRef)
 		}
 	}
 
-	return remainingRefs, replacementMappings
+	return remaining, replacements
 }

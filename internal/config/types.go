@@ -22,6 +22,7 @@ type VerityConfig struct {
 type Replacement struct {
 	Registry string `yaml:"registry"`
 	Image    string `yaml:"image"`
+	Tag      string `yaml:"tag,omitempty"` // optional; defaults to upstream chart tag
 }
 
 // ImageSpec describes a single image to patch.
