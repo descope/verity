@@ -91,7 +91,7 @@ const { image, category, scanData, integerData, hardenedEquivalent } = Astro.pro
 const base = import.meta.env.BASE_URL;
 const pullRef = scanData?.patchedRef
   ? stripTag(scanData.patchedRef)
-  : `${REGISTRY}/${upstreamPath(image)}`;
+  : `${REGISTRY}/${image.source === "integer" ? (image.integerName ?? image.name) : upstreamPath(image)}`;
 const dockerPull = `docker pull ${pullRef}`;
 
 const fixed = scanData ? scanData.beforeVulns.total - scanData.afterVulns.total : 0;

@@ -87,7 +87,6 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "haproxy", source: "integer" },
       { name: "traefik", source: "integer" },
       { name: "envoy", source: "integer" },
-      { name: "caddy", source: "integer", variants: ["default", "fips"] },
       {
         name: "nginxinc/nginx-s3-gateway",
         label: "nginx-s3-gateway",
