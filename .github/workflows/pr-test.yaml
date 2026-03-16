@@ -174,3 +174,160 @@ jobs:
           name: "trivy-${{ matrix.image }}-${{ matrix.version }}-${{ matrix.type }}"
           path: trivy-report.json
           retention-days: 7
+
+  # ── Build + scan changed Integer images ──────────────────────────────
+  detect-changed-images:
+    name: Detect changed images
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+      has-changes: ${{ steps.detect.outputs.has-changes }}
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Install mise
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3.6.3
+        with:
+          install: true
+          cache: true
+
+      - name: Cache Go modules
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ~/dev/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Build verity CLI
+        run: go build -o verity .
+
+      - name: Detect changed image files and build matrix
+        id: detect
+        run: |
+          # Find image YAML files changed in this PR
+          changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'images/*.yaml' 'images/_base/*.yaml' | grep -v '_base/' || true)
+
+          if [ -z "$changed" ]; then
+            echo "No image YAML files changed"
+            echo 'has-changes=false' >> "$GITHUB_OUTPUT"
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Changed image files:"
+          echo "$changed"
+
+          # Extract image names from file paths
+          names=$(echo "$changed" | sed 's|images/||;s|\.yaml||' | paste -sd, || true)
+
+          # Discover all version+type combos for changed images only
+          all=$(./verity integer discover --only "$names" 2>/dev/null || true)
+
+          if [ -z "$all" ] || [ "$all" = "null" ] || [ "$all" = "[]" ]; then
+            echo "No discoverable images"
+            echo 'has-changes=false' >> "$GITHUB_OUTPUT"
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Build matrix: pick the latest version per image+type
+          matrix=$(echo "$all" | jq -c '
+            group_by(.name + "-" + .type)
+            | map(sort_by(.version) | last)
+            | map({image: .name, version: .version, type: .type})
+            | {include: .}
+          ')
+
+          count=$(echo "$matrix" | jq '.include | length')
+          echo "Matrix: ${count} image builds"
+          echo "$matrix" | jq .
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+          echo 'has-changes=true' >> "$GITHUB_OUTPUT"
+
+  integer-build-changed:
+    name: "Build ${{ matrix.image }}:${{ matrix.version }}-${{ matrix.type }}"
+    needs: detect-changed-images
+    if: needs.detect-changed-images.outputs.has-changes == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect-changed-images.outputs.matrix) }}
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install mise
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3.6.3
+        with:
+          install: true
+          cache: true
+
+      - name: Cache Go modules
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ~/dev/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Build verity CLI
+        run: go build -o verity .
+
+      - name: Build image (local, no push)
+        run: |
+          ./verity integer build \
+            --image ${{ matrix.image }} \
+            --version ${{ matrix.version }} \
+            --type ${{ matrix.type }} \
+            --output image.tar \
+            --arch amd64
+
+          echo "\u2713 Built ${{ matrix.image }}:${{ matrix.version }}-${{ matrix.type }}"
+          ls -lh image.tar
+
+      - name: Trivy vulnerability scan
+        run: |
+          trivy image \
+            --exit-code 1 \
+            --severity CRITICAL,HIGH \
+            --vuln-type os,library \
+            --format table \
+            --input image.tar
+
+          echo "\u2713 Zero CRITICAL/HIGH CVEs"
+
+      - name: Full vulnerability report
+        if: always()
+        run: |
+          trivy image \
+            --severity CRITICAL,HIGH,MEDIUM,LOW \
+            --vuln-type os,library \
+            --format json \
+            --output trivy-report.json \
+            --input image.tar
+
+          TOTAL=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' trivy-report.json)
+          echo "Total vulnerabilities: ${TOTAL}"
+
+      - name: Upload Trivy report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: "trivy-${{ matrix.image }}-${{ matrix.version }}-${{ matrix.type }}"
+          path: trivy-report.json
+          retention-days: 7
