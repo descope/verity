@@ -9,6 +9,8 @@ export interface FullCatalogImage {
   upstream?: string;
   variants?: string[];
   note?: string;
+  /** Integer image name when it differs from `name` (e.g. name="calico/cni" → integerName="calico-cni"). */
+  integerName?: string;
 }
 
 /** Extract the path portion after the registry host from an upstream ref. */
@@ -60,6 +62,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         name: "library/gradle",
         label: "gradle",
         source: "integer",
+        integerName: "gradle",
         upstream: "mirror.gcr.io/library/gradle",
       },
       { name: "maven", source: "integer" },
@@ -67,6 +70,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         name: "bazelbuild/bazel",
         label: "bazel",
         source: "integer",
+        integerName: "bazel",
         upstream: "ghcr.io/bazelbuild/bazel",
       },
       { name: "ko", source: "integer" },
@@ -94,6 +98,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         name: "jcmoraisjr/haproxy-ingress",
         label: "haproxy-ingress",
         source: "integer",
+        integerName: "haproxy-ingress",
         upstream: "quay.io/jcmoraisjr/haproxy-ingress",
       },
       {
@@ -243,6 +248,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         name: "strimzi/kafka",
         label: "strimzi-kafka",
         source: "integer",
+        integerName: "strimzi-kafka",
         upstream: "quay.io/strimzi/kafka",
       },
       { name: "nats", source: "integer" },
@@ -315,6 +321,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         name: "jimmidyson/configmap-reload",
         label: "configmap-reload",
         source: "integer",
+        integerName: "configmap-reload",
         upstream: "ghcr.io/jimmidyson/configmap-reload",
       },
       {
@@ -328,6 +335,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         name: "crossplane/crossplane",
         label: "crossplane",
         source: "integer",
+        integerName: "crossplane",
         upstream: "mirror.gcr.io/crossplane/crossplane",
       },
       { name: "terraform", source: "integer", variants: ["default", "fips"] },
@@ -368,23 +376,31 @@ export const fullCatalog: FullCatalogCategory[] = [
     id: "mesh",
     label: "Service Mesh & Networking",
     images: [
-      { name: "istio/proxyv2", source: "integer", upstream: "mirror.gcr.io/istio/proxyv2" },
+      {
+        name: "istio/proxyv2",
+        source: "integer",
+        integerName: "istio-proxyv2",
+        upstream: "mirror.gcr.io/istio/proxyv2",
+      },
       {
         name: "istio/pilot",
         label: "istio-pilot",
         source: "integer",
+        integerName: "istio-pilot",
         upstream: "mirror.gcr.io/istio/pilot",
       },
       {
         name: "istio/install-cni",
         label: "istio-install-cni",
         source: "integer",
+        integerName: "istio-install-cni",
         upstream: "mirror.gcr.io/istio/install-cni",
       },
       {
         name: "cilium/cilium",
         label: "cilium-agent",
         source: "integer",
+        integerName: "cilium",
         upstream: "quay.io/cilium/cilium",
       },
       {
@@ -403,30 +419,35 @@ export const fullCatalog: FullCatalogCategory[] = [
         name: "calico/cni",
         label: "calico-cni",
         source: "integer",
+        integerName: "calico-cni",
         upstream: "quay.io/calico/cni",
       },
       {
         name: "calico/kube-controllers",
         label: "calico-kube-controllers",
         source: "integer",
+        integerName: "calico-kube-controllers",
         upstream: "quay.io/calico/kube-controllers",
       },
       {
         name: "calico/typha",
         label: "calico-typha",
         source: "integer",
+        integerName: "calico-typha",
         upstream: "quay.io/calico/typha",
       },
       {
         name: "calico/apiserver",
         label: "calico-apiserver",
         source: "integer",
+        integerName: "calico-apiserver",
         upstream: "quay.io/calico/apiserver",
       },
       {
         name: "calico/csi",
         label: "calico-csi",
         source: "integer",
+        integerName: "calico-csi",
         upstream: "quay.io/calico/csi",
       },
       {
@@ -439,12 +460,14 @@ export const fullCatalog: FullCatalogCategory[] = [
         name: "calico/node-driver-registrar",
         label: "calico-node-driver-registrar",
         source: "integer",
+        integerName: "calico-node-driver-registrar",
         upstream: "quay.io/calico/node-driver-registrar",
       },
       {
         name: "calico/key-cert-provisioner",
         label: "calico-key-cert-provisioner",
         source: "integer",
+        integerName: "calico-key-cert-provisioner",
         upstream: "quay.io/calico/key-cert-provisioner",
       },
     ],
@@ -515,6 +538,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         name: "newrelic/infrastructure-bundle",
         label: "newrelic-infra-bundle",
         source: "integer",
+        integerName: "newrelic-infrastructure-bundle",
         upstream: "mirror.gcr.io/newrelic/infrastructure-bundle",
       },
     ],
@@ -529,12 +553,14 @@ export const fullCatalog: FullCatalogCategory[] = [
         name: "fluent/fluentd",
         label: "fluentd",
         source: "integer",
+        integerName: "fluentd",
         upstream: "mirror.gcr.io/fluent/fluentd",
       },
       {
         name: "fluent/fluentd-kubernetes-daemonset",
         label: "fluentd-k8s-daemonset",
         source: "integer",
+        integerName: "fluentd-kubernetes-daemonset",
         upstream: "mirror.gcr.io/fluent/fluentd-kubernetes-daemonset",
       },
       {
@@ -547,6 +573,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         name: "opensearchproject/logstash-oss-with-opensearch-output-plugin",
         label: "logstash-oss-opensearch",
         source: "integer",
+        integerName: "logstash-oss",
         upstream: "mirror.gcr.io/opensearchproject/logstash-oss-with-opensearch-output-plugin",
       },
     ],
@@ -611,12 +638,14 @@ export const fullCatalog: FullCatalogCategory[] = [
         name: "spiffe/spire-server",
         label: "spire-server",
         source: "integer",
+        integerName: "spire-server",
         upstream: "ghcr.io/spiffe/spire-server",
       },
       {
         name: "spiffe/spire-agent",
         label: "spire-agent",
         source: "integer",
+        integerName: "spire-agent",
         upstream: "ghcr.io/spiffe/spire-agent",
       },
       {
@@ -645,23 +674,31 @@ export const fullCatalog: FullCatalogCategory[] = [
     id: "policy",
     label: "Policy & Compliance",
     images: [
-      { name: "kyverno/kyverno", source: "integer", upstream: "ghcr.io/kyverno/kyverno" },
+      {
+        name: "kyverno/kyverno",
+        source: "integer",
+        integerName: "kyverno",
+        upstream: "ghcr.io/kyverno/kyverno",
+      },
       {
         name: "kyverno/kyverno-cli",
         label: "kyverno-cli",
         source: "integer",
+        integerName: "kyverno-cli",
         upstream: "ghcr.io/kyverno/kyverno-cli",
       },
       {
         name: "kyverno/background-controller",
         label: "kyverno-background-controller",
         source: "integer",
+        integerName: "kyverno-background-controller",
         upstream: "ghcr.io/kyverno/background-controller",
       },
       {
         name: "kyverno/reports-controller",
         label: "kyverno-reports-controller",
         source: "integer",
+        integerName: "kyverno-reports-controller",
         upstream: "ghcr.io/kyverno/reports-controller",
       },
       {

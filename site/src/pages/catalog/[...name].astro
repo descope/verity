@@ -68,7 +68,7 @@ export async function getStaticPaths() {
       // Fetch integer version data for integer source images
       let integerData: IntegerImage | undefined;
       if (image.source === "integer") {
-        integerData = await getIntegerImage(image.name);
+        integerData = await getIntegerImage(image.integerName ?? image.name);
       }
 
       // Check if copa image has a hardened (integer) equivalent
@@ -200,7 +200,7 @@ const sortedVersions = integerData ? sortVersionsLatestFirst(integerData.version
                   </div>
                   <code class="text-xs text-verity-text-muted break-all">
                     {defaultVariant?.ref ??
-                      `${integerData.registry || REGISTRY}/${image.name}:${version.version}`}
+                      `${integerData.registry || REGISTRY}/${image.integerName ?? image.name}:${version.version}`}
                   </code>
                 </div>
                 <div class="flex flex-wrap gap-1.5 shrink-0">
