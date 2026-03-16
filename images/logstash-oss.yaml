@@ -1,13 +1,13 @@
 name: logstash-oss
 description: "Logstash OSS with OpenSearch output — Wolfi rebuild replaces Copa-patched Ubuntu"
 upstream:
-  package: "logstash-{{version}}"
+  package: "logstash-{{version}}-with-output-opensearch"
 
 types:
   default:
     base: wolfi-base
-    packages: ["logstash-{{version}}"]
-    entrypoint: /usr/bin/logstash
+    packages: ["logstash-{{version}}-with-output-opensearch", "logstash-{{version}}-compat"]
+    entrypoint: /usr/bin/docker-entrypoint
     environment:
       JAVA_HOME: /usr/lib/jvm/java-21-openjdk
       LS_HOME: /usr/share/logstash
