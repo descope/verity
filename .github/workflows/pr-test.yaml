@@ -212,25 +212,49 @@ jobs:
 
       - name: Detect changed image files and build matrix
         id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          # Find image YAML files changed in this PR
-          changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'images/*.yaml' 'images/_base/*.yaml' | grep -v '_base/' || true)
+          # Find image YAML files changed in this PR (use PR event SHAs)
+          all_changed=$(git diff --name-only "$BASE_SHA"..."$HEAD_SHA" -- 'images/*.yaml' 'images/_base/*.yaml' || true)
 
-          if [ -z "$changed" ]; then
+          if [ -z "$all_changed" ]; then
             echo "No image YAML files changed"
             echo 'has-changes=false' >> "$GITHUB_OUTPUT"
             echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          echo "Changed image files:"
-          echo "$changed"
+          # Check if base images changed (affects all images)
+          base_changed=$(echo "$all_changed" | grep '_base/' || true)
+          image_changed=$(echo "$all_changed" | grep -v '_base/' || true)
 
-          # Extract image names from file paths
-          names=$(echo "$changed" | sed 's|images/||;s|\.yaml||' | paste -sd, || true)
+          if [ -n "$base_changed" ]; then
+            echo "Base image files changed — discovering all images"
+            names=""  # empty = all
+          elif [ -n "$image_changed" ]; then
+            names=$(echo "$image_changed" | sed 's|images/||;s|\.yaml||' | paste -sd, || true)
+            echo "Changed images: $names"
+          else
+            echo "No actionable changes"
+            echo 'has-changes=false' >> "$GITHUB_OUTPUT"
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
-          # Discover all version+type combos for changed images only
-          all=$(./verity integer discover --only "$names" 2>/dev/null || true)
+          # Discover version+type combos for changed images
+          DISCOVER_FLAGS=""
+          if [ -n "$names" ]; then
+            DISCOVER_FLAGS="--only $names"
+          fi
+
+          # shellcheck disable=SC2086
+          all=$(./verity integer discover $DISCOVER_FLAGS)
+          if [ $? -ne 0 ]; then
+            echo "::error::verity integer discover failed"
+            exit 1
+          fi
 
           if [ -z "$all" ] || [ "$all" = "null" ] || [ "$all" = "[]" ]; then
             echo "No discoverable images"
@@ -239,10 +263,13 @@ jobs:
             exit 0
           fi
 
-          # Build matrix: pick the latest version per image+type
+          # Build matrix: pick the latest version per image+type.
+          # sort_by(.version | split(".") | map(tonumber? // .)) handles numeric ordering.
           matrix=$(echo "$all" | jq -c '
-            group_by(.name + "-" + .type)
-            | map(sort_by(.version) | last)
+            [.[] | . + {_key: (.name + "-" + .type)}]
+            | sort_by(._key)
+            | group_by(._key)
+            | map(sort_by(.version | split(".") | map(tonumber? // .)) | last)
             | map({image: .name, version: .version, type: .type})
             | {include: .}
           ')
