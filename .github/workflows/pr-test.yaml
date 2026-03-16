@@ -250,8 +250,7 @@ jobs:
           fi
 
           # shellcheck disable=SC2086
-          all=$(./verity integer discover $DISCOVER_FLAGS)
-          if [ $? -ne 0 ]; then
+          if ! all=$(./verity integer discover $DISCOVER_FLAGS); then
             echo "::error::verity integer discover failed"
             exit 1
           fi
