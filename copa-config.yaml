@@ -69,8 +69,56 @@ images:
   #  DATABASES
   # ============================================================================
 
+  - name: "library/redis"
+    image: "mirror.gcr.io/library/redis"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
   - name: "mongodb/mongodb-community-server"
     image: "docker.io/mongodb/mongodb-community-server"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "cockroachdb/cockroach"
+    image: "mirror.gcr.io/cockroachdb/cockroach"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "library/elasticsearch"
+    image: "mirror.gcr.io/library/elasticsearch"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "elastic/eck-operator"
+    image: "mirror.gcr.io/elastic/eck-operator"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "zalando/postgres-operator"
+    image: "ghcr.io/zalando/postgres-operator"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "redis/redisinsight"
+    image: "mirror.gcr.io/redis/redisinsight"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -256,12 +304,36 @@ images:
   # -- Prometheus ecosystem --
   # NOTE: Default Prometheus tags are busybox-based → NOT patchable.
   # Use -distroless suffixed tags (Copa patches dpkg-distroless via tooling container).
+  - name: "prometheus/node-exporter"
+    image: "quay.io/prometheus/node-exporter"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+-distroless$'
+      maxTags: 3
+
   - name: "prometheus/mysqld-exporter"
     image: "quay.io/prometheus/mysqld-exporter"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
       pattern: '^v\d+\.\d+\.\d+-distroless$'
+      maxTags: 3
+
+  - name: "prometheus-operator/prometheus-config-reloader"
+    image: "quay.io/prometheus-operator/prometheus-config-reloader"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "prometheuscommunity/elasticsearch-exporter"
+    image: "quay.io/prometheuscommunity/elasticsearch-exporter"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
       maxTags: 3
 
   # -- Grafana ecosystem --
@@ -271,6 +343,14 @@ images:
     tags:
       strategy: "pattern"
       pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "grafana/promtail"
+    image: "mirror.gcr.io/grafana/promtail"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
 
   # -- Agents --
@@ -318,6 +398,24 @@ images:
   #  SECURITY & IDENTITY
   # ============================================================================
 
+  - name: "hashicorp/vault-k8s"
+    image: "mirror.gcr.io/hashicorp/vault-k8s"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "hashicorp/consul"
+    image: "mirror.gcr.io/hashicorp/consul"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # ⚠ SPIRE images are scratch-based since ~v1.8+. Copa CANNOT patch these.
+  # Kept for tracking; Copa will no-op on them.
   - name: "spiffe/spiffe-helper"
     image: "ghcr.io/spiffe/spiffe-helper"
     platforms: ["linux/amd64", "linux/arm64"]

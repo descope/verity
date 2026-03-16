@@ -1,0 +1,67 @@
+╔════════════════════════════════════════════════════════════════════════════════════╗
+║                    WOLFI APK PACKAGES FOR INTEGER IMAGES                           ║
+║                      License & Availability Quick Reference                        ║
+║                             March 16, 2026                                         ║
+╚════════════════════════════════════════════════════════════════════════════════════╝
+
+✅ APPROVED FOR REDISTRIBUTION (12/15 projects) - All Apache-2.0
+
+  1. configmap-reload          ✅  v0.15.0      Available in Wolfi
+  2. crossplane                ✅  v2.2.0       Available in Wolfi
+  3. spire-server + agent      ✅  v1.14.1      Available (agent = subpkg)
+  4. kyverno + subcomponents   ✅  v1.17.1      Available (4 subcomponents)
+  5. haproxy-ingress           ✅  v0.15.1      Available in Wolfi
+  6. istio + subcomponents     ✅  v1.29.0      Available (5 subcomponents)
+  7. cilium                    ✅  v1.19.1      Available in Wolfi
+  8. calico + subcomponents    ✅  v3.31.4      Available (6 subcomponents)
+  9. newrelic-infra-bundle     ✅  v3.3.16      Available in Wolfi
+ 10. logstash-oss              ✅  v9.3.1       Available (OSS-only verified)
+ 11. fluentd                   ✅  v1.17+       Available (multiple ruby versions)
+ 12. strimzi-kafka-operator    ✅  v0.50.1      Available in Wolfi
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  REDISTRIBUTION BLOCKED (2 projects)
+
+  1. promtail                  ❌  AGPL-3.0     NOT in Wolfi (copyleft license)
+  2. eck-operator              ❌  Elastic-2.0  NOT in Wolfi (proprietary)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  ACTION REQUIRED (1 project)
+
+  1. node-exporter             ⚠️   Apache-2.0  NOT packaged in Wolfi
+                                    Available: Apache-2.0 licensed
+                                    Issue: No Wolfi package exists
+                                    Action: Submit PR or use alternatives
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+KEY FINDINGS:
+
+  ✓ spire-agent IS AVAILABLE as a subpackage of spire-server
+  ✓ logstash-9.3 in Wolfi is VERIFIED to be OSS-only (x-pack removed in build)
+  ✓ All kyverno, istio, and calico subcomponents are available
+  ✓ 12 of 15 projects are safe for Integer redistribution
+
+CRITICAL DECISIONS:
+
+  🚨 AGPL-3.0 (promtail): Do NOT include unless AGPL compliance is implemented
+  🚨 Elastic-2.0 (eck): Do NOT include (proprietary, no open source variant)
+  ⚠️  node-exporter: Alternative packaging needed
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DEPLOYMENT COMMANDS:
+
+# List all packages available in Wolfi
+apk search configmap-reload crossplane spire-server spire-agent kyverno \
+  haproxy-ingress istio cilium calico newrelic-infrastructure-bundle \
+  logstash ruby*-fluentd strimzi-kafka-operator
+
+# Verify license compliance (all should show Apache-2.0)
+apk info logstash-9.3 | grep License
+apk info spire-server | grep License
+apk info istio-1.29 | grep License
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
