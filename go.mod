@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
-	github.com/google/go-containerregistry v0.21.1
+	github.com/google/go-containerregistry v0.21.2
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v3 v3.7.0
 	gopkg.in/yaml.v3 v3.0.1
