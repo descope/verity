@@ -51,22 +51,16 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "deno", source: "integer" },
       { name: "gcc", source: "integer" },
       {
-        name: "graalvm/native-image",
-        label: "graalvm-native-image",
-        source: "incompatible",
-        note: "Oracle Linux — unsupported by Copa",
-      },
-      {
         name: "library/gradle",
         label: "gradle",
-        source: "copa",
+        source: "integer",
         upstream: "mirror.gcr.io/library/gradle",
       },
       { name: "maven", source: "integer" },
       {
         name: "bazelbuild/bazel",
         label: "bazel",
-        source: "copa",
+        source: "integer",
         upstream: "ghcr.io/bazelbuild/bazel",
       },
       { name: "ko", source: "integer" },
@@ -83,29 +77,28 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "haproxy", source: "integer" },
       { name: "traefik", source: "integer" },
       { name: "envoy", source: "integer" },
-      { name: "caddy", source: "integer", variants: ["default", "fips"] },
       {
         name: "nginxinc/nginx-s3-gateway",
         label: "nginx-s3-gateway",
-        source: "copa",
+        source: "integer",
         upstream: "ghcr.io/nginxinc/nginx-s3-gateway",
       },
       {
         name: "jcmoraisjr/haproxy-ingress",
         label: "haproxy-ingress",
-        source: "copa",
+        source: "integer",
         upstream: "quay.io/jcmoraisjr/haproxy-ingress",
       },
       {
         name: "kubernetes/ingress-nginx/controller",
         label: "ingress-nginx-controller",
-        source: "copa",
+        source: "integer",
         upstream: "ghcr.io/kubernetes/ingress-nginx/controller",
       },
       {
         name: "kubernetes/ingress-nginx/kube-webhook-certgen",
         label: "kube-webhook-certgen",
-        source: "copa",
+        source: "integer",
         upstream: "ghcr.io/kubernetes/ingress-nginx/kube-webhook-certgen",
       },
       {
@@ -128,12 +121,6 @@ export const fullCatalog: FullCatalogCategory[] = [
     label: "Databases & Caching",
     images: [
       { name: "postgres", source: "integer", variants: ["default", "dev"] },
-      {
-        name: "library/redis",
-        label: "redis",
-        source: "copa",
-        upstream: "mirror.gcr.io/library/redis",
-      },
       { name: "valkey", source: "integer" },
       {
         name: "mongodb/mongodb-community-server",
@@ -142,12 +129,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "docker.io/mongodb/mongodb-community-server",
       },
       { name: "mariadb", source: "integer" },
-      {
-        name: "library/elasticsearch",
-        label: "elasticsearch",
-        source: "copa",
-        upstream: "mirror.gcr.io/library/elasticsearch",
-      },
       {
         name: "opensearchproject/opensearch",
         label: "opensearch",
@@ -159,12 +140,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         label: "opensearch-dashboards",
         source: "copa",
         upstream: "mirror.gcr.io/opensearchproject/opensearch-dashboards",
-      },
-      {
-        name: "cockroachdb/cockroach",
-        label: "cockroachdb",
-        source: "copa",
-        upstream: "mirror.gcr.io/cockroachdb/cockroach",
       },
       {
         name: "clickhouse/clickhouse-server",
@@ -181,24 +156,6 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "influxdb", source: "integer" },
       { name: "memcached", source: "integer" },
       { name: "pgbouncer", source: "integer" },
-      {
-        name: "redis/redisinsight",
-        label: "redisinsight",
-        source: "copa",
-        upstream: "mirror.gcr.io/redis/redisinsight",
-      },
-      {
-        name: "elastic/eck-operator",
-        label: "eck-operator",
-        source: "copa",
-        upstream: "mirror.gcr.io/elastic/eck-operator",
-      },
-      {
-        name: "zalando/postgres-operator",
-        label: "postgres-operator",
-        source: "copa",
-        upstream: "ghcr.io/zalando/postgres-operator",
-      },
       {
         name: "opstree/redis",
         label: "Redis (OpsTree)",
@@ -242,7 +199,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       {
         name: "strimzi/kafka",
         label: "strimzi-kafka",
-        source: "copa",
+        source: "integer",
         upstream: "quay.io/strimzi/kafka",
       },
       { name: "nats", source: "integer" },
@@ -314,7 +271,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       {
         name: "jimmidyson/configmap-reload",
         label: "configmap-reload",
-        source: "copa",
+        source: "integer",
         upstream: "ghcr.io/jimmidyson/configmap-reload",
       },
       {
@@ -327,7 +284,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       {
         name: "crossplane/crossplane",
         label: "crossplane",
-        source: "copa",
+        source: "integer",
         upstream: "mirror.gcr.io/crossplane/crossplane",
       },
       { name: "terraform", source: "integer", variants: ["default", "fips"] },
@@ -368,36 +325,24 @@ export const fullCatalog: FullCatalogCategory[] = [
     id: "mesh",
     label: "Service Mesh & Networking",
     images: [
-      { name: "istio/proxyv2", source: "copa", upstream: "mirror.gcr.io/istio/proxyv2" },
+      { name: "istio/proxyv2", source: "integer", upstream: "mirror.gcr.io/istio/proxyv2" },
       {
         name: "istio/pilot",
         label: "istio-pilot",
-        source: "copa",
+        source: "integer",
         upstream: "mirror.gcr.io/istio/pilot",
       },
       {
         name: "istio/install-cni",
         label: "istio-install-cni",
-        source: "copa",
+        source: "integer",
         upstream: "mirror.gcr.io/istio/install-cni",
       },
       {
         name: "cilium/cilium",
         label: "cilium-agent",
-        source: "copa",
+        source: "integer",
         upstream: "quay.io/cilium/cilium",
-      },
-      {
-        name: "cilium/cilium-envoy",
-        label: "cilium-envoy",
-        source: "copa",
-        upstream: "quay.io/cilium/cilium-envoy",
-      },
-      {
-        name: "cilium/operator-generic",
-        label: "cilium-operator",
-        source: "copa",
-        upstream: "quay.io/cilium/operator-generic",
       },
       {
         name: "cilium/hubble-ui",
@@ -406,47 +351,45 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "quay.io/cilium/hubble-ui",
       },
       {
-        name: "calico/node",
-        label: "calico-node",
-        source: "incompatible",
-        note: "Stripped image — no package managers",
+        name: "calico/cni",
+        label: "calico-cni",
+        source: "integer",
+        upstream: "quay.io/calico/cni",
       },
-      { name: "calico/cni", label: "calico-cni", source: "copa", upstream: "quay.io/calico/cni" },
       {
         name: "calico/kube-controllers",
         label: "calico-kube-controllers",
-        source: "copa",
+        source: "integer",
         upstream: "quay.io/calico/kube-controllers",
       },
       {
         name: "calico/typha",
         label: "calico-typha",
-        source: "copa",
+        source: "integer",
         upstream: "quay.io/calico/typha",
       },
       {
         name: "calico/apiserver",
         label: "calico-apiserver",
-        source: "copa",
+        source: "integer",
         upstream: "quay.io/calico/apiserver",
       },
-      { name: "calico/csi", label: "calico-csi", source: "copa", upstream: "quay.io/calico/csi" },
       {
-        name: "calico/ctl",
-        label: "calico-calicoctl",
-        source: "incompatible",
-        note: "Stripped image — no package managers",
+        name: "calico/csi",
+        label: "calico-csi",
+        source: "integer",
+        upstream: "quay.io/calico/csi",
       },
       {
         name: "calico/node-driver-registrar",
         label: "calico-node-driver-registrar",
-        source: "copa",
+        source: "integer",
         upstream: "quay.io/calico/node-driver-registrar",
       },
       {
         name: "calico/key-cert-provisioner",
         label: "calico-key-cert-provisioner",
-        source: "copa",
+        source: "integer",
         upstream: "quay.io/calico/key-cert-provisioner",
       },
     ],
@@ -468,55 +411,31 @@ export const fullCatalog: FullCatalogCategory[] = [
       {
         name: "grafana/grafana-operator",
         label: "grafana-operator",
-        source: "copa",
+        source: "integer",
         upstream: "ghcr.io/grafana/grafana-operator",
-      },
-      {
-        name: "prometheus/node-exporter",
-        label: "prometheus-node-exporter",
-        source: "copa",
-        upstream: "quay.io/prometheus/node-exporter",
       },
       {
         name: "prometheus/mysqld-exporter",
         label: "prometheus-mysqld-exporter",
-        source: "copa",
+        source: "integer",
         upstream: "quay.io/prometheus/mysqld-exporter",
-      },
-      {
-        name: "prometheus-operator/prometheus-config-reloader",
-        label: "prometheus-config-reloader",
-        source: "copa",
-        upstream: "quay.io/prometheus-operator/prometheus-config-reloader",
-      },
-      {
-        name: "prometheuscommunity/elasticsearch-exporter",
-        label: "prometheus-es-exporter",
-        source: "copa",
-        upstream: "quay.io/prometheuscommunity/elasticsearch-exporter",
-      },
-      {
-        name: "grafana/promtail",
-        label: "promtail",
-        source: "copa",
-        upstream: "mirror.gcr.io/grafana/promtail",
       },
       {
         name: "datadog/agent",
         label: "datadog-agent",
-        source: "copa",
+        source: "integer",
         upstream: "ghcr.io/datadog/agent",
       },
       {
         name: "datadog/cluster-agent",
         label: "datadog-cluster-agent",
-        source: "copa",
+        source: "integer",
         upstream: "ghcr.io/datadog/cluster-agent",
       },
       {
         name: "newrelic/infrastructure-bundle",
         label: "newrelic-infra-bundle",
-        source: "copa",
+        source: "integer",
         upstream: "mirror.gcr.io/newrelic/infrastructure-bundle",
       },
     ],
@@ -530,13 +449,13 @@ export const fullCatalog: FullCatalogCategory[] = [
       {
         name: "fluent/fluentd",
         label: "fluentd",
-        source: "copa",
+        source: "integer",
         upstream: "mirror.gcr.io/fluent/fluentd",
       },
       {
         name: "fluent/fluentd-kubernetes-daemonset",
         label: "fluentd-k8s-daemonset",
-        source: "copa",
+        source: "integer",
         upstream: "mirror.gcr.io/fluent/fluentd-kubernetes-daemonset",
       },
       {
@@ -548,7 +467,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       {
         name: "opensearchproject/logstash-oss-with-opensearch-output-plugin",
         label: "logstash-oss-opensearch",
-        source: "copa",
+        source: "integer",
         upstream: "mirror.gcr.io/opensearchproject/logstash-oss-with-opensearch-output-plugin",
       },
     ],
@@ -586,39 +505,21 @@ export const fullCatalog: FullCatalogCategory[] = [
     images: [
       { name: "vault", source: "integer" },
       {
-        name: "hashicorp/vault-k8s",
-        label: "vault-k8s",
-        source: "copa",
-        upstream: "mirror.gcr.io/hashicorp/vault-k8s",
-      },
-      {
-        name: "hashicorp/consul",
-        label: "consul",
-        source: "copa",
-        upstream: "mirror.gcr.io/hashicorp/consul",
-      },
-      {
         name: "keycloak/keycloak",
         label: "keycloak",
         source: "copa",
         upstream: "quay.io/keycloak/keycloak",
       },
       {
-        name: "keycloak/keycloak-operator",
-        label: "keycloak-operator",
-        source: "incompatible",
-        note: "Stripped image — no package managers",
-      },
-      {
         name: "spiffe/spire-server",
         label: "spire-server",
-        source: "copa",
+        source: "integer",
         upstream: "ghcr.io/spiffe/spire-server",
       },
       {
         name: "spiffe/spire-agent",
         label: "spire-agent",
-        source: "copa",
+        source: "integer",
         upstream: "ghcr.io/spiffe/spire-agent",
       },
       {
@@ -647,23 +548,23 @@ export const fullCatalog: FullCatalogCategory[] = [
     id: "policy",
     label: "Policy & Compliance",
     images: [
-      { name: "kyverno/kyverno", source: "copa", upstream: "ghcr.io/kyverno/kyverno" },
+      { name: "kyverno/kyverno", source: "integer", upstream: "ghcr.io/kyverno/kyverno" },
       {
         name: "kyverno/kyverno-cli",
         label: "kyverno-cli",
-        source: "copa",
+        source: "integer",
         upstream: "ghcr.io/kyverno/kyverno-cli",
       },
       {
         name: "kyverno/background-controller",
         label: "kyverno-background-controller",
-        source: "copa",
+        source: "integer",
         upstream: "ghcr.io/kyverno/background-controller",
       },
       {
         name: "kyverno/reports-controller",
         label: "kyverno-reports-controller",
-        source: "copa",
+        source: "integer",
         upstream: "ghcr.io/kyverno/reports-controller",
       },
       {
@@ -720,24 +621,7 @@ export const fullCatalog: FullCatalogCategory[] = [
   {
     id: "registries",
     label: "Container Registries",
-    images: [
-      {
-        name: "goharbor/registry-photon",
-        source: "incompatible",
-        note: "Photon OS — unsupported by Copa",
-      },
-      {
-        name: "goharbor/harbor-portal",
-        source: "incompatible",
-        note: "Photon OS — unsupported by Copa",
-      },
-      {
-        name: "project-zot/zot-linux-amd64",
-        label: "zot",
-        source: "incompatible",
-        note: "Broken Debian repos — libssl3 unpatchable",
-      },
-    ],
+    images: [],
   },
 
   {
