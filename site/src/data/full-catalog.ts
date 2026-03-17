@@ -1,6 +1,6 @@
 export const REGISTRY = "ghcr.io/verity-org";
 
-export type ImageSource = "copa" | "integer" | "incompatible";
+export type ImageSource = "copa" | "integer";
 
 export interface FullCatalogImage {
   name: string;
@@ -8,7 +8,6 @@ export interface FullCatalogImage {
   source: ImageSource;
   upstream?: string;
   variants?: string[];
-  note?: string;
   /** Integer image name when it differs from `name` (e.g. name="calico/cni" → integerName="calico-cni"). */
   integerName?: string;
 }
@@ -52,12 +51,6 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "php", source: "integer", variants: ["default", "dev"] },
       { name: "deno", source: "integer" },
       { name: "gcc", source: "integer" },
-      {
-        name: "graalvm/native-image",
-        label: "graalvm-native-image",
-        source: "incompatible",
-        note: "Oracle Linux — unsupported by Copa",
-      },
       {
         name: "library/gradle",
         label: "gradle",
@@ -409,12 +402,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "quay.io/cilium/hubble-ui",
       },
       {
-        name: "calico/node",
-        label: "calico-node",
-        source: "incompatible",
-        note: "Stripped image — no package managers",
-      },
-      {
         name: "calico/cni",
         label: "calico-cni",
         source: "integer",
@@ -448,12 +435,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         source: "integer",
         integerName: "calico-csi",
         upstream: "quay.io/calico/csi",
-      },
-      {
-        name: "calico/ctl",
-        label: "calico-calicoctl",
-        source: "incompatible",
-        note: "Stripped image — no package managers",
       },
       {
         name: "calico/node-driver-registrar",
@@ -628,12 +609,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "quay.io/keycloak/keycloak",
       },
       {
-        name: "keycloak/keycloak-operator",
-        label: "keycloak-operator",
-        source: "incompatible",
-        note: "Stripped image — no package managers",
-      },
-      {
         name: "spiffe/spire-server",
         label: "spire-server",
         source: "integer",
@@ -747,29 +722,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         label: "cert-manager-openshift-routes",
         source: "copa",
         upstream: "ghcr.io/cert-manager/cert-manager-openshift-routes",
-      },
-    ],
-  },
-
-  {
-    id: "registries",
-    label: "Container Registries",
-    images: [
-      {
-        name: "goharbor/registry-photon",
-        source: "incompatible",
-        note: "Photon OS — unsupported by Copa",
-      },
-      {
-        name: "goharbor/harbor-portal",
-        source: "incompatible",
-        note: "Photon OS — unsupported by Copa",
-      },
-      {
-        name: "project-zot/zot-linux-amd64",
-        label: "zot",
-        source: "incompatible",
-        note: "Broken Debian repos — libssl3 unpatchable",
       },
     ],
   },
