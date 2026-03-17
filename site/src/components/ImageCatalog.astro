@@ -126,7 +126,10 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary {
                   </div>
 
                   <div class="text-xs text-verity-text-secondary font-mono truncate">
-                    {REGISTRY}/{upstreamPath(image)}
+                    {REGISTRY}/
+                    {image.source === "integer"
+                      ? (image.integerName ?? image.name)
+                      : upstreamPath(image)}
                   </div>
                 </a>
               );
