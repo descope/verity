@@ -1,0 +1,16 @@
+name: cilium
+description: "Cilium eBPF networking agent — Wolfi rebuild replaces Copa-patched Ubuntu"
+upstream:
+  package: "cilium-{{version}}"
+
+types:
+  default:
+    base: wolfi-base
+    packages: ["cilium-{{version}}"]
+    entrypoint: /usr/bin/cilium-agent
+    paths:
+      - {path: /var/run/cilium, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+      - {path: /var/lib/cilium, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+
+versions:
+  "1": {}

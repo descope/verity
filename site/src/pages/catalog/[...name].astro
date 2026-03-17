@@ -66,9 +66,9 @@ export async function getStaticPaths() {
       });
 
       // Fetch integer version data for integer source images
-      let integerData: IntegerImage | undefined;
+      let integerData: IntegerDataWithRegistry | undefined;
       if (image.source === "integer") {
-        integerData = await getIntegerImage(image.name);
+        integerData = await getIntegerImage(image.integerName ?? image.name);
       }
 
       // Check if copa image has a hardened (integer) equivalent
@@ -91,7 +91,7 @@ const { image, category, scanData, integerData, hardenedEquivalent } = Astro.pro
 const base = import.meta.env.BASE_URL;
 const pullRef = scanData?.patchedRef
   ? stripTag(scanData.patchedRef)
-  : `${REGISTRY}/${upstreamPath(image)}`;
+  : `${REGISTRY}/${image.source === "integer" ? (image.integerName ?? image.name) : upstreamPath(image)}`;
 const dockerPull = `docker pull ${pullRef}`;
 
 const fixed = scanData ? scanData.beforeVulns.total - scanData.afterVulns.total : 0;
@@ -200,7 +200,7 @@ const sortedVersions = integerData ? sortVersionsLatestFirst(integerData.version
                   </div>
                   <code class="text-xs text-verity-text-muted break-all">
                     {defaultVariant?.ref ??
-                      `${integerData.registry || REGISTRY}/${image.name}:${version.version}`}
+                      `${integerData.registry || REGISTRY}/${image.integerName ?? image.name}:${version.version}`}
                   </code>
                 </div>
                 <div class="flex flex-wrap gap-1.5 shrink-0">
@@ -249,28 +249,6 @@ const sortedVersions = integerData ? sortVersionsLatestFirst(integerData.version
           </a>
           packages. Contains only the minimum packages needed to run — no shell, no package manager,
           minimal attack surface by design.
-        </p>
-      </div>
-    ) : image.source === "incompatible" ? (
-      <div class="bg-red-950/20 border border-red-800/40 rounded-lg p-4 mb-6">
-        <div class="flex items-center gap-2 mb-2">
-          <svg
-            class="w-4 h-4 text-red-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2.5"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-            />
-          </svg>
-          <span class="text-sm font-medium text-red-400">Incompatible Image</span>
-        </div>
-        <p class="text-sm text-verity-text-secondary">
-          {image.note ?? "This image cannot be patched by Copa due to OS or tooling limitations."}
         </p>
       </div>
     ) : (
