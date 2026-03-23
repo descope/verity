@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.69.2"
   },
-  "ReportID": "019cec35-567d-73d4-a929-562a5243c313",
-  "CreatedAt": "2026-03-14T11:57:24.477251886Z",
+  "ReportID": "019d1884-c836-7d0e-8ffd-e5ab165eddae",
+  "CreatedAt": "2026-03-23T02:27:28.438857617Z",
   "ArtifactID": "sha256:64632d0b0819367dd228d9bd645d7e91f0d0ea377445877a11557be4732fe8c9",
   "ArtifactName": "ghcr.io/verity-org/cache:openpolicyagent-gatekeeper-v3.21.0",
   "ArtifactType": "container_image",
@@ -3508,6 +3508,49 @@
           "LastModifiedDate": "2025-12-11T19:29:24.9Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-33186",
+          "VendorIDs": [
+            "GHSA-p77j-4mvh-x3m3"
+          ],
+          "PkgID": "google.golang.org/grpc@v1.75.1",
+          "PkgName": "google.golang.org/grpc",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/google.golang.org/grpc@v1.75.1",
+            "UID": "76e543c486c6a42f"
+          },
+          "InstalledVersion": "v1.75.1",
+          "FixedVersion": "1.79.3",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:018065afdd3695ef8f4befcc290d0ab26f3b90c247343601f9e69f2c8d064eb7",
+            "DiffID": "sha256:acf26cbb5a344f08a756b0fa495db37b59575976004f5c9cd94c838fbdd74ebd"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-33186",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Go",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
+          },
+          "Fingerprint": "sha256:26c6fa85b44442af03d02e78d20c8f047ea1f4eb6eca8363d7c736e01e27e6de",
+          "Title": "gRPC-Go has an authorization bypass via missing leading slash in :path",
+          "Description": "### Impact\n_What kind of vulnerability is it? Who is impacted?_\n\nIt is an **Authorization Bypass** resulting from **Improper Input Validation** of the HTTP/2 `:path` pseudo-header.\n\nThe gRPC-Go server was too lenient in its routing logic, accepting requests where the `:path` omitted the mandatory leading slash (e.g., `Service/Method` instead of `/Service/Method`). While the server successfully routed these requests to the correct handler, authorization interceptors (including the official `grpc/authz` package) evaluated the raw, non-canonical path string. Consequently, \"deny\" rules defined using canonical paths (starting with `/`) failed to match the incoming request, allowing it to bypass the policy if a fallback \"allow\" rule was present.\n\n**Who is impacted?**\nThis affects gRPC-Go servers that meet both of the following criteria:\n1. They use path-based authorization interceptors, such as the official RBAC implementation in `google.golang.org/grpc/authz` or custom interceptors relying on `info.FullMethod` or `grpc.Method(ctx)`.\n2. Their security policy contains specific \"deny\" rules for canonical paths but allows other requests by default (a fallback \"allow\" rule).\n\nThe vulnerability is exploitable by an attacker who can send raw HTTP/2 frames with malformed `:path` headers directly to the gRPC server.\n\n### Patches\n_Has the problem been patched? What versions should users upgrade to?_\n\nYes, the issue has been patched. The fix ensures that any request with a `:path` that does not start with a leading slash is immediately rejected with a `codes.Unimplemented` error, preventing it from reaching authorization interceptors or handlers with a non-canonical path string.\n\nUsers should upgrade to the following versions (or newer):\n* **v1.79.3**\n* The latest **master** branch.\n\nIt is recommended that all users employing path-based authorization (especially `grpc/authz`) upgrade as soon as the patch is available in a tagged release.\n\n### Workarounds\n_Is there a way for users to fix or remediate the vulnerability without upgrading?_\n\nWhile upgrading is the most secure and recommended path, users can mitigate the vulnerability using one of the following methods:\n\n#### 1. Use a Validating Interceptor (Recommended Mitigation)\nAdd an \"outermost\" interceptor to your server that validates the path before any other authorization logic runs:\n\n```go\nfunc pathValidationInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {\n    if info.FullMethod == \"\" || info.FullMethod[0] != '/' {\n        return nil, status.Errorf(codes.Unimplemented, \"malformed method name\")\n    }   \n    return handler(ctx, req)\n}\n\n// Ensure this is the FIRST interceptor in your chain\ns := grpc.NewServer(\n    grpc.ChainUnaryInterceptor(pathValidationInterceptor, authzInterceptor),\n)\n```\n\n#### 2. Infrastructure-Level Normalization\nIf your gRPC server is behind a reverse proxy or load balancer (such as Envoy, NGINX, or an L7 Cloud Load Balancer), ensure it is configured to enforce strict HTTP/2 compliance for pseudo-headers and reject or normalize requests where the `:path` header does not start with a leading slash.\n\n#### 3. Policy Hardening\nSwitch to a \"default deny\" posture in your authorization policies (explicitly listing all allowed paths and denying everything else) to reduce the risk of bypasses via malformed inputs.",
+          "Severity": "CRITICAL",
+          "VendorSeverity": {
+            "ghsa": 4
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+              "V3Score": 9.1
+            }
+          },
+          "References": [
+            "https://github.com/grpc/grpc-go",
+            "https://github.com/grpc/grpc-go/security/advisories/GHSA-p77j-4mvh-x3m3"
+          ]
+        },
+        {
           "VulnerabilityID": "CVE-2025-68121",
           "VendorIDs": [
             "GO-2026-4337"
@@ -3580,7 +3623,7 @@
             "https://go.dev/issue/77217",
             "https://groups.google.com/g/golang-announce/c/K09ubi9FQFk",
             "https://linux.oracle.com/cve/CVE-2025-68121.html",
-            "https://linux.oracle.com/errata/ELSA-2026-4164.html",
+            "https://linux.oracle.com/errata/ELSA-2026-4672.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2025-68121",
             "https://pkg.go.dev/vuln/GO-2026-4337",
             "https://www.cve.org/CVERecord?id=CVE-2025-68121"
@@ -3655,7 +3698,7 @@
             "https://go.dev/issue/77101",
             "https://groups.google.com/g/golang-announce/c/Vd2tYVM8eUc",
             "https://linux.oracle.com/cve/CVE-2025-61726.html",
-            "https://linux.oracle.com/errata/ELSA-2026-4164.html",
+            "https://linux.oracle.com/errata/ELSA-2026-4672.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2025-61726",
             "https://pkg.go.dev/vuln/GO-2026-4341",
             "https://www.cve.org/CVERecord?id=CVE-2025-61726"
@@ -3736,7 +3779,7 @@
             "https://go.dev/issue/77102",
             "https://groups.google.com/g/golang-announce/c/Vd2tYVM8eUc",
             "https://linux.oracle.com/cve/CVE-2025-61728.html",
-            "https://linux.oracle.com/errata/ELSA-2026-3753.html",
+            "https://linux.oracle.com/errata/ELSA-2026-4672.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2025-61728",
             "https://pkg.go.dev/vuln/GO-2026-4342",
             "https://www.cve.org/CVERecord?id=CVE-2025-61728"
@@ -3820,6 +3863,60 @@
           ],
           "PublishedDate": "2025-12-02T19:15:51.447Z",
           "LastModifiedDate": "2025-12-19T18:25:28.283Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-25679",
+          "VendorIDs": [
+            "GO-2026-4601"
+          ],
+          "PkgID": "stdlib@v1.25.3",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.25.3",
+            "UID": "1cde351b97e69944"
+          },
+          "InstalledVersion": "v1.25.3",
+          "FixedVersion": "1.25.8, 1.26.1",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:018065afdd3695ef8f4befcc290d0ab26f3b90c247343601f9e69f2c8d064eb7",
+            "DiffID": "sha256:acf26cbb5a344f08a756b0fa495db37b59575976004f5c9cd94c838fbdd74ebd"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-25679",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:185a3dde5bd052feab140a7711adf8057acde1e335244e7b16e7fee6838bcb85",
+          "Title": "net/url: Incorrect parsing of IPv6 host literals in net/url",
+          "Description": "url.Parse insufficiently validated the host/authority component and accepted some invalid URLs.",
+          "Severity": "HIGH",
+          "VendorSeverity": {
+            "bitnami": 3,
+            "redhat": 3
+          },
+          "CVSS": {
+            "bitnami": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-25679",
+            "https://go.dev/cl/752180",
+            "https://go.dev/issue/77578",
+            "https://groups.google.com/g/golang-announce/c/EdhZqrQ98hk",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-25679",
+            "https://pkg.go.dev/vuln/GO-2026-4601",
+            "https://www.cve.org/CVERecord?id=CVE-2026-25679"
+          ],
+          "PublishedDate": "2026-03-06T22:16:00.72Z",
+          "LastModifiedDate": "2026-03-10T18:18:37.74Z"
         },
         {
           "VulnerabilityID": "CVE-2025-61727",
@@ -3932,60 +4029,6 @@
           "LastModifiedDate": "2026-02-03T20:36:41.3Z"
         },
         {
-          "VulnerabilityID": "CVE-2026-25679",
-          "VendorIDs": [
-            "GO-2026-4601"
-          ],
-          "PkgID": "stdlib@v1.25.3",
-          "PkgName": "stdlib",
-          "PkgIdentifier": {
-            "PURL": "pkg:golang/stdlib@v1.25.3",
-            "UID": "1cde351b97e69944"
-          },
-          "InstalledVersion": "v1.25.3",
-          "FixedVersion": "1.25.8, 1.26.1",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:018065afdd3695ef8f4befcc290d0ab26f3b90c247343601f9e69f2c8d064eb7",
-            "DiffID": "sha256:acf26cbb5a344f08a756b0fa495db37b59575976004f5c9cd94c838fbdd74ebd"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-25679",
-          "DataSource": {
-            "ID": "govulndb",
-            "Name": "The Go Vulnerability Database",
-            "URL": "https://pkg.go.dev/vuln/"
-          },
-          "Fingerprint": "sha256:185a3dde5bd052feab140a7711adf8057acde1e335244e7b16e7fee6838bcb85",
-          "Title": "net/url: Incorrect parsing of IPv6 host literals in net/url",
-          "Description": "url.Parse insufficiently validated the host/authority component and accepted some invalid URLs.",
-          "Severity": "MEDIUM",
-          "VendorSeverity": {
-            "bitnami": 3,
-            "redhat": 2
-          },
-          "CVSS": {
-            "bitnami": {
-              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
-              "V3Score": 7.5
-            },
-            "redhat": {
-              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
-              "V3Score": 5.3
-            }
-          },
-          "References": [
-            "https://access.redhat.com/security/cve/CVE-2026-25679",
-            "https://go.dev/cl/752180",
-            "https://go.dev/issue/77578",
-            "https://groups.google.com/g/golang-announce/c/EdhZqrQ98hk",
-            "https://nvd.nist.gov/vuln/detail/CVE-2026-25679",
-            "https://pkg.go.dev/vuln/GO-2026-4601",
-            "https://www.cve.org/CVERecord?id=CVE-2026-25679"
-          ],
-          "PublishedDate": "2026-03-06T22:16:00.72Z",
-          "LastModifiedDate": "2026-03-10T18:18:37.74Z"
-        },
-        {
           "VulnerabilityID": "CVE-2026-27142",
           "VendorIDs": [
             "GO-2026-4603"
@@ -4014,13 +4057,13 @@
           "Description": "Actions which insert URLs into the content attribute of HTML meta tags are not escaped. This can allow XSS if the meta tag also has an http-equiv attribute with the value \"refresh\". A new GODEBUG setting has been added, htmlmetacontenturlescape, which can be used to disable escaping URLs in actions in the meta content attribute which follow \"url=\" by setting htmlmetacontenturlescape=0.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
-            "bitnami": 3,
+            "bitnami": 2,
             "redhat": 2
           },
           "CVSS": {
             "bitnami": {
-              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
-              "V3Score": 7.5
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+              "V3Score": 6.1
             },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
@@ -4037,7 +4080,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-27142"
           ],
           "PublishedDate": "2026-03-06T22:16:01.177Z",
-          "LastModifiedDate": "2026-03-10T18:18:44.607Z"
+          "LastModifiedDate": "2026-03-16T16:16:13.77Z"
         },
         {
           "VulnerabilityID": "CVE-2026-27139",
