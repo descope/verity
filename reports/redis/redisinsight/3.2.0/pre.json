@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.69.2"
   },
-  "ReportID": "019cec15-ddf6-7790-93aa-349f736e0721",
-  "CreatedAt": "2026-03-14T11:23:02.006498034Z",
+  "ReportID": "019d1868-f8e4-7501-8450-ad1188badd8b",
+  "CreatedAt": "2026-03-23T01:57:05.892329587Z",
   "ArtifactID": "sha256:59f9f647fac71fb3c2434efe41a5bca1023670ba1d0a6df5ef090aa20743a040",
   "ArtifactName": "mirror.gcr.io/redis/redisinsight:3.2.0",
   "ArtifactType": "container_image",
@@ -16679,7 +16679,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-31808"
           ],
           "PublishedDate": "2026-03-10T21:16:50.173Z",
-          "LastModifiedDate": "2026-03-11T13:52:47.683Z"
+          "LastModifiedDate": "2026-03-18T19:48:13.733Z"
         },
         {
           "VulnerabilityID": "CVE-2026-31808",
@@ -16737,7 +16737,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-31808"
           ],
           "PublishedDate": "2026-03-10T21:16:50.173Z",
-          "LastModifiedDate": "2026-03-11T13:52:47.683Z"
+          "LastModifiedDate": "2026-03-18T19:48:13.733Z"
         },
         {
           "VulnerabilityID": "CVE-2026-32630",
@@ -16766,24 +16766,38 @@
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Anpm"
           },
           "Fingerprint": "sha256:6dc32dbc7afbaebc4c3ef10e333b5884589d7f01b519298fa34bf9e8373fea0a",
-          "Title": "file-type: ZIP Decompression Bomb DoS via [Content_Types].xml entry",
-          "Description": "## Summary\n\nA crafted ZIP file can trigger excessive memory growth during type detection in `file-type` when using `fileTypeFromBuffer()`, `fileTypeFromBlob()`, or `fileTypeFromFile()`.\n\nIn affected versions, the ZIP inflate output limit is enforced for stream-based detection, but not for known-size inputs. As a result, a small compressed ZIP can cause `file-type` to inflate and process a much larger payload while probing ZIP-based formats such as OOXML. In testing on `file-type` `21.3.1`, a ZIP of about `255 KB` caused about `257 MB` of RSS growth during `fileTypeFromBuffer()`.\n\nThis is an availability issue. Applications that use these APIs on untrusted uploads can be forced to consume large amounts of memory and may become slow or crash.\n\n## Root Cause\n\nThe ZIP detection logic applied different limits depending on whether the tokenizer had a known file size.\n\nFor stream inputs, ZIP probing was bounded by `maximumZipEntrySizeInBytes` (`1 MiB`). For known-size inputs such as buffers, blobs, and files, the code instead used `Number.MAX_SAFE_INTEGER` in two relevant places:\n\n```js\nconst maximumContentTypesEntrySize = hasUnknownFileSize(tokenizer)\n\t? maximumZipEntrySizeInBytes\n\t: Number.MAX_SAFE_INTEGER;\n```\n\nand:\n\n```js\nconst maximumLength = hasUnknownFileSize(this.tokenizer)\n\t? maximumZipEntrySizeInBytes\n\t: Number.MAX_SAFE_INTEGER;\n```\n\nTogether, these checks allowed a crafted ZIP to bypass the intended inflate limit for known-size APIs and force large decompression during detection of entries such as `[Content_Types].xml`.\n\n## Proof of Concept\n\n```js\nimport {fileTypeFromBuffer} from 'file-type';\nimport archiver from 'archiver';\nimport {Writable} from 'node:stream';\n\nasync function createZipBomb(sizeInMegabytes) {\n\treturn new Promise((resolve, reject) =\u003e {\n\t\tconst chunks = [];\n\t\tconst writable = new Writable({\n\t\t\twrite(chunk, encoding, callback) {\n\t\t\t\tchunks.push(chunk);\n\t\t\t\tcallback();\n\t\t\t},\n\t\t});\n\n\t\tconst archive = archiver('zip', {zlib: {level: 9}});\n\t\tarchive.pipe(writable);\n\t\twritable.on('finish', () =\u003e {\n\t\t\tresolve(Buffer.concat(chunks));\n\t\t});\n\t\tarchive.on('error', reject);\n\n\t\tconst xmlPrefix = '\u003c?xml version=\"1.0\"?\u003e\u003cTypes xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"\u003e';\n\t\tconst padding = Buffer.alloc(sizeInMegabytes * 1024 * 1024 - xmlPrefix.length, 0x20);\n\t\tarchive.append(Buffer.concat([Buffer.from(xmlPrefix), padding]), {name: '[Content_Types].xml'});\n\t\tarchive.finalize();\n\t});\n}\n\nconst zip = await createZipBomb(256);\nconsole.log('ZIP size (KB):', (zip.length / 1024).toFixed(0));\n\nconst before = process.memoryUsage().rss;\nawait fileTypeFromBuffer(zip);\nconst after = process.memoryUsage().rss;\n\nconsole.log('RSS growth (MB):', ((after - before) / 1024 / 1024).toFixed(0));\n```\n\nObserved on `file-type` `21.3.1`:\n- ZIP size: about `255 KB`\n- RSS growth during detection: about `257 MB`\n\n## Affected APIs\n\nAffected:\n- `fileTypeFromBuffer()`\n- `fileTypeFromBlob()`\n- `fileTypeFromFile()`\n\nNot affected:\n- `fileTypeFromStream()`, which already enforced the ZIP inflate limit for unknown-size inputs\n\n## Impact\n\nApplications that inspect untrusted uploads with `fileTypeFromBuffer()`, `fileTypeFromBlob()`, or `fileTypeFromFile()` can be forced to consume excessive memory during ZIP-based type detection. This can degrade service or lead to process termination in memory-constrained environments.\n\n## Cause\n\nThe issue was introduced in 399b0f1",
+          "Title": "file-type: file-type: Denial of Service via excessive memory growth from crafted ZIP files",
+          "Description": "file-type detects the file type of a file, stream, or data. From 20.0.0 to 21.3.1, a crafted ZIP file can trigger excessive memory growth during type detection in file-type when using fileTypeFromBuffer(), fileTypeFromBlob(), or fileTypeFromFile(). The ZIP inflate output limit is enforced for stream-based detection, but not for known-size inputs. As a result, a small compressed ZIP can cause file-type to inflate and process a much larger payload while probing ZIP-based formats such as OOXML. This vulnerability is fixed in 21.3.2.",
           "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-409"
+          ],
           "VendorSeverity": {
-            "ghsa": 2
+            "ghsa": 2,
+            "redhat": 2
           },
           "CVSS": {
             "ghsa": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
               "V3Score": 5.3
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+              "V3Score": 5.3
             }
           },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-32630",
             "https://github.com/sindresorhus/file-type",
+            "https://github.com/sindresorhus/file-type/commit/399b0f156063f5aeb1c124a7fd61028f3ea7c124",
             "https://github.com/sindresorhus/file-type/commit/a155cd71323279de173c54e8c530d300d3854fdd",
             "https://github.com/sindresorhus/file-type/releases/tag/v21.3.2",
-            "https://github.com/sindresorhus/file-type/security/advisories/GHSA-j47w-4g3g-c36v"
-          ]
+            "https://github.com/sindresorhus/file-type/security/advisories/GHSA-j47w-4g3g-c36v",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-32630",
+            "https://www.cve.org/CVERecord?id=CVE-2026-32630"
+          ],
+          "PublishedDate": "2026-03-16T14:19:40.593Z",
+          "LastModifiedDate": "2026-03-17T19:05:56.58Z"
         },
         {
           "VulnerabilityID": "CVE-2025-64756",
@@ -17882,6 +17896,53 @@
           "LastModifiedDate": "2026-02-24T20:13:51.837Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-33151",
+          "VendorIDs": [
+            "GHSA-677m-j7p3-52f9"
+          ],
+          "PkgID": "socket.io-parser@4.2.4",
+          "PkgName": "socket.io-parser",
+          "PkgPath": "usr/src/app/redisinsight/api/node_modules/socket.io-parser/package.json",
+          "PkgIdentifier": {
+            "PURL": "pkg:npm/socket.io-parser@4.2.4",
+            "UID": "1c36e9f05d8fcda5"
+          },
+          "InstalledVersion": "4.2.4",
+          "FixedVersion": "3.3.5, 3.4.4, 4.2.6",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:418316686b8f9f12b22bacba03931e5b1cfebc62429a1676760dacf08468840c",
+            "DiffID": "sha256:719e00280b9936f2be219fb7d37522cce0b27d0ddf77fac4ddff5dc09becd7a6"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-33151",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory npm",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Anpm"
+          },
+          "Fingerprint": "sha256:621a292d6c329fe97b2d58e887d91b32c61400221333c2d8eb1ee4fb0c20e46a",
+          "Title": "socket.io allows an unbounded number of binary attachments",
+          "Description": "### Impact\n\nA specially crafted Socket.IO packet can make the server wait for a large number of binary attachments and buffer them, which can be exploited to make the server run out of memory.\n\n### Patches\n\n| Version range    | Used by                                    | Fixed version |\n|------------------|--------------------------------------------|---------------|\n| `\u003e=4.0.0 \u003c4.2.6` | `socket.io@4.x` and `socket.io-client@4.x` | `4.2.6`       |\n| `\u003e=3.4.0 \u003c3.4.4` | `socket.io@2.x`                            | `3.4.4`       |\n| `\u003c3.3.5`         | `socket.io-client@2.x`                     | `3.3.5`       |\n\n### Workarounds\n\nThere is no known workaround except upgrading to a safe version.\n\n### For more information\n\nIf you have any questions or comments about this advisory:\n\n- Open a discussion [here](https://github.com/socketio/socket.io/discussions)",
+          "Severity": "HIGH",
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N",
+              "V40Score": 8.7
+            }
+          },
+          "References": [
+            "https://github.com/socketio/socket.io",
+            "https://github.com/socketio/socket.io/commit/719f9ebab0772ffb882bd614b387e585c1aa75d4",
+            "https://github.com/socketio/socket.io/commit/9d39f1f080510f036782f2177fac701cc041faaf",
+            "https://github.com/socketio/socket.io/commit/b25738c416c4e32fbff62ee182afa8f6d0dacf78",
+            "https://github.com/socketio/socket.io/security/advisories/GHSA-677m-j7p3-52f9"
+          ]
+        },
+        {
           "VulnerabilityID": "CVE-2026-23745",
           "VendorIDs": [
             "GHSA-8qq5-rm4j-mr97"
@@ -18552,12 +18613,17 @@
           ],
           "VendorSeverity": {
             "ghsa": 3,
+            "nvd": 2,
             "redhat": 2
           },
           "CVSS": {
             "ghsa": {
               "V40Vector": "CVSS:4.0/AV:L/AC:L/AT:N/PR:N/UI:N/VC:N/VI:H/VA:N/SC:N/SI:H/SA:N",
               "V40Score": 8.2
+            },
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N",
+              "V3Score": 5.5
             },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
@@ -18573,7 +18639,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-31802"
           ],
           "PublishedDate": "2026-03-10T07:44:58.02Z",
-          "LastModifiedDate": "2026-03-11T13:53:47.157Z"
+          "LastModifiedDate": "2026-03-18T18:13:34.703Z"
         },
         {
           "VulnerabilityID": "CVE-2026-31802",
@@ -18610,12 +18676,17 @@
           ],
           "VendorSeverity": {
             "ghsa": 3,
+            "nvd": 2,
             "redhat": 2
           },
           "CVSS": {
             "ghsa": {
               "V40Vector": "CVSS:4.0/AV:L/AC:L/AT:N/PR:N/UI:N/VC:N/VI:H/VA:N/SC:N/SI:H/SA:N",
               "V40Score": 8.2
+            },
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N",
+              "V3Score": 5.5
             },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
@@ -18631,7 +18702,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-31802"
           ],
           "PublishedDate": "2026-03-10T07:44:58.02Z",
-          "LastModifiedDate": "2026-03-11T13:53:47.157Z"
+          "LastModifiedDate": "2026-03-18T18:13:34.703Z"
         },
         {
           "VulnerabilityID": "CVE-2026-23745",
@@ -18986,12 +19057,17 @@
           ],
           "VendorSeverity": {
             "ghsa": 3,
+            "nvd": 2,
             "redhat": 2
           },
           "CVSS": {
             "ghsa": {
               "V40Vector": "CVSS:4.0/AV:L/AC:L/AT:N/PR:N/UI:N/VC:N/VI:H/VA:N/SC:N/SI:H/SA:N",
               "V40Score": 8.2
+            },
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N",
+              "V3Score": 5.5
             },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
@@ -19007,7 +19083,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-31802"
           ],
           "PublishedDate": "2026-03-10T07:44:58.02Z",
-          "LastModifiedDate": "2026-03-11T13:53:47.157Z"
+          "LastModifiedDate": "2026-03-18T18:13:34.703Z"
         }
       ]
     }
