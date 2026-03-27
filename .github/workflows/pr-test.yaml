@@ -444,10 +444,13 @@ jobs:
               exit 1
             fi
 
+            # Inject local melange repo into the generated apko config
+            # (@local syntax works in YAML but not reliably via --repository-append)
+            yq -i '.contents.repositories += ["@local '"${GITHUB_WORKSPACE}"'/packages/repo"]' "$config"
+            yq -i '.contents.keyring += ["'"${GITHUB_WORKSPACE}"'/melange-work/melange.rsa.pub"]' "$config"
+
             apko build \
               --arch amd64 \
-              --repository-append "@local ${GITHUB_WORKSPACE}/packages/repo" \
-              --keyring-append "${GITHUB_WORKSPACE}/melange-work/melange.rsa.pub" \
               "$config" \
               "${{ matrix.image }}:pr-test" \
               "$GITHUB_WORKSPACE/image.tar"
