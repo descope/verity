@@ -27,8 +27,7 @@ jobs:
         with:
           install: true
           cache: true
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+          install_args: "go go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint go:golang.org/x/vuln/cmd/govulncheck"
 
       - name: Run golangci-lint
         run: golangci-lint run --timeout=5m
@@ -52,8 +51,7 @@ jobs:
         with:
           install: true
           cache: true
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+          install_args: "node actionlint yamllint shellcheck npm:markdownlint-cli"
 
       - name: Run actionlint
         run: actionlint
@@ -83,8 +81,7 @@ jobs:
         with:
           install: true
           cache: true
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+          install_args: "node"
 
       - name: Cache npm dependencies
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
