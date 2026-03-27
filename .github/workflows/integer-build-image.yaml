@@ -186,7 +186,7 @@ jobs:
 
       - name: Upload melange work artifacts
         if: steps.check.outputs.needed == 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: melange-work
           path: |
@@ -227,7 +227,7 @@ jobs:
           cache: true
 
       - name: Download melange work artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: melange-work
           path: .
@@ -267,7 +267,7 @@ jobs:
           find packages/repo -type f -name '*.apk'
 
       - name: Upload arch packages
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: melange-packages-${{ matrix.arch }}
           path: packages/repo/
@@ -387,21 +387,21 @@ jobs:
 
       - name: Download melange packages (x86_64)
         if: needs.melange-prep.outputs.needed == 'true'
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: melange-packages-x86_64
           path: packages/repo
 
       - name: Download melange packages (aarch64)
         if: needs.melange-prep.outputs.needed == 'true'
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: melange-packages-aarch64
           path: packages/repo
 
       - name: Download melange signing key
         if: needs.melange-prep.outputs.needed == 'true'
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: melange-work
           path: .
@@ -498,7 +498,7 @@ jobs:
 
       - name: Upload Trivy report
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: "trivy-${{ inputs.image }}-${{ inputs.version }}-${{ inputs.type }}"
           path: trivy-report.json
