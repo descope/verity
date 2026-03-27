@@ -1,0 +1,40 @@
+package:
+  name: pgweb
+  version: "0.17.0"
+  epoch: 0
+  description: Cross-platform client for PostgreSQL databases
+  copyright:
+    - license: MIT
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/sosedoff/pgweb
+      tag: v${{package.version}}
+      expected-commit: 6b0b0244d1aefd6971999b03481eeeaa4ec7cf55
+
+  - uses: go/build
+    with:
+      packages: .
+      output: pgweb
+      ldflags: |
+        -X github.com/sosedoff/pgweb/pkg/command.GitCommit=6b0b0244d1aefd6971999b03481eeeaa4ec7cf55
+        -X github.com/sosedoff/pgweb/pkg/command.BuildTime=$(date -d@${SOURCE_DATE_EPOCH} +%FT%TZ)
+
+test:
+  pipeline:
+    - runs: |
+        pgweb --version
+        pgweb --help

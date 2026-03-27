@@ -1,0 +1,26 @@
+name: pgweb
+description: "pgweb PostgreSQL browser — Wolfi rebuild with zero-CVE base"
+upstream:
+  package: pgweb
+
+types:
+  default:
+    base: wolfi-base
+    packages: ["pgweb"]
+    entrypoint: /usr/bin/pgweb
+    melange:
+      bespoke: "pgweb.yaml"
+
+  fips:
+    base: wolfi-base
+    packages: ["pgweb"]
+    entrypoint: /usr/bin/pgweb
+    environment:
+      GODEBUG: "fips140=on"
+    melange:
+      bespoke: "pgweb.yaml"
+      env-file: "fips.env"
+
+versions:
+  "latest":
+    latest: true
