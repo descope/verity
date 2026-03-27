@@ -17,6 +17,8 @@ Shell scripts used by GitHub Actions workflows. All follow `set -euo pipefail` a
 | `pr-summary.sh` | `patch-matrix.yaml` / assemble | Write pipeline summary to step summary |
 | `parse-image-issue-form.sh` | `new-issue.yaml` | Parse image fields from GitHub issue form body |
 | `add-standalone-image.sh` | `new-issue.yaml` | Add image to `copa-config.yaml` and open PR |
+| `melange-check.sh` | `pr-test.yaml` / build | Check if image type needs melange, output config |
+| `melange-build.sh` | `pr-test.yaml` / build | Resolve melange source and build single-arch APK |
 
 ## Utility Scripts
 
