@@ -202,6 +202,22 @@ const sortedVersions = integerData ? sortVersionsLatestFirst(integerData.version
                     {defaultVariant?.ref ??
                       `${integerData.registry || REGISTRY}/${image.integerName ?? image.name}:${version.version}`}
                   </code>
+                  {defaultVariant?.tags && defaultVariant.tags.length > 0 && (
+                    <div class="flex flex-wrap gap-1 mt-1.5">
+                      {defaultVariant.tags.map((tag) => {
+                        const fullRef = `${integerData.registry || REGISTRY}/${image.integerName ?? image.name}:${tag}`;
+                        return (
+                          <button
+                            class="tag-copy-btn text-[10px] px-1.5 py-0.5 rounded bg-verity-void border border-verity-border text-verity-text-muted font-mono hover:border-verity-nucleus hover:text-verity-nucleus transition-colors cursor-pointer"
+                            data-copy={fullRef}
+                            title={`Click to copy: ${fullRef}`}
+                          >
+                            {tag}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
                 <div class="flex flex-wrap gap-1.5 shrink-0">
                   {variantTypes.map((type) => (
@@ -462,4 +478,19 @@ const sortedVersions = integerData ? sortVersionsLatestFirst(integerData.version
       )
     }
   </div>
+<script>
+  document.querySelectorAll('.tag-copy-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const text = btn.getAttribute('data-copy') || '';
+      await navigator.clipboard.writeText(text);
+      const original = btn.textContent;
+      btn.textContent = '✓';
+      btn.classList.add('text-green-400', 'border-green-800');
+      setTimeout(() => {
+        btn.textContent = original;
+        btn.classList.remove('text-green-400', 'border-green-800');
+      }, 1500);
+    });
+  });
+</script>
 </BaseLayout>

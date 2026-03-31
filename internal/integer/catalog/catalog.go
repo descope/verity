@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"time"
 
@@ -124,6 +125,7 @@ func buildImage(def *config.ImageDef, registry, reportsDir string, pkgs []apkind
 
 	// Resolve versions the same way discovery does.
 	versions := discovery.ResolveVersions(def, pkgs)
+	hasNonLatest := slices.ContainsFunc(versions, func(s string) bool { return s != "latest" })
 
 	for _, v := range versions {
 		meta := def.Versions[v]
@@ -133,6 +135,15 @@ func buildImage(def *config.ImageDef, registry, reportsDir string, pkgs []apkind
 		if eolDate == "" {
 			eolDate = meta.EOL
 		}
+
+		// Resolve full version from APKINDEX for semver tag expansion.
+		fullVersion := ""
+		if !(v == "latest" && hasNonLatest) {
+			fullVersion = apkindex.ResolveFullVersion(pkgs, def.Upstream.Package, v)
+		}
+		// Pass empty latestVersion so DeriveTags only handles semver expansion,
+		// not "latest" tagging — the catalog uses EOL-aware logic for that below.
+		baseTags := discovery.DeriveTags(v, "", fullVersion)
 
 		ver := Version{
 			Version: v,
@@ -144,7 +155,7 @@ func buildImage(def *config.ImageDef, registry, reportsDir string, pkgs []apkind
 			if discovery.ShouldSkipType(def, v, typeName) {
 				continue
 			}
-			ver.Variants = append(ver.Variants, buildVariant(def.Name, v, typeName, registry, reportsDir))
+			ver.Variants = append(ver.Variants, buildVariant(def.Name, v, typeName, registry, reportsDir, baseTags))
 		}
 
 		img.Versions = append(img.Versions, ver)
@@ -168,8 +179,8 @@ func buildImage(def *config.ImageDef, registry, reportsDir string, pkgs []apkind
 	return img, nil
 }
 
-func buildVariant(imageName, version, typeName, registry, reportsDir string) Variant {
-	typeTags := discovery.ApplyTypeSuffix([]string{version}, typeName)
+func buildVariant(imageName, version, typeName, registry, reportsDir string, baseTags []string) Variant {
+	typeTags := discovery.ApplyTypeSuffix(baseTags, typeName)
 	ref := fmt.Sprintf("%s/%s:%s", registry, imageName, typeTags[0])
 	variant := Variant{
 		Type:   typeName,
