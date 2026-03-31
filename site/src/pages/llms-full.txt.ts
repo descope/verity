@@ -52,32 +52,37 @@ export const GET: APIRoute = ({ site }) => {
 
   // Generate charts section
   const chartsCatalog = getChartsCatalog();
-  const chartsSection = chartsCatalog.charts.length > 0 ? (() => {
-    const chartEntries = chartsCatalog.charts
-      .map((chart) => {
-        const installCmd = `helm install ${chart.wrapperName} ${chart.registry}/${chart.wrapperName} --version ${chart.wrapperVersion}`;
-        const overrideCount = chart.imageMappings.length + chart.valueOverrides.length;
-        let entry = `### ${chart.name} (v${chart.version})\n\n`;
-        entry += `- **Wrapper chart**: \`${chart.wrapperName}\` v${chart.wrapperVersion}\n`;
-        entry += `- **Install**: \`${installCmd}\`\n`;
-        entry += `- **Image overrides**: ${overrideCount}\n`;
-        if (chart.repository) {
-          entry += `- **Source**: \`${chart.repository}\`\n`;
-        }
-        if (chart.imageMappings.length > 0) {
-          entry += "\n**Image mappings:**\n\n";
-          entry += "| Original | Patched |\n|----------|--------|\n";
-          entry += chart.imageMappings
-            .map((m) => `| \`${m.originalRepo}:${m.originalTag}\` | \`${m.patchedRepo}:${m.patchedTag}\` |`)
+  const chartsSection =
+    chartsCatalog.charts.length > 0
+      ? (() => {
+          const chartEntries = chartsCatalog.charts
+            .map((chart) => {
+              const installCmd = `helm install ${chart.wrapperName} ${chart.registry}/${chart.wrapperName} --version ${chart.wrapperVersion}`;
+              const overrideCount = chart.imageMappings.length + chart.valueOverrides.length;
+              let entry = `### ${chart.name} (v${chart.version})\n\n`;
+              entry += `- **Wrapper chart**: \`${chart.wrapperName}\` v${chart.wrapperVersion}\n`;
+              entry += `- **Install**: \`${installCmd}\`\n`;
+              entry += `- **Image overrides**: ${overrideCount}\n`;
+              if (chart.repository) {
+                entry += `- **Source**: \`${chart.repository}\`\n`;
+              }
+              if (chart.imageMappings.length > 0) {
+                entry += "\n**Image mappings:**\n\n";
+                entry += "| Original | Patched |\n|----------|--------|\n";
+                entry += chart.imageMappings
+                  .map(
+                    (m) =>
+                      `| \`${m.originalRepo}:${m.originalTag}\` | \`${m.patchedRepo}:${m.patchedTag}\` |`
+                  )
+                  .join("\n");
+                entry += "\n";
+              }
+              return entry;
+            })
             .join("\n");
-          entry += "\n";
-        }
-        return entry;
-      })
-      .join("\n");
-    return chartEntries;
-  })() :
-    "No wrapper charts have been generated yet. Charts are generated daily at 04:00 UTC after the patching pipeline completes.\n";
+          return chartEntries;
+        })()
+      : "No wrapper charts have been generated yet. Charts are generated daily at 04:00 UTC after the patching pipeline completes.\n";
 
   const content = `# Verity — Complete LLM Reference
 

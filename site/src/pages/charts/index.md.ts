@@ -11,44 +11,47 @@ export const GET: APIRoute = ({ site }) => {
 
   const totalOverrides = charts.reduce(
     (sum, c) => sum + c.imageMappings.length + c.valueOverrides.length,
-    0,
+    0
   );
 
-  const chartsContent = charts.length > 0
-    ? charts
-        .map((chart) => {
-          const installCmd = `helm install ${chart.wrapperName} ${chart.registry}/${chart.wrapperName} --version ${chart.wrapperVersion}`;
-          const mappingCount = chart.imageMappings.length + chart.valueOverrides.length;
+  const chartsContent =
+    charts.length > 0
+      ? charts
+          .map((chart) => {
+            const installCmd = `helm install ${chart.wrapperName} ${chart.registry}/${chart.wrapperName} --version ${chart.wrapperVersion}`;
+            const mappingCount = chart.imageMappings.length + chart.valueOverrides.length;
 
-          let entry = `### ${chart.name} v${chart.version}\n\n`;
-          entry += `- **Wrapper chart**: \`${chart.wrapperName}\` v${chart.wrapperVersion}\n`;
-          entry += `- **Install**: \`${installCmd}\`\n`;
-          entry += `- **Image overrides**: ${mappingCount}\n`;
-          if (chart.repository) {
-            entry += `- **Source**: \`${chart.repository}\`\n`;
-          }
+            let entry = `### ${chart.name} v${chart.version}\n\n`;
+            entry += `- **Wrapper chart**: \`${chart.wrapperName}\` v${chart.wrapperVersion}\n`;
+            entry += `- **Install**: \`${installCmd}\`\n`;
+            entry += `- **Image overrides**: ${mappingCount}\n`;
+            if (chart.repository) {
+              entry += `- **Source**: \`${chart.repository}\`\n`;
+            }
 
-          if (chart.imageMappings.length > 0) {
-            entry += "\n| Original | Patched |\n|----------|--------|\n";
-            entry += chart.imageMappings
-              .map(
-                (m) =>
-                  `| \`${m.originalRepo}:${m.originalTag}\` | \`${m.patchedRepo}:${m.patchedTag}\` |`,
-              )
-              .join("\n");
-            entry += "\n";
-          }
+            if (chart.imageMappings.length > 0) {
+              entry += "\n| Original | Patched |\n|----------|--------|\n";
+              entry += chart.imageMappings
+                .map(
+                  (m) =>
+                    `| \`${m.originalRepo}:${m.originalTag}\` | \`${m.patchedRepo}:${m.patchedTag}\` |`
+                )
+                .join("\n");
+              entry += "\n";
+            }
 
-          if (chart.valueOverrides.length > 0) {
-            entry += "\n**Value overrides:**\n\n";
-            entry += chart.valueOverrides.map((v) => `- \`${v.path}\` → \`${v.value}\``).join("\n");
-            entry += "\n";
-          }
+            if (chart.valueOverrides.length > 0) {
+              entry += "\n**Value overrides:**\n\n";
+              entry += chart.valueOverrides
+                .map((v) => `- \`${v.path}\` → \`${v.value}\``)
+                .join("\n");
+              entry += "\n";
+            }
 
-          return entry;
-        })
-        .join("\n")
-    : "No wrapper charts have been generated yet. Charts are generated daily at 04:00 UTC after the patching pipeline completes.\n";
+            return entry;
+          })
+          .join("\n")
+      : "No wrapper charts have been generated yet. Charts are generated daily at 04:00 UTC after the patching pipeline completes.\n";
 
   const content = `# Helm Charts — Verity
 
