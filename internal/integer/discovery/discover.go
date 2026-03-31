@@ -16,6 +16,9 @@ import (
 	"github.com/verity-org/verity/internal/integer/render"
 )
 
+// latestSentinel is the special version string used for unversioned images.
+const latestSentinel = "latest"
+
 // DiscoveredImage represents one buildable image: a name × version × type.
 type DiscoveredImage struct {
 	Name     string   `json:"name"`
@@ -180,11 +183,11 @@ func ResolveVersions(def *config.ImageDef, pkgs []apkindex.Package) []string {
 	// Drop the auto-discovered "latest" sentinel when explicit non-"latest"
 	// versions exist — the explicit streams already handle all tags including
 	// "latest". Keeps explicitly declared "latest" (in def.Versions) intact.
-	if seen["latest"] {
-		if _, explicit := def.Versions["latest"]; !explicit {
+	if seen[latestSentinel] {
+		if _, explicit := def.Versions[latestSentinel]; !explicit {
 			for v := range seen {
-				if v != "latest" {
-					delete(seen, "latest")
+				if v != latestSentinel {
+					delete(seen, latestSentinel)
 					break
 				}
 			}
@@ -208,8 +211,9 @@ func ResolveVersions(def *config.ImageDef, pkgs []apkindex.Package) []string {
 // For the "latest" stream, all cascade tags are added.
 // The latestVersion carries the "latest" tag.
 func DeriveTags(streamVersion, latestVersion, fullVersion string) []string {
-	if streamVersion == "latest" {
-		tags := []string{"latest"}
+	if streamVersion == latestSentinel {
+		tags := make([]string, 1, 1+len(SemverCascade(fullVersion)))
+		tags[0] = latestSentinel
 		tags = append(tags, SemverCascade(fullVersion)...)
 		return tags
 	}
@@ -220,7 +224,7 @@ func DeriveTags(streamVersion, latestVersion, fullVersion string) []string {
 		}
 	}
 	if streamVersion == latestVersion {
-		tags = append(tags, "latest")
+		tags = append(tags, latestSentinel)
 	}
 	return tags
 }
@@ -233,7 +237,7 @@ func FindLatestVersion(versions []string) string {
 		return ""
 	}
 	for i := len(versions) - 1; i >= 0; i-- {
-		if versions[i] != "latest" {
+		if versions[i] != latestSentinel {
 			return versions[i]
 		}
 	}
