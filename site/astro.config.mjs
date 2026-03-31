@@ -1,13 +1,11 @@
 import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
-
-// Use /verity/ base path in CI (GitHub Pages), / locally for dev
-const base = process.env.CI ? '/verity/' : '/';
+import sitemap from '@astrojs/sitemap';
 
 export default defineConfig({
-  site: 'https://verity-org.github.io',
-  base,
+  site: 'https://verity.supply',
   output: 'static',
+  integrations: [sitemap()],
   vite: {
     plugins: [tailwindcss()],
   },
