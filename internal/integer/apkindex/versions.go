@@ -135,3 +135,52 @@ func parseNum(s string) (int, bool) {
 	}
 	return n, s != ""
 }
+
+// stripRevision removes the Alpine -rN revision suffix from a version string.
+// "22.16.0-r0" → "22.16.0", "2.11.2-r1" → "2.11.2", "1.24.3" → "1.24.3".
+func stripRevision(version string) string {
+	idx := strings.LastIndex(version, "-r")
+	if idx < 0 {
+		return version
+	}
+	suffix := version[idx+2:]
+	for _, c := range suffix {
+		if c < '0' || c > '9' {
+			return version
+		}
+	}
+	if suffix == "" {
+		return version
+	}
+	return version[:idx]
+}
+
+// LookupFullVersion returns the full version string (stripped of -rN revision
+// suffix) for a specific package name. When multiple entries exist for the same
+// name, the highest version wins. Returns "" if not found.
+func LookupFullVersion(pkgs []Package, packageName string) string {
+	var best string
+	for _, pkg := range pkgs {
+		if pkg.Name != packageName {
+			continue
+		}
+		v := stripRevision(pkg.Version)
+		if best == "" || versionLess(best, v) {
+			best = v
+		}
+	}
+	return best
+}
+
+// ResolveFullVersion resolves the full semver for a given version stream.
+// For versioned patterns (containing "{{version}}"), it replaces the placeholder
+// with streamVersion and looks up the resulting package name.
+// For unversioned patterns, it looks up the pattern directly (streamVersion is ignored).
+// Returns "" if not found.
+func ResolveFullVersion(pkgs []Package, upstreamPattern, streamVersion string) string {
+	if strings.Contains(upstreamPattern, versionPlaceholder) {
+		name := strings.ReplaceAll(upstreamPattern, versionPlaceholder, streamVersion)
+		return LookupFullVersion(pkgs, name)
+	}
+	return LookupFullVersion(pkgs, upstreamPattern)
+}

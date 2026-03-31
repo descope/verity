@@ -410,3 +410,143 @@ func TestApplyTypeSuffix(t *testing.T) {
 		}
 	}
 }
+
+func TestSemverCascade(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{"three components", "22.16.0", []string{"22", "22.16", "22.16.0"}},
+		{"dotted major.minor", "1.24.3", []string{"1", "1.24", "1.24.3"}},
+		{"two components", "1.24", []string{"1", "1.24"}},
+		{"single component", "22", []string{"22"}},
+		{"empty", "", nil},
+		{"four components", "1.2.3.4", []string{"1", "1.2", "1.2.3", "1.2.3.4"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := discovery.SemverCascade(tt.input)
+			assert.Equal(t, tt.expected, got)
+		})
+	}
+}
+
+func TestDeriveTags(t *testing.T) {
+	tests := []struct {
+		name          string
+		streamVersion string
+		latestVersion string
+		fullVersion   string
+		expected      []string
+	}{
+		{
+			"major stream with full version",
+			"22", "24", "22.16.0",
+			[]string{"22", "22.16", "22.16.0"},
+		},
+		{
+			"major stream latest with full version",
+			"24", "24", "24.1.0",
+			[]string{"24", "24.1", "24.1.0", "latest"},
+		},
+		{
+			"dotted stream with full version",
+			"1.24", "1.26", "1.24.3",
+			[]string{"1.24", "1.24.3"},
+		},
+		{
+			"no full version",
+			"22", "24", "",
+			[]string{"22"},
+		},
+		{
+			"no full version latest",
+			"24", "24", "",
+			[]string{"24", "latest"},
+		},
+		{
+			"latest stream with full version",
+			"latest", "latest", "2.11.2",
+			[]string{"latest", "2", "2.11", "2.11.2"},
+		},
+		{
+			"latest stream no full version",
+			"latest", "latest", "",
+			[]string{"latest"},
+		},
+		{
+			"stream equals full version",
+			"22.16.0", "22.16.0", "22.16.0",
+			[]string{"22.16.0", "latest"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := discovery.DeriveTags(tt.streamVersion, tt.latestVersion, tt.fullVersion)
+			assert.Equal(t, tt.expected, got)
+		})
+	}
+}
+
+func TestDiscoverFromFiles_FullSemverTags(t *testing.T) {
+	imagesDir := setupImages(t, map[string]string{"node.yaml": nodeYAML})
+	genDir := t.TempDir()
+
+	// Packages WITH version fields — triggers semver expansion.
+	pkgs := []apkindex.Package{
+		{Name: "nodejs-22", Version: "22.16.0-r0"},
+		{Name: "nodejs-24", Version: "24.1.0-r1"},
+	}
+
+	imgs, err := discovery.DiscoverFromFiles(opts(imagesDir, genDir, pkgs))
+	require.NoError(t, err)
+	assert.Len(t, imgs, 4)
+
+	for _, img := range imgs {
+		switch {
+		case img.Version == "22" && img.Type == typeDefault:
+			assert.Equal(t, []string{"22", "22.16", "22.16.0"}, img.Tags)
+		case img.Version == "22" && img.Type == typeDev:
+			assert.Equal(t, []string{"22-dev", "22.16-dev", "22.16.0-dev"}, img.Tags)
+		case img.Version == "24" && img.Type == typeDefault:
+			assert.Equal(t, []string{"24", "24.1", "24.1.0", "latest"}, img.Tags)
+		case img.Version == "24" && img.Type == typeDev:
+			assert.Equal(t, []string{"24-dev", "24.1-dev", "24.1.0-dev", "latest-dev"}, img.Tags)
+		}
+	}
+}
+
+func TestDiscoverFromFiles_UnversionedLatestGuard(t *testing.T) {
+	// Unversioned package (caddy-like) with explicit version stream "2".
+	// ResolveVersions drops auto-discovered "latest" when explicit versions
+	// exist, so only the "2" stream should be produced.
+	const caddyYAML = `
+name: caddy
+description: "Caddy"
+upstream:
+  package: caddy
+types:
+  default:
+    base: wolfi-base
+    packages: [caddy]
+    entrypoint: caddy
+versions:
+  "2": {}
+`
+	imagesDir := setupImages(t, map[string]string{"caddy.yaml": caddyYAML})
+	genDir := t.TempDir()
+
+	pkgs := []apkindex.Package{
+		{Name: "caddy", Version: "2.11.2-r0"},
+	}
+
+	imgs, err := discovery.DiscoverFromFiles(opts(imagesDir, genDir, pkgs))
+	require.NoError(t, err)
+
+	// Only 1 version ("2") × 1 type ("default") = 1 image.
+	require.Len(t, imgs, 1)
+	assert.Equal(t, "2", imgs[0].Version)
+	// Gets semver cascade + latest ("2" is the highest version).
+	assert.Equal(t, []string{"2", "2.11", "2.11.2", "latest"}, imgs[0].Tags)
+}

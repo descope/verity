@@ -522,3 +522,62 @@ versions:
 	assert.True(t, v.Latest)
 	assert.Equal(t, []string{"latest"}, v.Variants[0].Tags)
 }
+
+func TestGenerate_FullSemverTags(t *testing.T) {
+	imagesDir := t.TempDir()
+	writeFile(t, imagesDir, "node.yaml", nodeYAML)
+
+	// Packages WITH version fields — triggers semver expansion.
+	pkgs := []apkindex.Package{
+		{Name: "nodejs-22", Version: "22.16.0-r0"},
+		{Name: "nodejs-24", Version: "24.1.0-r1"},
+	}
+
+	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", pkgs, nil)
+	require.NoError(t, err)
+
+	v22 := cat.Images[0].Versions[0]
+	assert.Equal(t, "22", v22.Version)
+	// Semver cascade: 22 → 22.16 → 22.16.0. No "latest" (v24 is latest).
+	assert.Equal(t, []string{"22", "22.16", "22.16.0"}, v22.Variants[0].Tags)
+	assert.Equal(t, []string{"22-dev", "22.16-dev", "22.16.0-dev"}, v22.Variants[1].Tags)
+
+	v24 := cat.Images[0].Versions[1]
+	assert.Equal(t, "24", v24.Version)
+	assert.True(t, v24.Latest)
+	// Semver cascade + "latest" from EOL-aware post-loop injection.
+	assert.Equal(t, []string{"24", "24.1", "24.1.0", "latest"}, v24.Variants[0].Tags)
+	assert.Equal(t, []string{"24-dev", "24.1-dev", "24.1.0-dev", "latest-dev"}, v24.Variants[1].Tags)
+}
+
+func TestGenerate_UnversionedWithSemver(t *testing.T) {
+	imagesDir := t.TempDir()
+
+	const curlSemverYAML = `
+name: curl
+description: "curl"
+upstream:
+  package: curl
+types:
+  default:
+    base: wolfi-base
+    packages: [curl]
+    entrypoint: /usr/bin/curl
+versions:
+  "8": {}
+`
+	writeFile(t, imagesDir, "curl.yaml", curlSemverYAML)
+
+	pkgs := []apkindex.Package{{Name: "curl", Version: "8.13.0-r0"}}
+
+	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", pkgs, nil)
+	require.NoError(t, err)
+
+	// ResolveVersions drops auto-discovered "latest" when explicit "8" exists.
+	// Only version "8" remains — it gets semver cascade + "latest" (highest).
+	require.Len(t, cat.Images[0].Versions, 1)
+	v := cat.Images[0].Versions[0]
+	assert.Equal(t, "8", v.Version)
+	assert.True(t, v.Latest)
+	assert.Equal(t, []string{"8", "8.13", "8.13.0", "latest"}, v.Variants[0].Tags)
+}

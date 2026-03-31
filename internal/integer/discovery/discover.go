@@ -9,11 +9,15 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/verity-org/verity/internal/integer/apkindex"
 	"github.com/verity-org/verity/internal/integer/config"
 	"github.com/verity-org/verity/internal/integer/render"
 )
+
+// latestSentinel is the special version string used for unversioned images.
+const latestSentinel = "latest"
 
 // DiscoveredImage represents one buildable image: a name × version × type.
 type DiscoveredImage struct {
@@ -98,7 +102,9 @@ func expandImage(def *config.ImageDef, imagesDir, registry string, pkgs []apkind
 	var results []DiscoveredImage
 
 	for _, v := range versions {
-		tags := DeriveTags(v, latestVersion)
+		// Resolve full version from APKINDEX for semver tag expansion.
+		fullVersion := apkindex.ResolveFullVersion(pkgs, def.Upstream.Package, v)
+		tags := DeriveTags(v, latestVersion, fullVersion)
 
 		for typeName := range def.Types {
 			if ShouldSkipType(def, v, typeName) {
@@ -174,6 +180,19 @@ func ResolveVersions(def *config.ImageDef, pkgs []apkindex.Package) []string {
 	for v := range def.Versions {
 		seen[v] = true
 	}
+	// Drop the auto-discovered "latest" sentinel when explicit non-"latest"
+	// versions exist — the explicit streams already handle all tags including
+	// "latest". Keeps explicitly declared "latest" (in def.Versions) intact.
+	if seen[latestSentinel] {
+		if _, explicit := def.Versions[latestSentinel]; !explicit {
+			for v := range seen {
+				if v != latestSentinel {
+					delete(seen, latestSentinel)
+					break
+				}
+			}
+		}
+	}
 
 	versions := make([]string, 0, len(seen))
 	for v := range seen {
@@ -183,16 +202,29 @@ func ResolveVersions(def *config.ImageDef, pkgs []apkindex.Package) []string {
 	return versions
 }
 
-// DeriveTags returns the base tags for a version. The latestVersion parameter
-// specifies which version should carry the "latest" tag (computed dynamically
-// as the highest version by the caller).
-func DeriveTags(version, latestVersion string) []string {
-	if version == "latest" {
-		return []string{"latest"}
+// DeriveTags returns the base tags for a version, including semver cascade
+// tags derived from the full APKINDEX version. The fullVersion parameter is
+// the stripped package version (e.g. "22.16.0"); pass "" to skip expansion.
+//
+// For normal streams (e.g. "22"), cascade tags more specific than the stream
+// are added: "22" + "22.16.0" → ["22", "22.16", "22.16.0"].
+// For the "latest" stream, all cascade tags are added.
+// The latestVersion carries the "latest" tag.
+func DeriveTags(streamVersion, latestVersion, fullVersion string) []string {
+	if streamVersion == latestSentinel {
+		tags := make([]string, 1, 1+len(SemverCascade(fullVersion)))
+		tags[0] = latestSentinel
+		tags = append(tags, SemverCascade(fullVersion)...)
+		return tags
 	}
-	tags := []string{version}
-	if version == latestVersion {
-		tags = append(tags, "latest")
+	tags := []string{streamVersion}
+	for _, ct := range SemverCascade(fullVersion) {
+		if strings.HasPrefix(ct, streamVersion+".") {
+			tags = append(tags, ct)
+		}
+	}
+	if streamVersion == latestVersion {
+		tags = append(tags, latestSentinel)
 	}
 	return tags
 }
@@ -205,7 +237,7 @@ func FindLatestVersion(versions []string) string {
 		return ""
 	}
 	for i := len(versions) - 1; i >= 0; i-- {
-		if versions[i] != "latest" {
+		if versions[i] != latestSentinel {
 			return versions[i]
 		}
 	}
@@ -222,6 +254,21 @@ func ApplyTypeSuffix(tags []string, typeName string) []string {
 	result := make([]string, len(tags))
 	for i, t := range tags {
 		result[i] = t + "-" + typeName
+	}
+	return result
+}
+
+// SemverCascade splits a dot-separated version into all prefix combinations,
+// shortest first. "22.16.0" → ["22", "22.16", "22.16.0"].
+// Returns nil for empty input.
+func SemverCascade(fullVersion string) []string {
+	if fullVersion == "" {
+		return nil
+	}
+	parts := strings.Split(fullVersion, ".")
+	result := make([]string, len(parts))
+	for i := range parts {
+		result[i] = strings.Join(parts[:i+1], ".")
 	}
 	return result
 }
