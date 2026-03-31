@@ -314,14 +314,48 @@ jobs:
       - name: Build verity CLI
         run: go build -o verity .
 
+      - name: Check if melange build needed
+        id: melange-check
+        env:
+          IMAGE: ${{ matrix.image }}
+          TYPE: ${{ matrix.type }}
+        run: .github/scripts/melange-check.sh
+
+      - name: Build melange package
+        if: steps.melange-check.outputs.needed == 'true'
+        env:
+          UPSTREAM: ${{ steps.melange-check.outputs.upstream }}
+          BESPOKE: ${{ steps.melange-check.outputs.bespoke }}
+          ENV_FILE: ${{ steps.melange-check.outputs.env_file }}
+          BUILD_OPTION: ${{ steps.melange-check.outputs.build_option }}
+        run: .github/scripts/melange-build.sh
+
       - name: Build image (local, no push)
         run: |
-          ./verity integer build \
-            --image ${{ matrix.image }} \
-            --version ${{ matrix.version }} \
-            --type ${{ matrix.type }} \
-            --output image.tar \
-            --arch amd64
+          if [ "${{ steps.melange-check.outputs.needed }}" != "true" ]; then
+            ./verity integer build \
+              --image ${{ matrix.image }} \
+              --version ${{ matrix.version }} \
+              --type ${{ matrix.type }} \
+              --output image.tar \
+              --arch amd64
+          else
+            ./verity integer discover --gen-dir ./gen
+
+            config="gen/${{ matrix.image }}/${{ matrix.version }}/${{ matrix.type }}.apko.yaml"
+            if [ ! -f "$config" ]; then
+              echo "Config not found: $config" >&2
+              exit 1
+            fi
+
+            apko build \
+              --arch amd64 \
+              --repository-append "${GITHUB_WORKSPACE}/packages/repo" \
+              --keyring-append "${GITHUB_WORKSPACE}/melange-work/melange.rsa.pub" \
+              "$config" \
+              "${{ matrix.image }}:pr-test" \
+              "$GITHUB_WORKSPACE/image.tar"
+          fi
 
           echo "\u2713 Built ${{ matrix.image }}:${{ matrix.version }}-${{ matrix.type }}"
           ls -lh image.tar
