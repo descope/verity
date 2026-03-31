@@ -478,19 +478,25 @@ const sortedVersions = integerData ? sortVersionsLatestFirst(integerData.version
       )
     }
   </div>
-<script>
-  document.querySelectorAll('.tag-copy-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const text = btn.getAttribute('data-copy') || '';
-      await navigator.clipboard.writeText(text);
-      const original = btn.textContent;
-      btn.textContent = '✓';
-      btn.classList.add('text-green-400', 'border-green-800');
-      setTimeout(() => {
-        btn.textContent = original;
-        btn.classList.remove('text-green-400', 'border-green-800');
-      }, 1500);
+  <script>
+    document.querySelectorAll(".tag-copy-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const text = btn.getAttribute("data-copy") || "";
+        try {
+          await navigator.clipboard.writeText(text);
+          const original = btn.textContent;
+          btn.textContent = "\u2713";
+          btn.classList.remove("text-verity-text-muted", "border-verity-border");
+          btn.classList.add("text-green-400", "border-green-800");
+          setTimeout(() => {
+            btn.textContent = original;
+            btn.classList.remove("text-green-400", "border-green-800");
+            btn.classList.add("text-verity-text-muted", "border-verity-border");
+          }, 1500);
+        } catch {
+          /* clipboard unavailable (non-secure context) */
+        }
+      });
     });
-  });
-</script>
+  </script>
 </BaseLayout>

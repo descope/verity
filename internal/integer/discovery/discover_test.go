@@ -518,9 +518,9 @@ func TestDiscoverFromFiles_FullSemverTags(t *testing.T) {
 }
 
 func TestDiscoverFromFiles_UnversionedLatestGuard(t *testing.T) {
-	// Unversioned package (caddy-like) with explicit version stream "2"
-	// AND auto-discovered "latest". The "latest" stream should NOT get
-	// semver cascade tags (those belong to stream "2").
+	// Unversioned package (caddy-like) with explicit version stream "2".
+	// ResolveVersions drops auto-discovered "latest" when explicit versions
+	// exist, so only the "2" stream should be produced.
 	const caddyYAML = `
 name: caddy
 description: "Caddy"
@@ -544,14 +544,9 @@ versions:
 	imgs, err := discovery.DiscoverFromFiles(opts(imagesDir, genDir, pkgs))
 	require.NoError(t, err)
 
-	for _, img := range imgs {
-		switch {
-		case img.Version == "2" && img.Type == typeDefault:
-			// Explicit stream gets semver cascade + latest.
-			assert.Equal(t, []string{"2", "2.11", "2.11.2", "latest"}, img.Tags)
-		case img.Version == "latest" && img.Type == typeDefault:
-			// "latest" stream suppressed: no semver cascade (would conflict with "2").
-			assert.Equal(t, []string{"latest"}, img.Tags)
-		}
-	}
+	// Only 1 version ("2") × 1 type ("default") = 1 image.
+	require.Len(t, imgs, 1)
+	assert.Equal(t, "2", imgs[0].Version)
+	// Gets semver cascade + latest ("2" is the highest version).
+	assert.Equal(t, []string{"2", "2.11", "2.11.2", "latest"}, imgs[0].Tags)
 }

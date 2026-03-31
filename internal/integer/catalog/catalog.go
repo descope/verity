@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"sort"
 	"time"
 
@@ -125,7 +124,6 @@ func buildImage(def *config.ImageDef, registry, reportsDir string, pkgs []apkind
 
 	// Resolve versions the same way discovery does.
 	versions := discovery.ResolveVersions(def, pkgs)
-	hasNonLatest := slices.ContainsFunc(versions, func(s string) bool { return s != "latest" })
 
 	for _, v := range versions {
 		meta := def.Versions[v]
@@ -137,10 +135,7 @@ func buildImage(def *config.ImageDef, registry, reportsDir string, pkgs []apkind
 		}
 
 		// Resolve full version from APKINDEX for semver tag expansion.
-		fullVersion := ""
-		if !(v == "latest" && hasNonLatest) {
-			fullVersion = apkindex.ResolveFullVersion(pkgs, def.Upstream.Package, v)
-		}
+		fullVersion := apkindex.ResolveFullVersion(pkgs, def.Upstream.Package, v)
 		// Pass empty latestVersion so DeriveTags only handles semver expansion,
 		// not "latest" tagging — the catalog uses EOL-aware logic for that below.
 		baseTags := discovery.DeriveTags(v, "", fullVersion)

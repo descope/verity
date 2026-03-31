@@ -98,17 +98,9 @@ func expandImage(def *config.ImageDef, imagesDir, registry string, pkgs []apkind
 
 	var results []DiscoveredImage
 
-	// Determine if non-"latest" versions exist (for unversioned guard).
-	hasNonLatest := slices.ContainsFunc(versions, func(s string) bool { return s != "latest" })
-
 	for _, v := range versions {
 		// Resolve full version from APKINDEX for semver tag expansion.
-		// Guard: if stream is "latest" and explicit streams exist, skip
-		// expansion for "latest" to avoid conflicting tags.
-		fullVersion := ""
-		if !(v == "latest" && hasNonLatest) {
-			fullVersion = apkindex.ResolveFullVersion(pkgs, def.Upstream.Package, v)
-		}
+		fullVersion := apkindex.ResolveFullVersion(pkgs, def.Upstream.Package, v)
 		tags := DeriveTags(v, latestVersion, fullVersion)
 
 		for typeName := range def.Types {
@@ -185,6 +177,19 @@ func ResolveVersions(def *config.ImageDef, pkgs []apkindex.Package) []string {
 	for v := range def.Versions {
 		seen[v] = true
 	}
+	// Drop the auto-discovered "latest" sentinel when explicit non-"latest"
+	// versions exist — the explicit streams already handle all tags including
+	// "latest". Keeps explicitly declared "latest" (in def.Versions) intact.
+	if seen["latest"] {
+		if _, explicit := def.Versions["latest"]; !explicit {
+			for v := range seen {
+				if v != "latest" {
+					delete(seen, "latest")
+					break
+				}
+			}
+		}
+	}
 
 	versions := make([]string, 0, len(seen))
 	for v := range seen {
@@ -205,16 +210,11 @@ func ResolveVersions(def *config.ImageDef, pkgs []apkindex.Package) []string {
 func DeriveTags(streamVersion, latestVersion, fullVersion string) []string {
 	if streamVersion == "latest" {
 		tags := []string{"latest"}
-		for _, ct := range SemverCascade(fullVersion) {
-			tags = append(tags, ct)
-		}
+		tags = append(tags, SemverCascade(fullVersion)...)
 		return tags
 	}
 	tags := []string{streamVersion}
 	for _, ct := range SemverCascade(fullVersion) {
-		// Only add tags strictly more specific than the stream version.
-		// "22.16" has prefix "22." → more specific than stream "22".
-		// "1" does NOT have prefix "1.24." → less specific than stream "1.24" → skip.
 		if strings.HasPrefix(ct, streamVersion+".") {
 			tags = append(tags, ct)
 		}

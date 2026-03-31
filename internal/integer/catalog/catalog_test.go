@@ -573,19 +573,11 @@ versions:
 	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", pkgs, nil)
 	require.NoError(t, err)
 
-	// Two versions: "8" (explicit) and "latest" (auto-discovered).
-	// Stream "8" gets semver cascade. "latest" tag goes to the "latest" stream
-	// because catalog's findLatestVersion picks it as the highest.
-	var v8Found bool
-	for _, v := range cat.Images[0].Versions {
-		if v.Version == "8" {
-			v8Found = true
-			assert.Equal(t, []string{"8", "8.13", "8.13.0"}, v.Variants[0].Tags)
-		}
-		if v.Version == "latest" {
-			// "latest" stream suppressed: no semver cascade (would conflict with "8").
-			assert.Equal(t, []string{"latest"}, v.Variants[0].Tags)
-		}
-	}
-	assert.True(t, v8Found, "should have version 8")
+	// ResolveVersions drops auto-discovered "latest" when explicit "8" exists.
+	// Only version "8" remains — it gets semver cascade + "latest" (highest).
+	require.Len(t, cat.Images[0].Versions, 1)
+	v := cat.Images[0].Versions[0]
+	assert.Equal(t, "8", v.Version)
+	assert.True(t, v.Latest)
+	assert.Equal(t, []string{"8", "8.13", "8.13.0", "latest"}, v.Variants[0].Tags)
 }
