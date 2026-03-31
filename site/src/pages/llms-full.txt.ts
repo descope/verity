@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import {
   fullCatalog,
+  upstreamPath,
   REGISTRY,
   totalImages,
   totalCategories,
@@ -28,14 +29,17 @@ function formatImage(img: FullCatalogImage): string {
     const pullName = img.integerName ?? img.name;
     parts.push(`Pull: \`${REGISTRY}/${pullName}\``);
   } else {
-    const path = img.upstream ? img.upstream.split("/").slice(1).join("/") : img.name;
+    const path = upstreamPath(img);
     parts.push(`Pull: \`${REGISTRY}/${path}\``);
   }
 
   return parts.join(" ");
 }
 
-export const GET: APIRoute = () => {
+export const GET: APIRoute = ({ site }) => {
+  const base = import.meta.env.BASE_URL;
+  const origin = site?.origin ?? "https://verity.supply";
+  const siteUrl = `${origin}${base}`.replace(/\/$/, "");
 
   // Generate image catalog sections
   const catalogSections = fullCatalog
@@ -80,7 +84,7 @@ export const GET: APIRoute = () => {
 > Verity is a self-maintaining registry of security-patched container images. It continuously scans container images for CVEs, patches them in-place using Copa (no Dockerfile rebuild required), signs with cosign/Sigstore keyless OIDC, attests with SLSA Level 3 build provenance and CycloneDX SBOMs, and publishes signed drop-in replacements to GitHub Container Registry at ghcr.io/verity-org.
 
 **Registry**: \`ghcr.io/verity-org\`
-**Website**: https://verity.supply
+**Website**: ${siteUrl}
 **Repository**: https://github.com/verity-org/verity
 **Pipeline schedule**: Daily at 02:00 UTC + on every config change
 **Total images**: ${totalImages} across ${totalCategories} categories (${copaCount} Copa-patched, ${integerCount} Wolfi-based)
@@ -564,7 +568,7 @@ ci: update workflows
 
 ## Links
 
-- **Website**: https://verity.supply
+- **Website**: ${siteUrl}
 - **GitHub**: https://github.com/verity-org/verity
 - **Issues**: https://github.com/verity-org/verity/issues
 - **Discussions**: https://github.com/verity-org/verity/discussions
