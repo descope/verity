@@ -134,6 +134,12 @@ func buildImage(def *config.ImageDef, registry, reportsDir string, pkgs []apkind
 			eolDate = meta.EOL
 		}
 
+		// Resolve full version from APKINDEX for semver tag expansion.
+		fullVersion := apkindex.ResolveFullVersion(pkgs, def.Upstream.Package, v)
+		// Pass empty latestVersion so DeriveTags only handles semver expansion,
+		// not "latest" tagging — the catalog uses EOL-aware logic for that below.
+		baseTags := discovery.DeriveTags(v, "", fullVersion)
+
 		ver := Version{
 			Version: v,
 			EOL:     eolDate,
@@ -144,7 +150,7 @@ func buildImage(def *config.ImageDef, registry, reportsDir string, pkgs []apkind
 			if discovery.ShouldSkipType(def, v, typeName) {
 				continue
 			}
-			ver.Variants = append(ver.Variants, buildVariant(def.Name, v, typeName, registry, reportsDir))
+			ver.Variants = append(ver.Variants, buildVariant(def.Name, v, typeName, registry, reportsDir, baseTags))
 		}
 
 		img.Versions = append(img.Versions, ver)
@@ -168,8 +174,8 @@ func buildImage(def *config.ImageDef, registry, reportsDir string, pkgs []apkind
 	return img, nil
 }
 
-func buildVariant(imageName, version, typeName, registry, reportsDir string) Variant {
-	typeTags := discovery.ApplyTypeSuffix([]string{version}, typeName)
+func buildVariant(imageName, version, typeName, registry, reportsDir string, baseTags []string) Variant {
+	typeTags := discovery.ApplyTypeSuffix(baseTags, typeName)
 	ref := fmt.Sprintf("%s/%s:%s", registry, imageName, typeTags[0])
 	variant := Variant{
 		Type:   typeName,
