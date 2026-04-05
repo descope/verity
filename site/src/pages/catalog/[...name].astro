@@ -101,9 +101,10 @@ const awaitingFixVulns = scanData?.vulnerabilities.filter((v) => !v.fixedVersion
 
 const sortedVersions = integerData ? sortVersionsLatestFirst(integerData.versions) : [];
 const latestVariants = sortedVersions[0]?.variants ?? [];
-const hasFips = integerData
-  ? latestVariants.some((v) => v.type === "fips")
-  : (image.variants?.includes("fips") ?? false);
+const hasFips =
+  integerData && latestVariants.length > 0
+    ? latestVariants.some((v) => v.type === "fips")
+    : (image.variants?.includes("fips") ?? false);
 ---
 
 <BaseLayout title={`${image.label ?? image.name} — Verity`}>

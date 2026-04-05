@@ -20,13 +20,16 @@ for (const img of catalog.images ?? []) {
 const integerFipsSet = new Set<string>();
 const integerImageSet = new Set<string>();
 const integerVariantCounts = new Map<string, number>();
+const integerVariantTypes = new Map<string, string>();
 const { images: integerImages } = await getIntegerCatalog();
 for (const img of integerImages) {
   integerImageSet.add(img.name);
-  const latestVersion = img.versions.find((v) => v.latest) ?? img.versions[0];
+  const latestVersion = img.versions.find((v) => v.latest) ?? img.versions.at(-1);
   if (latestVersion) {
     integerVariantCounts.set(img.name, latestVersion.variants.length);
-    if (latestVersion.variants.some((v) => v.type === "fips")) {
+    const types = latestVersion.variants.map((v) => v.type);
+    integerVariantTypes.set(img.name, types.join(" "));
+    if (types.includes("fips")) {
       integerFipsSet.add(img.name);
     }
   }
@@ -111,7 +114,9 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary {
                     " " +
                     (image.upstream ?? "").toLowerCase() +
                     " " +
-                    (image.variants?.join(" ") ?? "") +
+                    (integerVariantTypes.get(image.integerName ?? image.name) ??
+                      image.variants?.join(" ") ??
+                      "") +
                     " " +
                     category.label.toLowerCase()
                   }
