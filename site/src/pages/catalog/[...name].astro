@@ -100,6 +100,11 @@ const pendingVulns = scanData?.vulnerabilities.filter((v) => v.fixedVersion) ?? 
 const awaitingFixVulns = scanData?.vulnerabilities.filter((v) => !v.fixedVersion) ?? [];
 
 const sortedVersions = integerData ? sortVersionsLatestFirst(integerData.versions) : [];
+const latestVariants = sortedVersions[0]?.variants ?? [];
+const hasFips =
+  integerData && latestVariants.length > 0
+    ? latestVariants.some((v) => v.type === "fips")
+    : (image.variants?.includes("fips") ?? false);
 ---
 
 <BaseLayout title={`${image.label ?? image.name} — Verity`}>
@@ -118,7 +123,7 @@ const sortedVersions = integerData ? sortVersionsLatestFirst(integerData.version
       </h1>
       <SourceBadge source={image.source} />
       {
-        image.variants?.includes("fips") && (
+        hasFips && (
           <span class="text-xs px-2 py-0.5 rounded-full bg-amber-950/40 text-amber-400 border border-amber-800/50 uppercase font-semibold">
             FIPS
           </span>
@@ -151,18 +156,16 @@ const sortedVersions = integerData ? sortVersionsLatestFirst(integerData.version
   </div>
 
   {
-    image.variants && image.variants.length > 0 && (
+    latestVariants.length > 1 && (
       <div class="bg-verity-surface border border-verity-border rounded-lg p-4 mb-6">
         <div class="text-xs text-verity-text-secondary uppercase tracking-wide font-medium mb-3">
           Available Variants
         </div>
         <div class="flex flex-wrap gap-2">
-          {image.variants.map((variant) => (
+          {latestVariants.map((variant) => (
             <div class="flex items-center gap-2 px-3 py-2 rounded-lg border border-verity-border bg-verity-void/50">
-              <span class="text-sm text-verity-text-primary font-medium">{variant}</span>
-              <code class="text-xs text-verity-text-muted">
-                {pullRef}:{variant}
-              </code>
+              <span class="text-sm text-verity-text-primary font-medium">{variant.type}</span>
+              <code class="text-xs text-verity-text-muted">{variant.ref}</code>
             </div>
           ))}
         </div>
@@ -202,9 +205,14 @@ const sortedVersions = integerData ? sortVersionsLatestFirst(integerData.version
                     {defaultVariant?.ref ??
                       `${integerData.registry || REGISTRY}/${image.integerName ?? image.name}:${version.version}`}
                   </code>
-                  {defaultVariant?.tags && defaultVariant.tags.length > 0 && (
-                    <div class="flex flex-wrap gap-1 mt-1.5">
-                      {defaultVariant.tags.map((tag) => {
+                  {version.variants.map((variant) => (
+                    <div class="flex flex-wrap items-center gap-1 mt-1.5">
+                      {version.variants.length > 1 && (
+                        <span class="text-[10px] text-verity-text-muted font-mono w-12 shrink-0">
+                          {variant.type}
+                        </span>
+                      )}
+                      {variant.tags.map((tag) => {
                         const fullRef = `${integerData.registry || REGISTRY}/${image.integerName ?? image.name}:${tag}`;
                         return (
                           <button
@@ -217,7 +225,7 @@ const sortedVersions = integerData ? sortVersionsLatestFirst(integerData.version
                         );
                       })}
                     </div>
-                  )}
+                  ))}
                 </div>
                 <div class="flex flex-wrap gap-1.5 shrink-0">
                   {variantTypes.map((type) => (

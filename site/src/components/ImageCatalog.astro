@@ -6,6 +6,7 @@ import SeverityBadges from "./SeverityBadges.astro";
 import { catalog } from "../lib/catalog";
 import type { SiteImage, VulnSummary } from "../lib/catalog";
 import { patchedRefToName } from "../lib/refs";
+import { getIntegerCatalog } from "../data/integer-catalog";
 
 const base = import.meta.env.BASE_URL;
 
@@ -13,6 +14,25 @@ const scanDataMap = new Map<string, SiteImage>();
 for (const img of catalog.images ?? []) {
   const name = patchedRefToName(img.patchedRef);
   if (name) scanDataMap.set(name, img);
+}
+
+// Build lookup maps from integer catalog for FIPS badges and variant counts
+const integerFipsSet = new Set<string>();
+const integerImageSet = new Set<string>();
+const integerVariantCounts = new Map<string, number>();
+const integerVariantTypes = new Map<string, string>();
+const { images: integerImages } = await getIntegerCatalog();
+for (const img of integerImages) {
+  integerImageSet.add(img.name);
+  const latestVersion = img.versions.find((v) => v.latest) ?? img.versions.at(-1);
+  if (latestVersion) {
+    integerVariantCounts.set(img.name, latestVersion.variants.length);
+    const types = latestVersion.variants.map((v) => v.type);
+    integerVariantTypes.set(img.name, types.join(" "));
+    if (types.includes("fips")) {
+      integerFipsSet.add(img.name);
+    }
+  }
 }
 
 // Helper to get vulnerability summary for an image
@@ -94,7 +114,9 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary {
                     " " +
                     (image.upstream ?? "").toLowerCase() +
                     " " +
-                    (image.variants?.join(" ") ?? "") +
+                    (integerVariantTypes.get(image.integerName ?? image.name) ??
+                      image.variants?.join(" ") ??
+                      "") +
                     " " +
                     category.label.toLowerCase()
                   }
@@ -104,16 +126,24 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary {
                       {image.label ?? image.name}
                     </span>
                     <div class="flex items-center gap-1.5 shrink-0">
-                      {image.variants?.includes("fips") && (
+                      {(integerImageSet.has(image.integerName ?? image.name)
+                        ? integerFipsSet.has(image.integerName ?? image.name)
+                        : image.variants?.includes("fips")) && (
                         <span class="text-[0.65rem] leading-none px-1.5 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-800/50 uppercase font-semibold">
                           FIPS
                         </span>
                       )}
-                      {image.variants && image.variants.length > 1 && (
-                        <span class="text-[0.65rem] leading-none px-1.5 py-0.5 rounded bg-verity-surface text-verity-text-muted border border-verity-border">
-                          {image.variants.length} variants
-                        </span>
-                      )}
+                      {(() => {
+                        const count =
+                          integerVariantCounts.get(image.integerName ?? image.name) ??
+                          image.variants?.length ??
+                          0;
+                        return count > 1 ? (
+                          <span class="text-[0.65rem] leading-none px-1.5 py-0.5 rounded bg-verity-surface text-verity-text-muted border border-verity-border">
+                            {count} variants
+                          </span>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
 
