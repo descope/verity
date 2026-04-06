@@ -1,10 +1,10 @@
 {
   "SchemaVersion": 2,
   "Trivy": {
-    "Version": "0.69.2"
+    "Version": "0.69.3"
   },
-  "ReportID": "019d186a-c013-74e0-953f-8379a13e6e16",
-  "CreatedAt": "2026-03-23T01:59:02.419320803Z",
+  "ReportID": "019d6129-0d85-7264-bfad-af10be506049",
+  "CreatedAt": "2026-04-06T04:59:33.637158304Z",
   "ArtifactID": "sha256:e3f9b09c23441155fff0ab7dcad86f2257a4fbdddb0aa4ed76cf1f5ed0cb0fd1",
   "ArtifactName": "mirror.gcr.io/rabbitmqoperator/messaging-topology-operator:1.19.0",
   "ArtifactType": "container_image",
@@ -1630,6 +1630,50 @@
       ],
       "Vulnerabilities": [
         {
+          "VulnerabilityID": "CVE-2026-34986",
+          "VendorIDs": [
+            "GHSA-78h2-9frx-2jm8"
+          ],
+          "PkgID": "github.com/go-jose/go-jose/v4@v4.1.3",
+          "PkgName": "github.com/go-jose/go-jose/v4",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/github.com/go-jose/go-jose/v4@v4.1.3",
+            "UID": "157a480524ba5c20"
+          },
+          "InstalledVersion": "v4.1.3",
+          "FixedVersion": "4.1.4",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:e7c5f78f94d8d005f5dd691543bbc96f58a258a42f1c2b20a418052a62c9e4d7",
+            "DiffID": "sha256:42ae2329a805d505157ead8c6e1442efbd96fc7a6d9eca2dc7cb8e5f41f5ccdb"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-34986",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Go",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
+          },
+          "Fingerprint": "sha256:caef0f1534c3ed73787a32ddaaefdcc4edd8752f396232380744a255b1dffd8c",
+          "Title": "Go JOSE Panics in JWE decryption",
+          "Description": "### Impact\n\nDecrypting a JSON Web Encryption (JWE) object will panic if the `alg` field indicates a key wrapping algorithm ([one ending in `KW`](https://pkg.go.dev/github.com/go-jose/go-jose/v4#pkg-constants), with the exception of `A128GCMKW`, `A192GCMKW`, and `A256GCMKW`) and the `encrypted_key` field is empty. The panic happens when `cipher.KeyUnwrap()` in `key_wrap.go` attempts to allocate a slice with a zero or negative length based on the length of the `encrypted_key`.\n\nThis code path is reachable from `ParseEncrypted()` / `ParseEncryptedJSON()` / `ParseEncryptedCompact()` followed by `Decrypt()` on the resulting object. Note that the parse functions take a list of accepted key algorithms. If the accepted key algorithms do not include any key wrapping algorithms, parsing will fail and the application will be unaffected.\n\nThis panic is also reachable by calling `cipher.KeyUnwrap()` directly with any `ciphertext` parameter less than 16 bytes long, but calling this function directly is less common.\n\nPanics can lead to denial of service.\n\n### Fixed In\n\n4.1.4 and v3.0.5\n\n### Workarounds\n\nIf the list of `keyAlgorithms` passed to `ParseEncrypted()` / `ParseEncryptedJSON()` / `ParseEncryptedCompact()` does not include key wrapping algorithms (those ending in `KW`), your application is unaffected.\n\nIf your application uses key wrapping, you can prevalidate to the JWE objects to ensure the `encrypted_key` field is nonempty. If your application accepts JWE Compact Serialization, apply that validation to the corresponding field of that serialization (the data between the first and second `.`).\n\n### Thanks\n\nGo JOSE thanks Datadog's Security team for finding this issue.",
+          "Severity": "HIGH",
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://github.com/go-jose/go-jose",
+            "https://github.com/go-jose/go-jose/security/advisories/GHSA-78h2-9frx-2jm8",
+            "https://pkg.go.dev/github.com/go-jose/go-jose/v4#pkg-constants"
+          ]
+        },
+        {
           "VulnerabilityID": "CVE-2026-33186",
           "VendorIDs": [
             "GHSA-p77j-4mvh-x3m3"
@@ -1655,22 +1699,35 @@
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
           },
           "Fingerprint": "sha256:a8a1d08db78a3a05ed922c28b85ad074a68d8b8d1c8dd449dc507ef261cc690f",
-          "Title": "gRPC-Go has an authorization bypass via missing leading slash in :path",
-          "Description": "### Impact\n_What kind of vulnerability is it? Who is impacted?_\n\nIt is an **Authorization Bypass** resulting from **Improper Input Validation** of the HTTP/2 `:path` pseudo-header.\n\nThe gRPC-Go server was too lenient in its routing logic, accepting requests where the `:path` omitted the mandatory leading slash (e.g., `Service/Method` instead of `/Service/Method`). While the server successfully routed these requests to the correct handler, authorization interceptors (including the official `grpc/authz` package) evaluated the raw, non-canonical path string. Consequently, \"deny\" rules defined using canonical paths (starting with `/`) failed to match the incoming request, allowing it to bypass the policy if a fallback \"allow\" rule was present.\n\n**Who is impacted?**\nThis affects gRPC-Go servers that meet both of the following criteria:\n1. They use path-based authorization interceptors, such as the official RBAC implementation in `google.golang.org/grpc/authz` or custom interceptors relying on `info.FullMethod` or `grpc.Method(ctx)`.\n2. Their security policy contains specific \"deny\" rules for canonical paths but allows other requests by default (a fallback \"allow\" rule).\n\nThe vulnerability is exploitable by an attacker who can send raw HTTP/2 frames with malformed `:path` headers directly to the gRPC server.\n\n### Patches\n_Has the problem been patched? What versions should users upgrade to?_\n\nYes, the issue has been patched. The fix ensures that any request with a `:path` that does not start with a leading slash is immediately rejected with a `codes.Unimplemented` error, preventing it from reaching authorization interceptors or handlers with a non-canonical path string.\n\nUsers should upgrade to the following versions (or newer):\n* **v1.79.3**\n* The latest **master** branch.\n\nIt is recommended that all users employing path-based authorization (especially `grpc/authz`) upgrade as soon as the patch is available in a tagged release.\n\n### Workarounds\n_Is there a way for users to fix or remediate the vulnerability without upgrading?_\n\nWhile upgrading is the most secure and recommended path, users can mitigate the vulnerability using one of the following methods:\n\n#### 1. Use a Validating Interceptor (Recommended Mitigation)\nAdd an \"outermost\" interceptor to your server that validates the path before any other authorization logic runs:\n\n```go\nfunc pathValidationInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {\n    if info.FullMethod == \"\" || info.FullMethod[0] != '/' {\n        return nil, status.Errorf(codes.Unimplemented, \"malformed method name\")\n    }   \n    return handler(ctx, req)\n}\n\n// Ensure this is the FIRST interceptor in your chain\ns := grpc.NewServer(\n    grpc.ChainUnaryInterceptor(pathValidationInterceptor, authzInterceptor),\n)\n```\n\n#### 2. Infrastructure-Level Normalization\nIf your gRPC server is behind a reverse proxy or load balancer (such as Envoy, NGINX, or an L7 Cloud Load Balancer), ensure it is configured to enforce strict HTTP/2 compliance for pseudo-headers and reject or normalize requests where the `:path` header does not start with a leading slash.\n\n#### 3. Policy Hardening\nSwitch to a \"default deny\" posture in your authorization policies (explicitly listing all allowed paths and denying everything else) to reduce the risk of bypasses via malformed inputs.",
+          "Title": "google.golang.org/grpc/grpc-go: google.golang.org/grpc/authz: gRPC-Go: Authorization bypass due to improper HTTP/2 path validation",
+          "Description": "gRPC-Go is the Go language implementation of gRPC. Versions prior to 1.79.3 have an authorization bypass resulting from improper input validation of the HTTP/2 `:path` pseudo-header. The gRPC-Go server was too lenient in its routing logic, accepting requests where the `:path` omitted the mandatory leading slash (e.g., `Service/Method` instead of `/Service/Method`). While the server successfully routed these requests to the correct handler, authorization interceptors (including the official `grpc/authz` package) evaluated the raw, non-canonical path string. Consequently, \"deny\" rules defined using canonical paths (starting with `/`) failed to match the incoming request, allowing it to bypass the policy if a fallback \"allow\" rule was present. This affects gRPC-Go servers that use path-based authorization interceptors, such as the official RBAC implementation in `google.golang.org/grpc/authz` or custom interceptors relying on `info.FullMethod` or `grpc.Method(ctx)`; AND that have a security policy contains specific \"deny\" rules for canonical paths but allows other requests by default (a fallback \"allow\" rule). The vulnerability is exploitable by an attacker who can send raw HTTP/2 frames with malformed `:path` headers directly to the gRPC server. The fix in version 1.79.3 ensures that any request with a `:path` that does not start with a leading slash is immediately rejected with a `codes.Unimplemented` error, preventing it from reaching authorization interceptors or handlers with a non-canonical path string. While upgrading is the most secure and recommended path, users can mitigate the vulnerability using one of the following methods: Use a validating interceptor (recommended mitigation); infrastructure-level normalization; and/or policy hardening.",
           "Severity": "CRITICAL",
+          "CweIDs": [
+            "CWE-285"
+          ],
           "VendorSeverity": {
-            "ghsa": 4
+            "ghsa": 4,
+            "redhat": 3
           },
           "CVSS": {
             "ghsa": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
               "V3Score": 9.1
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+              "V3Score": 8.1
             }
           },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-33186",
             "https://github.com/grpc/grpc-go",
-            "https://github.com/grpc/grpc-go/security/advisories/GHSA-p77j-4mvh-x3m3"
-          ]
+            "https://github.com/grpc/grpc-go/security/advisories/GHSA-p77j-4mvh-x3m3",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-33186",
+            "https://www.cve.org/CVERecord?id=CVE-2026-33186"
+          ],
+          "PublishedDate": "2026-03-20T23:16:45.18Z",
+          "LastModifiedDate": "2026-03-23T14:32:02.8Z"
         }
       ]
     }
