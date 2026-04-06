@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.69.3"
   },
-  "ReportID": "019d42cd-9406-720f-9950-bbf8954793ea",
-  "CreatedAt": "2026-03-31T07:31:02.278136428Z",
+  "ReportID": "019d6131-64ae-7194-91f6-60035c099c05",
+  "CreatedAt": "2026-04-06T05:08:40.238105468Z",
   "ArtifactID": "sha256:53024f1d1b5e101700c0b694755a3cfd178660713fb51df8736da8ab610829e2",
   "ArtifactName": "ghcr.io/verity-org/cache:library-redis-8.6.2",
   "ArtifactType": "container_image",
@@ -7186,7 +7186,7 @@
             "https://bugzilla.redhat.com/2419369",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2419369",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-14104",
-            "https://errata.almalinux.org/9/ALSA-2026-1913.html",
+            "https://errata.almalinux.org/10/ALSA-2026-1696.html",
             "https://errata.rockylinux.org/RLSA-2026:1913",
             "https://linux.oracle.com/cve/CVE-2025-14104.html",
             "https://linux.oracle.com/errata/ELSA-2026-1913.html",
@@ -7220,6 +7220,9 @@
           "Title": "util-linux: util-linux: Access control bypass due to improper hostname canonicalization",
           "Description": "A flaw was found in util-linux. Improper hostname canonicalization in the `login(1)` utility, when invoked with the `-h` option, can modify the supplied remote hostname before setting `PAM_RHOST`. A remote attacker could exploit this by providing a specially crafted hostname, potentially bypassing host-based Pluggable Authentication Modules (PAM) access control rules that rely on fully qualified domain names. This could lead to unauthorized access.",
           "Severity": "LOW",
+          "CweIDs": [
+            "CWE-289"
+          ],
           "VendorSeverity": {
             "redhat": 1,
             "ubuntu": 2
@@ -7232,9 +7235,49 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-3184",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2442570",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-3184",
             "https://www.cve.org/CVERecord?id=CVE-2026-3184"
-          ]
+          ],
+          "PublishedDate": "2026-04-03T19:17:23.377Z",
+          "LastModifiedDate": "2026-04-03T19:17:23.377Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "bsdutils@1:2.41-5",
+          "PkgName": "bsdutils",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/bsdutils@2.41-5?arch=amd64\u0026distro=debian-13.4\u0026epoch=1",
+            "UID": "5843733a461e6ce1"
+          },
+          "InstalledVersion": "1:2.41-5",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:ec781dee3f4719c2ca0dd9e73cb1d4ed834ed1a406495eb6e44b6dfaad5d1f8f",
+            "DiffID": "sha256:188c9b34dfbe022075d01fc4f5a305412909ef97de440783c15043e68e1b1913"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:1907462bbe9ed298a224081bb60752ee5b4924f00e6303160f8fd36c67534f95",
+          "Title": "util-linux is a random collection of Linux utilities. Prior to version ...",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "References": [
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-03T22:16:25.4Z"
         },
         {
           "VulnerabilityID": "CVE-2017-18018",
@@ -7516,7 +7559,7 @@
             "https://bugzilla.redhat.com/2419369",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2419369",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-14104",
-            "https://errata.almalinux.org/9/ALSA-2026-1913.html",
+            "https://errata.almalinux.org/10/ALSA-2026-1696.html",
             "https://errata.rockylinux.org/RLSA-2026:1913",
             "https://linux.oracle.com/cve/CVE-2025-14104.html",
             "https://linux.oracle.com/errata/ELSA-2026-1913.html",
@@ -7550,6 +7593,9 @@
           "Title": "util-linux: util-linux: Access control bypass due to improper hostname canonicalization",
           "Description": "A flaw was found in util-linux. Improper hostname canonicalization in the `login(1)` utility, when invoked with the `-h` option, can modify the supplied remote hostname before setting `PAM_RHOST`. A remote attacker could exploit this by providing a specially crafted hostname, potentially bypassing host-based Pluggable Authentication Modules (PAM) access control rules that rely on fully qualified domain names. This could lead to unauthorized access.",
           "Severity": "LOW",
+          "CweIDs": [
+            "CWE-289"
+          ],
           "VendorSeverity": {
             "redhat": 1,
             "ubuntu": 2
@@ -7562,9 +7608,96 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-3184",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2442570",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-3184",
             "https://www.cve.org/CVERecord?id=CVE-2026-3184"
-          ]
+          ],
+          "PublishedDate": "2026-04-03T19:17:23.377Z",
+          "LastModifiedDate": "2026-04-03T19:17:23.377Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "libblkid1@2.41-5",
+          "PkgName": "libblkid1",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libblkid1@2.41-5?arch=amd64\u0026distro=debian-13.4",
+            "UID": "c1af86eefb8cc018"
+          },
+          "InstalledVersion": "2.41-5",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:ec781dee3f4719c2ca0dd9e73cb1d4ed834ed1a406495eb6e44b6dfaad5d1f8f",
+            "DiffID": "sha256:188c9b34dfbe022075d01fc4f5a305412909ef97de440783c15043e68e1b1913"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:58ff5bc0481e47873f75ca31b144fd9179e0332a35f2370d00b3199dd036abc3",
+          "Title": "util-linux is a random collection of Linux utilities. Prior to version ...",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "References": [
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-03T22:16:25.4Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-4046",
+          "PkgID": "libc-bin@2.41-12+deb13u2",
+          "PkgName": "libc-bin",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libc-bin@2.41-12%2Bdeb13u2?arch=amd64\u0026distro=debian-13.4",
+            "UID": "f54da6249088c4bc"
+          },
+          "InstalledVersion": "2.41-12+deb13u2",
+          "Status": "fix_deferred",
+          "Layer": {
+            "Digest": "sha256:ec781dee3f4719c2ca0dd9e73cb1d4ed834ed1a406495eb6e44b6dfaad5d1f8f",
+            "DiffID": "sha256:188c9b34dfbe022075d01fc4f5a305412909ef97de440783c15043e68e1b1913"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-4046",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:ff7a50149d3374576c8ddb4f5cdf77a1ec1f5a70c98e2c5650d9e9d8d54f8987",
+          "Title": "glibc: glibc: Denial of Service via iconv() function with specific character sets",
+          "Description": "The iconv() function in the GNU C Library versions 2.43 and earlier may crash due to an assertion failure when converting inputs from the IBM1390 or IBM1399 character sets, which may be used to remotely crash an application.\n\n\n\nThis vulnerability can be trivially mitigated by removing the IBM1390 and IBM1399 character sets from systems that do not need them.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-617"
+          ],
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+              "V3Score": 5.3
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-4046",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-4046",
+            "https://packages.fedoraproject.org/pkgs/glibc/glibc-gconv-extra/",
+            "https://sourceware.org/bugzilla/show_bug.cgi?id=33980",
+            "https://sourceware.org/git/?p=glibc.git;a=blob_plain;f=advisories/GLIBC-SA-2026-0007;hb=HEAD",
+            "https://www.cve.org/CVERecord?id=CVE-2026-4046"
+          ],
+          "PublishedDate": "2026-03-30T18:16:19.573Z",
+          "LastModifiedDate": "2026-04-01T14:24:21.833Z"
         },
         {
           "VulnerabilityID": "CVE-2026-4437",
@@ -8052,6 +8185,53 @@
           ],
           "PublishedDate": "2019-02-26T18:29:00.34Z",
           "LastModifiedDate": "2024-11-21T04:51:10.53Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-4046",
+          "PkgID": "libc6@2.41-12+deb13u2",
+          "PkgName": "libc6",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libc6@2.41-12%2Bdeb13u2?arch=amd64\u0026distro=debian-13.4",
+            "UID": "f8217b10d3b7623a"
+          },
+          "InstalledVersion": "2.41-12+deb13u2",
+          "Status": "fix_deferred",
+          "Layer": {
+            "Digest": "sha256:ec781dee3f4719c2ca0dd9e73cb1d4ed834ed1a406495eb6e44b6dfaad5d1f8f",
+            "DiffID": "sha256:188c9b34dfbe022075d01fc4f5a305412909ef97de440783c15043e68e1b1913"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-4046",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:d46673d609571d98cfda454c1c2b6c1fd612d1440b97920eae890b9dce984ca4",
+          "Title": "glibc: glibc: Denial of Service via iconv() function with specific character sets",
+          "Description": "The iconv() function in the GNU C Library versions 2.43 and earlier may crash due to an assertion failure when converting inputs from the IBM1390 or IBM1399 character sets, which may be used to remotely crash an application.\n\n\n\nThis vulnerability can be trivially mitigated by removing the IBM1390 and IBM1399 character sets from systems that do not need them.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-617"
+          ],
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+              "V3Score": 5.3
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-4046",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-4046",
+            "https://packages.fedoraproject.org/pkgs/glibc/glibc-gconv-extra/",
+            "https://sourceware.org/bugzilla/show_bug.cgi?id=33980",
+            "https://sourceware.org/git/?p=glibc.git;a=blob_plain;f=advisories/GLIBC-SA-2026-0007;hb=HEAD",
+            "https://www.cve.org/CVERecord?id=CVE-2026-4046"
+          ],
+          "PublishedDate": "2026-03-30T18:16:19.573Z",
+          "LastModifiedDate": "2026-04-01T14:24:21.833Z"
         },
         {
           "VulnerabilityID": "CVE-2026-4437",
@@ -8659,7 +8839,7 @@
             "https://bugzilla.redhat.com/2419369",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2419369",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-14104",
-            "https://errata.almalinux.org/9/ALSA-2026-1913.html",
+            "https://errata.almalinux.org/10/ALSA-2026-1696.html",
             "https://errata.rockylinux.org/RLSA-2026:1913",
             "https://linux.oracle.com/cve/CVE-2025-14104.html",
             "https://linux.oracle.com/errata/ELSA-2026-1913.html",
@@ -8693,6 +8873,9 @@
           "Title": "util-linux: util-linux: Access control bypass due to improper hostname canonicalization",
           "Description": "A flaw was found in util-linux. Improper hostname canonicalization in the `login(1)` utility, when invoked with the `-h` option, can modify the supplied remote hostname before setting `PAM_RHOST`. A remote attacker could exploit this by providing a specially crafted hostname, potentially bypassing host-based Pluggable Authentication Modules (PAM) access control rules that rely on fully qualified domain names. This could lead to unauthorized access.",
           "Severity": "LOW",
+          "CweIDs": [
+            "CWE-289"
+          ],
           "VendorSeverity": {
             "redhat": 1,
             "ubuntu": 2
@@ -8705,9 +8888,97 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-3184",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2442570",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-3184",
             "https://www.cve.org/CVERecord?id=CVE-2026-3184"
-          ]
+          ],
+          "PublishedDate": "2026-04-03T19:17:23.377Z",
+          "LastModifiedDate": "2026-04-03T19:17:23.377Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "liblastlog2-2@2.41-5",
+          "PkgName": "liblastlog2-2",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/liblastlog2-2@2.41-5?arch=amd64\u0026distro=debian-13.4",
+            "UID": "79a1595d548be91"
+          },
+          "InstalledVersion": "2.41-5",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:ec781dee3f4719c2ca0dd9e73cb1d4ed834ed1a406495eb6e44b6dfaad5d1f8f",
+            "DiffID": "sha256:188c9b34dfbe022075d01fc4f5a305412909ef97de440783c15043e68e1b1913"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:3ed2410a6ebb96e219101bb79760083d426cb18128056fb36e4c61746ecce779",
+          "Title": "util-linux is a random collection of Linux utilities. Prior to version ...",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "References": [
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-03T22:16:25.4Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-34743",
+          "PkgID": "liblzma5@5.8.1-1",
+          "PkgName": "liblzma5",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/liblzma5@5.8.1-1?arch=amd64\u0026distro=debian-13.4",
+            "UID": "a1f09431b82b8b89"
+          },
+          "InstalledVersion": "5.8.1-1",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:ec781dee3f4719c2ca0dd9e73cb1d4ed834ed1a406495eb6e44b6dfaad5d1f8f",
+            "DiffID": "sha256:188c9b34dfbe022075d01fc4f5a305412909ef97de440783c15043e68e1b1913"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-34743",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:6314afceccb8259f21cf5c0d2061e1f9f472d83707a130bec732e5c51c42031e",
+          "Title": "xz: XZ Utils: Denial of Service via buffer overflow in index decoding",
+          "Description": "XZ Utils provide a general-purpose data-compression library plus command-line tools. Prior to version 5.8.3, if lzma_index_decoder() was used to decode an Index that contained no Records, the resulting lzma_index was left in a state where where a subsequent lzma_index_append() would allocate too little memory, and a buffer overflow would occur. This issue has been patched in version 5.8.3.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-122"
+          ],
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+              "V3Score": 5.3
+            }
+          },
+          "References": [
+            "http://www.openwall.com/lists/oss-security/2026/03/31/13",
+            "https://access.redhat.com/security/cve/CVE-2026-34743",
+            "https://github.com/tukaani-project/xz/commit/c8c22869e780ff57c96b46939c3d79ff99395f87",
+            "https://github.com/tukaani-project/xz/releases/tag/v5.8.3",
+            "https://github.com/tukaani-project/xz/security/advisories/GHSA-x872-m794-cxhv",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-34743",
+            "https://www.cve.org/CVERecord?id=CVE-2026-34743"
+          ],
+          "PublishedDate": "2026-04-02T19:21:33.187Z",
+          "LastModifiedDate": "2026-04-03T16:10:23.73Z"
         },
         {
           "VulnerabilityID": "CVE-2022-0563",
@@ -8828,7 +9099,7 @@
             "https://bugzilla.redhat.com/2419369",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2419369",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-14104",
-            "https://errata.almalinux.org/9/ALSA-2026-1913.html",
+            "https://errata.almalinux.org/10/ALSA-2026-1696.html",
             "https://errata.rockylinux.org/RLSA-2026:1913",
             "https://linux.oracle.com/cve/CVE-2025-14104.html",
             "https://linux.oracle.com/errata/ELSA-2026-1913.html",
@@ -8862,6 +9133,9 @@
           "Title": "util-linux: util-linux: Access control bypass due to improper hostname canonicalization",
           "Description": "A flaw was found in util-linux. Improper hostname canonicalization in the `login(1)` utility, when invoked with the `-h` option, can modify the supplied remote hostname before setting `PAM_RHOST`. A remote attacker could exploit this by providing a specially crafted hostname, potentially bypassing host-based Pluggable Authentication Modules (PAM) access control rules that rely on fully qualified domain names. This could lead to unauthorized access.",
           "Severity": "LOW",
+          "CweIDs": [
+            "CWE-289"
+          ],
           "VendorSeverity": {
             "redhat": 1,
             "ubuntu": 2
@@ -8874,9 +9148,49 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-3184",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2442570",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-3184",
             "https://www.cve.org/CVERecord?id=CVE-2026-3184"
-          ]
+          ],
+          "PublishedDate": "2026-04-03T19:17:23.377Z",
+          "LastModifiedDate": "2026-04-03T19:17:23.377Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "libmount1@2.41-5",
+          "PkgName": "libmount1",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libmount1@2.41-5?arch=amd64\u0026distro=debian-13.4",
+            "UID": "5581a0d7033537c"
+          },
+          "InstalledVersion": "2.41-5",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:ec781dee3f4719c2ca0dd9e73cb1d4ed834ed1a406495eb6e44b6dfaad5d1f8f",
+            "DiffID": "sha256:188c9b34dfbe022075d01fc4f5a305412909ef97de440783c15043e68e1b1913"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:4061d21537b4378c1dde5ef9b82bdf21af6e936e73033b11d7745cb22d5cc646",
+          "Title": "util-linux is a random collection of Linux utilities. Prior to version ...",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "References": [
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-03T22:16:25.4Z"
         },
         {
           "VulnerabilityID": "CVE-2022-0563",
@@ -8997,7 +9311,7 @@
             "https://bugzilla.redhat.com/2419369",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2419369",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-14104",
-            "https://errata.almalinux.org/9/ALSA-2026-1913.html",
+            "https://errata.almalinux.org/10/ALSA-2026-1696.html",
             "https://errata.rockylinux.org/RLSA-2026:1913",
             "https://linux.oracle.com/cve/CVE-2025-14104.html",
             "https://linux.oracle.com/errata/ELSA-2026-1913.html",
@@ -9031,6 +9345,9 @@
           "Title": "util-linux: util-linux: Access control bypass due to improper hostname canonicalization",
           "Description": "A flaw was found in util-linux. Improper hostname canonicalization in the `login(1)` utility, when invoked with the `-h` option, can modify the supplied remote hostname before setting `PAM_RHOST`. A remote attacker could exploit this by providing a specially crafted hostname, potentially bypassing host-based Pluggable Authentication Modules (PAM) access control rules that rely on fully qualified domain names. This could lead to unauthorized access.",
           "Severity": "LOW",
+          "CweIDs": [
+            "CWE-289"
+          ],
           "VendorSeverity": {
             "redhat": 1,
             "ubuntu": 2
@@ -9043,9 +9360,49 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-3184",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2442570",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-3184",
             "https://www.cve.org/CVERecord?id=CVE-2026-3184"
-          ]
+          ],
+          "PublishedDate": "2026-04-03T19:17:23.377Z",
+          "LastModifiedDate": "2026-04-03T19:17:23.377Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "libsmartcols1@2.41-5",
+          "PkgName": "libsmartcols1",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libsmartcols1@2.41-5?arch=amd64\u0026distro=debian-13.4",
+            "UID": "cfae7d67f8245164"
+          },
+          "InstalledVersion": "2.41-5",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:ec781dee3f4719c2ca0dd9e73cb1d4ed834ed1a406495eb6e44b6dfaad5d1f8f",
+            "DiffID": "sha256:188c9b34dfbe022075d01fc4f5a305412909ef97de440783c15043e68e1b1913"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:d9360e09bf1478cd3ec8b82f8bcbacc15d0de9c34180bfab5b8315ae23d010d4",
+          "Title": "util-linux is a random collection of Linux utilities. Prior to version ...",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "References": [
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-03T22:16:25.4Z"
         },
         {
           "VulnerabilityID": "CVE-2021-45346",
@@ -9140,6 +9497,7 @@
           ],
           "VendorSeverity": {
             "debian": 1,
+            "photon": 3,
             "redhat": 1
           },
           "CVSS": {
@@ -9187,6 +9545,7 @@
             "CWE-757"
           ],
           "VendorSeverity": {
+            "amazon": 1,
             "redhat": 1,
             "ubuntu": 1
           },
@@ -9236,7 +9595,8 @@
             "CWE-269"
           ],
           "VendorSeverity": {
-            "redhat": 2
+            "redhat": 2,
+            "ubuntu": 2
           },
           "CVSS": {
             "redhat": {
@@ -9258,6 +9618,8 @@
             "https://github.com/systemd/systemd/commit/efa6ba2ab625aaa160ac435a09e6482fc63bdbe8",
             "https://github.com/systemd/systemd/security/advisories/GHSA-gx6q-6f99-m764",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-29111",
+            "https://ubuntu.com/security/notices/USN-8119-1",
+            "https://ubuntu.com/security/notices/USN-8119-2",
             "https://www.cve.org/CVERecord?id=CVE-2026-29111"
           ],
           "PublishedDate": "2026-03-23T22:16:26.267Z",
@@ -9505,6 +9867,54 @@
           "LastModifiedDate": "2024-11-21T08:01:52.097Z"
         },
         {
+          "VulnerabilityID": "TEMP-0000000-1B6B4D",
+          "PkgID": "libsystemd0@257.9-1~deb13u1",
+          "PkgName": "libsystemd0",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libsystemd0@257.9-1~deb13u1?arch=amd64\u0026distro=debian-13.4",
+            "UID": "b50b08c7bba67f5"
+          },
+          "InstalledVersion": "257.9-1~deb13u1",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:ec781dee3f4719c2ca0dd9e73cb1d4ed834ed1a406495eb6e44b6dfaad5d1f8f",
+            "DiffID": "sha256:188c9b34dfbe022075d01fc4f5a305412909ef97de440783c15043e68e1b1913"
+          },
+          "PrimaryURL": "https://security-tracker.debian.org/tracker/TEMP-0000000-1B6B4D",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:22f014573f9fb31d735c2deba9f93e2271b75dafcc7dc69a40496f2c08a80c91",
+          "Title": "[nspawn: escape-to-host via malformed optional config file]",
+          "Severity": "UNKNOWN"
+        },
+        {
+          "VulnerabilityID": "TEMP-0000000-7EA18F",
+          "PkgID": "libsystemd0@257.9-1~deb13u1",
+          "PkgName": "libsystemd0",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libsystemd0@257.9-1~deb13u1?arch=amd64\u0026distro=debian-13.4",
+            "UID": "b50b08c7bba67f5"
+          },
+          "InstalledVersion": "257.9-1~deb13u1",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:ec781dee3f4719c2ca0dd9e73cb1d4ed834ed1a406495eb6e44b6dfaad5d1f8f",
+            "DiffID": "sha256:188c9b34dfbe022075d01fc4f5a305412909ef97de440783c15043e68e1b1913"
+          },
+          "PrimaryURL": "https://security-tracker.debian.org/tracker/TEMP-0000000-7EA18F",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:7d9523a9d277a3df585093ce23861c167e35d01612506be1d6b522a93f7258c7",
+          "Title": "[udev: local root execution via malicious hardware devices and unsanitized kernel output]",
+          "Severity": "UNKNOWN"
+        },
+        {
           "VulnerabilityID": "CVE-2025-69720",
           "PkgID": "libtinfo6@6.5+20250216-2",
           "PkgName": "libtinfo6",
@@ -9535,6 +9945,7 @@
           ],
           "VendorSeverity": {
             "alma": 2,
+            "cbl-mariner": 4,
             "nvd": 3,
             "oracle-oval": 2,
             "redhat": 2
@@ -9650,7 +10061,8 @@
             "CWE-269"
           ],
           "VendorSeverity": {
-            "redhat": 2
+            "redhat": 2,
+            "ubuntu": 2
           },
           "CVSS": {
             "redhat": {
@@ -9672,6 +10084,8 @@
             "https://github.com/systemd/systemd/commit/efa6ba2ab625aaa160ac435a09e6482fc63bdbe8",
             "https://github.com/systemd/systemd/security/advisories/GHSA-gx6q-6f99-m764",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-29111",
+            "https://ubuntu.com/security/notices/USN-8119-1",
+            "https://ubuntu.com/security/notices/USN-8119-2",
             "https://www.cve.org/CVERecord?id=CVE-2026-29111"
           ],
           "PublishedDate": "2026-03-23T22:16:26.267Z",
@@ -9919,6 +10333,54 @@
           "LastModifiedDate": "2024-11-21T08:01:52.097Z"
         },
         {
+          "VulnerabilityID": "TEMP-0000000-1B6B4D",
+          "PkgID": "libudev1@257.9-1~deb13u1",
+          "PkgName": "libudev1",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libudev1@257.9-1~deb13u1?arch=amd64\u0026distro=debian-13.4",
+            "UID": "9b08ae719b1cb01e"
+          },
+          "InstalledVersion": "257.9-1~deb13u1",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:ec781dee3f4719c2ca0dd9e73cb1d4ed834ed1a406495eb6e44b6dfaad5d1f8f",
+            "DiffID": "sha256:188c9b34dfbe022075d01fc4f5a305412909ef97de440783c15043e68e1b1913"
+          },
+          "PrimaryURL": "https://security-tracker.debian.org/tracker/TEMP-0000000-1B6B4D",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:5427e3718d149e0d84074b6a158c0f67c0a1d428c54059ed990234c212192cab",
+          "Title": "[nspawn: escape-to-host via malformed optional config file]",
+          "Severity": "UNKNOWN"
+        },
+        {
+          "VulnerabilityID": "TEMP-0000000-7EA18F",
+          "PkgID": "libudev1@257.9-1~deb13u1",
+          "PkgName": "libudev1",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libudev1@257.9-1~deb13u1?arch=amd64\u0026distro=debian-13.4",
+            "UID": "9b08ae719b1cb01e"
+          },
+          "InstalledVersion": "257.9-1~deb13u1",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:ec781dee3f4719c2ca0dd9e73cb1d4ed834ed1a406495eb6e44b6dfaad5d1f8f",
+            "DiffID": "sha256:188c9b34dfbe022075d01fc4f5a305412909ef97de440783c15043e68e1b1913"
+          },
+          "PrimaryURL": "https://security-tracker.debian.org/tracker/TEMP-0000000-7EA18F",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:907eab231210d91e18bb5a075ccc0c6be2c7638202ad27db80c08a1b84b3cee3",
+          "Title": "[udev: local root execution via malicious hardware devices and unsanitized kernel output]",
+          "Severity": "UNKNOWN"
+        },
+        {
           "VulnerabilityID": "CVE-2022-0563",
           "PkgID": "libuuid1@2.41-5",
           "PkgName": "libuuid1",
@@ -10037,7 +10499,7 @@
             "https://bugzilla.redhat.com/2419369",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2419369",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-14104",
-            "https://errata.almalinux.org/9/ALSA-2026-1913.html",
+            "https://errata.almalinux.org/10/ALSA-2026-1696.html",
             "https://errata.rockylinux.org/RLSA-2026:1913",
             "https://linux.oracle.com/cve/CVE-2025-14104.html",
             "https://linux.oracle.com/errata/ELSA-2026-1913.html",
@@ -10071,6 +10533,9 @@
           "Title": "util-linux: util-linux: Access control bypass due to improper hostname canonicalization",
           "Description": "A flaw was found in util-linux. Improper hostname canonicalization in the `login(1)` utility, when invoked with the `-h` option, can modify the supplied remote hostname before setting `PAM_RHOST`. A remote attacker could exploit this by providing a specially crafted hostname, potentially bypassing host-based Pluggable Authentication Modules (PAM) access control rules that rely on fully qualified domain names. This could lead to unauthorized access.",
           "Severity": "LOW",
+          "CweIDs": [
+            "CWE-289"
+          ],
           "VendorSeverity": {
             "redhat": 1,
             "ubuntu": 2
@@ -10083,9 +10548,49 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-3184",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2442570",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-3184",
             "https://www.cve.org/CVERecord?id=CVE-2026-3184"
-          ]
+          ],
+          "PublishedDate": "2026-04-03T19:17:23.377Z",
+          "LastModifiedDate": "2026-04-03T19:17:23.377Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "libuuid1@2.41-5",
+          "PkgName": "libuuid1",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libuuid1@2.41-5?arch=amd64\u0026distro=debian-13.4",
+            "UID": "4a57eaeae20e47"
+          },
+          "InstalledVersion": "2.41-5",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:ec781dee3f4719c2ca0dd9e73cb1d4ed834ed1a406495eb6e44b6dfaad5d1f8f",
+            "DiffID": "sha256:188c9b34dfbe022075d01fc4f5a305412909ef97de440783c15043e68e1b1913"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:208fe2c639af88ce1571d79ea73ff188c860c0812b2f0d4c6a78030f6a43ea31",
+          "Title": "util-linux is a random collection of Linux utilities. Prior to version ...",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "References": [
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-03T22:16:25.4Z"
         },
         {
           "VulnerabilityID": "CVE-2022-0563",
@@ -10206,7 +10711,7 @@
             "https://bugzilla.redhat.com/2419369",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2419369",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-14104",
-            "https://errata.almalinux.org/9/ALSA-2026-1913.html",
+            "https://errata.almalinux.org/10/ALSA-2026-1696.html",
             "https://errata.rockylinux.org/RLSA-2026:1913",
             "https://linux.oracle.com/cve/CVE-2025-14104.html",
             "https://linux.oracle.com/errata/ELSA-2026-1913.html",
@@ -10240,6 +10745,9 @@
           "Title": "util-linux: util-linux: Access control bypass due to improper hostname canonicalization",
           "Description": "A flaw was found in util-linux. Improper hostname canonicalization in the `login(1)` utility, when invoked with the `-h` option, can modify the supplied remote hostname before setting `PAM_RHOST`. A remote attacker could exploit this by providing a specially crafted hostname, potentially bypassing host-based Pluggable Authentication Modules (PAM) access control rules that rely on fully qualified domain names. This could lead to unauthorized access.",
           "Severity": "LOW",
+          "CweIDs": [
+            "CWE-289"
+          ],
           "VendorSeverity": {
             "redhat": 1,
             "ubuntu": 2
@@ -10252,9 +10760,49 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-3184",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2442570",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-3184",
             "https://www.cve.org/CVERecord?id=CVE-2026-3184"
-          ]
+          ],
+          "PublishedDate": "2026-04-03T19:17:23.377Z",
+          "LastModifiedDate": "2026-04-03T19:17:23.377Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "login@1:4.16.0-2+really2.41-5",
+          "PkgName": "login",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/login@4.16.0-2%2Breally2.41-5?arch=amd64\u0026distro=debian-13.4\u0026epoch=1",
+            "UID": "35a636a49ab503ca"
+          },
+          "InstalledVersion": "1:4.16.0-2+really2.41-5",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:ec781dee3f4719c2ca0dd9e73cb1d4ed834ed1a406495eb6e44b6dfaad5d1f8f",
+            "DiffID": "sha256:188c9b34dfbe022075d01fc4f5a305412909ef97de440783c15043e68e1b1913"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:cd351be08c2e014aeb9f347b8929ad0b09faa4138469e5c366f95c878a882b11",
+          "Title": "util-linux is a random collection of Linux utilities. Prior to version ...",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "References": [
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-03T22:16:25.4Z"
         },
         {
           "VulnerabilityID": "CVE-2007-5686",
@@ -10347,12 +10895,12 @@
             }
           },
           "References": [
-            "https://access.redhat.com/errata/RHSA-2025:20559",
+            "https://access.redhat.com/errata/RHSA-2025:20145",
             "https://access.redhat.com/security/cve/CVE-2024-56433",
             "https://bugzilla.redhat.com/2334165",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2334165",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2024-56433",
-            "https://errata.almalinux.org/9/ALSA-2025-20559.html",
+            "https://errata.almalinux.org/10/ALSA-2025-20145.html",
             "https://errata.rockylinux.org/RLSA-2025:20559",
             "https://github.com/shadow-maint/shadow/blob/e2512d5741d4a44bdd81a8c2d0029b6222728cf0/etc/login.defs#L238-L241",
             "https://github.com/shadow-maint/shadow/issues/1157",
@@ -10512,7 +11060,7 @@
             "https://bugzilla.redhat.com/2419369",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2419369",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-14104",
-            "https://errata.almalinux.org/9/ALSA-2026-1913.html",
+            "https://errata.almalinux.org/10/ALSA-2026-1696.html",
             "https://errata.rockylinux.org/RLSA-2026:1913",
             "https://linux.oracle.com/cve/CVE-2025-14104.html",
             "https://linux.oracle.com/errata/ELSA-2026-1913.html",
@@ -10546,6 +11094,9 @@
           "Title": "util-linux: util-linux: Access control bypass due to improper hostname canonicalization",
           "Description": "A flaw was found in util-linux. Improper hostname canonicalization in the `login(1)` utility, when invoked with the `-h` option, can modify the supplied remote hostname before setting `PAM_RHOST`. A remote attacker could exploit this by providing a specially crafted hostname, potentially bypassing host-based Pluggable Authentication Modules (PAM) access control rules that rely on fully qualified domain names. This could lead to unauthorized access.",
           "Severity": "LOW",
+          "CweIDs": [
+            "CWE-289"
+          ],
           "VendorSeverity": {
             "redhat": 1,
             "ubuntu": 2
@@ -10558,9 +11109,49 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-3184",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2442570",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-3184",
             "https://www.cve.org/CVERecord?id=CVE-2026-3184"
-          ]
+          ],
+          "PublishedDate": "2026-04-03T19:17:23.377Z",
+          "LastModifiedDate": "2026-04-03T19:17:23.377Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "mount@2.41-5",
+          "PkgName": "mount",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/mount@2.41-5?arch=amd64\u0026distro=debian-13.4",
+            "UID": "55c835c674d0a0e5"
+          },
+          "InstalledVersion": "2.41-5",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:ec781dee3f4719c2ca0dd9e73cb1d4ed834ed1a406495eb6e44b6dfaad5d1f8f",
+            "DiffID": "sha256:188c9b34dfbe022075d01fc4f5a305412909ef97de440783c15043e68e1b1913"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:804e92d6b758dd1f489ef90ee332c4a1cafb38e5b1b362aa1bd22d94c9348ad2",
+          "Title": "util-linux is a random collection of Linux utilities. Prior to version ...",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "References": [
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-03T22:16:25.4Z"
         },
         {
           "VulnerabilityID": "CVE-2025-69720",
@@ -10593,6 +11184,7 @@
           ],
           "VendorSeverity": {
             "alma": 2,
+            "cbl-mariner": 4,
             "nvd": 3,
             "oracle-oval": 2,
             "redhat": 2
@@ -10711,6 +11303,7 @@
           ],
           "VendorSeverity": {
             "alma": 2,
+            "cbl-mariner": 4,
             "nvd": 3,
             "oracle-oval": 2,
             "redhat": 2
@@ -10826,6 +11419,7 @@
             "CWE-757"
           ],
           "VendorSeverity": {
+            "amazon": 1,
             "redhat": 1,
             "ubuntu": 1
           },
@@ -10938,12 +11532,12 @@
             }
           },
           "References": [
-            "https://access.redhat.com/errata/RHSA-2025:20559",
+            "https://access.redhat.com/errata/RHSA-2025:20145",
             "https://access.redhat.com/security/cve/CVE-2024-56433",
             "https://bugzilla.redhat.com/2334165",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2334165",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2024-56433",
-            "https://errata.almalinux.org/9/ALSA-2025-20559.html",
+            "https://errata.almalinux.org/10/ALSA-2025-20145.html",
             "https://errata.rockylinux.org/RLSA-2025:20559",
             "https://github.com/shadow-maint/shadow/blob/e2512d5741d4a44bdd81a8c2d0029b6222728cf0/etc/login.defs#L238-L241",
             "https://github.com/shadow-maint/shadow/issues/1157",
@@ -11267,7 +11861,7 @@
             "https://bugzilla.redhat.com/2419369",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2419369",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-14104",
-            "https://errata.almalinux.org/9/ALSA-2026-1913.html",
+            "https://errata.almalinux.org/10/ALSA-2026-1696.html",
             "https://errata.rockylinux.org/RLSA-2026:1913",
             "https://linux.oracle.com/cve/CVE-2025-14104.html",
             "https://linux.oracle.com/errata/ELSA-2026-1913.html",
@@ -11301,6 +11895,9 @@
           "Title": "util-linux: util-linux: Access control bypass due to improper hostname canonicalization",
           "Description": "A flaw was found in util-linux. Improper hostname canonicalization in the `login(1)` utility, when invoked with the `-h` option, can modify the supplied remote hostname before setting `PAM_RHOST`. A remote attacker could exploit this by providing a specially crafted hostname, potentially bypassing host-based Pluggable Authentication Modules (PAM) access control rules that rely on fully qualified domain names. This could lead to unauthorized access.",
           "Severity": "LOW",
+          "CweIDs": [
+            "CWE-289"
+          ],
           "VendorSeverity": {
             "redhat": 1,
             "ubuntu": 2
@@ -11313,9 +11910,49 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-3184",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2442570",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-3184",
             "https://www.cve.org/CVERecord?id=CVE-2026-3184"
-          ]
+          ],
+          "PublishedDate": "2026-04-03T19:17:23.377Z",
+          "LastModifiedDate": "2026-04-03T19:17:23.377Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "util-linux@2.41-5",
+          "PkgName": "util-linux",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/util-linux@2.41-5?arch=amd64\u0026distro=debian-13.4",
+            "UID": "972fb85b9c9e83e7"
+          },
+          "InstalledVersion": "2.41-5",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:ec781dee3f4719c2ca0dd9e73cb1d4ed834ed1a406495eb6e44b6dfaad5d1f8f",
+            "DiffID": "sha256:188c9b34dfbe022075d01fc4f5a305412909ef97de440783c15043e68e1b1913"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:326517278fd0145dd0504f05f45159efea64654f3c8cbf089686a826ae26745a",
+          "Title": "util-linux is a random collection of Linux utilities. Prior to version ...",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "References": [
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-03T22:16:25.4Z"
         },
         {
           "VulnerabilityID": "CVE-2026-27171",
