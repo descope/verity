@@ -3,7 +3,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import CopyButton from "../../components/CopyButton.astro";
 import SeverityBadges from "../../components/SeverityBadges.astro";
 import SourceBadge from "../../components/SourceBadge.astro";
-import { fullCatalog } from "../../data/full-catalog";
+import { fullCatalog, type ImageSource } from "../../data/full-catalog";
 import { getChartsCatalog } from "../../lib/charts";
 import type { ChartEntry, ChartImageMapping } from "../../lib/charts";
 import { getImageVulns, getChartVulns } from "../../lib/chart-vulns";
@@ -22,10 +22,14 @@ const chartVulnMap = new Map(charts.map((c) => [c.name, getChartVulns(c)]));
 const totalCVEs = charts.reduce((sum, c) => sum + (chartVulnMap.get(c.name)?.total ?? 0), 0);
 
 // Build image-name → source lookup from full catalog for accurate SourceBadge
-const imageSourceMap = new Map<string, string>();
+// Key by both img.name and integerName so chart-gen replacements resolve correctly
+const imageSourceMap = new Map<string, ImageSource>();
 for (const cat of fullCatalog) {
   for (const img of cat.images) {
     imageSourceMap.set(img.name, img.source);
+    if (img.integerName) {
+      imageSourceMap.set(img.integerName, img.source);
+    }
   }
 }
 ---
