@@ -521,6 +521,12 @@ export const fullCatalog: FullCatalogCategory[] = [
         integerName: "newrelic-infrastructure-bundle",
         upstream: "mirror.gcr.io/newrelic/infrastructure-bundle",
       },
+      {
+        name: "victoriametrics/victoria-logs",
+        label: "victoria-logs",
+        source: "copa",
+        upstream: "docker.io/victoriametrics/victoria-logs",
+      },
     ],
   },
 
