@@ -3,6 +3,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import CopyButton from "../../components/CopyButton.astro";
 import SeverityBadges from "../../components/SeverityBadges.astro";
 import SourceBadge from "../../components/SourceBadge.astro";
+import { fullCatalog } from "../../data/full-catalog";
 import { getChartsCatalog } from "../../lib/charts";
 import type { ChartEntry, ChartImageMapping } from "../../lib/charts";
 import { getImageVulns, getChartVulns } from "../../lib/chart-vulns";
@@ -15,10 +16,18 @@ const totalOverrides = charts.reduce(
   (sum, c) => sum + c.imageMappings.length + c.valueOverrides.length,
   0
 );
-const totalCVEs = charts.reduce((sum, c) => {
-  const vulns = getChartVulns(c);
-  return sum + (vulns.total ?? 0);
-}, 0);
+
+// Precompute chart vuln summaries to avoid duplicate getChartVulns calls
+const chartVulnMap = new Map(charts.map((c) => [c.name, getChartVulns(c)]));
+const totalCVEs = charts.reduce((sum, c) => sum + (chartVulnMap.get(c.name)?.total ?? 0), 0);
+
+// Build image-name → source lookup from full catalog for accurate SourceBadge
+const imageSourceMap = new Map<string, string>();
+for (const cat of fullCatalog) {
+  for (const img of cat.images) {
+    imageSourceMap.set(img.name, img.source);
+  }
+}
 ---
 
 <BaseLayout title="Helm Charts — Verity" mdUrl={`${base}charts/index.md`}>
@@ -48,7 +57,7 @@ const totalCVEs = charts.reduce((sum, c) => {
     </div>
     <div class="bg-verity-surface border border-verity-border rounded-lg p-4 text-center hover:border-verity-orbit transition-colors">
       <div class="text-2xl font-bold text-verity-nucleus">{totalCVEs}</div>
-      <div class="text-xs text-verity-text-secondary mt-1">CVEs Patched</div>
+      <div class="text-xs text-verity-text-secondary mt-1">Open CVEs</div>
     </div>
     <div class="bg-verity-surface border border-verity-border rounded-lg p-4 text-center hover:border-verity-orbit transition-colors">
       <div class="text-2xl font-bold text-verity-nucleus">OCI</div>
@@ -111,6 +120,7 @@ const totalCVEs = charts.reduce((sum, c) => {
         placeholder={`Search ${charts.length} charts...`}
         class="w-full sm:w-96 px-3 py-2 border border-verity-border rounded-lg text-sm bg-verity-surface text-verity-text-primary placeholder-verity-text-secondary focus:outline-hidden focus:ring-2 focus:ring-verity-nucleus focus:border-verity-nucleus"
         id="chart-search"
+        aria-label="Search charts"
       />
     </div>
 
@@ -119,7 +129,7 @@ const totalCVEs = charts.reduce((sum, c) => {
         charts.map((chart: ChartEntry) => {
           const installCmd = `helm install ${chart.wrapperName} ${chart.registry}/${chart.wrapperName} --version ${chart.wrapperVersion}`;
           const mappingCount = chart.imageMappings.length + chart.valueOverrides.length;
-          const chartVulns = getChartVulns(chart);
+          const chartVulns = chartVulnMap.get(chart.name) ?? { total: 0, severityCounts: {} };
 
           const sectionSearchable = [
             chart.name.toLowerCase(),
@@ -183,7 +193,7 @@ const totalCVEs = charts.reduce((sum, c) => {
                       {m.originalRepo}:{m.originalTag}
                     </div>
                     <div class="flex items-center">
-                      <SourceBadge source="copa" />
+                      <SourceBadge source={imageSourceMap.get(imgName) ?? "copa"} />
                     </div>
                     <div class="flex items-center">
                       <SeverityBadges summary={imgVulns} />
