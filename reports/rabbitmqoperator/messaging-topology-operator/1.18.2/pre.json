@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.69.3"
   },
-  "ReportID": "019d6128-ca1e-7ad8-9aba-25312776b2d1",
-  "CreatedAt": "2026-04-06T04:59:16.382711963Z",
+  "ReportID": "019d78db-5a84-7256-94db-baf53b47edbd",
+  "CreatedAt": "2026-04-10T19:25:34.72415436Z",
   "ArtifactID": "sha256:91d488b250abc33fe3ceea9a1ce391ab88cd53cd601b5a5f909a78dd805a8bab",
   "ArtifactName": "mirror.gcr.io/rabbitmqoperator/messaging-topology-operator:1.18.2",
   "ArtifactType": "container_image",
@@ -1319,23 +1319,36 @@
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
           },
           "Fingerprint": "sha256:90b8380f8a876124a86c772bf9085c5ad541a285526860a5e449b3cb3c77b6f4",
-          "Title": "Go JOSE Panics in JWE decryption",
-          "Description": "### Impact\n\nDecrypting a JSON Web Encryption (JWE) object will panic if the `alg` field indicates a key wrapping algorithm ([one ending in `KW`](https://pkg.go.dev/github.com/go-jose/go-jose/v4#pkg-constants), with the exception of `A128GCMKW`, `A192GCMKW`, and `A256GCMKW`) and the `encrypted_key` field is empty. The panic happens when `cipher.KeyUnwrap()` in `key_wrap.go` attempts to allocate a slice with a zero or negative length based on the length of the `encrypted_key`.\n\nThis code path is reachable from `ParseEncrypted()` / `ParseEncryptedJSON()` / `ParseEncryptedCompact()` followed by `Decrypt()` on the resulting object. Note that the parse functions take a list of accepted key algorithms. If the accepted key algorithms do not include any key wrapping algorithms, parsing will fail and the application will be unaffected.\n\nThis panic is also reachable by calling `cipher.KeyUnwrap()` directly with any `ciphertext` parameter less than 16 bytes long, but calling this function directly is less common.\n\nPanics can lead to denial of service.\n\n### Fixed In\n\n4.1.4 and v3.0.5\n\n### Workarounds\n\nIf the list of `keyAlgorithms` passed to `ParseEncrypted()` / `ParseEncryptedJSON()` / `ParseEncryptedCompact()` does not include key wrapping algorithms (those ending in `KW`), your application is unaffected.\n\nIf your application uses key wrapping, you can prevalidate to the JWE objects to ensure the `encrypted_key` field is nonempty. If your application accepts JWE Compact Serialization, apply that validation to the corresponding field of that serialization (the data between the first and second `.`).\n\n### Thanks\n\nGo JOSE thanks Datadog's Security team for finding this issue.",
+          "Title": "github.com/go-jose/go-jose/v3: github.com/go-jose/go-jose/v4: Go JOSE: Denial of Service via crafted JSON Web Encryption (JWE) object",
+          "Description": "Go JOSE provides an implementation of the Javascript Object Signing and Encryption set of standards in Go, including support for JSON Web Encryption (JWE), JSON Web Signature (JWS), and JSON Web Token (JWT) standards. Prior to 4.1.4 and 3.0.5, decrypting a JSON Web Encryption (JWE) object will panic if the alg field indicates a key wrapping algorithm (one ending in KW, with the exception of A128GCMKW, A192GCMKW, and A256GCMKW) and the encrypted_key field is empty. The panic happens when cipher.KeyUnwrap() in key_wrap.go attempts to allocate a slice with a zero or negative length based on the length of the encrypted_key. This code path is reachable from ParseEncrypted() / ParseEncryptedJSON() / ParseEncryptedCompact() followed by Decrypt() on the resulting object. Note that the parse functions take a list of accepted key algorithms. If the accepted key algorithms do not include any key wrapping algorithms, parsing will fail and the application will be unaffected. This panic is also reachable by calling cipher.KeyUnwrap() directly with any ciphertext parameter less than 16 bytes long, but calling this function directly is less common. Panics can lead to denial of service. This vulnerability is fixed in 4.1.4 and 3.0.5.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-248"
+          ],
           "VendorSeverity": {
-            "ghsa": 3
+            "ghsa": 3,
+            "redhat": 3
           },
           "CVSS": {
             "ghsa": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 7.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
             }
           },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-34986",
             "https://github.com/go-jose/go-jose",
             "https://github.com/go-jose/go-jose/security/advisories/GHSA-78h2-9frx-2jm8",
-            "https://pkg.go.dev/github.com/go-jose/go-jose/v4#pkg-constants"
-          ]
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-34986",
+            "https://pkg.go.dev/github.com/go-jose/go-jose/v4#pkg-constants",
+            "https://www.cve.org/CVERecord?id=CVE-2026-34986"
+          ],
+          "PublishedDate": "2026-04-06T17:17:11.87Z",
+          "LastModifiedDate": "2026-04-07T13:20:11.643Z"
         },
         {
           "VulnerabilityID": "CVE-2025-68121",
@@ -1363,7 +1376,7 @@
             "URL": "https://pkg.go.dev/vuln/"
           },
           "Fingerprint": "sha256:53924e8e3c4f3252cc9ae67441540898dd5267223ce2678cb0d65f208bf08f49",
-          "Title": "crypto/tls: Unexpected session resumption in crypto/tls",
+          "Title": "crypto/tls: crypto/tls: Incorrect certificate validation during TLS session resumption",
           "Description": "During session resumption in crypto/tls, if the underlying Config has its ClientCAs or RootCAs fields mutated between the initial handshake and the resumed handshake, the resumed handshake may succeed when it should have failed. This may happen when a user calls Config.Clone and mutates the returned Config, or uses Config.GetConfigForClient. This can cause a client to resume a session with a server that it would not have resumed with during the initial handshake, or cause a server to resume a session with a client that it would not have resumed with during the initial handshake.",
           "Severity": "CRITICAL",
           "CweIDs": [
@@ -1631,7 +1644,7 @@
             "https://go.dev/issue/77578",
             "https://groups.google.com/g/golang-announce/c/EdhZqrQ98hk",
             "https://linux.oracle.com/cve/CVE-2026-25679.html",
-            "https://linux.oracle.com/errata/ELSA-2026-6388.html",
+            "https://linux.oracle.com/errata/ELSA-2026-7259.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-25679",
             "https://pkg.go.dev/vuln/GO-2026-4601",
             "https://www.cve.org/CVERecord?id=CVE-2026-25679"
@@ -1746,6 +1759,153 @@
           "LastModifiedDate": "2026-03-16T16:16:13.77Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-32281",
+          "VendorIDs": [
+            "GO-2026-4946"
+          ],
+          "PkgID": "stdlib@v1.25.5",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.25.5",
+            "UID": "1ffa156a8f721646"
+          },
+          "InstalledVersion": "v1.25.5",
+          "FixedVersion": "1.25.9, 1.26.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:57f8ef1a766a9fa849d3bf706a77c6b4eceaeea70a19c127a04fd0337bdb18f9",
+            "DiffID": "sha256:d318cccb2b57d9f852f0b8226478d53db470bc49d60f3defad905411008b12e2"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32281",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:b8ef7a261db45915a14ea553022c2b814ad640bc357da457b13126654767e024",
+          "Title": "crypto/x509: golang: Go crypto/x509: Denial of Service via inefficient certificate chain validation",
+          "Description": "Validating certificate chains which use policies is unexpectedly inefficient when certificates in the chain contain a very large number of policy mappings, possibly causing denial of service. This only affects validation of otherwise trusted certificate chains, issued by a root CA in the VerifyOptions.Roots CertPool, or in the system certificate pool.",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 5.9
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-32281",
+            "https://go.dev/cl/758061",
+            "https://go.dev/issue/78281",
+            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-32281",
+            "https://pkg.go.dev/vuln/GO-2026-4946",
+            "https://www.cve.org/CVERecord?id=CVE-2026-32281"
+          ],
+          "PublishedDate": "2026-04-08T02:16:03.35Z",
+          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-32288",
+          "VendorIDs": [
+            "GO-2026-4869"
+          ],
+          "PkgID": "stdlib@v1.25.5",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.25.5",
+            "UID": "1ffa156a8f721646"
+          },
+          "InstalledVersion": "v1.25.5",
+          "FixedVersion": "1.25.9, 1.26.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:57f8ef1a766a9fa849d3bf706a77c6b4eceaeea70a19c127a04fd0337bdb18f9",
+            "DiffID": "sha256:d318cccb2b57d9f852f0b8226478d53db470bc49d60f3defad905411008b12e2"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32288",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:4400c7bb9d14741a934d432052133e3828f4b0d5440452fe7dcc737595abca3b",
+          "Title": "archive/tar: golang: Go's archive/tar package: Denial of Service via maliciously-crafted archive",
+          "Description": "tar.Reader can allocate an unbounded amount of memory when reading a maliciously-crafted archive containing a large number of sparse regions encoded in the \"old GNU sparse map\" format.",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:L",
+              "V3Score": 4.3
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-32288",
+            "https://go.dev/cl/763766",
+            "https://go.dev/issue/78301",
+            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-32288",
+            "https://pkg.go.dev/vuln/GO-2026-4869",
+            "https://www.cve.org/CVERecord?id=CVE-2026-32288"
+          ],
+          "PublishedDate": "2026-04-08T02:16:03.707Z",
+          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-32289",
+          "VendorIDs": [
+            "GO-2026-4865"
+          ],
+          "PkgID": "stdlib@v1.25.5",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.25.5",
+            "UID": "1ffa156a8f721646"
+          },
+          "InstalledVersion": "v1.25.5",
+          "FixedVersion": "1.25.9, 1.26.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:57f8ef1a766a9fa849d3bf706a77c6b4eceaeea70a19c127a04fd0337bdb18f9",
+            "DiffID": "sha256:d318cccb2b57d9f852f0b8226478d53db470bc49d60f3defad905411008b12e2"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32289",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:80eebbd73b60c4fedb056df1e282dbc788918521cc2872ef3ab07c07acbb50a5",
+          "Title": "html/template: golang: html/template: Cross-Site Scripting (XSS) via improper context and brace depth tracking in JS template literals",
+          "Description": "Context was not properly tracked across template branches for JS template literals, leading to possibly incorrect escaping of content when branches were used. Additionally template actions within JS template literals did not properly track the brace depth, leading to incorrect escaping being applied. These issues could cause actions within JS template literals to be incorrectly or improperly escaped, leading to XSS vulnerabilities.",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+              "V3Score": 5.4
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-32289",
+            "https://go.dev/cl/763762",
+            "https://go.dev/issue/78331",
+            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-32289",
+            "https://pkg.go.dev/vuln/GO-2026-4865",
+            "https://www.cve.org/CVERecord?id=CVE-2026-32289"
+          ],
+          "PublishedDate": "2026-04-08T02:16:03.82Z",
+          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
+        },
+        {
           "VulnerabilityID": "CVE-2026-27139",
           "VendorIDs": [
             "GO-2026-4602"
@@ -1799,6 +1959,120 @@
           ],
           "PublishedDate": "2026-03-06T22:16:01.07Z",
           "LastModifiedDate": "2026-03-09T15:15:57.15Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-32280",
+          "VendorIDs": [
+            "GO-2026-4947"
+          ],
+          "PkgID": "stdlib@v1.25.5",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.25.5",
+            "UID": "1ffa156a8f721646"
+          },
+          "InstalledVersion": "v1.25.5",
+          "FixedVersion": "1.25.9, 1.26.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:57f8ef1a766a9fa849d3bf706a77c6b4eceaeea70a19c127a04fd0337bdb18f9",
+            "DiffID": "sha256:d318cccb2b57d9f852f0b8226478d53db470bc49d60f3defad905411008b12e2"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32280",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:e8d0a858b156bc9e494688830bfbf0984a9a566160124309e48af65df9bcf53a",
+          "Title": "During chain building, the amount of work that is done is not correctl ...",
+          "Description": "During chain building, the amount of work that is done is not correctly limited when a large number of intermediate certificates are passed in VerifyOptions.Intermediates, which can lead to a denial of service. This affects both direct users of crypto/x509 and users of crypto/tls.",
+          "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-770"
+          ],
+          "References": [
+            "https://go.dev/cl/758320",
+            "https://go.dev/issue/78282",
+            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
+            "https://pkg.go.dev/vuln/GO-2026-4947"
+          ],
+          "PublishedDate": "2026-04-08T02:16:03.247Z",
+          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-32282",
+          "VendorIDs": [
+            "GO-2026-4864"
+          ],
+          "PkgID": "stdlib@v1.25.5",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.25.5",
+            "UID": "1ffa156a8f721646"
+          },
+          "InstalledVersion": "v1.25.5",
+          "FixedVersion": "1.25.9, 1.26.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:57f8ef1a766a9fa849d3bf706a77c6b4eceaeea70a19c127a04fd0337bdb18f9",
+            "DiffID": "sha256:d318cccb2b57d9f852f0b8226478d53db470bc49d60f3defad905411008b12e2"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32282",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:1b8c10279633da9a5b8f75c758f108799e28e6602f3ae97588fcf029cbfd3129",
+          "Title": "On Linux, if the target of Root.Chmod is replaced with a symlink while ...",
+          "Description": "On Linux, if the target of Root.Chmod is replaced with a symlink while the chmod operation is in progress, Chmod can operate on the target of the symlink, even when the target lies outside the root. The Linux fchmodat syscall silently ignores the AT_SYMLINK_NOFOLLOW flag, which Root.Chmod uses to avoid symlink traversal. Root.Chmod checks its target before acting and returns an error if the target is a symlink lying outside the root, so the impact is limited to cases where the target is replaced with a symlink between the check and operation.",
+          "Severity": "UNKNOWN",
+          "References": [
+            "https://go.dev/cl/763761",
+            "https://go.dev/issue/78293",
+            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
+            "https://pkg.go.dev/vuln/GO-2026-4864"
+          ],
+          "PublishedDate": "2026-04-08T02:16:03.467Z",
+          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-32283",
+          "VendorIDs": [
+            "GO-2026-4870"
+          ],
+          "PkgID": "stdlib@v1.25.5",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.25.5",
+            "UID": "1ffa156a8f721646"
+          },
+          "InstalledVersion": "v1.25.5",
+          "FixedVersion": "1.25.9, 1.26.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:57f8ef1a766a9fa849d3bf706a77c6b4eceaeea70a19c127a04fd0337bdb18f9",
+            "DiffID": "sha256:d318cccb2b57d9f852f0b8226478d53db470bc49d60f3defad905411008b12e2"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32283",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:a21fb8fd15ec7934be149e35676655e711cd89e4ccbbe68b77c740f8377a9fa6",
+          "Title": "If one side of the TLS connection sends multiple key update messages p ...",
+          "Description": "If one side of the TLS connection sends multiple key update messages post-handshake in a single record, the connection can deadlock, causing uncontrolled consumption of resources. This can lead to a denial of service. This only affects TLS 1.3.",
+          "Severity": "UNKNOWN",
+          "References": [
+            "https://go.dev/cl/763767",
+            "https://go.dev/issue/78334",
+            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
+            "https://pkg.go.dev/vuln/GO-2026-4870"
+          ],
+          "PublishedDate": "2026-04-08T02:16:03.58Z",
+          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
         }
       ]
     }
