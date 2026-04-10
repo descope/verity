@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.69.3"
   },
-  "ReportID": "019d6123-e60a-7402-bc4a-e3b91211f076",
-  "CreatedAt": "2026-04-06T04:53:55.850263822Z",
+  "ReportID": "019d78d6-6bb9-71a1-85db-69040aaf0059",
+  "CreatedAt": "2026-04-10T19:20:11.449108382Z",
   "ArtifactID": "sha256:8c2d6cc590fc66f6733b993970bb67c4d0cfac3d71dae535551a831179687221",
   "ArtifactName": "mirror.gcr.io/library/redis:8.6.0",
   "ArtifactType": "container_image",
@@ -7068,6 +7068,55 @@
           }
         },
         {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "bsdutils@1:2.41-5",
+          "PkgName": "bsdutils",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/bsdutils@2.41-5?arch=amd64\u0026distro=debian-13.3\u0026epoch=1",
+            "UID": "5843733a461e6ce1"
+          },
+          "InstalledVersion": "1:2.41-5",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:3b42a98e5643b2d47672dc386f975bf27b120d3d43011d3f89310ce2c69886b2",
+          "Title": "util-linux: TOCTOU in the mount program when setting up loop devices",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 4.7
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-27456",
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-27456",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27456"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-07T13:20:55.2Z"
+        },
+        {
           "VulnerabilityID": "CVE-2022-0563",
           "PkgID": "bsdutils@1:2.41-5",
           "PkgName": "bsdutils",
@@ -7240,44 +7289,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-3184"
           ],
           "PublishedDate": "2026-04-03T19:17:23.377Z",
-          "LastModifiedDate": "2026-04-03T19:17:23.377Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-27456",
-          "PkgID": "bsdutils@1:2.41-5",
-          "PkgName": "bsdutils",
-          "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/bsdutils@2.41-5?arch=amd64\u0026distro=debian-13.3\u0026epoch=1",
-            "UID": "5843733a461e6ce1"
-          },
-          "InstalledVersion": "1:2.41-5",
-          "Status": "affected",
-          "Layer": {
-            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
-            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
-          "DataSource": {
-            "ID": "debian",
-            "Name": "Debian Security Tracker",
-            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
-          },
-          "Fingerprint": "sha256:3b42a98e5643b2d47672dc386f975bf27b120d3d43011d3f89310ce2c69886b2",
-          "Title": "util-linux is a random collection of Linux utilities. Prior to version ...",
-          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
-          "Severity": "UNKNOWN",
-          "CweIDs": [
-            "CWE-59",
-            "CWE-269",
-            "CWE-367"
-          ],
-          "References": [
-            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
-            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
-            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g"
-          ],
-          "PublishedDate": "2026-04-03T22:16:25.4Z",
-          "LastModifiedDate": "2026-04-03T22:16:25.4Z"
+          "LastModifiedDate": "2026-04-07T13:20:55.2Z"
         },
         {
           "VulnerabilityID": "CVE-2017-18018",
@@ -7476,6 +7488,55 @@
           "LastModifiedDate": "2024-11-21T01:30:22.61Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "libblkid1@2.41-5",
+          "PkgName": "libblkid1",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libblkid1@2.41-5?arch=amd64\u0026distro=debian-13.3",
+            "UID": "ba8a4fd626195f5f"
+          },
+          "InstalledVersion": "2.41-5",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:f0dba0ed0d69e8044f63b5299c8c44a95d629c765ee035d2e863482954a9e818",
+          "Title": "util-linux: TOCTOU in the mount program when setting up loop devices",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 4.7
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-27456",
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-27456",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27456"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-07T13:20:55.2Z"
+        },
+        {
           "VulnerabilityID": "CVE-2022-0563",
           "PkgID": "libblkid1@2.41-5",
           "PkgName": "libblkid1",
@@ -7648,44 +7709,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-3184"
           ],
           "PublishedDate": "2026-04-03T19:17:23.377Z",
-          "LastModifiedDate": "2026-04-03T19:17:23.377Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-27456",
-          "PkgID": "libblkid1@2.41-5",
-          "PkgName": "libblkid1",
-          "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/libblkid1@2.41-5?arch=amd64\u0026distro=debian-13.3",
-            "UID": "ba8a4fd626195f5f"
-          },
-          "InstalledVersion": "2.41-5",
-          "Status": "affected",
-          "Layer": {
-            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
-            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
-          "DataSource": {
-            "ID": "debian",
-            "Name": "Debian Security Tracker",
-            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
-          },
-          "Fingerprint": "sha256:f0dba0ed0d69e8044f63b5299c8c44a95d629c765ee035d2e863482954a9e818",
-          "Title": "util-linux is a random collection of Linux utilities. Prior to version ...",
-          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
-          "Severity": "UNKNOWN",
-          "CweIDs": [
-            "CWE-59",
-            "CWE-269",
-            "CWE-367"
-          ],
-          "References": [
-            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
-            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
-            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g"
-          ],
-          "PublishedDate": "2026-04-03T22:16:25.4Z",
-          "LastModifiedDate": "2026-04-03T22:16:25.4Z"
+          "LastModifiedDate": "2026-04-07T13:20:55.2Z"
         },
         {
           "VulnerabilityID": "CVE-2026-0861",
@@ -7940,7 +7964,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-4046"
           ],
           "PublishedDate": "2026-03-30T18:16:19.573Z",
-          "LastModifiedDate": "2026-04-01T14:24:21.833Z"
+          "LastModifiedDate": "2026-04-07T18:34:45.623Z"
         },
         {
           "VulnerabilityID": "CVE-2026-4437",
@@ -7970,6 +7994,7 @@
             "CWE-125"
           ],
           "VendorSeverity": {
+            "azure": 2,
             "redhat": 2
           },
           "CVSS": {
@@ -7985,7 +8010,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-4437"
           ],
           "PublishedDate": "2026-03-20T20:16:49.477Z",
-          "LastModifiedDate": "2026-03-23T16:16:51.537Z"
+          "LastModifiedDate": "2026-04-07T18:41:36.647Z"
         },
         {
           "VulnerabilityID": "CVE-2026-4438",
@@ -8016,6 +8041,8 @@
             "CWE-88"
           ],
           "VendorSeverity": {
+            "azure": 2,
+            "photon": 4,
             "redhat": 1
           },
           "CVSS": {
@@ -8031,7 +8058,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-4438"
           ],
           "PublishedDate": "2026-03-20T20:16:49.623Z",
-          "LastModifiedDate": "2026-03-23T15:16:35.68Z"
+          "LastModifiedDate": "2026-04-07T18:40:02.177Z"
         },
         {
           "VulnerabilityID": "CVE-2010-4756",
@@ -8682,7 +8709,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-4046"
           ],
           "PublishedDate": "2026-03-30T18:16:19.573Z",
-          "LastModifiedDate": "2026-04-01T14:24:21.833Z"
+          "LastModifiedDate": "2026-04-07T18:34:45.623Z"
         },
         {
           "VulnerabilityID": "CVE-2026-4437",
@@ -8712,6 +8739,7 @@
             "CWE-125"
           ],
           "VendorSeverity": {
+            "azure": 2,
             "redhat": 2
           },
           "CVSS": {
@@ -8727,7 +8755,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-4437"
           ],
           "PublishedDate": "2026-03-20T20:16:49.477Z",
-          "LastModifiedDate": "2026-03-23T16:16:51.537Z"
+          "LastModifiedDate": "2026-04-07T18:41:36.647Z"
         },
         {
           "VulnerabilityID": "CVE-2026-4438",
@@ -8758,6 +8786,8 @@
             "CWE-88"
           ],
           "VendorSeverity": {
+            "azure": 2,
+            "photon": 4,
             "redhat": 1
           },
           "CVSS": {
@@ -8773,7 +8803,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-4438"
           ],
           "PublishedDate": "2026-03-20T20:16:49.623Z",
-          "LastModifiedDate": "2026-03-23T15:16:35.68Z"
+          "LastModifiedDate": "2026-04-07T18:40:02.177Z"
         },
         {
           "VulnerabilityID": "CVE-2010-4756",
@@ -9172,6 +9202,95 @@
           "LastModifiedDate": "2024-11-21T04:51:10.53Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-4878",
+          "PkgID": "libcap2@1:2.75-10+b3",
+          "PkgName": "libcap2",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libcap2@2.75-10%2Bb3?arch=amd64\u0026distro=debian-13.3\u0026epoch=1",
+            "UID": "9ad8c6c25f12840a"
+          },
+          "InstalledVersion": "1:2.75-10+b3",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-4878",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:aab62e9a416f260c1cdf7a6436c375216857490159d13d34ddff0d52f1805236",
+          "Title": "A flaw was found in libcap. A local unprivileged user can exploit a Ti ...",
+          "Description": "A flaw was found in libcap. A local unprivileged user can exploit a Time-of-check-to-time-of-use (TOCTOU) race condition in the `cap_set_file()` function. This allows an attacker with write access to a parent directory to redirect file capability updates to an attacker-controlled file. By doing so, capabilities can be injected into or stripped from unintended executables, leading to privilege escalation.",
+          "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-367"
+          ],
+          "References": [
+            "http://www.openwall.com/lists/oss-security/2026/04/07/14",
+            "http://www.openwall.com/lists/oss-security/2026/04/07/4",
+            "http://www.openwall.com/lists/oss-security/2026/04/08/9",
+            "http://www.openwall.com/lists/oss-security/2026/04/09/5",
+            "http://www.openwall.com/lists/oss-security/2026/04/09/6",
+            "https://access.redhat.com/security/cve/CVE-2026-4878",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2447554",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2451615"
+          ],
+          "PublishedDate": "2026-04-09T16:16:31.987Z",
+          "LastModifiedDate": "2026-04-09T16:16:31.987Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "liblastlog2-2@2.41-5",
+          "PkgName": "liblastlog2-2",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/liblastlog2-2@2.41-5?arch=amd64\u0026distro=debian-13.3",
+            "UID": "7f0afd002cccac7f"
+          },
+          "InstalledVersion": "2.41-5",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:c0587c9711bc6dd4dbf11c18d5c874f796d66b95b7d2e6e63b71d0139ec2f1b8",
+          "Title": "util-linux: TOCTOU in the mount program when setting up loop devices",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 4.7
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-27456",
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-27456",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27456"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-07T13:20:55.2Z"
+        },
+        {
           "VulnerabilityID": "CVE-2022-0563",
           "PkgID": "liblastlog2-2@2.41-5",
           "PkgName": "liblastlog2-2",
@@ -9344,44 +9463,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-3184"
           ],
           "PublishedDate": "2026-04-03T19:17:23.377Z",
-          "LastModifiedDate": "2026-04-03T19:17:23.377Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-27456",
-          "PkgID": "liblastlog2-2@2.41-5",
-          "PkgName": "liblastlog2-2",
-          "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/liblastlog2-2@2.41-5?arch=amd64\u0026distro=debian-13.3",
-            "UID": "7f0afd002cccac7f"
-          },
-          "InstalledVersion": "2.41-5",
-          "Status": "affected",
-          "Layer": {
-            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
-            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
-          "DataSource": {
-            "ID": "debian",
-            "Name": "Debian Security Tracker",
-            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
-          },
-          "Fingerprint": "sha256:c0587c9711bc6dd4dbf11c18d5c874f796d66b95b7d2e6e63b71d0139ec2f1b8",
-          "Title": "util-linux is a random collection of Linux utilities. Prior to version ...",
-          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
-          "Severity": "UNKNOWN",
-          "CweIDs": [
-            "CWE-59",
-            "CWE-269",
-            "CWE-367"
-          ],
-          "References": [
-            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
-            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
-            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g"
-          ],
-          "PublishedDate": "2026-04-03T22:16:25.4Z",
-          "LastModifiedDate": "2026-04-03T22:16:25.4Z"
+          "LastModifiedDate": "2026-04-07T13:20:55.2Z"
         },
         {
           "VulnerabilityID": "CVE-2026-34743",
@@ -9430,6 +9512,55 @@
           ],
           "PublishedDate": "2026-04-02T19:21:33.187Z",
           "LastModifiedDate": "2026-04-03T16:10:23.73Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "libmount1@2.41-5",
+          "PkgName": "libmount1",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libmount1@2.41-5?arch=amd64\u0026distro=debian-13.3",
+            "UID": "c8f51339c2201209"
+          },
+          "InstalledVersion": "2.41-5",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:5bd8ba2eaad93aea0e64d42d446ee45e1fe61a14037340369fa04b5c378e5b1a",
+          "Title": "util-linux: TOCTOU in the mount program when setting up loop devices",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 4.7
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-27456",
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-27456",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27456"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-07T13:20:55.2Z"
         },
         {
           "VulnerabilityID": "CVE-2022-0563",
@@ -9604,15 +9735,15 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-3184"
           ],
           "PublishedDate": "2026-04-03T19:17:23.377Z",
-          "LastModifiedDate": "2026-04-03T19:17:23.377Z"
+          "LastModifiedDate": "2026-04-07T13:20:55.2Z"
         },
         {
           "VulnerabilityID": "CVE-2026-27456",
-          "PkgID": "libmount1@2.41-5",
-          "PkgName": "libmount1",
+          "PkgID": "libsmartcols1@2.41-5",
+          "PkgName": "libsmartcols1",
           "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/libmount1@2.41-5?arch=amd64\u0026distro=debian-13.3",
-            "UID": "c8f51339c2201209"
+            "PURL": "pkg:deb/debian/libsmartcols1@2.41-5?arch=amd64\u0026distro=debian-13.3",
+            "UID": "bbcbadced245df71"
           },
           "InstalledVersion": "2.41-5",
           "Status": "affected",
@@ -9626,22 +9757,34 @@
             "Name": "Debian Security Tracker",
             "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
           },
-          "Fingerprint": "sha256:5bd8ba2eaad93aea0e64d42d446ee45e1fe61a14037340369fa04b5c378e5b1a",
-          "Title": "util-linux is a random collection of Linux utilities. Prior to version ...",
+          "Fingerprint": "sha256:9705170c360237928658ab63e8c46d878c6cc505704139a756e7e82e34363caa",
+          "Title": "util-linux: TOCTOU in the mount program when setting up loop devices",
           "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
-          "Severity": "UNKNOWN",
+          "Severity": "MEDIUM",
           "CweIDs": [
             "CWE-59",
             "CWE-269",
             "CWE-367"
           ],
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 4.7
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-27456",
             "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
             "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
-            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g"
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-27456",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27456"
           ],
           "PublishedDate": "2026-04-03T22:16:25.4Z",
-          "LastModifiedDate": "2026-04-03T22:16:25.4Z"
+          "LastModifiedDate": "2026-04-07T13:20:55.2Z"
         },
         {
           "VulnerabilityID": "CVE-2022-0563",
@@ -9816,44 +9959,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-3184"
           ],
           "PublishedDate": "2026-04-03T19:17:23.377Z",
-          "LastModifiedDate": "2026-04-03T19:17:23.377Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-27456",
-          "PkgID": "libsmartcols1@2.41-5",
-          "PkgName": "libsmartcols1",
-          "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/libsmartcols1@2.41-5?arch=amd64\u0026distro=debian-13.3",
-            "UID": "bbcbadced245df71"
-          },
-          "InstalledVersion": "2.41-5",
-          "Status": "affected",
-          "Layer": {
-            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
-            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
-          "DataSource": {
-            "ID": "debian",
-            "Name": "Debian Security Tracker",
-            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
-          },
-          "Fingerprint": "sha256:9705170c360237928658ab63e8c46d878c6cc505704139a756e7e82e34363caa",
-          "Title": "util-linux is a random collection of Linux utilities. Prior to version ...",
-          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
-          "Severity": "UNKNOWN",
-          "CweIDs": [
-            "CWE-59",
-            "CWE-269",
-            "CWE-367"
-          ],
-          "References": [
-            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
-            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
-            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g"
-          ],
-          "PublishedDate": "2026-04-03T22:16:25.4Z",
-          "LastModifiedDate": "2026-04-03T22:16:25.4Z"
+          "LastModifiedDate": "2026-04-07T13:20:55.2Z"
         },
         {
           "VulnerabilityID": "CVE-2025-7709",
@@ -10011,6 +10117,121 @@
           "LastModifiedDate": "2026-03-16T14:18:02.437Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-28390",
+          "VendorIDs": [
+            "DSA-6201-1"
+          ],
+          "PkgID": "libssl3t64@3.5.4-1~deb13u2",
+          "PkgName": "libssl3t64",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libssl3t64@3.5.4-1~deb13u2?arch=amd64\u0026distro=debian-13.3",
+            "UID": "e47ab0789f5b5c76"
+          },
+          "InstalledVersion": "3.5.4-1~deb13u2",
+          "FixedVersion": "3.5.5-1~deb13u2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-28390",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:961f9d06b3b65afcc03a1dbbc5d0a23e19f792ea4aa1937a844c272f7afeed7c",
+          "Title": "openssl: OpenSSL: Denial of Service due to NULL pointer dereference in CMS EnvelopedData processing",
+          "Description": "Issue summary: During processing of a crafted CMS EnvelopedData message\nwith KeyTransportRecipientInfo a NULL pointer dereference can happen.\n\nImpact summary: Applications that process attacker-controlled CMS data may\ncrash before authentication or cryptographic operations occur resulting in\nDenial of Service.\n\nWhen a CMS EnvelopedData message that uses KeyTransportRecipientInfo with\nRSA-OAEP encryption is processed, the optional parameters field of\nRSA-OAEP SourceFunc algorithm identifier is examined without checking\nfor its presence. This results in a NULL pointer dereference if the field\nis missing.\n\nApplications and services that call CMS_decrypt() on untrusted input\n(e.g., S/MIME processing or CMS-based protocols) are vulnerable.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3 and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-476"
+          ],
+          "VendorSeverity": {
+            "redhat": 2,
+            "ubuntu": 1
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-28390",
+            "https://github.com/openssl/openssl/commit/01194a8f1941115cd0383bfa91c736dd3993c8bc",
+            "https://github.com/openssl/openssl/commit/2e39b7a6993be445fddb9fbce316fa756e0397b6",
+            "https://github.com/openssl/openssl/commit/af2a5fecd3e71a29e7568f9c1453dec5cebbaff4",
+            "https://github.com/openssl/openssl/commit/ea7b4ea4f9f853521ba34830cbcadc970d2e0788",
+            "https://github.com/openssl/openssl/commit/fd2f1a6cf53b9ceeca723a001aa4b825d7c7ee75",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-28390",
+            "https://openssl-library.org/news/secadv/20260407.txt",
+            "https://ubuntu.com/security/notices/USN-8155-1",
+            "https://ubuntu.com/security/notices/USN-8155-2",
+            "https://www.cve.org/CVERecord?id=CVE-2026-28390",
+            "https://www.openwall.com/lists/oss-security/2026/04/07/11"
+          ],
+          "PublishedDate": "2026-04-07T22:16:21.19Z",
+          "LastModifiedDate": "2026-04-08T21:27:00.663Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-31790",
+          "VendorIDs": [
+            "DSA-6201-1"
+          ],
+          "PkgID": "libssl3t64@3.5.4-1~deb13u2",
+          "PkgName": "libssl3t64",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libssl3t64@3.5.4-1~deb13u2?arch=amd64\u0026distro=debian-13.3",
+            "UID": "e47ab0789f5b5c76"
+          },
+          "InstalledVersion": "3.5.4-1~deb13u2",
+          "FixedVersion": "3.5.5-1~deb13u2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-31790",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:5ab0d4384b83f84a0c53ebde9112903465a045a12af6fd37c4340cf19c5bd370",
+          "Title": "openssl: openssl: Information Disclosure from Uninitialized Memory via Invalid RSA Public Key",
+          "Description": "Issue summary: Applications using RSASVE key encapsulation to establish\na secret encryption key can send contents of an uninitialized memory buffer to\na malicious peer.\n\nImpact summary: The uninitialized buffer might contain sensitive data from the\nprevious execution of the application process which leads to sensitive data\nleakage to an attacker.\n\nRSA_public_encrypt() returns the number of bytes written on success and -1\non error. The affected code tests only whether the return value is non-zero.\nAs a result, if RSA encryption fails, encapsulation can still return success to\nthe caller, set the output lengths, and leave the caller to use the contents of\nthe ciphertext buffer as if a valid KEM ciphertext had been produced.\n\nIf applications use EVP_PKEY_encapsulate() with RSA/RSASVE on an\nattacker-supplied invalid RSA public key without first validating that key,\nthen this may cause stale or uninitialized contents of the caller-provided\nciphertext buffer to be disclosed to the attacker in place of the KEM\nciphertext.\n\nAs a workaround calling EVP_PKEY_public_check() or\nEVP_PKEY_public_check_quick() before EVP_PKEY_encapsulate() will mitigate\nthe issue.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3, 3.1 and 3.0 are affected by this issue.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-754"
+          ],
+          "VendorSeverity": {
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 5.9
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-31790",
+            "https://github.com/openssl/openssl/commit/001e01db3e996e13ffc72386fe79d03a6683b5ac",
+            "https://github.com/openssl/openssl/commit/abd8b2eec7e3f3fda60ecfb68498b246b52af482",
+            "https://github.com/openssl/openssl/commit/b922e24e5b23ffb9cb9e14cadff23d91e9f7e406",
+            "https://github.com/openssl/openssl/commit/d5f8e71cd0a54e961d0c3b174348f8308486f790",
+            "https://github.com/openssl/openssl/commit/eed200f58cd8645ed77e46b7e9f764e284df379e",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-31790",
+            "https://openssl-library.org/news/secadv/20260407.txt",
+            "https://ubuntu.com/security/notices/USN-8155-1",
+            "https://www.cve.org/CVERecord?id=CVE-2026-31790",
+            "https://www.openwall.com/lists/oss-security/2026/04/07/11"
+          ],
+          "PublishedDate": "2026-04-07T22:16:21.77Z",
+          "LastModifiedDate": "2026-04-08T21:27:00.663Z"
+        },
+        {
           "VulnerabilityID": "CVE-2026-2673",
           "PkgID": "libssl3t64@3.5.4-1~deb13u2",
           "PkgName": "libssl3t64",
@@ -10019,7 +10240,8 @@
             "UID": "e47ab0789f5b5c76"
           },
           "InstalledVersion": "3.5.4-1~deb13u2",
-          "Status": "affected",
+          "FixedVersion": "3.5.5-1~deb13u2",
+          "Status": "fixed",
           "Layer": {
             "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
             "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
@@ -10055,10 +10277,206 @@
             "https://github.com/openssl/openssl/commit/85977e013f32ceb96aa034c0e741adddc1a05e34",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-2673",
             "https://openssl-library.org/news/secadv/20260313.txt",
+            "https://ubuntu.com/security/notices/USN-8155-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-2673"
           ],
           "PublishedDate": "2026-03-13T19:54:34.033Z",
           "LastModifiedDate": "2026-03-17T18:16:15.6Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-28387",
+          "VendorIDs": [
+            "DSA-6201-1"
+          ],
+          "PkgID": "libssl3t64@3.5.4-1~deb13u2",
+          "PkgName": "libssl3t64",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libssl3t64@3.5.4-1~deb13u2?arch=amd64\u0026distro=debian-13.3",
+            "UID": "e47ab0789f5b5c76"
+          },
+          "InstalledVersion": "3.5.4-1~deb13u2",
+          "FixedVersion": "3.5.5-1~deb13u2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-28387",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:26e3d1ad2dafa9d6663d91016524a7c26a7b819c3cb4b8c2a7c26c142982db46",
+          "Title": "Issue summary: An uncommon configuration of clients performing DANE TL ...",
+          "Description": "Issue summary: An uncommon configuration of clients performing DANE TLSA-based\nserver authentication, when paired with uncommon server DANE TLSA records, may\nresult in a use-after-free and/or double-free on the client side.\n\nImpact summary: A use after free can have a range of potential consequences\nsuch as the corruption of valid data, crashes or execution of arbitrary code.\n\nHowever, the issue only affects clients that make use of TLSA records with both\nthe PKIX-TA(0/PKIX-EE(1) certificate usages and the DANE-TA(2) certificate\nusage.\n\nBy far the most common deployment of DANE is in SMTP MTAs for which RFC7672\nrecommends that clients treat as 'unusable' any TLSA records that have the PKIX\ncertificate usages.  These SMTP (or other similar) clients are not vulnerable\nto this issue.  Conversely, any clients that support only the PKIX usages, and\nignore the DANE-TA(2) usage are also not vulnerable.\n\nThe client would also need to be communicating with a server that publishes a\nTLSA RRset with both types of TLSA records.\n\nNo FIPS modules are affected by this issue, the problem code is outside the\nFIPS module boundary.",
+          "Severity": "LOW",
+          "CweIDs": [
+            "CWE-416"
+          ],
+          "VendorSeverity": {
+            "ubuntu": 1
+          },
+          "References": [
+            "https://github.com/openssl/openssl/commit/07e727d304746edb49a98ee8f6ab00256e1f012b",
+            "https://github.com/openssl/openssl/commit/258a8f63b26995ba357f4326da00e19e29c6acbe",
+            "https://github.com/openssl/openssl/commit/444958deaf450aea819171f97ae69eaedede42c3",
+            "https://github.com/openssl/openssl/commit/7a4e08cee62a728d32e60b0de89e6764339df0a7",
+            "https://github.com/openssl/openssl/commit/ec03fa050b3346997ed9c5fef3d0e16ad7db8177",
+            "https://openssl-library.org/news/secadv/20260407.txt",
+            "https://ubuntu.com/security/notices/USN-8155-1",
+            "https://ubuntu.com/security/notices/USN-8155-2",
+            "https://www.cve.org/CVERecord?id=CVE-2026-28387",
+            "https://www.openwall.com/lists/oss-security/2026/04/07/11"
+          ],
+          "PublishedDate": "2026-04-07T22:16:20.7Z",
+          "LastModifiedDate": "2026-04-08T21:27:00.663Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-28388",
+          "VendorIDs": [
+            "DSA-6201-1"
+          ],
+          "PkgID": "libssl3t64@3.5.4-1~deb13u2",
+          "PkgName": "libssl3t64",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libssl3t64@3.5.4-1~deb13u2?arch=amd64\u0026distro=debian-13.3",
+            "UID": "e47ab0789f5b5c76"
+          },
+          "InstalledVersion": "3.5.4-1~deb13u2",
+          "FixedVersion": "3.5.5-1~deb13u2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-28388",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:06104eb4cc1308069e56196581eedb7bf854cef1b92d888bcdbf967ea1613b69",
+          "Title": "Issue summary: When a delta CRL that contains a Delta CRL Indicator ex ...",
+          "Description": "Issue summary: When a delta CRL that contains a Delta CRL Indicator extension\nis processed a NULL pointer dereference might happen if the required CRL\nNumber extension is missing.\n\nImpact summary: A NULL pointer dereference can trigger a crash which\nleads to a Denial of Service for an application.\n\nWhen CRL processing and delta CRL processing is enabled during X.509\ncertificate verification, the delta CRL processing does not check\nwhether the CRL Number extension is NULL before dereferencing it.\nWhen a malformed delta CRL file is being processed, this parameter\ncan be NULL, causing a NULL pointer dereference.\n\nExploiting this issue requires the X509_V_FLAG_USE_DELTAS flag to be enabled in\nthe verification context, the certificate being verified to contain a\nfreshestCRL extension or the base CRL to have the EXFLAG_FRESHEST flag set, and\nan attacker to provide a malformed CRL to an application that processes it.\n\nThe vulnerability is limited to Denial of Service and cannot be escalated to\nachieve code execution or memory disclosure. For that reason the issue was\nassessed as Low severity according to our Security Policy.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3 and 3.0 are not affected by this issue,\nas the affected code is outside the OpenSSL FIPS module boundary.",
+          "Severity": "LOW",
+          "CweIDs": [
+            "CWE-476"
+          ],
+          "VendorSeverity": {
+            "ubuntu": 1
+          },
+          "References": [
+            "https://github.com/openssl/openssl/commit/59c3b3158553ab53275bbbccca5cb305d591cf2e",
+            "https://github.com/openssl/openssl/commit/5a0b4930779cd2408880979db765db919da55139",
+            "https://github.com/openssl/openssl/commit/602542f2c0c2d5edb47128f93eac10b62aeeefb3",
+            "https://github.com/openssl/openssl/commit/a9d187dd1000130100fa7ab915f8513532cb3bb8",
+            "https://github.com/openssl/openssl/commit/d3a901e8d9f021f3e67d6cfbc12e768129862726",
+            "https://openssl-library.org/news/secadv/20260407.txt",
+            "https://ubuntu.com/security/notices/USN-8155-1",
+            "https://ubuntu.com/security/notices/USN-8155-2",
+            "https://www.cve.org/CVERecord?id=CVE-2026-28388",
+            "https://www.openwall.com/lists/oss-security/2026/04/07/11"
+          ],
+          "PublishedDate": "2026-04-07T22:16:20.863Z",
+          "LastModifiedDate": "2026-04-08T21:27:00.663Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-28389",
+          "VendorIDs": [
+            "DSA-6201-1"
+          ],
+          "PkgID": "libssl3t64@3.5.4-1~deb13u2",
+          "PkgName": "libssl3t64",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libssl3t64@3.5.4-1~deb13u2?arch=amd64\u0026distro=debian-13.3",
+            "UID": "e47ab0789f5b5c76"
+          },
+          "InstalledVersion": "3.5.4-1~deb13u2",
+          "FixedVersion": "3.5.5-1~deb13u2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-28389",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:db2d2612d50b8606c8189ae55d954c69e823241f608bed0c1310c7537b96dc71",
+          "Title": "Issue summary: During processing of a crafted CMS EnvelopedData messag ...",
+          "Description": "Issue summary: During processing of a crafted CMS EnvelopedData message\nwith KeyAgreeRecipientInfo a NULL pointer dereference can happen.\n\nImpact summary: Applications that process attacker-controlled CMS data may\ncrash before authentication or cryptographic operations occur resulting in\nDenial of Service.\n\nWhen a CMS EnvelopedData message that uses KeyAgreeRecipientInfo is\nprocessed, the optional parameters field of KeyEncryptionAlgorithmIdentifier\nis examined without checking for its presence. This results in a NULL\npointer dereference if the field is missing.\n\nApplications and services that call CMS_decrypt() on untrusted input\n(e.g., S/MIME processing or CMS-based protocols) are vulnerable.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3 and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
+          "Severity": "LOW",
+          "CweIDs": [
+            "CWE-476"
+          ],
+          "VendorSeverity": {
+            "ubuntu": 1
+          },
+          "References": [
+            "https://github.com/openssl/openssl/commit/16cea4188e0ea567deb4f93f85902247e67384f5",
+            "https://github.com/openssl/openssl/commit/785cbf7ea3b5a6f5adf0c1ccb92b79d89c35c616",
+            "https://github.com/openssl/openssl/commit/7b5274e812400cacb6f3be4c2df5340923fa807f",
+            "https://github.com/openssl/openssl/commit/c6725634e089eb2b634b10ede33944be7248172a",
+            "https://github.com/openssl/openssl/commit/f80f83bc5fd036bc47d773e8b15a001e2b4ce686",
+            "https://openssl-library.org/news/secadv/20260407.txt",
+            "https://ubuntu.com/security/notices/USN-8155-1",
+            "https://ubuntu.com/security/notices/USN-8155-2",
+            "https://www.cve.org/CVERecord?id=CVE-2026-28389",
+            "https://www.openwall.com/lists/oss-security/2026/04/07/11"
+          ],
+          "PublishedDate": "2026-04-07T22:16:21.03Z",
+          "LastModifiedDate": "2026-04-08T21:27:00.663Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-31789",
+          "VendorIDs": [
+            "DSA-6201-1"
+          ],
+          "PkgID": "libssl3t64@3.5.4-1~deb13u2",
+          "PkgName": "libssl3t64",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libssl3t64@3.5.4-1~deb13u2?arch=amd64\u0026distro=debian-13.3",
+            "UID": "e47ab0789f5b5c76"
+          },
+          "InstalledVersion": "3.5.4-1~deb13u2",
+          "FixedVersion": "3.5.5-1~deb13u2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-31789",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:adfd4b6f09479e4c5a3aba44dee8b8aa37566b7240305a59f7c7f15ff57151eb",
+          "Title": "Issue summary: Converting an excessively large OCTET STRING value to a ...",
+          "Description": "Issue summary: Converting an excessively large OCTET STRING value to\na hexadecimal string leads to a heap buffer overflow on 32 bit platforms.\n\nImpact summary: A heap buffer overflow may lead to a crash or possibly\nan attacker controlled code execution or other undefined behavior.\n\nIf an attacker can supply a crafted X.509 certificate with an excessively\nlarge OCTET STRING value in extensions such as the Subject Key Identifier\n(SKID) or Authority Key Identifier (AKID) which are being converted to hex,\nthe size of the buffer needed for the result is calculated as multiplication\nof the input length by 3. On 32 bit platforms, this multiplication may overflow\nresulting in the allocation of a smaller buffer and a heap buffer overflow.\n\nApplications and services that print or log contents of untrusted X.509\ncertificates are vulnerable to this issue. As the certificates would have\nto have sizes of over 1 Gigabyte, printing or logging such certificates\nis a fairly unlikely operation and only 32 bit platforms are affected,\nthis issue was assigned Low severity.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3 and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
+          "Severity": "LOW",
+          "CweIDs": [
+            "CWE-787"
+          ],
+          "VendorSeverity": {
+            "ubuntu": 1
+          },
+          "References": [
+            "https://github.com/openssl/openssl/commit/364f095b80601db632b0def6a33316967f863bde",
+            "https://github.com/openssl/openssl/commit/7a9087efd769f362ad9c0e30c7baaa6bbfa65ecf",
+            "https://github.com/openssl/openssl/commit/945b935ac66cc7f1a41f1b849c7c25adb5351f49",
+            "https://github.com/openssl/openssl/commit/a24216018e1ede8ff01a4ff5afff7dfbd443e2f9",
+            "https://github.com/openssl/openssl/commit/a91e537d16d74050dbde50bb0dfb1fe9930f0521",
+            "https://openssl-library.org/news/secadv/20260407.txt",
+            "https://ubuntu.com/security/notices/USN-8155-1",
+            "https://www.cve.org/CVERecord?id=CVE-2026-31789",
+            "https://www.openwall.com/lists/oss-security/2026/04/07/11"
+          ],
+          "PublishedDate": "2026-04-07T22:16:21.617Z",
+          "LastModifiedDate": "2026-04-08T21:27:00.663Z"
         },
         {
           "VulnerabilityID": "CVE-2026-29111",
@@ -10088,6 +10506,7 @@
             "CWE-269"
           ],
           "VendorSeverity": {
+            "azure": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -10360,7 +10779,7 @@
           "LastModifiedDate": "2024-11-21T08:01:52.097Z"
         },
         {
-          "VulnerabilityID": "TEMP-0000000-1B6B4D",
+          "VulnerabilityID": "CVE-2026-40225",
           "PkgID": "libsystemd0@257.9-1~deb13u1",
           "PkgName": "libsystemd0",
           "PkgIdentifier": {
@@ -10373,18 +10792,27 @@
             "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
             "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
           },
-          "PrimaryURL": "https://security-tracker.debian.org/tracker/TEMP-0000000-1B6B4D",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-40225",
           "DataSource": {
             "ID": "debian",
             "Name": "Debian Security Tracker",
             "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
           },
-          "Fingerprint": "sha256:55c2b4cf72230414aa4ef5fea20a9bc0c5c6c47a73f098b75e51411406e77f54",
-          "Title": "[nspawn: escape-to-host via malformed optional config file]",
-          "Severity": "UNKNOWN"
+          "Fingerprint": "sha256:bd31188686a9b88fd36467916f1cb956737a13eb558974257bd30621efed644e",
+          "Title": "[udev: local root execution via malicious hardware devices and unsanitized kernel output]",
+          "Description": "In udev in systemd before 260, local root execution can occur via malicious hardware devices and unsanitized kernel output.",
+          "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-669"
+          ],
+          "References": [
+            "https://github.com/systemd/systemd/security/advisories/GHSA-vpfq-8p5f-jcqx"
+          ],
+          "PublishedDate": "2026-04-10T16:16:33.287Z",
+          "LastModifiedDate": "2026-04-10T16:16:33.287Z"
         },
         {
-          "VulnerabilityID": "TEMP-0000000-7EA18F",
+          "VulnerabilityID": "CVE-2026-40226",
           "PkgID": "libsystemd0@257.9-1~deb13u1",
           "PkgName": "libsystemd0",
           "PkgIdentifier": {
@@ -10397,15 +10825,24 @@
             "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
             "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
           },
-          "PrimaryURL": "https://security-tracker.debian.org/tracker/TEMP-0000000-7EA18F",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-40226",
           "DataSource": {
             "ID": "debian",
             "Name": "Debian Security Tracker",
             "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
           },
-          "Fingerprint": "sha256:90afbfc128d6ef70d64f1fd13cf9d09d1432ac5abf0ed77a6da270332018cb95",
-          "Title": "[udev: local root execution via malicious hardware devices and unsanitized kernel output]",
-          "Severity": "UNKNOWN"
+          "Fingerprint": "sha256:23d3b8542f9b4ab9ff07683fb29b19ff5f0fd240f749b079f30853d76ae8225a",
+          "Title": "[nspawn: escape-to-host via malformed optional config file]",
+          "Description": "In nspawn in systemd 233 through 259 before 260, an escape-to-host action can occur via a crafted optional config file.",
+          "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-348"
+          ],
+          "References": [
+            "https://github.com/systemd/systemd/security/advisories/GHSA-9mj4-rrc3-gjcx"
+          ],
+          "PublishedDate": "2026-04-10T16:16:33.447Z",
+          "LastModifiedDate": "2026-04-10T16:16:33.447Z"
         },
         {
           "VulnerabilityID": "CVE-2025-69720",
@@ -10438,6 +10875,7 @@
           ],
           "VendorSeverity": {
             "alma": 2,
+            "azure": 4,
             "cbl-mariner": 4,
             "nvd": 3,
             "oracle-oval": 2,
@@ -10449,8 +10887,8 @@
               "V3Score": 7.8
             },
             "redhat": {
-              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:H/A:H",
-              "V3Score": 7.3
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 7.8
             }
           },
           "References": [
@@ -10501,6 +10939,7 @@
             "CWE-121"
           ],
           "VendorSeverity": {
+            "azure": 2,
             "photon": 1,
             "redhat": 1
           },
@@ -10554,6 +10993,7 @@
             "CWE-269"
           ],
           "VendorSeverity": {
+            "azure": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -10826,7 +11266,7 @@
           "LastModifiedDate": "2024-11-21T08:01:52.097Z"
         },
         {
-          "VulnerabilityID": "TEMP-0000000-1B6B4D",
+          "VulnerabilityID": "CVE-2026-40225",
           "PkgID": "libudev1@257.9-1~deb13u1",
           "PkgName": "libudev1",
           "PkgIdentifier": {
@@ -10839,18 +11279,27 @@
             "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
             "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
           },
-          "PrimaryURL": "https://security-tracker.debian.org/tracker/TEMP-0000000-1B6B4D",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-40225",
           "DataSource": {
             "ID": "debian",
             "Name": "Debian Security Tracker",
             "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
           },
-          "Fingerprint": "sha256:f63cf9d1bb5b326a85546b67c553ead9095a470c4df27b1d19b61c0a661067a5",
-          "Title": "[nspawn: escape-to-host via malformed optional config file]",
-          "Severity": "UNKNOWN"
+          "Fingerprint": "sha256:653d3c16062fb7ae8e975d45bfc96cb3ac1800e839a575789ea2034355b62c41",
+          "Title": "[udev: local root execution via malicious hardware devices and unsanitized kernel output]",
+          "Description": "In udev in systemd before 260, local root execution can occur via malicious hardware devices and unsanitized kernel output.",
+          "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-669"
+          ],
+          "References": [
+            "https://github.com/systemd/systemd/security/advisories/GHSA-vpfq-8p5f-jcqx"
+          ],
+          "PublishedDate": "2026-04-10T16:16:33.287Z",
+          "LastModifiedDate": "2026-04-10T16:16:33.287Z"
         },
         {
-          "VulnerabilityID": "TEMP-0000000-7EA18F",
+          "VulnerabilityID": "CVE-2026-40226",
           "PkgID": "libudev1@257.9-1~deb13u1",
           "PkgName": "libudev1",
           "PkgIdentifier": {
@@ -10863,15 +11312,73 @@
             "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
             "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
           },
-          "PrimaryURL": "https://security-tracker.debian.org/tracker/TEMP-0000000-7EA18F",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-40226",
           "DataSource": {
             "ID": "debian",
             "Name": "Debian Security Tracker",
             "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
           },
-          "Fingerprint": "sha256:6b6cc0cb19262fe86232d976d4dc13def79118a55a895b54fd0c9616fed23b3b",
-          "Title": "[udev: local root execution via malicious hardware devices and unsanitized kernel output]",
-          "Severity": "UNKNOWN"
+          "Fingerprint": "sha256:1ba19d70e6953c822387588eccff8afd532184a837ed46c903081cd18bddd842",
+          "Title": "[nspawn: escape-to-host via malformed optional config file]",
+          "Description": "In nspawn in systemd 233 through 259 before 260, an escape-to-host action can occur via a crafted optional config file.",
+          "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-348"
+          ],
+          "References": [
+            "https://github.com/systemd/systemd/security/advisories/GHSA-9mj4-rrc3-gjcx"
+          ],
+          "PublishedDate": "2026-04-10T16:16:33.447Z",
+          "LastModifiedDate": "2026-04-10T16:16:33.447Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "libuuid1@2.41-5",
+          "PkgName": "libuuid1",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libuuid1@2.41-5?arch=amd64\u0026distro=debian-13.3",
+            "UID": "cbf6d6cc92f5996e"
+          },
+          "InstalledVersion": "2.41-5",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:3912df3e2caec325bd63ff1b425febad10909d2d0ee91dbedb8c3e41817a03e3",
+          "Title": "util-linux: TOCTOU in the mount program when setting up loop devices",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 4.7
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-27456",
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-27456",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27456"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-07T13:20:55.2Z"
         },
         {
           "VulnerabilityID": "CVE-2022-0563",
@@ -11046,17 +11553,17 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-3184"
           ],
           "PublishedDate": "2026-04-03T19:17:23.377Z",
-          "LastModifiedDate": "2026-04-03T19:17:23.377Z"
+          "LastModifiedDate": "2026-04-07T13:20:55.2Z"
         },
         {
           "VulnerabilityID": "CVE-2026-27456",
-          "PkgID": "libuuid1@2.41-5",
-          "PkgName": "libuuid1",
+          "PkgID": "login@1:4.16.0-2+really2.41-5",
+          "PkgName": "login",
           "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/libuuid1@2.41-5?arch=amd64\u0026distro=debian-13.3",
-            "UID": "cbf6d6cc92f5996e"
+            "PURL": "pkg:deb/debian/login@4.16.0-2%2Breally2.41-5?arch=amd64\u0026distro=debian-13.3\u0026epoch=1",
+            "UID": "6f2b6a55f2c76d8"
           },
-          "InstalledVersion": "2.41-5",
+          "InstalledVersion": "1:4.16.0-2+really2.41-5",
           "Status": "affected",
           "Layer": {
             "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
@@ -11068,22 +11575,34 @@
             "Name": "Debian Security Tracker",
             "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
           },
-          "Fingerprint": "sha256:3912df3e2caec325bd63ff1b425febad10909d2d0ee91dbedb8c3e41817a03e3",
-          "Title": "util-linux is a random collection of Linux utilities. Prior to version ...",
+          "Fingerprint": "sha256:9953aa542f3c195df8c06edc177c12f214e6aa0adb68bcb438194fa8bab7e457",
+          "Title": "util-linux: TOCTOU in the mount program when setting up loop devices",
           "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
-          "Severity": "UNKNOWN",
+          "Severity": "MEDIUM",
           "CweIDs": [
             "CWE-59",
             "CWE-269",
             "CWE-367"
           ],
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 4.7
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-27456",
             "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
             "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
-            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g"
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-27456",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27456"
           ],
           "PublishedDate": "2026-04-03T22:16:25.4Z",
-          "LastModifiedDate": "2026-04-03T22:16:25.4Z"
+          "LastModifiedDate": "2026-04-07T13:20:55.2Z"
         },
         {
           "VulnerabilityID": "CVE-2022-0563",
@@ -11258,44 +11777,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-3184"
           ],
           "PublishedDate": "2026-04-03T19:17:23.377Z",
-          "LastModifiedDate": "2026-04-03T19:17:23.377Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-27456",
-          "PkgID": "login@1:4.16.0-2+really2.41-5",
-          "PkgName": "login",
-          "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/login@4.16.0-2%2Breally2.41-5?arch=amd64\u0026distro=debian-13.3\u0026epoch=1",
-            "UID": "6f2b6a55f2c76d8"
-          },
-          "InstalledVersion": "1:4.16.0-2+really2.41-5",
-          "Status": "affected",
-          "Layer": {
-            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
-            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
-          "DataSource": {
-            "ID": "debian",
-            "Name": "Debian Security Tracker",
-            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
-          },
-          "Fingerprint": "sha256:9953aa542f3c195df8c06edc177c12f214e6aa0adb68bcb438194fa8bab7e457",
-          "Title": "util-linux is a random collection of Linux utilities. Prior to version ...",
-          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
-          "Severity": "UNKNOWN",
-          "CweIDs": [
-            "CWE-59",
-            "CWE-269",
-            "CWE-367"
-          ],
-          "References": [
-            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
-            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
-            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g"
-          ],
-          "PublishedDate": "2026-04-03T22:16:25.4Z",
-          "LastModifiedDate": "2026-04-03T22:16:25.4Z"
+          "LastModifiedDate": "2026-04-07T13:20:55.2Z"
         },
         {
           "VulnerabilityID": "CVE-2007-5686",
@@ -11433,6 +11915,55 @@
           "VendorSeverity": {
             "debian": 1
           }
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "mount@2.41-5",
+          "PkgName": "mount",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/mount@2.41-5?arch=amd64\u0026distro=debian-13.3",
+            "UID": "55c835c674d0a0e5"
+          },
+          "InstalledVersion": "2.41-5",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:3df1a8b3795d087140a7df7413adeb2f64342348601710d04c2e3e66522e7b81",
+          "Title": "util-linux: TOCTOU in the mount program when setting up loop devices",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 4.7
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-27456",
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-27456",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27456"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-07T13:20:55.2Z"
         },
         {
           "VulnerabilityID": "CVE-2022-0563",
@@ -11607,44 +12138,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-3184"
           ],
           "PublishedDate": "2026-04-03T19:17:23.377Z",
-          "LastModifiedDate": "2026-04-03T19:17:23.377Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-27456",
-          "PkgID": "mount@2.41-5",
-          "PkgName": "mount",
-          "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/mount@2.41-5?arch=amd64\u0026distro=debian-13.3",
-            "UID": "55c835c674d0a0e5"
-          },
-          "InstalledVersion": "2.41-5",
-          "Status": "affected",
-          "Layer": {
-            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
-            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
-          "DataSource": {
-            "ID": "debian",
-            "Name": "Debian Security Tracker",
-            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
-          },
-          "Fingerprint": "sha256:3df1a8b3795d087140a7df7413adeb2f64342348601710d04c2e3e66522e7b81",
-          "Title": "util-linux is a random collection of Linux utilities. Prior to version ...",
-          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
-          "Severity": "UNKNOWN",
-          "CweIDs": [
-            "CWE-59",
-            "CWE-269",
-            "CWE-367"
-          ],
-          "References": [
-            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
-            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
-            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g"
-          ],
-          "PublishedDate": "2026-04-03T22:16:25.4Z",
-          "LastModifiedDate": "2026-04-03T22:16:25.4Z"
+          "LastModifiedDate": "2026-04-07T13:20:55.2Z"
         },
         {
           "VulnerabilityID": "CVE-2025-69720",
@@ -11677,6 +12171,7 @@
           ],
           "VendorSeverity": {
             "alma": 2,
+            "azure": 4,
             "cbl-mariner": 4,
             "nvd": 3,
             "oracle-oval": 2,
@@ -11688,8 +12183,8 @@
               "V3Score": 7.8
             },
             "redhat": {
-              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:H/A:H",
-              "V3Score": 7.3
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 7.8
             }
           },
           "References": [
@@ -11740,6 +12235,7 @@
             "CWE-121"
           ],
           "VendorSeverity": {
+            "azure": 2,
             "photon": 1,
             "redhat": 1
           },
@@ -11796,6 +12292,7 @@
           ],
           "VendorSeverity": {
             "alma": 2,
+            "azure": 4,
             "cbl-mariner": 4,
             "nvd": 3,
             "oracle-oval": 2,
@@ -11807,8 +12304,8 @@
               "V3Score": 7.8
             },
             "redhat": {
-              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:H/A:H",
-              "V3Score": 7.3
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 7.8
             }
           },
           "References": [
@@ -11859,6 +12356,7 @@
             "CWE-121"
           ],
           "VendorSeverity": {
+            "azure": 2,
             "photon": 1,
             "redhat": 1
           },
@@ -11885,6 +12383,121 @@
           "LastModifiedDate": "2025-06-17T20:50:23.507Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-28390",
+          "VendorIDs": [
+            "DSA-6201-1"
+          ],
+          "PkgID": "openssl-provider-legacy@3.5.4-1~deb13u2",
+          "PkgName": "openssl-provider-legacy",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/openssl-provider-legacy@3.5.4-1~deb13u2?arch=amd64\u0026distro=debian-13.3",
+            "UID": "d8f9ebb15bfaa5d4"
+          },
+          "InstalledVersion": "3.5.4-1~deb13u2",
+          "FixedVersion": "3.5.5-1~deb13u2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-28390",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:92dae26d7c56412fb3c3d0842ef30abecdbf293bcf028c88b9c8154bc26a882f",
+          "Title": "openssl: OpenSSL: Denial of Service due to NULL pointer dereference in CMS EnvelopedData processing",
+          "Description": "Issue summary: During processing of a crafted CMS EnvelopedData message\nwith KeyTransportRecipientInfo a NULL pointer dereference can happen.\n\nImpact summary: Applications that process attacker-controlled CMS data may\ncrash before authentication or cryptographic operations occur resulting in\nDenial of Service.\n\nWhen a CMS EnvelopedData message that uses KeyTransportRecipientInfo with\nRSA-OAEP encryption is processed, the optional parameters field of\nRSA-OAEP SourceFunc algorithm identifier is examined without checking\nfor its presence. This results in a NULL pointer dereference if the field\nis missing.\n\nApplications and services that call CMS_decrypt() on untrusted input\n(e.g., S/MIME processing or CMS-based protocols) are vulnerable.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3 and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-476"
+          ],
+          "VendorSeverity": {
+            "redhat": 2,
+            "ubuntu": 1
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-28390",
+            "https://github.com/openssl/openssl/commit/01194a8f1941115cd0383bfa91c736dd3993c8bc",
+            "https://github.com/openssl/openssl/commit/2e39b7a6993be445fddb9fbce316fa756e0397b6",
+            "https://github.com/openssl/openssl/commit/af2a5fecd3e71a29e7568f9c1453dec5cebbaff4",
+            "https://github.com/openssl/openssl/commit/ea7b4ea4f9f853521ba34830cbcadc970d2e0788",
+            "https://github.com/openssl/openssl/commit/fd2f1a6cf53b9ceeca723a001aa4b825d7c7ee75",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-28390",
+            "https://openssl-library.org/news/secadv/20260407.txt",
+            "https://ubuntu.com/security/notices/USN-8155-1",
+            "https://ubuntu.com/security/notices/USN-8155-2",
+            "https://www.cve.org/CVERecord?id=CVE-2026-28390",
+            "https://www.openwall.com/lists/oss-security/2026/04/07/11"
+          ],
+          "PublishedDate": "2026-04-07T22:16:21.19Z",
+          "LastModifiedDate": "2026-04-08T21:27:00.663Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-31790",
+          "VendorIDs": [
+            "DSA-6201-1"
+          ],
+          "PkgID": "openssl-provider-legacy@3.5.4-1~deb13u2",
+          "PkgName": "openssl-provider-legacy",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/openssl-provider-legacy@3.5.4-1~deb13u2?arch=amd64\u0026distro=debian-13.3",
+            "UID": "d8f9ebb15bfaa5d4"
+          },
+          "InstalledVersion": "3.5.4-1~deb13u2",
+          "FixedVersion": "3.5.5-1~deb13u2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-31790",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:f854d2a331607bcb1e198d12f0fdfdf50487cfd64bf6824cebfb0d2c8b2cf37f",
+          "Title": "openssl: openssl: Information Disclosure from Uninitialized Memory via Invalid RSA Public Key",
+          "Description": "Issue summary: Applications using RSASVE key encapsulation to establish\na secret encryption key can send contents of an uninitialized memory buffer to\na malicious peer.\n\nImpact summary: The uninitialized buffer might contain sensitive data from the\nprevious execution of the application process which leads to sensitive data\nleakage to an attacker.\n\nRSA_public_encrypt() returns the number of bytes written on success and -1\non error. The affected code tests only whether the return value is non-zero.\nAs a result, if RSA encryption fails, encapsulation can still return success to\nthe caller, set the output lengths, and leave the caller to use the contents of\nthe ciphertext buffer as if a valid KEM ciphertext had been produced.\n\nIf applications use EVP_PKEY_encapsulate() with RSA/RSASVE on an\nattacker-supplied invalid RSA public key without first validating that key,\nthen this may cause stale or uninitialized contents of the caller-provided\nciphertext buffer to be disclosed to the attacker in place of the KEM\nciphertext.\n\nAs a workaround calling EVP_PKEY_public_check() or\nEVP_PKEY_public_check_quick() before EVP_PKEY_encapsulate() will mitigate\nthe issue.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3, 3.1 and 3.0 are affected by this issue.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-754"
+          ],
+          "VendorSeverity": {
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 5.9
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-31790",
+            "https://github.com/openssl/openssl/commit/001e01db3e996e13ffc72386fe79d03a6683b5ac",
+            "https://github.com/openssl/openssl/commit/abd8b2eec7e3f3fda60ecfb68498b246b52af482",
+            "https://github.com/openssl/openssl/commit/b922e24e5b23ffb9cb9e14cadff23d91e9f7e406",
+            "https://github.com/openssl/openssl/commit/d5f8e71cd0a54e961d0c3b174348f8308486f790",
+            "https://github.com/openssl/openssl/commit/eed200f58cd8645ed77e46b7e9f764e284df379e",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-31790",
+            "https://openssl-library.org/news/secadv/20260407.txt",
+            "https://ubuntu.com/security/notices/USN-8155-1",
+            "https://www.cve.org/CVERecord?id=CVE-2026-31790",
+            "https://www.openwall.com/lists/oss-security/2026/04/07/11"
+          ],
+          "PublishedDate": "2026-04-07T22:16:21.77Z",
+          "LastModifiedDate": "2026-04-08T21:27:00.663Z"
+        },
+        {
           "VulnerabilityID": "CVE-2026-2673",
           "PkgID": "openssl-provider-legacy@3.5.4-1~deb13u2",
           "PkgName": "openssl-provider-legacy",
@@ -11893,7 +12506,8 @@
             "UID": "d8f9ebb15bfaa5d4"
           },
           "InstalledVersion": "3.5.4-1~deb13u2",
-          "Status": "affected",
+          "FixedVersion": "3.5.5-1~deb13u2",
+          "Status": "fixed",
           "Layer": {
             "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
             "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
@@ -11929,10 +12543,206 @@
             "https://github.com/openssl/openssl/commit/85977e013f32ceb96aa034c0e741adddc1a05e34",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-2673",
             "https://openssl-library.org/news/secadv/20260313.txt",
+            "https://ubuntu.com/security/notices/USN-8155-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-2673"
           ],
           "PublishedDate": "2026-03-13T19:54:34.033Z",
           "LastModifiedDate": "2026-03-17T18:16:15.6Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-28387",
+          "VendorIDs": [
+            "DSA-6201-1"
+          ],
+          "PkgID": "openssl-provider-legacy@3.5.4-1~deb13u2",
+          "PkgName": "openssl-provider-legacy",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/openssl-provider-legacy@3.5.4-1~deb13u2?arch=amd64\u0026distro=debian-13.3",
+            "UID": "d8f9ebb15bfaa5d4"
+          },
+          "InstalledVersion": "3.5.4-1~deb13u2",
+          "FixedVersion": "3.5.5-1~deb13u2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-28387",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:8b0b885cbee4d561a1e164197889bc928b45e310c4b61f9fb0e3b154487b0b84",
+          "Title": "Issue summary: An uncommon configuration of clients performing DANE TL ...",
+          "Description": "Issue summary: An uncommon configuration of clients performing DANE TLSA-based\nserver authentication, when paired with uncommon server DANE TLSA records, may\nresult in a use-after-free and/or double-free on the client side.\n\nImpact summary: A use after free can have a range of potential consequences\nsuch as the corruption of valid data, crashes or execution of arbitrary code.\n\nHowever, the issue only affects clients that make use of TLSA records with both\nthe PKIX-TA(0/PKIX-EE(1) certificate usages and the DANE-TA(2) certificate\nusage.\n\nBy far the most common deployment of DANE is in SMTP MTAs for which RFC7672\nrecommends that clients treat as 'unusable' any TLSA records that have the PKIX\ncertificate usages.  These SMTP (or other similar) clients are not vulnerable\nto this issue.  Conversely, any clients that support only the PKIX usages, and\nignore the DANE-TA(2) usage are also not vulnerable.\n\nThe client would also need to be communicating with a server that publishes a\nTLSA RRset with both types of TLSA records.\n\nNo FIPS modules are affected by this issue, the problem code is outside the\nFIPS module boundary.",
+          "Severity": "LOW",
+          "CweIDs": [
+            "CWE-416"
+          ],
+          "VendorSeverity": {
+            "ubuntu": 1
+          },
+          "References": [
+            "https://github.com/openssl/openssl/commit/07e727d304746edb49a98ee8f6ab00256e1f012b",
+            "https://github.com/openssl/openssl/commit/258a8f63b26995ba357f4326da00e19e29c6acbe",
+            "https://github.com/openssl/openssl/commit/444958deaf450aea819171f97ae69eaedede42c3",
+            "https://github.com/openssl/openssl/commit/7a4e08cee62a728d32e60b0de89e6764339df0a7",
+            "https://github.com/openssl/openssl/commit/ec03fa050b3346997ed9c5fef3d0e16ad7db8177",
+            "https://openssl-library.org/news/secadv/20260407.txt",
+            "https://ubuntu.com/security/notices/USN-8155-1",
+            "https://ubuntu.com/security/notices/USN-8155-2",
+            "https://www.cve.org/CVERecord?id=CVE-2026-28387",
+            "https://www.openwall.com/lists/oss-security/2026/04/07/11"
+          ],
+          "PublishedDate": "2026-04-07T22:16:20.7Z",
+          "LastModifiedDate": "2026-04-08T21:27:00.663Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-28388",
+          "VendorIDs": [
+            "DSA-6201-1"
+          ],
+          "PkgID": "openssl-provider-legacy@3.5.4-1~deb13u2",
+          "PkgName": "openssl-provider-legacy",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/openssl-provider-legacy@3.5.4-1~deb13u2?arch=amd64\u0026distro=debian-13.3",
+            "UID": "d8f9ebb15bfaa5d4"
+          },
+          "InstalledVersion": "3.5.4-1~deb13u2",
+          "FixedVersion": "3.5.5-1~deb13u2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-28388",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:d21f42b1a9065d985966cb64848ac69e639243b3c03a2e86af5b3ccc9be45db8",
+          "Title": "Issue summary: When a delta CRL that contains a Delta CRL Indicator ex ...",
+          "Description": "Issue summary: When a delta CRL that contains a Delta CRL Indicator extension\nis processed a NULL pointer dereference might happen if the required CRL\nNumber extension is missing.\n\nImpact summary: A NULL pointer dereference can trigger a crash which\nleads to a Denial of Service for an application.\n\nWhen CRL processing and delta CRL processing is enabled during X.509\ncertificate verification, the delta CRL processing does not check\nwhether the CRL Number extension is NULL before dereferencing it.\nWhen a malformed delta CRL file is being processed, this parameter\ncan be NULL, causing a NULL pointer dereference.\n\nExploiting this issue requires the X509_V_FLAG_USE_DELTAS flag to be enabled in\nthe verification context, the certificate being verified to contain a\nfreshestCRL extension or the base CRL to have the EXFLAG_FRESHEST flag set, and\nan attacker to provide a malformed CRL to an application that processes it.\n\nThe vulnerability is limited to Denial of Service and cannot be escalated to\nachieve code execution or memory disclosure. For that reason the issue was\nassessed as Low severity according to our Security Policy.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3 and 3.0 are not affected by this issue,\nas the affected code is outside the OpenSSL FIPS module boundary.",
+          "Severity": "LOW",
+          "CweIDs": [
+            "CWE-476"
+          ],
+          "VendorSeverity": {
+            "ubuntu": 1
+          },
+          "References": [
+            "https://github.com/openssl/openssl/commit/59c3b3158553ab53275bbbccca5cb305d591cf2e",
+            "https://github.com/openssl/openssl/commit/5a0b4930779cd2408880979db765db919da55139",
+            "https://github.com/openssl/openssl/commit/602542f2c0c2d5edb47128f93eac10b62aeeefb3",
+            "https://github.com/openssl/openssl/commit/a9d187dd1000130100fa7ab915f8513532cb3bb8",
+            "https://github.com/openssl/openssl/commit/d3a901e8d9f021f3e67d6cfbc12e768129862726",
+            "https://openssl-library.org/news/secadv/20260407.txt",
+            "https://ubuntu.com/security/notices/USN-8155-1",
+            "https://ubuntu.com/security/notices/USN-8155-2",
+            "https://www.cve.org/CVERecord?id=CVE-2026-28388",
+            "https://www.openwall.com/lists/oss-security/2026/04/07/11"
+          ],
+          "PublishedDate": "2026-04-07T22:16:20.863Z",
+          "LastModifiedDate": "2026-04-08T21:27:00.663Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-28389",
+          "VendorIDs": [
+            "DSA-6201-1"
+          ],
+          "PkgID": "openssl-provider-legacy@3.5.4-1~deb13u2",
+          "PkgName": "openssl-provider-legacy",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/openssl-provider-legacy@3.5.4-1~deb13u2?arch=amd64\u0026distro=debian-13.3",
+            "UID": "d8f9ebb15bfaa5d4"
+          },
+          "InstalledVersion": "3.5.4-1~deb13u2",
+          "FixedVersion": "3.5.5-1~deb13u2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-28389",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:5feadebbed837c99852df9f6e813c15fa484cfc81c653a2f4eb323179aa18cf6",
+          "Title": "Issue summary: During processing of a crafted CMS EnvelopedData messag ...",
+          "Description": "Issue summary: During processing of a crafted CMS EnvelopedData message\nwith KeyAgreeRecipientInfo a NULL pointer dereference can happen.\n\nImpact summary: Applications that process attacker-controlled CMS data may\ncrash before authentication or cryptographic operations occur resulting in\nDenial of Service.\n\nWhen a CMS EnvelopedData message that uses KeyAgreeRecipientInfo is\nprocessed, the optional parameters field of KeyEncryptionAlgorithmIdentifier\nis examined without checking for its presence. This results in a NULL\npointer dereference if the field is missing.\n\nApplications and services that call CMS_decrypt() on untrusted input\n(e.g., S/MIME processing or CMS-based protocols) are vulnerable.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3 and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
+          "Severity": "LOW",
+          "CweIDs": [
+            "CWE-476"
+          ],
+          "VendorSeverity": {
+            "ubuntu": 1
+          },
+          "References": [
+            "https://github.com/openssl/openssl/commit/16cea4188e0ea567deb4f93f85902247e67384f5",
+            "https://github.com/openssl/openssl/commit/785cbf7ea3b5a6f5adf0c1ccb92b79d89c35c616",
+            "https://github.com/openssl/openssl/commit/7b5274e812400cacb6f3be4c2df5340923fa807f",
+            "https://github.com/openssl/openssl/commit/c6725634e089eb2b634b10ede33944be7248172a",
+            "https://github.com/openssl/openssl/commit/f80f83bc5fd036bc47d773e8b15a001e2b4ce686",
+            "https://openssl-library.org/news/secadv/20260407.txt",
+            "https://ubuntu.com/security/notices/USN-8155-1",
+            "https://ubuntu.com/security/notices/USN-8155-2",
+            "https://www.cve.org/CVERecord?id=CVE-2026-28389",
+            "https://www.openwall.com/lists/oss-security/2026/04/07/11"
+          ],
+          "PublishedDate": "2026-04-07T22:16:21.03Z",
+          "LastModifiedDate": "2026-04-08T21:27:00.663Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-31789",
+          "VendorIDs": [
+            "DSA-6201-1"
+          ],
+          "PkgID": "openssl-provider-legacy@3.5.4-1~deb13u2",
+          "PkgName": "openssl-provider-legacy",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/openssl-provider-legacy@3.5.4-1~deb13u2?arch=amd64\u0026distro=debian-13.3",
+            "UID": "d8f9ebb15bfaa5d4"
+          },
+          "InstalledVersion": "3.5.4-1~deb13u2",
+          "FixedVersion": "3.5.5-1~deb13u2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-31789",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:54e1223fb46c53625e2c32e409823f60cf345eece9c28ac1cd9d17f69a69a2c6",
+          "Title": "Issue summary: Converting an excessively large OCTET STRING value to a ...",
+          "Description": "Issue summary: Converting an excessively large OCTET STRING value to\na hexadecimal string leads to a heap buffer overflow on 32 bit platforms.\n\nImpact summary: A heap buffer overflow may lead to a crash or possibly\nan attacker controlled code execution or other undefined behavior.\n\nIf an attacker can supply a crafted X.509 certificate with an excessively\nlarge OCTET STRING value in extensions such as the Subject Key Identifier\n(SKID) or Authority Key Identifier (AKID) which are being converted to hex,\nthe size of the buffer needed for the result is calculated as multiplication\nof the input length by 3. On 32 bit platforms, this multiplication may overflow\nresulting in the allocation of a smaller buffer and a heap buffer overflow.\n\nApplications and services that print or log contents of untrusted X.509\ncertificates are vulnerable to this issue. As the certificates would have\nto have sizes of over 1 Gigabyte, printing or logging such certificates\nis a fairly unlikely operation and only 32 bit platforms are affected,\nthis issue was assigned Low severity.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3 and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
+          "Severity": "LOW",
+          "CweIDs": [
+            "CWE-787"
+          ],
+          "VendorSeverity": {
+            "ubuntu": 1
+          },
+          "References": [
+            "https://github.com/openssl/openssl/commit/364f095b80601db632b0def6a33316967f863bde",
+            "https://github.com/openssl/openssl/commit/7a9087efd769f362ad9c0e30c7baaa6bbfa65ecf",
+            "https://github.com/openssl/openssl/commit/945b935ac66cc7f1a41f1b849c7c25adb5351f49",
+            "https://github.com/openssl/openssl/commit/a24216018e1ede8ff01a4ff5afff7dfbd443e2f9",
+            "https://github.com/openssl/openssl/commit/a91e537d16d74050dbde50bb0dfb1fe9930f0521",
+            "https://openssl-library.org/news/secadv/20260407.txt",
+            "https://ubuntu.com/security/notices/USN-8155-1",
+            "https://www.cve.org/CVERecord?id=CVE-2026-31789",
+            "https://www.openwall.com/lists/oss-security/2026/04/07/11"
+          ],
+          "PublishedDate": "2026-04-07T22:16:21.617Z",
+          "LastModifiedDate": "2026-04-08T21:27:00.663Z"
         },
         {
           "VulnerabilityID": "CVE-2007-5686",
@@ -12158,6 +12968,51 @@
           }
         },
         {
+          "VulnerabilityID": "CVE-2026-5704",
+          "PkgID": "tar@1.35+dfsg-3.1",
+          "PkgName": "tar",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/tar@1.35%2Bdfsg-3.1?arch=amd64\u0026distro=debian-13.3",
+            "UID": "4f69996c49afbaca"
+          },
+          "InstalledVersion": "1.35+dfsg-3.1",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-5704",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:dc9225418967ba3a248e626f4947eaabb01b9be4120b756225a52c660993236d",
+          "Title": "tar: tar: Hidden file injection via crafted archives",
+          "Description": "A flaw was found in tar. A remote attacker could exploit this vulnerability by crafting a malicious archive, leading to hidden file injection with fully attacker-controlled content. This bypasses pre-extraction inspection mechanisms, potentially allowing an attacker to introduce malicious files onto a system without detection.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-434"
+          ],
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:R/S:U/C:N/I:H/A:N",
+              "V3Score": 5
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-5704",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2455360",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-5704",
+            "https://www.cve.org/CVERecord?id=CVE-2026-5704"
+          ],
+          "PublishedDate": "2026-04-06T16:16:42.14Z",
+          "LastModifiedDate": "2026-04-07T13:20:11.643Z"
+        },
+        {
           "VulnerabilityID": "CVE-2005-2541",
           "PkgID": "tar@1.35+dfsg-3.1",
           "PkgName": "tar",
@@ -12234,6 +13089,55 @@
           "VendorSeverity": {
             "debian": 1
           }
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "util-linux@2.41-5",
+          "PkgName": "util-linux",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/util-linux@2.41-5?arch=amd64\u0026distro=debian-13.3",
+            "UID": "972fb85b9c9e83e7"
+          },
+          "InstalledVersion": "2.41-5",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
+            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:30ceeb7996a21f21c1f23c83c8efd6ac04735b5b9742cc25d6eb9b00ee097193",
+          "Title": "util-linux: TOCTOU in the mount program when setting up loop devices",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 4.7
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-27456",
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-27456",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27456"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-07T13:20:55.2Z"
         },
         {
           "VulnerabilityID": "CVE-2022-0563",
@@ -12408,44 +13312,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-3184"
           ],
           "PublishedDate": "2026-04-03T19:17:23.377Z",
-          "LastModifiedDate": "2026-04-03T19:17:23.377Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-27456",
-          "PkgID": "util-linux@2.41-5",
-          "PkgName": "util-linux",
-          "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/util-linux@2.41-5?arch=amd64\u0026distro=debian-13.3",
-            "UID": "972fb85b9c9e83e7"
-          },
-          "InstalledVersion": "2.41-5",
-          "Status": "affected",
-          "Layer": {
-            "Digest": "sha256:0c8d55a45c0dc58de60579b9cc5b708de9e7957f4591fc7de941b67c7e245da0",
-            "DiffID": "sha256:a8ff6f8cbdfd6741c10dd183560df7212db666db046768b0f05bbc3904515f03"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
-          "DataSource": {
-            "ID": "debian",
-            "Name": "Debian Security Tracker",
-            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
-          },
-          "Fingerprint": "sha256:30ceeb7996a21f21c1f23c83c8efd6ac04735b5b9742cc25d6eb9b00ee097193",
-          "Title": "util-linux is a random collection of Linux utilities. Prior to version ...",
-          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
-          "Severity": "UNKNOWN",
-          "CweIDs": [
-            "CWE-59",
-            "CWE-269",
-            "CWE-367"
-          ],
-          "References": [
-            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
-            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
-            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g"
-          ],
-          "PublishedDate": "2026-04-03T22:16:25.4Z",
-          "LastModifiedDate": "2026-04-03T22:16:25.4Z"
+          "LastModifiedDate": "2026-04-07T13:20:55.2Z"
         },
         {
           "VulnerabilityID": "CVE-2026-27171",
