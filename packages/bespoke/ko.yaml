@@ -1,0 +1,68 @@
+# Example: Go CLI tool with vendor - ko
+# Source: https://github.com/wolfi-dev/os/blob/main/ko.yaml
+
+package:
+  name: ko
+  version: "0.18.1"
+  epoch: 7
+  description: Simple, fast container image builder for Go applications.
+  copyright:
+    - license: Apache-2.0
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go-1.25
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      destination: ko
+      expected-commit: 7f1ced62a0c8db30fc2267155f664b38bfbde492
+      repository: https://github.com/ko-build/ko
+      tag: v${{package.version}}
+
+  - uses: go/bump
+    with:
+      deps: |-
+        github.com/sigstore/cosign/v2@v2.6.2
+        github.com/sigstore/rekor@v1.5.0
+        github.com/sigstore/sigstore@v1.10.4
+        github.com/theupdateframework/go-tuf/v2@v2.4.1
+        github.com/docker/cli@v29.2.0
+      modroot: ko
+      tidy: false
+
+  - uses: go/build
+    with:
+      ldflags: -X github.com/google/ko/pkg/commands.Version=${{package.version}}
+      modroot: ko
+      output: ko
+      packages: .
+      vendor: true
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: ko-build/ko
+    strip-prefix: v
+
+test:
+  pipeline:
+    - uses: test/tw/ldd-check
+    - uses: test/tw/help-check
+      with:
+        bins: ko
+    - uses: test/tw/ver-check
+      with:
+        bins: ko
+        version: ${{package.version}}
+    - runs: |
+        ko completion bash | grep -F "ko"
+        ko completion zsh | grep -F "ko"
