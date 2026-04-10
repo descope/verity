@@ -1,0 +1,60 @@
+# Example: Go CLI tool with dependency bumps - dive
+# Source: https://github.com/wolfi-dev/os/blob/main/dive.yaml
+
+package:
+  name: dive
+  version: "0.13.1"
+  epoch: 14
+  description: A tool for exploring each layer in a docker image
+  copyright:
+    - license: MIT
+  resources:
+    cpu: "1"
+    memory: 2Gi
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go-1.25
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/wagoodman/dive
+      tag: v${{package.version}}
+      expected-commit: fe98c8a2eb08c443a36e3cc7568078909e298433
+
+  - uses: go/bump
+    with:
+      deps: |-
+        golang.org/x/net@v0.38.0
+        github.com/go-viper/mapstructure/v2@v2.4.0
+        github.com/docker/cli@v29.2.0
+      replaces: google.golang.org/genproto=google.golang.org/genproto@v0.0.0-20240730163845-b1a4ccb954bf
+
+  - uses: go/build
+    with:
+      packages: .
+      output: dive
+      ldflags: |
+        -X main.version=v${{package.version}}
+        -X main.commit=$(git rev-parse HEAD)
+        -X main.buildTime=$(date -d@${SOURCE_DATE_EPOCH} +%F-%T)
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: wagoodman/dive
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        dive --version
+        dive --help

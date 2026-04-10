@@ -2,6 +2,8 @@
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import CopyButton from "../../components/CopyButton.astro";
 import SeverityBadges from "../../components/SeverityBadges.astro";
+import SourceBadge from "../../components/SourceBadge.astro";
+import { fullCatalog, type ImageSource } from "../../data/full-catalog";
 import { getChartsCatalog } from "../../lib/charts";
 import type { ChartEntry, ChartImageMapping } from "../../lib/charts";
 import { getImageVulns, getChartVulns } from "../../lib/chart-vulns";
@@ -14,6 +16,22 @@ const totalOverrides = charts.reduce(
   (sum, c) => sum + c.imageMappings.length + c.valueOverrides.length,
   0
 );
+
+// Precompute chart vuln summaries to avoid duplicate getChartVulns calls
+const chartVulnMap = new Map(charts.map((c) => [c.name, getChartVulns(c)]));
+const totalCVEs = charts.reduce((sum, c) => sum + (chartVulnMap.get(c.name)?.total ?? 0), 0);
+
+// Build image-name → source lookup from full catalog for accurate SourceBadge
+// Key by both img.name and integerName so chart-gen replacements resolve correctly
+const imageSourceMap = new Map<string, ImageSource>();
+for (const cat of fullCatalog) {
+  for (const img of cat.images) {
+    imageSourceMap.set(img.name, img.source);
+    if (img.integerName) {
+      imageSourceMap.set(img.integerName, img.source);
+    }
+  }
+}
 ---
 
 <BaseLayout title="Helm Charts — Verity" mdUrl={`${base}charts/index.md`}>
@@ -32,18 +50,30 @@ const totalOverrides = charts.reduce(
   </div>
 
   <!-- Summary cards -->
-  <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-12">
-    <div class="bg-verity-surface border border-verity-nucleus/30 rounded-lg p-4 text-center">
-      <div class="text-lg font-bold text-verity-nucleus">{charts.length}</div>
-      <div class="text-sm text-verity-text-secondary">Charts</div>
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
+    <div
+      class="bg-verity-surface border border-verity-border rounded-lg p-4 text-center hover:border-verity-orbit transition-colors"
+    >
+      <div class="text-2xl font-bold text-verity-nucleus">{charts.length}</div>
+      <div class="text-xs text-verity-text-secondary mt-1">Charts</div>
     </div>
-    <div class="bg-verity-surface border border-verity-nucleus/30 rounded-lg p-4 text-center">
-      <div class="text-lg font-bold text-verity-nucleus">{totalOverrides}</div>
-      <div class="text-sm text-verity-text-secondary">Image Overrides</div>
+    <div
+      class="bg-verity-surface border border-verity-border rounded-lg p-4 text-center hover:border-verity-orbit transition-colors"
+    >
+      <div class="text-2xl font-bold text-verity-nucleus">{totalOverrides}</div>
+      <div class="text-xs text-verity-text-secondary mt-1">Image Overrides</div>
     </div>
-    <div class="bg-verity-surface border border-verity-nucleus/30 rounded-lg p-4 text-center">
-      <div class="text-lg font-bold text-verity-nucleus">OCI</div>
-      <div class="text-sm text-verity-text-secondary">Registry</div>
+    <div
+      class="bg-verity-surface border border-verity-border rounded-lg p-4 text-center hover:border-verity-orbit transition-colors"
+    >
+      <div class="text-2xl font-bold text-verity-nucleus">{totalCVEs}</div>
+      <div class="text-xs text-verity-text-secondary mt-1">Open CVEs</div>
+    </div>
+    <div
+      class="bg-verity-surface border border-verity-border rounded-lg p-4 text-center hover:border-verity-orbit transition-colors"
+    >
+      <div class="text-2xl font-bold text-verity-nucleus">OCI</div>
+      <div class="text-xs text-verity-text-secondary mt-1">Registry</div>
     </div>
   </div>
 
@@ -93,45 +123,57 @@ const totalOverrides = charts.reduce(
     </div>
   </section>
 
-  <!-- Chart cards -->
+  <!-- Available Charts -->
   <section>
-    <h2 class="text-xl font-semibold mb-4 text-verity-text-primary">Available Charts</h2>
-    <div class="space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <h2 class="text-xl font-semibold text-verity-text-primary">Available Charts</h2>
+      <input
+        type="text"
+        placeholder={`Search ${charts.length} charts...`}
+        class="w-full sm:w-96 px-3 py-2 border border-verity-border rounded-lg text-sm bg-verity-surface text-verity-text-primary placeholder-verity-text-secondary focus:outline-hidden focus:ring-2 focus:ring-verity-nucleus focus:border-verity-nucleus"
+        id="chart-search"
+        aria-label="Search charts"
+      />
+    </div>
+
+    <div class="space-y-10">
       {
-        charts.map((chart: ChartEntry, idx: number) => {
+        charts.map((chart: ChartEntry) => {
           const installCmd = `helm install ${chart.wrapperName} ${chart.registry}/${chart.wrapperName} --version ${chart.wrapperVersion}`;
           const mappingCount = chart.imageMappings.length + chart.valueOverrides.length;
-          const chartVulns = getChartVulns(chart);
+          const chartVulns = chartVulnMap.get(chart.name) ?? { total: 0, severityCounts: {} };
+
+          const sectionSearchable = [
+            chart.name.toLowerCase(),
+            chart.version.toLowerCase(),
+            chart.wrapperName?.toLowerCase() ?? "",
+            chart.repository?.toLowerCase() ?? "",
+            installCmd.toLowerCase(),
+            ...chart.imageMappings.map((m: ChartImageMapping) =>
+              `${m.originalRepo} ${m.originalTag} ${m.patchedRepo} ${m.patchedTag}`.toLowerCase()
+            ),
+          ]
+            .join(" ")
+            .trim();
+
           return (
-            <div class="bg-verity-surface border border-verity-border rounded-lg overflow-hidden">
-              {/* Header */}
-              <div class="px-5 py-4 border-b border-verity-border/50">
-                <div class="flex items-center justify-between gap-4 flex-wrap">
-                  <div class="flex items-center gap-3">
-                    <h3 class="text-lg font-semibold text-verity-text-primary">{chart.name}</h3>
-                    <span class="text-xs px-2 py-0.5 rounded-full bg-verity-void border border-verity-border text-verity-text-muted font-mono">
-                      v{chart.version}
-                    </span>
-                  </div>
-                  <div class="flex items-center gap-3">
-                    <SeverityBadges summary={chartVulns} />
-                    <span class="text-xs text-verity-text-muted">
-                      {mappingCount} image {mappingCount === 1 ? "override" : "overrides"}
-                    </span>
-                  </div>
-                </div>
-                {chart.repository && (
-                  <div class="mt-1 text-xs text-verity-text-secondary font-mono truncate">
-                    Source: {chart.repository}
-                  </div>
-                )}
+            <div class="chart-section" data-searchable={sectionSearchable}>
+              {/* Section header — matches ImageCatalog category headers */}
+              <div class="flex items-center gap-3 mb-4 pb-2 border-b border-verity-border flex-wrap">
+                <h3 class="text-sm font-semibold text-verity-text-primary tracking-wider uppercase">
+                  {chart.name}
+                </h3>
+                <span class="text-xs px-2 py-0.5 rounded-full bg-verity-void border border-verity-border text-verity-text-muted font-mono">
+                  v{chart.version}
+                </span>
+                <SeverityBadges summary={chartVulns} />
+                <span class="text-xs px-2 py-0.5 rounded-full bg-verity-surface border border-verity-border text-verity-text-muted">
+                  {mappingCount} {mappingCount === 1 ? "override" : "overrides"}
+                </span>
               </div>
 
               {/* Install command */}
-              <div class="px-5 py-4 border-b border-verity-border/50">
-                <div class="text-xs text-verity-text-muted uppercase tracking-wider mb-2 font-semibold">
-                  Install
-                </div>
+              <div class="px-3 py-2 mb-3">
                 <div class="relative">
                   <pre class="font-mono text-xs bg-verity-void border border-verity-border rounded px-3 py-2 pr-10 overflow-x-auto text-verity-text-primary">
                     {installCmd}
@@ -142,75 +184,54 @@ const totalOverrides = charts.reduce(
                 </div>
               </div>
 
-              {/* Image overrides (collapsible) */}
-              <div class="chart-overrides" data-chart-idx={idx}>
-                <button
-                  class="chart-toggle w-full px-5 py-3 text-left text-sm text-verity-text-secondary hover:text-verity-text-primary hover:bg-verity-void/50 transition-colors flex items-center gap-2"
-                  data-target={`overrides-${idx}`}
-                  aria-controls={`overrides-${idx}`}
-                  aria-expanded="false"
-                >
-                  <svg
-                    class="w-3.5 h-3.5 transition-transform chart-chevron"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2.5"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M8.25 4.5l7.5 7.5-7.5 7.5"
-                    />
-                  </svg>
-                  Image Overrides ({mappingCount})
-                </button>
-                <div id={`overrides-${idx}`} class="overrides-content hidden px-5 pb-4">
-                  <div class="overflow-x-auto">
-                    <table class="w-full text-xs">
-                      <thead>
-                        <tr class="text-verity-text-muted uppercase tracking-wider border-b border-verity-border/50">
-                          <th class="text-left py-2 pr-4 font-semibold">Original</th>
-                          <th class="text-left py-2 pr-4 font-semibold">Patched</th>
-                          <th class="text-left py-2 font-semibold">CVEs</th>
-                        </tr>
-                      </thead>
-                      <tbody class="font-mono">
-                        {chart.imageMappings.map((m: ChartImageMapping) => {
-                          const imgName = patchedRefToName(m.patchedRepo);
-                          const imgVulns = getImageVulns(m.patchedRepo, m.patchedTag);
-                          return (
-                            <tr class="border-b border-verity-border/30">
-                              <td class="py-1.5 pr-4 text-verity-text-secondary">
-                                {m.originalRepo}:{m.originalTag}
-                              </td>
-                              <td class="py-1.5 pr-4">
-                                <a
-                                  href={`${base}catalog/${imgName}/`}
-                                  class="text-verity-nucleus hover:underline"
-                                >
-                                  {m.patchedRepo}:{m.patchedTag}
-                                </a>
-                              </td>
-                              <td class="py-1.5">
-                                <SeverityBadges summary={imgVulns} />
-                              </td>
-                            </tr>
-                          );
-                        })}
-                        {chart.valueOverrides.map((v) => (
-                          <tr class="border-b border-verity-border/30">
-                            <td class="py-1.5 pr-4 text-verity-text-secondary">{v.path}</td>
-                            <td class="py-1.5 text-verity-nucleus" colspan="2">
-                              {v.value}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+              {/* Column headers — desktop only */}
+              <div class="hidden sm:grid sm:grid-cols-[1fr_7.5rem_4.5rem_1fr] gap-x-4 px-3 pb-2 text-xs text-verity-text-muted uppercase tracking-wider">
+                <span>Original</span>
+                <span>Type</span>
+                <span>CVEs</span>
+                <span>Patched Reference</span>
               </div>
+
+              {/* Image mapping rows */}
+              {chart.imageMappings.map((m: ChartImageMapping) => {
+                const imgName = patchedRefToName(m.patchedRepo);
+                const imgVulns = getImageVulns(m.patchedRepo, m.patchedTag);
+                const rowSearchable =
+                  `${m.originalRepo} ${m.originalTag} ${m.patchedRepo} ${m.patchedTag}`.toLowerCase();
+                return (
+                  <a
+                    href={`${base}catalog/${imgName}/`}
+                    class="chart-row grid grid-cols-1 sm:grid-cols-[1fr_7.5rem_4.5rem_1fr] gap-x-4 gap-y-1 items-center px-3 py-3 border-b border-verity-border/50 transition-colors hover:bg-verity-surface/80"
+                    data-searchable={rowSearchable}
+                  >
+                    <div class="text-sm text-verity-text-primary font-medium truncate">
+                      {m.originalRepo}:{m.originalTag}
+                    </div>
+                    <div class="flex items-center">
+                      <SourceBadge source={imageSourceMap.get(imgName) ?? "copa"} />
+                    </div>
+                    <div class="flex items-center">
+                      <SeverityBadges summary={imgVulns} />
+                    </div>
+                    <div class="text-xs text-verity-text-secondary font-mono truncate">
+                      {m.patchedRepo}:{m.patchedTag}
+                    </div>
+                  </a>
+                );
+              })}
+
+              {/* Value override rows */}
+              {chart.valueOverrides.map((v) => (
+                <div
+                  class="chart-value-row grid grid-cols-1 sm:grid-cols-[1fr_7.5rem_4.5rem_1fr] gap-x-4 gap-y-1 items-center px-3 py-3 border-b border-verity-border/50"
+                  data-searchable={`${v.path} ${v.value}`.toLowerCase()}
+                >
+                  <div class="text-sm text-verity-text-muted font-mono truncate">{v.path}</div>
+                  <div />
+                  <div />
+                  <div class="text-xs text-verity-nucleus font-mono truncate">{v.value}</div>
+                </div>
+              ))}
             </div>
           );
         })
@@ -227,19 +248,24 @@ const totalOverrides = charts.reduce(
 </BaseLayout>
 
 <script>
-  document.querySelectorAll<HTMLButtonElement>(".chart-toggle").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const targetId = btn.getAttribute("data-target");
-      if (!targetId) return;
-      const content = document.getElementById(targetId);
-      if (!content) return;
-      const chevron = btn.querySelector(".chart-chevron");
-      const isHidden = content.classList.contains("hidden");
-      content.classList.toggle("hidden");
-      btn.setAttribute("aria-expanded", String(isHidden));
-      if (chevron) {
-        chevron.classList.toggle("rotate-90", isHidden);
-      }
+  const input = document.getElementById("chart-search") as HTMLInputElement | null;
+
+  function applySearch() {
+    const query = input?.value.toLowerCase() ?? "";
+    document.querySelectorAll<HTMLElement>(".chart-section").forEach((section) => {
+      const rows = section.querySelectorAll<HTMLElement>(".chart-row, .chart-value-row");
+      const sectionSearchable = section.getAttribute("data-searchable") ?? "";
+      let visible = 0;
+      const chartMatches = !query || sectionSearchable.includes(query);
+      rows.forEach((row) => {
+        const text = row.getAttribute("data-searchable") ?? "";
+        const show = chartMatches || text.includes(query);
+        row.style.display = show ? "" : "none";
+        if (show) visible++;
+      });
+      section.style.display = visible > 0 || chartMatches ? "" : "none";
     });
-  });
+  }
+
+  input?.addEventListener("input", applySearch);
 </script>
