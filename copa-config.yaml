@@ -323,7 +323,16 @@ images:
     goVcsUrl: "https://github.com/VictoriaMetrics/VictoriaLogs"
 
   # -- Prometheus ecosystem --
-  # NOTE: Default Prometheus tags are busybox-based → NOT patchable.
+
+  - name: "prometheus/prometheus"
+    image: "quay.io/prometheus/prometheus"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # NOTE: Default exporter tags are busybox-based → NOT patchable.
   # Use -distroless suffixed tags (Copa patches dpkg-distroless via tooling container).
   - name: "prometheus/node-exporter"
     image: "quay.io/prometheus/node-exporter"
