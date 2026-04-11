@@ -408,6 +408,7 @@ jobs:
           - name: victoria-logs
             image: docker.io/victoriametrics/victoria-logs:v1.45.0
             type: apk + gobinary + stdlib
+            go_vcs_url: https://github.com/VictoriaMetrics/VictoriaLogs@v1.45.0
           - name: redis
             image: docker.io/library/redis:8.0.2
             type: dpkg (Debian)
@@ -498,6 +499,7 @@ jobs:
           SOURCE: ${{ matrix.image }}
           IMAGE_NAME: ${{ matrix.name }}
           STAGING_REGISTRY: localhost:5000/regression
+          GO_VCS_URL: ${{ matrix.go_vcs_url }}
         run: ./.github/scripts/patch-image.sh
 
       - name: Scan image (after patching)

@@ -37,6 +37,7 @@ copa patch \
   --pkg-types os,library \
   --library-patch-level major \
   --toolchain-patch-level patch \
+  ${GO_VCS_URL:+--go-vcs-url "$GO_VCS_URL"} \
   --push \
   --addr buildx://copa-builder \
   --timeout 30m 2>&1 | tee "$COPA_LOG"
