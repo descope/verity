@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# before_total, before_go, before_os are set by scan-before.sh via GITHUB_ENV
+# shellcheck disable=SC2154
 # Scans a patched image and verifies 0 fixable CVEs remain.
 # Inputs: PATCHED_IMAGE, IMAGE_LABEL (env vars), before_total/before_go/before_os (from GITHUB_ENV)
 # Outputs: after.json, exit 1 if fixable CVEs remain
@@ -21,8 +23,6 @@ GO=$(jq '[.Results[]? | select(.Type == "gobinary") | select(.Vulnerabilities) |
 OS=$(jq '[.Results[]? | select(.Type != "gobinary") | select(.Vulnerabilities) | .Vulnerabilities | length] | add // 0' after.json)
 
 {
-# These vars are set by scan-before.sh via GITHUB_ENV
-# shellcheck disable=SC2154
   echo ""
   echo "══════════════════════════════════════════════"
   echo "  ${IMAGE_LABEL}"

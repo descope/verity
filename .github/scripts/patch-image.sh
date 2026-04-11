@@ -34,7 +34,7 @@ COPA_ARGS=(
   --image "$SOURCE"
   --tag "$PLATFORM_TAG"
   --report "$REPORT_FILE"
-  --pkg-types os,library
+  --pkg-types "os,library"
   --library-patch-level major
   --toolchain-patch-level patch
   --push
