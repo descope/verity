@@ -21,6 +21,8 @@ GO=$(jq '[.Results[]? | select(.Type == "gobinary") | select(.Vulnerabilities) |
 OS=$(jq '[.Results[]? | select(.Type != "gobinary") | select(.Vulnerabilities) | .Vulnerabilities | length] | add // 0' after.json)
 
 {
+# These vars are set by scan-before.sh via GITHUB_ENV
+# shellcheck disable=SC2154
   echo ""
   echo "══════════════════════════════════════════════"
   echo "  ${IMAGE_LABEL}"
