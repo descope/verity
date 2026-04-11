@@ -36,6 +36,7 @@ copa patch \
   --report "$REPORT_FILE" \
   --pkg-types os,library \
   --library-patch-level major \
+  --toolchain-patch-level patch \
   --push \
   --addr buildx://copa-builder \
   --timeout 30m 2>&1 | tee "$COPA_LOG"
