@@ -443,18 +443,10 @@ jobs:
 
       - name: Read catalog entry
         id: catalog
-        run: |
-          IMAGE=$(yq '.images[] | select(.name == "${{ matrix.name }}") | .image' copa-config.yaml)
-          VCS_URL=$(yq '.images[] | select(.name == "${{ matrix.name }}") | .goVcsUrl // ""' copa-config.yaml)
-          if [ -n "$VCS_URL" ] && [ "$VCS_URL" != "null" ]; then
-            VCS_URL="${VCS_URL}@${{ matrix.tag }}"
-          else
-            VCS_URL=""
-          fi
-          SOURCE="${IMAGE}:${{ matrix.tag }}"
-          echo "source=${SOURCE}" >> "$GITHUB_OUTPUT"
-          echo "go_vcs_url=${VCS_URL}" >> "$GITHUB_OUTPUT"
-          echo "Catalog: image=${IMAGE} tag=${{ matrix.tag }} goVcsUrl=${VCS_URL}"
+        env:
+          IMAGE_NAME: ${{ matrix.name }}
+          IMAGE_TAG: ${{ matrix.tag }}
+        run: ./.github/scripts/read-catalog-entry.sh
 
       - name: Setup Copa and Verity
         uses: ./.github/actions/setup-binaries
@@ -475,28 +467,9 @@ jobs:
         run: docker run -d -p 5000:5000 --name registry registry:2
 
       - name: Scan image (before patching)
-        run: |
-          trivy image \
-            --severity CRITICAL,HIGH,MEDIUM,LOW \
-            --scanners vuln \
-            --format json \
-            --output before.json \
-            "${{ steps.catalog.outputs.source }}"
-
-          TOTAL=$(jq '[.Results[]? | select(.Vulnerabilities) | .Vulnerabilities | length] | add // 0' before.json)
-          GO=$(jq '[.Results[]? | select(.Type == "gobinary") | select(.Vulnerabilities) | .Vulnerabilities | length] | add // 0' before.json)
-          OS=$(jq '[.Results[]? | select(.Type != "gobinary") | select(.Vulnerabilities) | .Vulnerabilities | length] | add // 0' before.json)
-          {
-            echo "before_total=${TOTAL}"
-            echo "before_go=${GO}"
-            echo "before_os=${OS}"
-          } >> "$GITHUB_ENV"
-          echo "BEFORE — total: ${TOTAL}, os: ${OS}, go: ${GO}"
-
-          if [ "$TOTAL" -eq 0 ]; then
-            echo "::warning::No vulns found in ${{ matrix.name }} — image may have been patched upstream"
-            echo "skip_patch=true" >> "$GITHUB_ENV"
-          fi
+        env:
+          SOURCE: ${{ steps.catalog.outputs.source }}
+        run: ./.github/scripts/scan-before.sh
 
       - name: Prepare report for patch-image.sh
         if: env.skip_patch != 'true'
@@ -518,38 +491,10 @@ jobs:
 
       - name: Verify patched image is clean
         if: env.skip_patch != 'true'
-        run: |
-          SOURCE_TAG="${{ matrix.tag }}"
-          SAFE_IMAGE=$(echo "${{ matrix.name }}" | tr '/: ' '---')
-          PATCHED="localhost:5000/regression:${SAFE_IMAGE}-${SOURCE_TAG}-amd64"
-
-          trivy image \
-            --severity CRITICAL,HIGH,MEDIUM,LOW \
-            --ignore-unfixed \
-            --scanners vuln \
-            --format json \
-            --output after.json \
-            "${PATCHED}"
-
-          TOTAL=$(jq '[.Results[]? | select(.Vulnerabilities) | .Vulnerabilities | length] | add // 0' after.json)
-          GO=$(jq '[.Results[]? | select(.Type == "gobinary") | select(.Vulnerabilities) | .Vulnerabilities | length] | add // 0' after.json)
-          OS=$(jq '[.Results[]? | select(.Type != "gobinary") | select(.Vulnerabilities) | .Vulnerabilities | length] | add // 0' after.json)
-
-          {
-            echo ""
-            echo "══════════════════════════════════════════════"
-            echo "  ${{ matrix.name }}:${{ matrix.tag }}"
-            echo "──────────────────────────────────────────────"
-            echo "  BEFORE:  ${before_total} total (${before_os} OS, ${before_go} Go)"
-            echo "  AFTER:   ${TOTAL} total (${OS} OS, ${GO} Go) [fixable only]"
-            echo "  FIXED:   $((before_total - TOTAL)) total"
-            echo "══════════════════════════════════════════════"
-          }
-
-          if [ "$TOTAL" -ne 0 ]; then
-            echo "::error::Copa left ${TOTAL} fixable CVEs unpatched for ${{ matrix.name }}:${{ matrix.tag }} (${OS} OS, ${GO} Go)"
-            exit 1
-          fi
+        env:
+          PATCHED_IMAGE: "localhost:5000/regression:$(echo '${{ matrix.name }}' | tr '/: ' '---')-${{ matrix.tag }}-amd64"
+          IMAGE_LABEL: "${{ matrix.name }}:${{ matrix.tag }}"
+        run: ./.github/scripts/verify-patched.sh
 
       - name: Upload scan reports
         if: always()
