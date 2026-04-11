@@ -395,8 +395,10 @@ jobs:
           retention-days: 7
 
   # ── Copa patching regression tests ──────────────────────────────────
+  # Matrix lists catalog image names + pinned tags.
+  # Image URL and goVcsUrl are read from copa-config.yaml at runtime.
   copa-patching-regression:
-    name: "Copa Patch: ${{ matrix.name }} [${{ matrix.type }}]"
+    name: "Copa Patch: ${{ matrix.name }}:${{ matrix.tag }}"
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -405,19 +407,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: victoria-logs
-            image: docker.io/victoriametrics/victoria-logs:v1.45.0
-            type: apk + gobinary + stdlib
-            go_vcs_url: https://github.com/VictoriaMetrics/VictoriaLogs@v1.45.0
-          - name: redis
-            image: docker.io/library/redis:8.0.2
-            type: dpkg (Debian)
-          - name: rabbitmq
-            image: mirror.gcr.io/library/rabbitmq:4.1.0
-            type: dpkg (Ubuntu)
-          - name: cockroachdb
-            image: mirror.gcr.io/cockroachdb/cockroach:v25.2.3
-            type: rpm + gobinary (RHEL)
+          - name: victoriametrics/victoria-logs
+            tag: v1.45.0
+          - name: library/redis
+            tag: "8.0.2"
+          - name: library/rabbitmq
+            tag: "4.1.0"
+          - name: cockroachdb/cockroach
+            tag: v25.2.3
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -441,6 +438,21 @@ jobs:
             ~/.cache/go-build
           key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
           restore-keys: go-${{ runner.os }}-
+
+      - name: Read catalog entry
+        id: catalog
+        run: |
+          IMAGE=$(yq '.images[] | select(.name == "${{ matrix.name }}") | .image' copa-config.yaml)
+          VCS_URL=$(yq '.images[] | select(.name == "${{ matrix.name }}") | .goVcsUrl // ""' copa-config.yaml)
+          if [ -n "$VCS_URL" ] && [ "$VCS_URL" != "null" ]; then
+            VCS_URL="${VCS_URL}@${{ matrix.tag }}"
+          else
+            VCS_URL=""
+          fi
+          SOURCE="${IMAGE}:${{ matrix.tag }}"
+          echo "source=${SOURCE}" >> "$GITHUB_OUTPUT"
+          echo "go_vcs_url=${VCS_URL}" >> "$GITHUB_OUTPUT"
+          echo "Catalog: image=${IMAGE} tag=${{ matrix.tag }} goVcsUrl=${VCS_URL}"
 
       - name: Setup Copa and Verity
         uses: ./.github/actions/setup-binaries
@@ -467,7 +479,7 @@ jobs:
             --scanners vuln \
             --format json \
             --output before.json \
-            "${{ matrix.image }}"
+            "${{ steps.catalog.outputs.source }}"
 
           TOTAL=$(jq '[.Results[]? | select(.Vulnerabilities) | .Vulnerabilities | length] | add // 0' before.json)
           GO=$(jq '[.Results[]? | select(.Type == "gobinary") | select(.Vulnerabilities) | .Vulnerabilities | length] | add // 0' before.json)
@@ -488,24 +500,24 @@ jobs:
         if: env.skip_patch != 'true'
         run: |
           mkdir -p reports
-          REPORT_NAME=$(echo "${{ matrix.image }}" | sed 's/[\/:]/_/g')
+          REPORT_NAME=$(echo "${{ steps.catalog.outputs.source }}" | sed 's/[\/:]/_/g')
           cp before.json "reports/${REPORT_NAME}.json"
 
-      - name: Patch image with patch-image.sh
+      - name: Patch image
         if: env.skip_patch != 'true'
         env:
           COPA_EXPERIMENTAL: "1"
           PLATFORM: linux/amd64
-          SOURCE: ${{ matrix.image }}
+          SOURCE: ${{ steps.catalog.outputs.source }}
           IMAGE_NAME: ${{ matrix.name }}
           STAGING_REGISTRY: localhost:5000/regression
-          GO_VCS_URL: ${{ matrix.go_vcs_url }}
+          GO_VCS_URL: ${{ steps.catalog.outputs.go_vcs_url }}
         run: ./.github/scripts/patch-image.sh
 
-      - name: Scan image (after patching)
+      - name: Verify patched image is clean
         if: env.skip_patch != 'true'
         run: |
-          SOURCE_TAG=$(echo "${{ matrix.image }}" | cut -d: -f2)
+          SOURCE_TAG="${{ matrix.tag }}"
           SAFE_IMAGE=$(echo "${{ matrix.name }}" | tr '/: ' '---')
           PATCHED="localhost:5000/regression:${SAFE_IMAGE}-${SOURCE_TAG}-amd64"
 
@@ -524,7 +536,7 @@ jobs:
           {
             echo ""
             echo "══════════════════════════════════════════════"
-            echo "  ${{ matrix.name }} (${{ matrix.type }})"
+            echo "  ${{ matrix.name }}:${{ matrix.tag }}"
             echo "──────────────────────────────────────────────"
             echo "  BEFORE:  ${before_total} total (${before_os} OS, ${before_go} Go)"
             echo "  AFTER:   ${TOTAL} total (${OS} OS, ${GO} Go) [fixable only]"
@@ -533,7 +545,7 @@ jobs:
           }
 
           if [ "$TOTAL" -ne 0 ]; then
-            echo "::error::Copa left ${TOTAL} fixable CVEs unpatched for ${{ matrix.name }} (${OS} OS, ${GO} Go)"
+            echo "::error::Copa left ${TOTAL} fixable CVEs unpatched for ${{ matrix.name }}:${{ matrix.tag }} (${OS} OS, ${GO} Go)"
             exit 1
           fi
 
