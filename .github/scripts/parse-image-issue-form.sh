@@ -17,6 +17,11 @@ REPOSITORY=$(get_field "Image repository")
 TAG=$(get_field "Image tag")
 REGISTRY=$(get_field "Image registry")
 
+# Default registry to docker.io
+if [ -z "${REGISTRY}" ]; then
+  REGISTRY="docker.io"
+fi
+
 # Validate extracted fields against safe character sets
 validate() {
   local label="$1" value="$2" pattern="$3"
@@ -34,11 +39,6 @@ validate "Image registry"    "$REGISTRY"   '^(docker\.io|gcr\.io|mirror\.gcr\.io
 if [ -z "${NAME}" ] || [ -z "${REPOSITORY}" ] || [ -z "${TAG}" ]; then
   echo "::error::Missing required fields in issue body"
   exit 1
-fi
-
-# Default registry to docker.io
-if [ -z "${REGISTRY}" ]; then
-  REGISTRY="docker.io"
 fi
 
 {
