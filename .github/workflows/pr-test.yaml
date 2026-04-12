@@ -492,9 +492,11 @@ jobs:
       - name: Verify patched image is clean
         if: env.skip_patch != 'true'
         env:
-          PATCHED_IMAGE: "localhost:5000/regression:$(echo '${{ matrix.name }}' | tr '/: ' '---')-${{ matrix.tag }}-amd64"
           IMAGE_LABEL: "${{ matrix.name }}:${{ matrix.tag }}"
-        run: ./.github/scripts/verify-patched.sh
+        run: |
+          SAFE_IMAGE=$(echo "${{ matrix.name }}" | tr '/: ' '---')
+          export PATCHED_IMAGE="localhost:5000/regression:${SAFE_IMAGE}-${{ matrix.tag }}-amd64"
+          ./.github/scripts/verify-patched.sh
 
       - name: Upload scan reports
         if: always()
