@@ -32,7 +32,7 @@ type ImageSpec struct {
 	Tags           TagStrategy `yaml:"tags"`
 	Target         TargetSpec  `yaml:"target,omitempty"`
 	Platforms      []string    `yaml:"platforms,omitempty"`
-	GoVcsUrl       string      `yaml:"goVcsUrl,omitempty"`
+	GoVcsURL       string      `yaml:"goVcsUrl,omitempty"`
 	GoVcsTagPrefix string      `yaml:"goVcsTagPrefix,omitempty"`
 }
 

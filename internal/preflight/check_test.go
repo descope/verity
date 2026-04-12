@@ -34,7 +34,7 @@ func TestCheckCopaImage_FirstTime(t *testing.T) {
 		Name:   "nginx",
 		Source: "mirror.gcr.io/library/nginx:1.29.3",
 	}
-	result := checkCopaImage(img, Manifest{})
+	result := checkCopaImage(&img, Manifest{})
 
 	assert.True(t, result.NeedsWork)
 	assert.Contains(t, result.Reason, "first time")
@@ -53,7 +53,7 @@ func TestCheckCopaImage_UpstreamChanged(t *testing.T) {
 	digestFn = func(_ string) (string, error) { return "sha256:new", nil }
 	defer func() { digestFn = origFn }()
 
-	result := checkCopaImage(img, manifest)
+	result := checkCopaImage(&img, manifest)
 	assert.True(t, result.NeedsWork)
 	assert.Contains(t, result.Reason, "upstream digest changed")
 }
@@ -71,7 +71,7 @@ func TestCheckCopaImage_UnchangedWithVulns(t *testing.T) {
 	digestFn = func(_ string) (string, error) { return testDigestSame, nil }
 	defer func() { digestFn = origFn }()
 
-	result := checkCopaImage(img, manifest)
+	result := checkCopaImage(&img, manifest)
 	assert.True(t, result.NeedsWork)
 	assert.Contains(t, result.Reason, "5 fixable vulns")
 }
@@ -89,7 +89,7 @@ func TestCheckCopaImage_UnchangedClean(t *testing.T) {
 	digestFn = func(_ string) (string, error) { return testDigestSame, nil }
 	defer func() { digestFn = origFn }()
 
-	result := checkCopaImage(img, manifest)
+	result := checkCopaImage(&img, manifest)
 	assert.False(t, result.NeedsWork)
 	assert.Contains(t, result.Reason, "unchanged")
 }
@@ -99,7 +99,7 @@ func TestCheckCopaImage_DigestRef(t *testing.T) {
 		Name:   "nginx",
 		Source: "mirror.gcr.io/library/nginx@sha256:abc123",
 	}
-	result := checkCopaImage(img, Manifest{})
+	result := checkCopaImage(&img, Manifest{})
 
 	assert.True(t, result.NeedsWork)
 	assert.Contains(t, result.Reason, "digest-pinned")

@@ -178,7 +178,7 @@ func TestDiscoverStandaloneImage_GoVcsUrl(t *testing.T) {
 		Image:          "mirror.gcr.io/rabbitmqoperator/cluster-operator",
 		Tags:           config.TagStrategy{Strategy: "list", List: []string{"2.19.0"}},
 		Platforms:      []string{"linux/amd64", "linux/arm64"},
-		GoVcsUrl:       "https://github.com/rabbitmq/cluster-operator",
+		GoVcsURL:       "https://github.com/rabbitmq/cluster-operator",
 		GoVcsTagPrefix: "v",
 	}
 
@@ -192,8 +192,8 @@ func TestDiscoverStandaloneImage_GoVcsUrl(t *testing.T) {
 	}
 
 	wantVcsUrl := "https://github.com/rabbitmq/cluster-operator@v2.19.0"
-	if got[0].GoVcsUrl != wantVcsUrl {
-		t.Errorf("GoVcsUrl = %q, want %q", got[0].GoVcsUrl, wantVcsUrl)
+	if got[0].GoVcsURL != wantVcsUrl {
+		t.Errorf("GoVcsUrl = %q, want %q", got[0].GoVcsURL, wantVcsUrl)
 	}
 }
 
@@ -209,8 +209,8 @@ func TestDiscoverStandaloneImage_GoVcsUrlEmpty(t *testing.T) {
 		t.Fatalf("discoverStandaloneImage() error = %v", err)
 	}
 
-	if got[0].GoVcsUrl != "" {
-		t.Errorf("GoVcsUrl = %q, want empty for non-Go images", got[0].GoVcsUrl)
+	if got[0].GoVcsURL != "" {
+		t.Errorf("GoVcsUrl = %q, want empty for non-Go images", got[0].GoVcsURL)
 	}
 }
 
@@ -220,7 +220,7 @@ func TestDiscoverStandaloneImage_GoVcsUrlNoPrefix(t *testing.T) {
 		Name:     "zalando/postgres-operator",
 		Image:    "ghcr.io/zalando/postgres-operator",
 		Tags:     config.TagStrategy{Strategy: "list", List: []string{"v1.15.1"}},
-		GoVcsUrl: "https://github.com/zalando/postgres-operator",
+		GoVcsURL: "https://github.com/zalando/postgres-operator",
 	}
 
 	got, err := discoverStandaloneImage(spec, "ghcr.io/verity-org")
@@ -229,8 +229,8 @@ func TestDiscoverStandaloneImage_GoVcsUrlNoPrefix(t *testing.T) {
 	}
 
 	wantVcsUrl := "https://github.com/zalando/postgres-operator@v1.15.1"
-	if got[0].GoVcsUrl != wantVcsUrl {
-		t.Errorf("GoVcsUrl = %q, want %q", got[0].GoVcsUrl, wantVcsUrl)
+	if got[0].GoVcsURL != wantVcsUrl {
+		t.Errorf("GoVcsUrl = %q, want %q", got[0].GoVcsURL, wantVcsUrl)
 	}
 }
 
@@ -271,16 +271,16 @@ images:
 	}
 
 	// First image should have GoVcsUrl parsed.
-	if cfg.Images[0].GoVcsUrl != "https://github.com/rabbitmq/cluster-operator" {
-		t.Errorf("GoVcsUrl = %q, want %q", cfg.Images[0].GoVcsUrl, "https://github.com/rabbitmq/cluster-operator")
+	if cfg.Images[0].GoVcsURL != "https://github.com/rabbitmq/cluster-operator" {
+		t.Errorf("GoVcsUrl = %q, want %q", cfg.Images[0].GoVcsURL, "https://github.com/rabbitmq/cluster-operator")
 	}
 	if cfg.Images[0].GoVcsTagPrefix != "v" {
 		t.Errorf("GoVcsTagPrefix = %q, want %q", cfg.Images[0].GoVcsTagPrefix, "v")
 	}
 
 	// Second image should have empty GoVcsUrl.
-	if cfg.Images[1].GoVcsUrl != "" {
-		t.Errorf("GoVcsUrl = %q, want empty", cfg.Images[1].GoVcsUrl)
+	if cfg.Images[1].GoVcsURL != "" {
+		t.Errorf("GoVcsUrl = %q, want empty", cfg.Images[1].GoVcsURL)
 	}
 }
 
@@ -720,7 +720,7 @@ func TestIsExcluded(t *testing.T) {
 			if tc.name == "nil exclude set" {
 				exc = nil
 			}
-			got := isExcluded(tc.img, exc)
+			got := isExcluded(&tc.img, exc)
 			if got != tc.want {
 				t.Errorf("isExcluded(%+v) = %v, want %v", tc.img, got, tc.want)
 			}

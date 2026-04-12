@@ -19,7 +19,7 @@ type DiscoveredImage struct {
 	Source         string `json:"source"`
 	TargetRegistry string `json:"target-registry"`
 	Platforms      string `json:"platforms"`
-	GoVcsUrl       string `json:"go-vcs-url,omitempty"`
+	GoVcsURL       string `json:"go-vcs-url,omitempty"`
 }
 
 // Discover enumerates all image+tag combos from the config.
@@ -58,7 +58,7 @@ func Discover(cfg *config.CopaConfig, targetRegistry string, overrides map[strin
 			continue
 		}
 		for _, img := range imgs {
-			if isExcluded(img, excludeNames) {
+			if isExcluded(&img, excludeNames) {
 				fmt.Fprintf(os.Stderr, "Skipping chart image %q: name %q excluded via --exclude-names\n", img.Source, img.Name)
 				continue
 			}
@@ -74,7 +74,7 @@ func Discover(cfg *config.CopaConfig, targetRegistry string, overrides map[strin
 }
 
 // isExcluded checks whether a chart-discovered image should be skipped.
-func isExcluded(img DiscoveredImage, excludeNames map[string]struct{}) bool {
+func isExcluded(img *DiscoveredImage, excludeNames map[string]struct{}) bool {
 	if len(excludeNames) == 0 {
 		return false
 	}
@@ -174,8 +174,8 @@ func discoverStandaloneImage(spec *config.ImageSpec, registry string) ([]Discove
 			TargetRegistry: imgRegistry,
 			Platforms:      joinPlatforms(spec.Platforms),
 		}
-		if spec.GoVcsUrl != "" {
-			img.GoVcsUrl = spec.GoVcsUrl + "@" + spec.GoVcsTagPrefix + tag
+		if spec.GoVcsURL != "" {
+			img.GoVcsURL = spec.GoVcsURL + "@" + spec.GoVcsTagPrefix + tag
 		}
 		result = append(result, img)
 	}

@@ -43,7 +43,7 @@ func extractTag(source string) string {
 // Gate 2: Fetch current upstream digest. If different from stored → needs work.
 // Gate 3: If digest unchanged but patched image still has vulns → needs work.
 // Otherwise: skip.
-func checkCopaImage(img discovery.DiscoveredImage, manifest Manifest) CheckResult {
+func checkCopaImage(img *discovery.DiscoveredImage, manifest Manifest) CheckResult {
 	tag := extractTag(img.Source)
 	if tag == "" {
 		return CheckResult{NeedsWork: true, Reason: img.Name + ": digest-pinned ref (always build)"}
@@ -91,7 +91,7 @@ func filterCopaImagesWithManifest(images []discovery.DiscoveredImage, manifest M
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			results[idx] = indexedResult{idx: idx, check: checkCopaImage(img, manifest)}
+			results[idx] = indexedResult{idx: idx, check: checkCopaImage(&img, manifest)}
 		}(i, img)
 	}
 	wg.Wait()
