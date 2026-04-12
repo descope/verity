@@ -27,11 +27,13 @@ type Replacement struct {
 
 // ImageSpec describes a single image to patch.
 type ImageSpec struct {
-	Name      string      `yaml:"name"`
-	Image     string      `yaml:"image"`
-	Tags      TagStrategy `yaml:"tags"`
-	Target    TargetSpec  `yaml:"target,omitempty"`
-	Platforms []string    `yaml:"platforms,omitempty"`
+	Name           string      `yaml:"name"`
+	Image          string      `yaml:"image"`
+	Tags           TagStrategy `yaml:"tags"`
+	Target         TargetSpec  `yaml:"target,omitempty"`
+	Platforms      []string    `yaml:"platforms,omitempty"`
+	GoVcsUrl       string      `yaml:"goVcsUrl,omitempty"`
+	GoVcsTagPrefix string      `yaml:"goVcsTagPrefix,omitempty"`
 }
 
 // TargetSpec describes where to push the patched image.

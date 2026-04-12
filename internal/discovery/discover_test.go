@@ -172,6 +172,118 @@ func TestDiscoverStandaloneImage_PerImageRegistryOverride(t *testing.T) {
 	}
 }
 
+func TestDiscoverStandaloneImage_GoVcsUrl(t *testing.T) {
+	spec := &config.ImageSpec{
+		Name:           "rabbitmqoperator/cluster-operator",
+		Image:          "mirror.gcr.io/rabbitmqoperator/cluster-operator",
+		Tags:           config.TagStrategy{Strategy: "list", List: []string{"2.19.0"}},
+		Platforms:      []string{"linux/amd64", "linux/arm64"},
+		GoVcsUrl:       "https://github.com/rabbitmq/cluster-operator",
+		GoVcsTagPrefix: "v",
+	}
+
+	got, err := discoverStandaloneImage(spec, "ghcr.io/verity-org")
+	if err != nil {
+		t.Fatalf("discoverStandaloneImage() error = %v", err)
+	}
+
+	if len(got) != 1 {
+		t.Fatalf("discoverStandaloneImage() returned %d images, want 1", len(got))
+	}
+
+	wantVcsUrl := "https://github.com/rabbitmq/cluster-operator@v2.19.0"
+	if got[0].GoVcsUrl != wantVcsUrl {
+		t.Errorf("GoVcsUrl = %q, want %q", got[0].GoVcsUrl, wantVcsUrl)
+	}
+}
+
+func TestDiscoverStandaloneImage_GoVcsUrlEmpty(t *testing.T) {
+	spec := &config.ImageSpec{
+		Name:  testNginxName,
+		Image: "mirror.gcr.io/library/nginx",
+		Tags:  config.TagStrategy{Strategy: "list", List: []string{"1.25.3"}},
+	}
+
+	got, err := discoverStandaloneImage(spec, "ghcr.io/verity-org")
+	if err != nil {
+		t.Fatalf("discoverStandaloneImage() error = %v", err)
+	}
+
+	if got[0].GoVcsUrl != "" {
+		t.Errorf("GoVcsUrl = %q, want empty for non-Go images", got[0].GoVcsUrl)
+	}
+}
+
+func TestDiscoverStandaloneImage_GoVcsUrlNoPrefix(t *testing.T) {
+	// Images with goVcsUrl but no tag prefix should still construct URL correctly.
+	spec := &config.ImageSpec{
+		Name:     "zalando/postgres-operator",
+		Image:    "ghcr.io/zalando/postgres-operator",
+		Tags:     config.TagStrategy{Strategy: "list", List: []string{"v1.15.1"}},
+		GoVcsUrl: "https://github.com/zalando/postgres-operator",
+	}
+
+	got, err := discoverStandaloneImage(spec, "ghcr.io/verity-org")
+	if err != nil {
+		t.Fatalf("discoverStandaloneImage() error = %v", err)
+	}
+
+	wantVcsUrl := "https://github.com/zalando/postgres-operator@v1.15.1"
+	if got[0].GoVcsUrl != wantVcsUrl {
+		t.Errorf("GoVcsUrl = %q, want %q", got[0].GoVcsUrl, wantVcsUrl)
+	}
+}
+
+func TestLoadConfig_GoVcsUrl(t *testing.T) {
+	yaml := `
+apiVersion: copa.sh/v1alpha1
+kind: PatchConfig
+target:
+  registry: ghcr.io/test-org
+images:
+  - name: rabbitmqoperator/cluster-operator
+    image: mirror.gcr.io/rabbitmqoperator/cluster-operator
+    platforms: [linux/amd64, linux/arm64]
+    tags:
+      strategy: list
+      list: ["2.19.0"]
+    goVcsUrl: "https://github.com/rabbitmq/cluster-operator"
+    goVcsTagPrefix: "v"
+  - name: nginx
+    image: mirror.gcr.io/library/nginx
+    tags:
+      strategy: list
+      list: ["1.25.3"]
+`
+	dir := t.TempDir()
+	path := filepath.Join(dir, "copa-config.yaml")
+	if err := os.WriteFile(path, []byte(yaml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	if len(cfg.Images) != 2 {
+		t.Fatalf("LoadConfig() returned %d images, want 2", len(cfg.Images))
+	}
+
+	// First image should have GoVcsUrl parsed.
+	if cfg.Images[0].GoVcsUrl != "https://github.com/rabbitmq/cluster-operator" {
+		t.Errorf("GoVcsUrl = %q, want %q", cfg.Images[0].GoVcsUrl, "https://github.com/rabbitmq/cluster-operator")
+	}
+	if cfg.Images[0].GoVcsTagPrefix != "v" {
+		t.Errorf("GoVcsTagPrefix = %q, want %q", cfg.Images[0].GoVcsTagPrefix, "v")
+	}
+
+	// Second image should have empty GoVcsUrl.
+	if cfg.Images[1].GoVcsUrl != "" {
+		t.Errorf("GoVcsUrl = %q, want empty", cfg.Images[1].GoVcsUrl)
+	}
+}
+
 func TestLoadConfig(t *testing.T) {
 	yaml := `
 apiVersion: copa.sh/v1alpha1

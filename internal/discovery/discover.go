@@ -19,6 +19,7 @@ type DiscoveredImage struct {
 	Source         string `json:"source"`
 	TargetRegistry string `json:"target-registry"`
 	Platforms      string `json:"platforms"`
+	GoVcsUrl       string `json:"go-vcs-url,omitempty"`
 }
 
 // Discover enumerates all image+tag combos from the config.
@@ -167,12 +168,16 @@ func discoverStandaloneImage(spec *config.ImageSpec, registry string) ([]Discove
 
 	result := make([]DiscoveredImage, 0, len(tags))
 	for _, tag := range tags {
-		result = append(result, DiscoveredImage{
+		img := DiscoveredImage{
 			Name:           spec.Name,
 			Source:         spec.Image + ":" + tag,
 			TargetRegistry: imgRegistry,
 			Platforms:      joinPlatforms(spec.Platforms),
-		})
+		}
+		if spec.GoVcsUrl != "" {
+			img.GoVcsUrl = spec.GoVcsUrl + "@" + spec.GoVcsTagPrefix + tag
+		}
+		result = append(result, img)
 	}
 	return result, nil
 }
