@@ -34,6 +34,11 @@ on:
         required: false
         type: string
         default: ""
+      go-vcs-url:
+        description: "Go VCS URL for binary patching (e.g., https://github.com/org/repo@v1.0.0)"
+        required: false
+        type: string
+        default: ""
 
   workflow_dispatch:
     inputs:
@@ -54,6 +59,11 @@ on:
         required: false
         type: string
         default: "linux/amd64,linux/arm64"
+      go-vcs-url:
+        description: "Go VCS URL for binary patching (e.g., https://github.com/org/repo@v1.0.0)"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: write       # push to reports branch
@@ -306,9 +316,8 @@ jobs:
           SOURCE: ${{ inputs.source-ref }}
           IMAGE_NAME: ${{ inputs.image-name }}
           STAGING_REGISTRY: ${{ needs.scan.outputs.staging-registry }}
+          GO_VCS_URL: ${{ inputs.go-vcs-url }}
         run: |
-          # copa-discover.sh wrote the report at reports/<sanitized-source>.json;
-          # patch-image.sh expects REPORT_FILE derived the same way.
           mkdir -p reports
           cp pre.json "reports/$(echo "${SOURCE}" | sed 's/[\/:]/_/g').json"
           .github/scripts/patch-image.sh

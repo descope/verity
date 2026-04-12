@@ -243,15 +243,21 @@ jobs:
             SOURCE=$(echo "$image" | jq -r '.source')
             REGISTRY=$(echo "$image" | jq -r '."target-registry"')
             PLATFORMS=$(echo "$image" | jq -r '.platforms')
+            GO_VCS_URL=$(echo "$image" | jq -r '."go-vcs-url" // ""')
 
             echo "Dispatching patch for ${NAME}: ${SOURCE}..."
-            gh workflow run patch-image.yaml \
-              --repo "${{ github.repository }}" \
-              --ref "${{ github.ref_name }}" \
-              --field "image-name=${NAME}" \
-              --field "source-ref=${SOURCE}" \
-              --field "target-registry=${REGISTRY}" \
+            DISPATCH_ARGS=(
+              --repo "${{ github.repository }}"
+              --ref "${{ github.ref_name }}"
+              --field "image-name=${NAME}"
+              --field "source-ref=${SOURCE}"
+              --field "target-registry=${REGISTRY}"
               --field "platforms=${PLATFORMS}"
+            )
+            if [ -n "${GO_VCS_URL}" ]; then
+              DISPATCH_ARGS+=(--field "go-vcs-url=${GO_VCS_URL}")
+            fi
+            gh workflow run patch-image.yaml "${DISPATCH_ARGS[@]}"
 
             # Throttle to avoid GitHub API rate limits
             sleep 2
