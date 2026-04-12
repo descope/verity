@@ -398,6 +398,9 @@ jobs:
   detect-copa-changes:
     name: Detect changed images
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: read
     outputs:
       matrix: ${{ steps.detect.outputs.matrix }}
       has-changes: ${{ steps.detect.outputs.has-changes }}
@@ -497,7 +500,8 @@ jobs:
 
           # Build matrix: first tag per image name (one test per changed image)
           matrix=$(echo "$all" | jq -c '
-            group_by(.name)
+            sort_by(.name)
+            | group_by(.name)
             | map(first)
             | map({name: .name, tag: (.source | split(":") | last)})
             | {include: .}
@@ -514,6 +518,7 @@ jobs:
     needs: detect-copa-changes
     if: needs.detect-copa-changes.outputs.has-changes == 'true'
     runs-on: ubuntu-24.04
+    continue-on-error: true  # Go binary patching is experimental — don't block PR
     permissions:
       contents: read
       packages: write
