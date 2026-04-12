@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.69.3"
   },
-  "ReportID": "019d78ec-08c5-7d2f-a769-09e4e3a7949e",
-  "CreatedAt": "2026-04-10T19:43:47.909865501Z",
+  "ReportID": "019d8171-2e98-7b8e-a4c0-aa6e687cd872",
+  "CreatedAt": "2026-04-12T11:26:11.60875919Z",
   "ArtifactID": "sha256:c83fd234dbb93136aea1f56e025bf9f74a775cdd898d6471fb303a51164926a1",
   "ArtifactName": "ghcr.io/verity-org/cache:library-elasticsearch-9.3.2",
   "ArtifactType": "container_image",
@@ -31830,6 +31830,7 @@
           ],
           "VendorSeverity": {
             "azure": 2,
+            "photon": 2,
             "redhat": 2
           },
           "CVSS": {
@@ -31959,6 +31960,7 @@
           ],
           "VendorSeverity": {
             "azure": 2,
+            "photon": 2,
             "redhat": 2
           },
           "CVSS": {
@@ -32088,6 +32090,7 @@
           ],
           "VendorSeverity": {
             "azure": 2,
+            "photon": 2,
             "redhat": 2
           },
           "CVSS": {
@@ -34029,7 +34032,7 @@
             "https://github.com/nghttp2/nghttp2/commit/5c7df8fa815ac1004d9ecb9d1f7595c4d37f46e1",
             "https://github.com/nghttp2/nghttp2/security/advisories/GHSA-6933-cjhr-5qg6",
             "https://linux.oracle.com/cve/CVE-2026-27135.html",
-            "https://linux.oracle.com/errata/ELSA-2026-7123.html",
+            "https://linux.oracle.com/errata/ELSA-2026-7350.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-27135",
             "https://www.cve.org/CVERecord?id=CVE-2026-27135"
           ],
@@ -34954,6 +34957,7 @@
             "CWE-476"
           ],
           "VendorSeverity": {
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 1
           },
@@ -34978,7 +34982,7 @@
             "https://www.openwall.com/lists/oss-security/2026/04/07/11"
           ],
           "PublishedDate": "2026-04-07T22:16:21.19Z",
-          "LastModifiedDate": "2026-04-08T21:27:00.663Z"
+          "LastModifiedDate": "2026-04-10T21:16:23.67Z"
         },
         {
           "VulnerabilityID": "CVE-2026-31790",
@@ -35004,6 +35008,7 @@
             "CWE-754"
           ],
           "VendorSeverity": {
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -45148,6 +45153,60 @@
           "LastModifiedDate": "2026-01-20T01:15:55.067Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-34480",
+          "VendorIDs": [
+            "GHSA-3pxv-7cmr-fjr4"
+          ],
+          "PkgName": "org.apache.logging.log4j:log4j-core",
+          "PkgPath": "usr/share/elasticsearch/lib/elasticsearch-log4j-9.3.2.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/org.apache.logging.log4j/log4j-core@2.19.0",
+            "UID": "6bb6f8dcbabb223d"
+          },
+          "InstalledVersion": "2.19.0",
+          "FixedVersion": "2.25.4, 3.0.0-beta3",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:dd4b722d9ddc4e27a52b0497703f5942a5aa16079489fd974e53392daf585a10",
+            "DiffID": "sha256:d976520fe99206179c387498c8cd75525f3070069388ea946b23a1ee44aaa617"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-34480",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:93eadb8343a42d25a79c84ae0c0b1e37aa6646d3df658abef7efd067665d731d",
+          "Title": "Apache Log4j Core's  XmlLayout https://logging.apache.org/log4j/2.x/ma ...",
+          "Description": "Apache Log4j Core's  XmlLayout https://logging.apache.org/log4j/2.x/manual/layouts.html#XmlLayout , in versions up to and including 2.25.3, fails to sanitize characters forbidden by the  XML 1.0 specification https://www.w3.org/TR/xml/#charsets  producing invalid XML output whenever a log message or MDC value contains such characters.\n\nThe impact depends on the StAX implementation in use:\n\n  *  JRE built-in StAX: Forbidden characters are silently written to the output, producing malformed XML. Conforming parsers must reject such documents with a fatal error, which may cause downstream log-processing systems to drop the affected records.\n  *  Alternative StAX implementations (e.g.,  Woodstox https://github.com/FasterXML/woodstox , a transitive dependency of the Jackson XML Dataformat module): An exception is thrown during the logging call, and the log event is never delivered to its intended appender, only to Log4j's internal status logger.\n\n\nUsers are advised to upgrade to Apache Log4j Core 2.25.4, which corrects this issue by sanitizing forbidden characters before XML output.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-116"
+          ],
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:N/SC:N/SI:L/SA:N",
+              "V40Score": 6.9
+            }
+          },
+          "References": [
+            "http://www.openwall.com/lists/oss-security/2026/04/10/9",
+            "https://github.com/apache/logging-log4j2",
+            "https://github.com/apache/logging-log4j2/pull/4077",
+            "https://lists.apache.org/thread/5x0hcnng0chhghp6jgjdp3qmbbhfjzhb",
+            "https://logging.apache.org/cyclonedx/vdr.xml",
+            "https://logging.apache.org/log4j/2.x/manual/layouts.html#XmlLayout",
+            "https://logging.apache.org/security.html#CVE-2026-34480",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-34480"
+          ],
+          "PublishedDate": "2026-04-10T16:16:31.463Z",
+          "LastModifiedDate": "2026-04-10T17:17:02.577Z"
+        },
+        {
           "VulnerabilityID": "CVE-2025-68161",
           "VendorIDs": [
             "GHSA-vc5p-v9hr-52mj"
@@ -45217,6 +45276,60 @@
           ],
           "PublishedDate": "2025-12-18T21:15:57.96Z",
           "LastModifiedDate": "2026-01-20T01:15:55.067Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-34480",
+          "VendorIDs": [
+            "GHSA-3pxv-7cmr-fjr4"
+          ],
+          "PkgName": "org.apache.logging.log4j:log4j-core",
+          "PkgPath": "usr/share/elasticsearch/modules/apm/elastic-apm-agent-java8-1.55.0.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/org.apache.logging.log4j/log4j-core@2.25.0",
+            "UID": "788652f4fbd7b90e"
+          },
+          "InstalledVersion": "2.25.0",
+          "FixedVersion": "2.25.4, 3.0.0-beta3",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:dd4b722d9ddc4e27a52b0497703f5942a5aa16079489fd974e53392daf585a10",
+            "DiffID": "sha256:d976520fe99206179c387498c8cd75525f3070069388ea946b23a1ee44aaa617"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-34480",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:93eadb8343a42d25a79c84ae0c0b1e37aa6646d3df658abef7efd067665d731d",
+          "Title": "Apache Log4j Core's  XmlLayout https://logging.apache.org/log4j/2.x/ma ...",
+          "Description": "Apache Log4j Core's  XmlLayout https://logging.apache.org/log4j/2.x/manual/layouts.html#XmlLayout , in versions up to and including 2.25.3, fails to sanitize characters forbidden by the  XML 1.0 specification https://www.w3.org/TR/xml/#charsets  producing invalid XML output whenever a log message or MDC value contains such characters.\n\nThe impact depends on the StAX implementation in use:\n\n  *  JRE built-in StAX: Forbidden characters are silently written to the output, producing malformed XML. Conforming parsers must reject such documents with a fatal error, which may cause downstream log-processing systems to drop the affected records.\n  *  Alternative StAX implementations (e.g.,  Woodstox https://github.com/FasterXML/woodstox , a transitive dependency of the Jackson XML Dataformat module): An exception is thrown during the logging call, and the log event is never delivered to its intended appender, only to Log4j's internal status logger.\n\n\nUsers are advised to upgrade to Apache Log4j Core 2.25.4, which corrects this issue by sanitizing forbidden characters before XML output.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-116"
+          ],
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:N/SC:N/SI:L/SA:N",
+              "V40Score": 6.9
+            }
+          },
+          "References": [
+            "http://www.openwall.com/lists/oss-security/2026/04/10/9",
+            "https://github.com/apache/logging-log4j2",
+            "https://github.com/apache/logging-log4j2/pull/4077",
+            "https://lists.apache.org/thread/5x0hcnng0chhghp6jgjdp3qmbbhfjzhb",
+            "https://logging.apache.org/cyclonedx/vdr.xml",
+            "https://logging.apache.org/log4j/2.x/manual/layouts.html#XmlLayout",
+            "https://logging.apache.org/security.html#CVE-2026-34480",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-34480"
+          ],
+          "PublishedDate": "2026-04-10T16:16:31.463Z",
+          "LastModifiedDate": "2026-04-10T17:17:02.577Z"
         }
       ]
     }
