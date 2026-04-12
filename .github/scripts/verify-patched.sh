@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2154 # before_total/before_go/before_os come from GITHUB_ENV
 set -euo pipefail
 
-# before_total, before_go, before_os are set by scan-before.sh via GITHUB_ENV
-# shellcheck disable=SC2154
+# Scans a patched image and verifies 0 fixable CVEs remain.
 # Scans a patched image and verifies 0 fixable CVEs remain.
 # Inputs: PATCHED_IMAGE, IMAGE_LABEL (env vars), before_total/before_go/before_os (from GITHUB_ENV)
 # Outputs: after.json, exit 1 if fixable CVEs remain
