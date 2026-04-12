@@ -30,15 +30,21 @@ echo "Using report file: $REPORT_FILE"
 # --library-patch-level major allows major version bumps for library fixes
 COPA_LOG=$(mktemp)
 set +e
-copa patch \
-  --image "$SOURCE" \
-  --tag "$PLATFORM_TAG" \
-  --report "$REPORT_FILE" \
-  --pkg-types os,library \
-  --library-patch-level major \
-  --push \
-  --addr buildx://copa-builder \
-  --timeout 30m 2>&1 | tee "$COPA_LOG"
+COPA_ARGS=(
+  --image "$SOURCE"
+  --tag "$PLATFORM_TAG"
+  --report "$REPORT_FILE"
+  --pkg-types "os,library"
+  --library-patch-level major
+  --toolchain-patch-level patch
+  --push
+  --addr buildx://copa-builder
+  --timeout 30m
+)
+if [ -n "${GO_VCS_URL:-}" ]; then
+  COPA_ARGS+=(--go-vcs-url "$GO_VCS_URL")
+fi
+copa patch "${COPA_ARGS[@]}" 2>&1 | tee "$COPA_LOG"
 COPA_EXIT=${PIPESTATUS[0]}
 set -e
 

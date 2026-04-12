@@ -146,6 +146,14 @@ images:
   #  MESSAGING & STREAMING
   # ============================================================================
 
+  - name: "library/rabbitmq"
+    image: "mirror.gcr.io/library/rabbitmq"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
   - name: "rabbitmqoperator/cluster-operator"
     image: "mirror.gcr.io/rabbitmqoperator/cluster-operator"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -301,8 +309,30 @@ images:
   #  MONITORING & OBSERVABILITY
   # ============================================================================
 
+  # -- VictoriaMetrics --
+  - name: "victoriametrics/victoria-logs"
+    image: "docker.io/victoriametrics/victoria-logs"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+    # Go binary built with -trimpath (no VCS info in binary).
+    # OCI label points to monorepo (wrong directory at older tags).
+    # goVcsUrl overrides to the correct standalone source repo.
+    goVcsUrl: "https://github.com/VictoriaMetrics/VictoriaLogs"
+
   # -- Prometheus ecosystem --
-  # NOTE: Default Prometheus tags are busybox-based → NOT patchable.
+
+  - name: "prometheus/prometheus"
+    image: "quay.io/prometheus/prometheus"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  # NOTE: Default exporter tags are busybox-based → NOT patchable.
   # Use -distroless suffixed tags (Copa patches dpkg-distroless via tooling container).
   - name: "prometheus/node-exporter"
     image: "quay.io/prometheus/node-exporter"

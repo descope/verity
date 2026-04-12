@@ -16,6 +16,8 @@ on:
       - 'cmd/integer*.go'
       - 'cmd/discover*.go'
       - 'cmd/scan*.go'
+      - '.github/scripts/patch-image.sh'
+      - '.github/actions/setup-binaries/**'
 
 permissions:
   contents: read
@@ -390,4 +392,116 @@ jobs:
         with:
           name: "trivy-${{ matrix.image }}-${{ matrix.version }}-${{ matrix.type }}"
           path: trivy-report.json
+          retention-days: 7
+
+  # ── Copa patching regression tests ──────────────────────────────────
+  # Matrix lists catalog image names + pinned tags.
+  # Image URL and goVcsUrl are read from copa-config.yaml at runtime.
+  copa-patching-regression:
+    name: "Copa Patch: ${{ matrix.name }}:${{ matrix.tag }}"
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: victoriametrics/victoria-logs
+            tag: v1.45.0
+          - name: library/redis
+            tag: "8.0.2"
+          - name: library/rabbitmq
+            tag: "4.1.0"
+          - name: kiwigrid/k8s-sidecar
+            tag: "1.30.4"
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install mise
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3.6.3
+        with:
+          install: true
+          cache: true
+
+      - name: Cache Go modules
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ~/dev/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Read catalog entry
+        id: catalog
+        env:
+          IMAGE_NAME: ${{ matrix.name }}
+          IMAGE_TAG: ${{ matrix.tag }}
+        run: ./.github/scripts/read-catalog-entry.sh
+
+      - name: Setup Copa and Verity
+        uses: ./.github/actions/setup-binaries
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup BuildKit
+        run: |
+          docker buildx create \
+            --name copa-builder \
+            --driver docker-container \
+            --driver-opt network=host \
+            --driver-opt image=moby/buildkit:v0.21.1 \
+            --use
+          docker buildx inspect --bootstrap
+
+      - name: Start local registry
+        run: docker run -d -p 5000:5000 --name registry registry:2
+
+      - name: Scan image (before patching)
+        env:
+          SOURCE: ${{ steps.catalog.outputs.source }}
+        run: ./.github/scripts/scan-before.sh
+
+      - name: Prepare report for patch-image.sh
+        if: env.skip_patch != 'true'
+        run: |
+          mkdir -p reports
+          REPORT_NAME=$(echo "${{ steps.catalog.outputs.source }}" | sed 's/[\/:]/_/g')
+          cp before.json "reports/${REPORT_NAME}.json"
+
+      - name: Patch image
+        if: env.skip_patch != 'true'
+        env:
+          COPA_EXPERIMENTAL: "1"
+          PLATFORM: linux/amd64
+          SOURCE: ${{ steps.catalog.outputs.source }}
+          IMAGE_NAME: ${{ matrix.name }}
+          STAGING_REGISTRY: localhost:5000/regression
+          GO_VCS_URL: ${{ steps.catalog.outputs.go_vcs_url }}
+        run: ./.github/scripts/patch-image.sh
+
+      - name: Verify patched image is clean
+        if: env.skip_patch != 'true'
+        env:
+          IMAGE_LABEL: "${{ matrix.name }}:${{ matrix.tag }}"
+        run: |
+          SAFE_IMAGE=$(echo "${{ matrix.name }}" | tr '/: ' '---')
+          export PATCHED_IMAGE="localhost:5000/regression:${SAFE_IMAGE}-${{ matrix.tag }}-amd64"
+          ./.github/scripts/verify-patched.sh
+
+      - name: Upload scan reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: "copa-regression-${{ matrix.tag }}"
+          path: |
+            before.json
+            after.json
           retention-days: 7
