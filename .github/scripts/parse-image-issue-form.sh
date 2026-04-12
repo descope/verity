@@ -17,6 +17,20 @@ REPOSITORY=$(get_field "Image repository")
 TAG=$(get_field "Image tag")
 REGISTRY=$(get_field "Image registry")
 
+# Validate extracted fields against safe character sets
+validate() {
+  local label="$1" value="$2" pattern="$3"
+  if [[ ! "$value" =~ $pattern ]]; then
+    echo "::error::Invalid ${label}: '${value}'"
+    exit 1
+  fi
+}
+
+validate "Image name"       "$NAME"       '^[a-z][a-z0-9._-]{0,127}$'
+validate "Image repository"  "$REPOSITORY" '^[a-z0-9][a-z0-9._/-]{0,255}$'
+validate "Image tag"         "$TAG"        '^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$'
+validate "Image registry"    "$REGISTRY"   '^(docker\.io|gcr\.io|mirror\.gcr\.io|ghcr\.io|quay\.io|mcr\.microsoft\.com|registry\.k8s\.io|public\.ecr\.aws)$'
+
 if [ -z "${NAME}" ] || [ -z "${REPOSITORY}" ] || [ -z "${TAG}" ]; then
   echo "::error::Missing required fields in issue body"
   exit 1

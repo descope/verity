@@ -445,7 +445,7 @@ jobs:
 
       - name: Sign manifest with cosign
         if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false
-        run: cosign sign --yes "${{ env.FINAL_TAG }}"
+        run: cosign sign --yes "${{ env.FINAL_REPO }}@${{ env.DIGEST }}"
 
       - name: Generate SBOM
         if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false

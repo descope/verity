@@ -30,7 +30,8 @@ permissions:
 env:
   TARGET_REGISTRY: ghcr.io/verity-org
   STAGING_REGISTRY: ghcr.io/verity-org/cache
-  BUILDKIT_IMAGE: ghcr.io/verity-org/cache/buildkit:buildx-stable-1
+  # renovate: datasource=docker depName=moby/buildkit
+  BUILDKIT_IMAGE: ghcr.io/verity-org/cache/buildkit:buildx-stable-1@sha256:0039c1d47e8748b5afea56f4e85f14febaf34452bd99d9552d2daa82262b5cc5
 
 jobs:
   # ── Job 1: Warm caches on both arches + mirror BuildKit ────────────
@@ -187,28 +188,31 @@ jobs:
           DETECT_FILTER: ${{ needs.detect.outputs.filter }}
           DISPATCH_IMAGE: ${{ github.event.inputs.image }}
         run: |
-          EXTRA_FLAGS=""
+          DISCOVER_ARGS=(
+            --config copa-config.yaml
+            --target-registry "${TARGET_REGISTRY}"
+          )
 
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            EXTRA_FLAGS="--preflight --github-repo ${{ github.repository }}"
+            DISCOVER_ARGS+=(--preflight --github-repo "${{ github.repository }}")
           elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$DISPATCH_IMAGE" ]; then
-            EXTRA_FLAGS="--only $DISPATCH_IMAGE"
+            # Validate dispatch input matches safe pattern
+            if [[ ! "$DISPATCH_IMAGE" =~ ^[a-z0-9][a-z0-9./_-]*$ ]]; then
+              echo "Invalid image name: ${DISPATCH_IMAGE}" >&2
+              exit 1
+            fi
+            DISCOVER_ARGS+=(--only "$DISPATCH_IMAGE")
           elif [ "${{ github.event_name }}" = "push" ] && [ "$DETECT_MODE" = "filter" ] && [ -n "$DETECT_FILTER" ]; then
-            EXTRA_FLAGS="--only $DETECT_FILTER"
+            DISCOVER_ARGS+=(--only "$DETECT_FILTER")
           fi
 
           # Derive Integer/Wolfi image names to exclude from chart discovery.
           # Chart-discovered images that share a name with an Integer image are
           # skipped because the Wolfi rebuild is the preferred zero-CVE variant.
           EXCLUDE_NAMES=$(find images -maxdepth 1 -name '*.yaml' -printf '%f\n' 2>/dev/null | sed 's/\.yaml$//' | paste -sd, || true)
+          DISCOVER_ARGS+=(--exclude-names "${EXCLUDE_NAMES}")
 
-          # shellcheck disable=SC2086
-          ./verity discover \
-            --config copa-config.yaml \
-            --target-registry "${TARGET_REGISTRY}" \
-            --exclude-names "${EXCLUDE_NAMES}" \
-            $EXTRA_FLAGS \
-            > images.json
+          ./verity discover "${DISCOVER_ARGS[@]}" > images.json
 
           COUNT=$(jq 'length' images.json)
           echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
