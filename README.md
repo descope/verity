@@ -27,7 +27,7 @@ vulnerabilities, patches them in-place using [Copa](https://github.com/project-c
 (no Dockerfile rebuild required), and publishes signed, attested, drop-in
 replacements to GitHub Container Registry.
 
-**Browse the catalog:** [verity-org.github.io/verity](https://verity-org.github.io/verity/)
+**Browse the catalog:** [verity.supply](https://verity.supply/)
 
 ## Quick Start
 
@@ -115,7 +115,7 @@ gh attestation verify \
 ```
 
 Full compliance details (SLSA, FedRAMP, SOC 2, ISO 27001, NIST, OWASP):
-[verity-org.github.io/verity/compliance](https://verity-org.github.io/verity/compliance/)
+[verity.supply/compliance](https://verity.supply/compliance/)
 
 ## Adding Images
 
@@ -177,7 +177,7 @@ For local patching with a Docker registry and BuildKit, see the
 | --- | --- |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System design, components, pipeline, CLI reference |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup, code quality, PR guidelines |
-| [Compliance](https://verity-org.github.io/verity/compliance/) | SLSA, FedRAMP, SOC 2, ISO 27001, OWASP mappings |
+| [Compliance](https://verity.supply/compliance/) | SLSA, FedRAMP, SOC 2, ISO 27001, OWASP mappings |
 | [.github/RENOVATE.md](.github/RENOVATE.md) | Automated dependency update configuration |
 | [.github/PR-TESTING.md](.github/PR-TESTING.md) | How PR validation works |
 
