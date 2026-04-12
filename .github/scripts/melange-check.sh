@@ -22,14 +22,14 @@ else
 fi
 
 for field_name in bespoke upstream; do
-  eval "field_val=\$$field_name"
+  field_val="${!field_name}"
   if [ -n "$field_val" ] && [[ ! "$field_val" =~ ^[A-Za-z0-9._-]+$ ]]; then
     echo "melange.${field_name} contains unsafe characters: '${field_val}'" >&2
     exit 1
   fi
 done
 for field_name in env_file build_option; do
-  eval "field_val=\$$field_name"
+  field_val="${!field_name}"
   if [[ "$field_val" == *$'\n'* ]]; then
     echo "melange.${field_name//_/-} must be a scalar string, got multi-line value" >&2
     exit 1

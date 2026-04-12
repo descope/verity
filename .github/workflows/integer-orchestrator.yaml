@@ -118,18 +118,22 @@ jobs:
           DETECT_FILTER: ${{ needs.detect.outputs.filter }}
           DISPATCH_IMAGE: ${{ github.event.inputs.image }}
         run: |
-          EXTRA_FLAGS=""
+          DISCOVER_ARGS=()
 
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            EXTRA_FLAGS="--preflight true --github-repo ${{ github.repository }}"
+            DISCOVER_ARGS+=(--preflight true --github-repo "${{ github.repository }}")
           elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$DISPATCH_IMAGE" ]; then
-            EXTRA_FLAGS="--only $DISPATCH_IMAGE"
+            # Validate dispatch input matches safe pattern
+            if [[ ! "$DISPATCH_IMAGE" =~ ^[a-z0-9][a-z0-9./_-]*$ ]]; then
+              echo "Invalid image name: ${DISPATCH_IMAGE}" >&2
+              exit 1
+            fi
+            DISCOVER_ARGS+=(--only "$DISPATCH_IMAGE")
           elif [ "${{ github.event_name }}" = "push" ] && [ "$DETECT_MODE" = "filter" ] && [ -n "$DETECT_FILTER" ]; then
-            EXTRA_FLAGS="--only $DETECT_FILTER"
+            DISCOVER_ARGS+=(--only "$DETECT_FILTER")
           fi
 
-          # shellcheck disable=SC2086
-          all=$(./verity integer discover $EXTRA_FLAGS)
+          all=$(./verity integer discover "${DISCOVER_ARGS[@]}")
 
           count=$(echo "$all" | jq 'length')
           echo "count=${count}" >> "$GITHUB_OUTPUT"
