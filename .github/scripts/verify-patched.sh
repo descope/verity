@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2154 # before_total/before_go/before_os come from GITHUB_ENV
+# shellcheck disable=SC2154 # before_total/before_go/before_non_go come from GITHUB_ENV
 set -euo pipefail
 
 # Scans a patched image and verifies 0 fixable non-Go CVEs remain.
-# Inputs: PATCHED_IMAGE, IMAGE_LABEL (env vars), before_total/before_go/before_os (from GITHUB_ENV)
+# Inputs: PATCHED_IMAGE, IMAGE_LABEL (env vars), before_total/before_go/before_non_go (from GITHUB_ENV)
 # Outputs: after.json, exit 1 if fixable non-Go CVEs remain (Go CVEs warn only)
 
 : "${PATCHED_IMAGE:?PATCHED_IMAGE is required}"
@@ -27,7 +27,7 @@ NON_GO=$(jq '[.Results[]? | select(.Type != "gobinary") | select(.Vulnerabilitie
   echo "══════════════════════════════════════════════"
   echo "  ${IMAGE_LABEL}"
   echo "──────────────────────────────────────────────"
-  echo "  BEFORE:  ${before_total} total (${before_os} OS, ${before_go} Go)"
+  echo "  BEFORE:  ${before_total} total (${before_non_go} non-Go, ${before_go} Go)"
   echo "  AFTER:   ${TOTAL} total (${NON_GO} non-Go, ${GO} Go) [fixable only]"
   echo "  FIXED:   $((before_total - TOTAL)) total"
   echo "══════════════════════════════════════════════"
