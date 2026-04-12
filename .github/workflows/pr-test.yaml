@@ -534,6 +534,10 @@ jobs:
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      - name: Set safe artifact name
+        id: safe-name
+        run: echo "name=$(echo '${{ matrix.name }}' | tr '/' '-')" >> "$GITHUB_OUTPUT"
+
       - name: Install mise
         uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
         with:
@@ -612,7 +616,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: "copa-changed-${{ matrix.name }}-${{ matrix.tag }}"
+          name: "copa-changed-${{ steps.safe-name.outputs.name }}-${{ matrix.tag }}"
           path: |
             before.json
             after.json
