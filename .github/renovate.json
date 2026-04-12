@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended", ":semanticCommits", ":dependencyDashboard"],
-  "enabledManagers": ["gomod", "github-actions", "npm", "mise", "docker-compose"],
+  "enabledManagers": ["gomod", "github-actions", "npm", "mise", "docker-compose", "helmv3"],
   "labels": ["dependencies"],
   "rangeStrategy": "pin",
   "separateMajorMinor": true,
@@ -63,7 +63,7 @@
     },
     {
       "description": "Automerge non-major updates",
-      "matchManagers": ["gomod", "github-actions", "mise", "npm"],
+      "matchManagers": ["gomod", "github-actions", "mise", "npm", "helmv3"],
       "matchUpdateTypes": ["minor", "patch"],
       "automerge": true
     },
@@ -74,6 +74,14 @@
       "groupName": "infrastructure images",
       "semanticCommitType": "chore",
       "semanticCommitScope": "ci"
+    },
+    {
+      "description": "Helm chart dependencies",
+      "matchManagers": ["helmv3"],
+      "labels": ["helm", "dependencies"],
+      "groupName": "helm charts",
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "deps"
     }
   ],
   "vulnerabilityAlerts": {

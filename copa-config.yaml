@@ -161,6 +161,10 @@ images:
       strategy: "pattern"
       pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
+    # Go binary built with -trimpath (no VCS info). Image tags lack 'v' prefix
+    # but upstream git tags are v-prefixed (e.g., image 2.19.0 → git v2.19.0).
+    goVcsUrl: "https://github.com/rabbitmq/cluster-operator"
+    goVcsTagPrefix: "v"
 
   - name: "rabbitmqoperator/messaging-topology-operator"
     image: "mirror.gcr.io/rabbitmqoperator/messaging-topology-operator"
@@ -169,6 +173,9 @@ images:
       strategy: "pattern"
       pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
+    # Same -trimpath + tag-prefix issue as cluster-operator above.
+    goVcsUrl: "https://github.com/rabbitmq/messaging-topology-operator"
+    goVcsTagPrefix: "v"
 
   # ============================================================================
   #  KUBERNETES TOOLS
@@ -316,7 +323,7 @@ images:
     tags:
       strategy: "pattern"
       pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
+      maxTags: 1
     # Go binary built with -trimpath (no VCS info in binary).
     # OCI label points to monorepo (wrong directory at older tags).
     # goVcsUrl overrides to the correct standalone source repo.
