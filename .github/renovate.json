@@ -1,7 +1,14 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended", ":semanticCommits", ":dependencyDashboard"],
-  "enabledManagers": ["gomod", "github-actions", "npm", "mise", "docker-compose", "helmv3"],
+  "enabledManagers": [
+    "gomod",
+    "github-actions",
+    "npm",
+    "mise",
+    "docker-compose",
+    "helmv3"
+  ],
   "labels": ["dependencies"],
   "rangeStrategy": "pin",
   "separateMajorMinor": true,
@@ -18,7 +25,7 @@
     {
       "customType": "regex",
       "description": "Docker image digest pins in workflow env/run blocks",
-      "fileMatch": ["^\\.github/workflows/[^/]+\\.ya?ml$"],
+      "managerFilePatterns": ["/^\\.github/workflows/[^/]+\\.ya?ml$/"],
       "matchStrings": [
         "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\n.*?:\\s*\\S+?:(?<currentValue>[\\w.-]+)@(?<currentDigest>sha256:[a-f0-9]+)",
         "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\n[^\\n]+\\s\\S+?:(?<currentValue>[\\w.-]+)@(?<currentDigest>sha256:[a-f0-9]+)"
