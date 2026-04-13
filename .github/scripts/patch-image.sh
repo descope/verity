@@ -62,8 +62,6 @@ if [ "$COPA_EXIT" -ne 0 ]; then
       --tag "$PLATFORM_TAG"
       --report "$REPORT_FILE"
       --pkg-types "os"
-      --library-patch-level major
-      --toolchain-patch-level patch
       --push
       --addr buildx://copa-builder
       --timeout 30m
