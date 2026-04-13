@@ -51,6 +51,35 @@ set -e
 if [ "$COPA_EXIT" -ne 0 ]; then
   if grep -q 'no package updates found' "$COPA_LOG"; then
     echo "No package updates found — image is already clean"
+  elif [ -n "${GO_VCS_URL:-}" ]; then
+    # Go binary rebuild failed — retry without --go-vcs-url so OS patches
+    # still get applied. Copa will skip the Go rebuild and fall back to
+    # go.mod-only updates. This is "fail open": some Go CVEs may remain
+    # but OS packages are patched.
+    echo "::warning::Copa failed with --go-vcs-url, retrying without Go rebuild"
+    RETRY_ARGS=(
+      --image "$SOURCE"
+      --tag "$PLATFORM_TAG"
+      --report "$REPORT_FILE"
+      --pkg-types "os,library"
+      --library-patch-level major
+      --toolchain-patch-level patch
+      --push
+      --addr buildx://copa-builder
+      --timeout 30m
+    )
+    set +e
+    copa patch "${RETRY_ARGS[@]}" 2>&1 | tee "$COPA_LOG"
+    RETRY_EXIT=${PIPESTATUS[0]}
+    set -e
+    if [ "$RETRY_EXIT" -ne 0 ]; then
+      if grep -q 'no package updates found' "$COPA_LOG"; then
+        echo "No package updates found on retry — image is already clean"
+      else
+        rm -f "$COPA_LOG"
+        exit "$RETRY_EXIT"
+      fi
+    fi
   else
     rm -f "$COPA_LOG"
     exit "$COPA_EXIT"
