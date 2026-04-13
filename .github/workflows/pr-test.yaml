@@ -394,6 +394,234 @@ jobs:
           path: trivy-report.json
           retention-days: 7
 
+  # ── Detect changed Copa images and test them ─────────────────────────
+  detect-copa-changes:
+    name: Detect changed images
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+      has-changes: ${{ steps.detect.outputs.has-changes }}
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@f808768d1510423e83855289c910610ca9b43176 # v2.17.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Install mise
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          install: true
+          cache: true
+
+      - name: Cache Go modules
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: |
+            ~/dev/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Build verity CLI
+        run: go build -o verity .
+
+      - name: Login to GHCR
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Detect changed Copa images
+        id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Check if copa-config.yaml was modified in this PR
+          if ! git diff --name-only "$BASE_SHA"..."$HEAD_SHA" | grep -q '^copa-config.yaml$'; then
+            echo "copa-config.yaml not changed — skipping"
+            echo 'has-changes=false' >> "$GITHUB_OUTPUT"
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Extract image names from old and new config
+          OLD_NAMES=$(git show "${BASE_SHA}":copa-config.yaml 2>/dev/null | yq -r '.images[].name' 2>/dev/null | sort || true)
+          NEW_NAMES=$(yq -r '.images[].name' copa-config.yaml | sort)
+
+          # Find added image names
+          ADDED=$(comm -13 <(echo "$OLD_NAMES") <(echo "$NEW_NAMES") | paste -sd, || true)
+
+          # Find changed image entries (compare full YAML blocks)
+          CHANGED_NAMES=""
+          while IFS= read -r name; do
+            [ -z "$name" ] && continue
+            old_block=$(git show "${BASE_SHA}":copa-config.yaml 2>/dev/null | yq ".images[] | select(.name == \"$name\")" 2>/dev/null || true)
+            new_block=$(yq ".images[] | select(.name == \"$name\")" copa-config.yaml)
+            if [ "$old_block" != "$new_block" ]; then
+              CHANGED_NAMES="${CHANGED_NAMES:+$CHANGED_NAMES,}$name"
+            fi
+          done <<< "$NEW_NAMES"
+
+          FILTER="${ADDED}${ADDED:+${CHANGED_NAMES:+,}}${CHANGED_NAMES}"
+
+          if [ -z "$FILTER" ]; then
+            echo "No image entries changed in copa-config.yaml"
+            echo 'has-changes=false' >> "$GITHUB_OUTPUT"
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Changed Copa images: $FILTER"
+
+          # Discover image+tag combos for changed images only
+          if ! all=$(./verity discover --config copa-config.yaml --only "$FILTER"); then
+            echo "::warning::verity discover failed for changed images"
+            echo 'has-changes=false' >> "$GITHUB_OUTPUT"
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ -z "$all" ] || [ "$all" = "null" ] || [ "$all" = "[]" ]; then
+            echo "No discoverable images"
+            echo 'has-changes=false' >> "$GITHUB_OUTPUT"
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Build matrix: first tag per image name (one test per changed image)
+          matrix=$(echo "$all" | jq -c '
+            sort_by(.name)
+            | group_by(.name)
+            | map(first)
+            | map({name: .name, tag: (.source | split(":") | last)})
+            | {include: .}
+          ')
+
+          count=$(echo "$matrix" | jq '.include | length')
+          echo "Copa change matrix: ${count} images to test"
+          echo "$matrix" | jq .
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+          echo 'has-changes=true' >> "$GITHUB_OUTPUT"
+
+  copa-patching-changed:
+    name: "Copa Patch: ${{ matrix.name }}:${{ matrix.tag }}"
+    needs: detect-copa-changes
+    if: needs.detect-copa-changes.outputs.has-changes == 'true'
+    runs-on: ubuntu-24.04
+    continue-on-error: true  # Go binary patching is experimental — don't block PR
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect-copa-changes.outputs.matrix) }}
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@f808768d1510423e83855289c910610ca9b43176 # v2.17.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set safe artifact name
+        id: safe-name
+        run: echo "name=$(echo '${{ matrix.name }}' | tr '/' '-')" >> "$GITHUB_OUTPUT"
+
+      - name: Install mise
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          install: true
+          cache: true
+
+      - name: Cache Go modules
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: |
+            ~/dev/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Read catalog entry
+        id: catalog
+        env:
+          IMAGE_NAME: ${{ matrix.name }}
+          IMAGE_TAG: ${{ matrix.tag }}
+        run: ./.github/scripts/read-catalog-entry.sh
+
+      - name: Setup Copa and Verity
+        uses: ./.github/actions/setup-binaries
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup BuildKit
+        run: |
+          docker buildx create \
+            --name copa-builder \
+            --driver docker-container \
+            --driver-opt network=host \
+            --driver-opt image=moby/buildkit:v0.21.1 \
+            --use
+          docker buildx inspect --bootstrap
+
+      - name: Start local registry
+        run: |
+          # renovate: datasource=docker depName=registry
+          docker run -d -p 5000:5000 --name registry registry:2@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+
+      - name: Scan image (before patching)
+        env:
+          SOURCE: ${{ steps.catalog.outputs.source }}
+        run: ./.github/scripts/scan-before.sh
+
+      - name: Prepare report for patch-image.sh
+        if: env.skip_patch != 'true'
+        run: |
+          mkdir -p reports
+          REPORT_NAME=$(echo "${{ steps.catalog.outputs.source }}" | sed 's/[\/:]/_/g')
+          cp before.json "reports/${REPORT_NAME}.json"
+
+      - name: Patch image
+        if: env.skip_patch != 'true'
+        env:
+          COPA_EXPERIMENTAL: "1"
+          PLATFORM: linux/amd64
+          SOURCE: ${{ steps.catalog.outputs.source }}
+          IMAGE_NAME: ${{ matrix.name }}
+          STAGING_REGISTRY: localhost:5000/regression
+          GO_VCS_URL: ${{ steps.catalog.outputs.go_vcs_url }}
+        run: ./.github/scripts/patch-image.sh
+
+      - name: Verify patched image is clean
+        if: env.skip_patch != 'true'
+        env:
+          IMAGE_LABEL: "${{ matrix.name }}:${{ matrix.tag }}"
+        run: |
+          SAFE_IMAGE=$(echo "${{ matrix.name }}" | tr '/: ' '---')
+          export PATCHED_IMAGE="localhost:5000/regression:${SAFE_IMAGE}-${{ matrix.tag }}-amd64"
+          ./.github/scripts/verify-patched.sh
+
+      - name: Upload scan reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: "copa-changed-${{ steps.safe-name.outputs.name }}-${{ matrix.tag }}"
+          path: |
+            before.json
+            after.json
+          retention-days: 7
+
   # ── Copa patching regression tests ──────────────────────────────────
   # Matrix lists catalog image names + pinned tags.
   # Image URL and goVcsUrl are read from copa-config.yaml at runtime.
