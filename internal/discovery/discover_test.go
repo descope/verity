@@ -47,7 +47,7 @@ func TestRepoPath(t *testing.T) {
 			want: "kube-state-metrics/kube-state-metrics",
 		},
 		{
-			name: "mirror gcr library image",
+			name: "mirror gcr org image",
 			ref:  "mirror.gcr.io/valkey/valkey:9.0.3",
 			want: "valkey/valkey",
 		},
