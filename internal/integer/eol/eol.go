@@ -41,7 +41,7 @@ var ProductMapping = map[string]string{
 	"dotnet":   "dotnet",
 	"php":      "php",
 	"nginx":    "nginx",
-	"redis":    "redis",
+	"valkey":   "valkey",
 	"postgres": "postgresql",
 	"mariadb":  "mariadb",
 	"erlang":   "erlang",

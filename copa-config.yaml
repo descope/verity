@@ -69,8 +69,16 @@ images:
   #  DATABASES
   # ============================================================================
 
-  - name: "library/redis"
-    image: "mirror.gcr.io/library/redis"
+  - name: "valkey/valkey"
+    image: "mirror.gcr.io/valkey/valkey"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "valkey/valkey-bundle"
+    image: "mirror.gcr.io/valkey/valkey-bundle"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -120,30 +128,6 @@ images:
       maxTags: 3
     goVcsUrl: "https://github.com/zalando/postgres-operator"
 
-  - name: "redis/redisinsight"
-    image: "mirror.gcr.io/redis/redisinsight"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  # -- Redis Operator (opstree) --
-  - name: "opstree/redis"
-    image: "quay.io/opstree/redis"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "opstree/redis-sentinel"
-    image: "quay.io/opstree/redis-sentinel"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
 
   # ============================================================================
   #  MESSAGING & STREAMING
