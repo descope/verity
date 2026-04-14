@@ -126,10 +126,16 @@ export const fullCatalog: FullCatalogCategory[] = [
     images: [
       { name: "postgres", source: "integer", variants: ["default", "dev"] },
       {
-        name: "library/redis",
-        label: "redis",
+        name: "valkey/valkey",
+        label: "valkey",
         source: "copa",
-        upstream: "mirror.gcr.io/library/redis",
+        upstream: "mirror.gcr.io/valkey/valkey",
+      },
+      {
+        name: "valkey/valkey-bundle",
+        label: "valkey-bundle",
+        source: "copa",
+        upstream: "mirror.gcr.io/valkey/valkey-bundle",
       },
       { name: "valkey", source: "integer" },
       {
@@ -178,36 +184,6 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "influxdb", source: "integer" },
       { name: "memcached", source: "integer" },
       { name: "pgbouncer", source: "integer" },
-      {
-        name: "redis/redisinsight",
-        label: "redisinsight",
-        source: "copa",
-        upstream: "mirror.gcr.io/redis/redisinsight",
-      },
-      {
-        name: "elastic/eck-operator",
-        label: "eck-operator",
-        source: "copa",
-        upstream: "mirror.gcr.io/elastic/eck-operator",
-      },
-      {
-        name: "zalando/postgres-operator",
-        label: "postgres-operator",
-        source: "copa",
-        upstream: "ghcr.io/zalando/postgres-operator",
-      },
-      {
-        name: "opstree/redis",
-        label: "Redis (OpsTree)",
-        source: "copa",
-        upstream: "quay.io/opstree/redis",
-      },
-      {
-        name: "opstree/redis-sentinel",
-        label: "Redis Sentinel (OpsTree)",
-        source: "copa",
-        upstream: "quay.io/opstree/redis-sentinel",
-      },
       { name: "minio", source: "integer" },
       { name: "minio-client", source: "integer" },
     ],

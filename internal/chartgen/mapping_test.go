@@ -44,8 +44,8 @@ func TestRepoPath(t *testing.T) {
 		},
 		{
 			name: "mirror gcr library image",
-			ref:  "mirror.gcr.io/library/redis:7.0",
-			want: "library/redis",
+			ref:  "mirror.gcr.io/valkey/valkey:9.0.3",
+			want: "valkey/valkey",
 		},
 		{
 			name: "gcr org image",

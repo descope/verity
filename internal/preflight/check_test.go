@@ -31,8 +31,8 @@ func TestExtractTag(t *testing.T) {
 
 func TestCheckCopaImage_FirstTime(t *testing.T) {
 	img := discovery.DiscoveredImage{
-		Name:   "nginx",
-		Source: "mirror.gcr.io/library/nginx:1.29.3",
+		Name:   "valkey",
+		Source: "mirror.gcr.io/valkey/valkey:9.0.3",
 	}
 	result := checkCopaImage(&img, Manifest{})
 
@@ -42,11 +42,11 @@ func TestCheckCopaImage_FirstTime(t *testing.T) {
 
 func TestCheckCopaImage_UpstreamChanged(t *testing.T) {
 	manifest := Manifest{
-		"nginx/1.29.3": {UpstreamDigest: "sha256:old", PatchedVulns: 0},
+		"valkey/9.0.3": {UpstreamDigest: "sha256:old-valkey", PatchedVulns: 0},
 	}
 	img := discovery.DiscoveredImage{
-		Name:   "nginx",
-		Source: "mirror.gcr.io/library/nginx:1.29.3",
+		Name:   "valkey",
+		Source: "mirror.gcr.io/valkey/valkey:9.0.3",
 	}
 
 	origFn := digestFn
@@ -60,11 +60,11 @@ func TestCheckCopaImage_UpstreamChanged(t *testing.T) {
 
 func TestCheckCopaImage_UnchangedWithVulns(t *testing.T) {
 	manifest := Manifest{
-		"nginx/1.29.3": {UpstreamDigest: testDigestSame, PatchedVulns: 5},
+		"valkey/9.0.3": {UpstreamDigest: testDigestSame, PatchedVulns: 5},
 	}
 	img := discovery.DiscoveredImage{
-		Name:   "nginx",
-		Source: "mirror.gcr.io/library/nginx:1.29.3",
+		Name:   "valkey",
+		Source: "mirror.gcr.io/valkey/valkey:9.0.3",
 	}
 
 	origFn := digestFn
@@ -96,8 +96,8 @@ func TestCheckCopaImage_UnchangedClean(t *testing.T) {
 
 func TestCheckCopaImage_DigestRef(t *testing.T) {
 	img := discovery.DiscoveredImage{
-		Name:   "nginx",
-		Source: "mirror.gcr.io/library/nginx@sha256:abc123",
+		Name:   "valkey",
+		Source: "mirror.gcr.io/valkey/valkey@sha256:abc123",
 	}
 	result := checkCopaImage(&img, Manifest{})
 
@@ -108,12 +108,12 @@ func TestCheckCopaImage_DigestRef(t *testing.T) {
 func TestFilterCopaImages_MixedResults(t *testing.T) {
 	images := []discovery.DiscoveredImage{
 		{Name: "nginx", Source: "mirror.gcr.io/library/nginx:1.29.3"},
-		{Name: "redis", Source: "mirror.gcr.io/library/redis:7.2.4"},
+		{Name: "valkey", Source: "mirror.gcr.io/valkey/valkey:9.0.3"},
 		{Name: "postgres", Source: "mirror.gcr.io/library/postgres:16.3"},
 	}
 	manifest := Manifest{
 		"nginx/1.29.3":  {UpstreamDigest: "sha256:same-nginx", PatchedVulns: 0},
-		"redis/7.2.4":   {UpstreamDigest: "sha256:old-redis", PatchedVulns: 0},
+		"valkey/9.0.3":  {UpstreamDigest: "sha256:old-valkey", PatchedVulns: 0},
 		"postgres/16.3": {UpstreamDigest: "sha256:same-pg", PatchedVulns: 2},
 	}
 
@@ -122,8 +122,8 @@ func TestFilterCopaImages_MixedResults(t *testing.T) {
 		switch ref {
 		case "mirror.gcr.io/library/nginx:1.29.3":
 			return "sha256:same-nginx", nil
-		case "mirror.gcr.io/library/redis:7.2.4":
-			return "sha256:new-redis", nil
+		case "mirror.gcr.io/valkey/valkey:9.0.3":
+			return "sha256:new-valkey", nil
 		case "mirror.gcr.io/library/postgres:16.3":
 			return "sha256:same-pg", nil
 		default:
@@ -139,7 +139,7 @@ func TestFilterCopaImages_MixedResults(t *testing.T) {
 	for i, img := range needed {
 		names[i] = img.Name
 	}
-	assert.ElementsMatch(t, []string{"redis", "postgres"}, names)
+	assert.ElementsMatch(t, []string{"valkey", "postgres"}, names)
 }
 
 func TestFilterCopaImages_WithManifestFetch(t *testing.T) {
@@ -167,11 +167,11 @@ func TestFilterCopaImages_WithManifestFetch(t *testing.T) {
 
 	images := []discovery.DiscoveredImage{
 		{Name: "nginx", Source: "mirror.gcr.io/library/nginx:1.29.3"},
-		{Name: "redis", Source: "mirror.gcr.io/library/redis:7.2.4"},
+		{Name: "valkey", Source: "mirror.gcr.io/valkey/valkey:9.0.3"},
 	}
 
 	needed, err := FilterCopaImages(images, "test/repo", "reports", "")
 	require.NoError(t, err)
 	assert.Len(t, needed, 1)
-	assert.Equal(t, "redis", needed[0].Name)
+	assert.Equal(t, "valkey", needed[0].Name)
 }

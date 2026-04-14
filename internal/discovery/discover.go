@@ -207,7 +207,7 @@ func discoverChartImages(chart config.ChartSpec, overrides map[string]config.Ove
 // e.g.:
 //
 //	"ghcr.io/kiwigrid/k8s-sidecar:1.28.0"                          → "kiwigrid/k8s-sidecar"
-//	"mirror.gcr.io/library/redis:7.0"                               → "library/redis"
+//	"mirror.gcr.io/valkey/valkey:9.0.3"                               → "valkey/valkey"
 //	"quay.io/prometheus/prometheus:v3.2.1"                           → "prometheus/prometheus"
 //	"ghcr.io/kubernetes/kube-state-metrics/kube-state-metrics:v2.10" → "kubernetes/kube-state-metrics/kube-state-metrics"
 //	"nginx:1.25"                                                     → "nginx"

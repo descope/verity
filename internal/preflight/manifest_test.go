@@ -47,7 +47,7 @@ func TestFetchManifest_NotFound(t *testing.T) {
 func TestFetchManifest_ValidManifest(t *testing.T) {
 	manifest := Manifest{
 		"nginx/1.29.3": {UpstreamDigest: "sha256:aaa", PatchedVulns: 0, LastPatched: "2026-03-07T00:00:00Z"},
-		"redis/7.2.4":  {UpstreamDigest: "sha256:bbb", PatchedVulns: 3, LastPatched: "2026-03-06T00:00:00Z"},
+		"valkey/9.0.3": {UpstreamDigest: "sha256:bbb", PatchedVulns: 3, LastPatched: "2026-03-06T00:00:00Z"},
 	}
 	data, err := json.Marshal(manifest)
 	require.NoError(t, err)
@@ -68,7 +68,7 @@ func TestFetchManifest_ValidManifest(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, m, 2)
 	assert.Equal(t, "sha256:aaa", m["nginx/1.29.3"].UpstreamDigest)
-	assert.Equal(t, 3, m["redis/7.2.4"].PatchedVulns)
+	assert.Equal(t, 3, m["valkey/9.0.3"].PatchedVulns)
 }
 
 func TestFetchManifest_APIError(t *testing.T) {
