@@ -430,7 +430,7 @@ func TestDiscover_StandaloneOnly(t *testing.T) {
 			{
 				Name:  "valkey",
 				Image: "mirror.gcr.io/valkey/valkey",
-				Tags:  config.TagStrategy{Strategy: "list", List: []string{"v7.0.5"}},
+				Tags:  config.TagStrategy{Strategy: "list", List: []string{"9.0.3"}},
 			},
 		},
 	}

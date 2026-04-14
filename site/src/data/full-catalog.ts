@@ -184,6 +184,18 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "influxdb", source: "integer" },
       { name: "memcached", source: "integer" },
       { name: "pgbouncer", source: "integer" },
+      {
+        name: "elastic/eck-operator",
+        label: "eck-operator",
+        source: "copa",
+        upstream: "mirror.gcr.io/elastic/eck-operator",
+      },
+      {
+        name: "zalando/postgres-operator",
+        label: "postgres-operator",
+        source: "copa",
+        upstream: "ghcr.io/zalando/postgres-operator",
+      },
       { name: "minio", source: "integer" },
       { name: "minio-client", source: "integer" },
     ],
