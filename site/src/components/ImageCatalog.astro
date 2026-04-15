@@ -102,6 +102,7 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary {
           <div>
             {category.images.map((image: FullCatalogImage) => {
               const vulnSummary = getVulnSummary(image);
+              const pullRef = `${REGISTRY}/${image.source === "integer" ? (image.integerName ?? image.name) : upstreamPath(image)}`;
               return (
                 <a
                   href={`${base}catalog/${image.name}/`}
@@ -155,12 +156,7 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary {
                     <SeverityBadges summary={vulnSummary} />
                   </div>
 
-                  <div class="text-xs text-verity-text-secondary font-mono truncate">
-                    {REGISTRY}/
-                    {image.source === "integer"
-                      ? (image.integerName ?? image.name)
-                      : upstreamPath(image)}
-                  </div>
+                  <div class="text-xs text-verity-text-secondary font-mono truncate">{pullRef}</div>
                 </a>
               );
             })}
