@@ -10,7 +10,7 @@ import SourceBadge from "../../components/SourceBadge.astro";
 import { catalog } from "../../lib/catalog";
 import type { SiteImage, IntegerImage, IntegerVersion, IntegerVariant } from "../../lib/catalog";
 import { getIntegerImage } from "../../data/integer-catalog";
-import { patchedRefToName } from "../../lib/refs";
+import { patchedRefToName, extractVersionFromRef } from "../../lib/refs";
 
 interface IntegerDataWithRegistry extends IntegerImage {
   registry: string;
@@ -48,13 +48,6 @@ function getDefaultVariant(variants: IntegerVariant[]): IntegerVariant | undefin
 function getUniqueVariantTypes(variants: IntegerVariant[]): string[] {
   return [...new Set(variants.map((v) => v.type))];
 }
-
-/** Extract version tag from an image reference, stripping -patched suffix. */
-function extractVersionFromRef(ref: string): string {
-  const tag = ref.split(":").pop() ?? "";
-  return tag.replace(/-patched$/, "");
-}
-
 export async function getStaticPaths() {
   const paths: { params: { name: string }; props: CatalogPageProps }[] = [];
 
@@ -65,16 +58,26 @@ export async function getStaticPaths() {
     )
   );
 
+  // Pre-compute Copa scan data grouped by image name (avoids O(n²) filter+sort per image)
+  const scanDataByName = new Map<string, SiteImage[]>();
+  for (const ci of catalog.images ?? []) {
+    const name = patchedRefToName(ci.patchedRef);
+    const list = scanDataByName.get(name) ?? [];
+    list.push(ci);
+    scanDataByName.set(name, list);
+  }
+  // Sort each group by version descending (latest first)
+  for (const [, entries] of scanDataByName) {
+    entries.sort((a, b) => {
+      const tagA = extractVersionFromRef(a.originalRef);
+      const tagB = extractVersionFromRef(b.originalRef);
+      return tagB.localeCompare(tagA, undefined, { numeric: true });
+    });
+  }
+
   for (const category of fullCatalog) {
     for (const image of category.images) {
-      const allScanData = (catalog.images?.filter((ci) => {
-        const name = patchedRefToName(ci.patchedRef);
-        return name === image.name;
-      }) ?? []).sort((a, b) => {
-        const tagA = (a.originalRef.split(':').pop() ?? '').replace(/-patched$/, '');
-        const tagB = (b.originalRef.split(':').pop() ?? '').replace(/-patched$/, '');
-        return tagB.localeCompare(tagA, undefined, { numeric: true });
-      });
+      const allScanData = scanDataByName.get(image.name) ?? [];
       const scanData = allScanData[0];
 
       // Fetch integer version data for integer source images

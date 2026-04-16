@@ -33,3 +33,15 @@ export function patchedRefToName(ref: string | undefined): string {
 
   return v;
 }
+
+/**
+ * Extract the upstream version from an image reference by taking the tag
+ * and stripping the `-patched` suffix.
+ *
+ * e.g. "docker.io/rabbitmqoperator/cluster-operator:2.19.1" → "2.19.1"
+ *      "ghcr.io/verity-org/nginx:1.29.3-patched"            → "1.29.3"
+ */
+export function extractVersionFromRef(ref: string): string {
+  const tag = ref.split(":").pop() ?? "";
+  return tag.replace(/-patched$/, "");
+}
