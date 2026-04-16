@@ -175,7 +175,7 @@ func TestDiscoverStandaloneImage_PerImageRegistryOverride(t *testing.T) {
 func TestDiscoverStandaloneImage_GoVcsUrl(t *testing.T) {
 	spec := &config.ImageSpec{
 		Name:           "rabbitmqoperator/cluster-operator",
-		Image:          "mirror.gcr.io/rabbitmqoperator/cluster-operator",
+		Image:          "ghcr.io/rabbitmq/cluster-operator",
 		Tags:           config.TagStrategy{Strategy: "list", List: []string{"2.19.0"}},
 		Platforms:      []string{"linux/amd64", "linux/arm64"},
 		GoVcsURL:       "https://github.com/rabbitmq/cluster-operator",
@@ -242,7 +242,7 @@ target:
   registry: ghcr.io/test-org
 images:
   - name: rabbitmqoperator/cluster-operator
-    image: mirror.gcr.io/rabbitmqoperator/cluster-operator
+    image: ghcr.io/rabbitmq/cluster-operator
     platforms: [linux/amd64, linux/arm64]
     tags:
       strategy: list
