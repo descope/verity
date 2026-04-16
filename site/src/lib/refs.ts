@@ -36,12 +36,19 @@ export function patchedRefToName(ref: string | undefined): string {
 
 /**
  * Extract the upstream version from an image reference by taking the tag
- * and stripping the `-patched` suffix.
+ * and stripping the `-patched` suffix. Digest-pinned refs (`@sha256:...`)
+ * are stripped first so the digest is never mistaken for a tag.
  *
  * e.g. "docker.io/rabbitmqoperator/cluster-operator:2.19.1" → "2.19.1"
  *      "ghcr.io/verity-org/nginx:1.29.3-patched"            → "1.29.3"
+ *      "gcr.io/distroless/static@sha256:abc123"             → ""
  */
 export function extractVersionFromRef(ref: string): string {
-  const tag = ref.split(":").pop() ?? "";
+  let v = ref;
+  const at = v.indexOf("@");
+  if (at !== -1) v = v.slice(0, at);
+  const lastColon = v.lastIndexOf(":");
+  if (lastColon < 0) return "";
+  const tag = v.slice(lastColon + 1);
   return tag.replace(/-patched$/, "");
 }
