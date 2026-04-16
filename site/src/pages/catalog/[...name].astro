@@ -10,7 +10,7 @@ import SourceBadge from "../../components/SourceBadge.astro";
 import { catalog } from "../../lib/catalog";
 import type { SiteImage, IntegerImage, IntegerVersion, IntegerVariant } from "../../lib/catalog";
 import { getIntegerImage } from "../../data/integer-catalog";
-import { patchedRefToName } from "../../lib/refs";
+import { patchedRefToName, extractVersionFromRef } from "../../lib/refs";
 
 interface IntegerDataWithRegistry extends IntegerImage {
   registry: string;
@@ -20,6 +20,7 @@ interface CatalogPageProps {
   image: FullCatalogImage;
   category: FullCatalogCategory;
   scanData?: SiteImage;
+  allScanData: SiteImage[];
   integerData?: IntegerDataWithRegistry;
   hardenedEquivalent?: string;
 }
@@ -47,7 +48,6 @@ function getDefaultVariant(variants: IntegerVariant[]): IntegerVariant | undefin
 function getUniqueVariantTypes(variants: IntegerVariant[]): string[] {
   return [...new Set(variants.map((v) => v.type))];
 }
-
 export async function getStaticPaths() {
   const paths: { params: { name: string }; props: CatalogPageProps }[] = [];
 
@@ -58,12 +58,27 @@ export async function getStaticPaths() {
     )
   );
 
+  // Pre-compute Copa scan data grouped by image name (avoids O(n²) filter+sort per image)
+  const scanDataByName = new Map<string, SiteImage[]>();
+  for (const ci of catalog.images ?? []) {
+    const name = patchedRefToName(ci.patchedRef);
+    const list = scanDataByName.get(name) ?? [];
+    list.push(ci);
+    scanDataByName.set(name, list);
+  }
+  // Sort each group by version descending (latest first)
+  for (const [, entries] of scanDataByName) {
+    entries.sort((a, b) => {
+      const tagA = extractVersionFromRef(a.originalRef);
+      const tagB = extractVersionFromRef(b.originalRef);
+      return tagB.localeCompare(tagA, undefined, { numeric: true });
+    });
+  }
+
   for (const category of fullCatalog) {
     for (const image of category.images) {
-      const scanData = catalog.images?.find((ci) => {
-        const name = patchedRefToName(ci.patchedRef);
-        return name === image.name;
-      });
+      const allScanData = scanDataByName.get(image.name) ?? [];
+      const scanData = allScanData[0];
 
       // Fetch integer version data for integer source images
       let integerData: IntegerDataWithRegistry | undefined;
@@ -79,7 +94,7 @@ export async function getStaticPaths() {
 
       paths.push({
         params: { name: image.name },
-        props: { image, category, scanData, integerData, hardenedEquivalent },
+        props: { image, category, scanData, allScanData, integerData, hardenedEquivalent },
       });
     }
   }
@@ -87,7 +102,7 @@ export async function getStaticPaths() {
   return paths;
 }
 
-const { image, category, scanData, integerData, hardenedEquivalent } = Astro.props;
+const { image, category, scanData, allScanData, integerData, hardenedEquivalent } = Astro.props;
 const base = import.meta.env.BASE_URL;
 const pullRef = scanData?.patchedRef
   ? stripTag(scanData.patchedRef)
@@ -168,6 +183,56 @@ const hasFips =
               <code class="text-xs text-verity-text-muted">{variant.ref}</code>
             </div>
           ))}
+        </div>
+      </div>
+    )
+  }
+  {
+    image.source === "copa" && allScanData.length > 0 && (
+      <div class="bg-verity-surface border border-verity-border rounded-lg p-4 mb-6">
+        <div class="text-xs text-verity-text-secondary uppercase tracking-wide font-medium mb-3">
+          Available Versions
+        </div>
+        <div class="space-y-3">
+          {allScanData.map((scan, idx) => {
+            const version = extractVersionFromRef(scan.originalRef);
+            const isLatest = idx === 0;
+            const vulnsFixed = scan.beforeVulns.total - scan.afterVulns.total;
+            const fullRef = scan.patchedRef;
+            return (
+              <div class="flex items-start justify-between gap-4 p-3 rounded-lg border border-verity-border bg-verity-void/50">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="font-mono text-sm font-medium text-verity-text-primary">
+                      {version}
+                    </span>
+                    {isLatest && (
+                      <span class="text-xs px-1.5 py-0.5 rounded bg-green-950/40 text-green-400 border border-green-800/50 font-medium">
+                        latest
+                      </span>
+                    )}
+                    {vulnsFixed > 0 && (
+                      <span class="text-xs px-1.5 py-0.5 rounded bg-verity-nucleus/10 text-verity-nucleus border border-verity-nucleus/30 font-medium">
+                        {vulnsFixed} CVEs fixed
+                      </span>
+                    )}
+                    {scan.afterVulns.total > 0 && (
+                      <span class="text-xs px-1.5 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-800/50 font-medium">
+                        {scan.afterVulns.total} remaining
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    class="tag-copy-btn text-xs text-verity-text-muted font-mono break-all border border-verity-border rounded px-1.5 py-0.5 hover:border-verity-nucleus hover:text-verity-nucleus transition-colors cursor-pointer text-left"
+                    data-copy={fullRef}
+                    title={`Click to copy: ${fullRef}`}
+                  >
+                    {fullRef}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     )
@@ -482,6 +547,16 @@ const hasFips =
         <div>
           <div class="text-verity-text-muted mb-1">Upstream</div>
           <div class="text-verity-text-primary font-mono text-xs">{image.upstream}</div>
+        </div>
+      )
+    }
+    {
+      image.source === "copa" && scanData && (
+        <div>
+          <div class="text-verity-text-muted mb-1">Version</div>
+          <div class="text-verity-text-primary font-mono text-xs">
+            {extractVersionFromRef(scanData.originalRef)}
+          </div>
         </div>
       )
     }
