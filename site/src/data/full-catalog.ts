@@ -210,7 +210,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         name: "rabbitmqoperator/cluster-operator",
         label: "rabbitmq-cluster-operator",
         source: "copa",
-        upstream: "mirror.gcr.io/rabbitmqoperator/cluster-operator",
+        upstream: "ghcr.io/rabbitmq/cluster-operator",
       },
       {
         name: "rabbitmqoperator/messaging-topology-operator",
