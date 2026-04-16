@@ -62,8 +62,8 @@ func TestResolveValuePaths(t *testing.T) {
   tag: "1.25"
 `,
 			mappings: []ImageMapping{{
-				OriginalRepo: "redis",
-				PatchedRepo:  "ghcr.io/verity-org/library/redis",
+				OriginalRepo: "valkey",
+				PatchedRepo:  "ghcr.io/verity-org/valkey/valkey",
 				PatchedTag:   "7.0",
 			}},
 			want: []ValueOverride{},
@@ -76,7 +76,7 @@ func TestResolveValuePaths(t *testing.T) {
     tag: "1.25"
 metrics:
   image:
-    repository: redis
+    repository: valkey
     tag: "7.2"
 `,
 			mappings: []ImageMapping{
@@ -86,8 +86,8 @@ metrics:
 					PatchedTag:   "1.25",
 				},
 				{
-					OriginalRepo: "redis",
-					PatchedRepo:  "ghcr.io/verity-org/library/redis",
+					OriginalRepo: "valkey",
+					PatchedRepo:  "ghcr.io/verity-org/valkey/valkey",
 					PatchedTag:   "7.2",
 				},
 			},
@@ -99,7 +99,7 @@ metrics:
 				},
 				{
 					Path:       "metrics.image",
-					Repository: "ghcr.io/verity-org/library/redis",
+					Repository: "ghcr.io/verity-org/valkey/valkey",
 					Tag:        "7.2",
 				},
 			},
@@ -210,12 +210,12 @@ func TestWalkValues(t *testing.T) {
   tag: "1.25"
 server:
   image:
-    repository: redis
+    repository: valkey
     tag: "7.2"
 `,
 			want: []repoTagPair{
 				{Path: "image", Repo: "nginx", HasTag: true},
-				{Path: "server.image", Repo: "redis", HasTag: true},
+				{Path: "server.image", Repo: "valkey", HasTag: true},
 			},
 		},
 		{
@@ -287,7 +287,7 @@ func TestMatchesRepo(t *testing.T) {
 		{name: "exact", imageRepo: "nginx", candidate: "nginx", want: true},
 		{name: "suffix", imageRepo: "docker.io/library/nginx", candidate: "nginx", want: true},
 		{name: "reverse suffix", imageRepo: "nginx", candidate: "docker.io/library/nginx", want: true},
-		{name: "no match", imageRepo: "redis", candidate: "nginx", want: false},
+		{name: "no match", imageRepo: "valkey", candidate: "nginx", want: false},
 		{name: "partial non suffix", imageRepo: "inx", candidate: "nginx", want: false},
 	}
 

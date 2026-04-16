@@ -34,7 +34,7 @@ NON_GO=$(jq '[.Results[]? | select(.Type != "gobinary") | select(.Vulnerabilitie
 }
 
 if [ "$NON_GO" -ne 0 ]; then
-  echo "::error::Copa left ${NON_GO} fixable non-Go CVEs unpatched for ${IMAGE_LABEL}"
+  echo "::error::Copa left ${NON_GO} fixable non-Go CVEs unpatched for ${IMAGE_LABEL} (${NON_GO} non-Go, ${GO} Go)"
   exit 1
 fi
 

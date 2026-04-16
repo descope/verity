@@ -45,7 +45,7 @@ func TestUpdateManifest_NewManifest(t *testing.T) {
 
 func TestUpdateManifest_ExistingManifest(t *testing.T) {
 	existing := Manifest{
-		"redis/7.2.4": {UpstreamDigest: "sha256:old", PatchedVulns: 1},
+		"valkey/9.0.3": {UpstreamDigest: "sha256:old", PatchedVulns: 1},
 	}
 	data, err := json.Marshal(existing)
 	require.NoError(t, err)
@@ -88,7 +88,7 @@ func TestUpdateManifest_ExistingManifest(t *testing.T) {
 	require.NoError(t, err)
 	var merged Manifest
 	require.NoError(t, json.Unmarshal(decoded, &merged))
-	assert.Contains(t, merged, "redis/7.2.4")
+	assert.Contains(t, merged, "valkey/9.0.3")
 	assert.Contains(t, merged, "nginx/1.29.3")
 	assert.Equal(t, "sha256:new", merged["nginx/1.29.3"].UpstreamDigest)
 }

@@ -47,9 +47,9 @@ func TestRepoPath(t *testing.T) {
 			want: "kube-state-metrics/kube-state-metrics",
 		},
 		{
-			name: "mirror gcr library image",
-			ref:  "mirror.gcr.io/library/redis:7.0",
-			want: "library/redis",
+			name: "mirror gcr org image",
+			ref:  "mirror.gcr.io/valkey/valkey:9.0.3",
+			want: "valkey/valkey",
 		},
 		{
 			name: "gcr org image",
@@ -428,9 +428,9 @@ func TestDiscover_StandaloneOnly(t *testing.T) {
 				Tags:  config.TagStrategy{Strategy: "list", List: []string{"1.25.3", "1.26.0"}},
 			},
 			{
-				Name:  "redis",
-				Image: "quay.io/opstree/redis",
-				Tags:  config.TagStrategy{Strategy: "list", List: []string{"v7.0.5"}},
+				Name:  "valkey",
+				Image: "mirror.gcr.io/valkey/valkey",
+				Tags:  config.TagStrategy{Strategy: "list", List: []string{"9.0.3"}},
 			},
 		},
 	}
