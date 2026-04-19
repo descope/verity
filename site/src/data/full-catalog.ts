@@ -125,18 +125,6 @@ export const fullCatalog: FullCatalogCategory[] = [
     label: "Databases & Caching",
     images: [
       { name: "postgres", source: "integer", variants: ["default", "dev"] },
-      {
-        name: "valkey/valkey",
-        label: "valkey",
-        source: "copa",
-        upstream: "mirror.gcr.io/valkey/valkey",
-      },
-      {
-        name: "valkey/valkey-bundle",
-        label: "valkey-bundle",
-        source: "copa",
-        upstream: "mirror.gcr.io/valkey/valkey-bundle",
-      },
       { name: "valkey", source: "integer" },
       {
         name: "mongodb/mongodb-community-server",
@@ -198,6 +186,13 @@ export const fullCatalog: FullCatalogCategory[] = [
       },
       { name: "minio", source: "integer" },
       { name: "minio-client", source: "integer" },
+      { name: "library/mysql", label: "mysql", source: "copa", upstream: "mirror.gcr.io/library/mysql" },
+      { name: "library/cassandra", label: "cassandra", source: "copa", upstream: "mirror.gcr.io/library/cassandra" },
+      { name: "library/neo4j", label: "neo4j", source: "copa", upstream: "mirror.gcr.io/library/neo4j" },
+      { name: "library/couchdb", label: "couchdb", source: "copa", upstream: "mirror.gcr.io/library/couchdb" },
+      { name: "library/solr", label: "solr", source: "copa", upstream: "mirror.gcr.io/library/solr" },
+      { name: "timescale/timescaledb", label: "timescaledb", source: "copa", upstream: "docker.io/timescale/timescaledb" },
+      { name: "library/mongo-express", label: "mongo-express", source: "copa", upstream: "mirror.gcr.io/library/mongo-express" },
     ],
   },
 
@@ -732,6 +727,16 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "ghcr.io/kubeflow/spark-operator",
       },
       { name: "mlflow/mlflow", label: "mlflow", source: "copa", upstream: "ghcr.io/mlflow/mlflow" },
+      { name: "pytorch/pytorch", label: "pytorch", source: "copa", upstream: "docker.io/pytorch/pytorch" },
+      { name: "tensorflow/serving", label: "tensorflow-serving", source: "copa", upstream: "docker.io/tensorflow/serving" },
+      {
+        name: "jupyter/base-notebook",
+        label: "jupyter",
+        source: "copa",
+        upstream: "quay.io/jupyter/base-notebook",
+      },
+      { name: "ollama/ollama", label: "ollama", source: "copa", upstream: "docker.io/ollama/ollama" },
+      { name: "vllm/vllm-openai", label: "vllm", source: "copa", upstream: "docker.io/vllm/vllm-openai" },
     ],
   },
 
