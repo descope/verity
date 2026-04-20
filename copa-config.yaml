@@ -112,60 +112,32 @@ images:
       maxTags: 3
     goVcsUrl: "https://github.com/zalando/postgres-operator"
 
-  - name: "library/mysql"
-    image: "mirror.gcr.io/library/mysql"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "library/cassandra"
-    image: "mirror.gcr.io/library/cassandra"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "library/neo4j"
-    image: "mirror.gcr.io/library/neo4j"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "library/couchdb"
-    image: "mirror.gcr.io/library/couchdb"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
+  # solr: use -slim tag (Debian slim). Default tags carry 45+ unfixable CVEs.
   - name: "library/solr"
     image: "mirror.gcr.io/library/solr"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
+      pattern: '^\d+\.\d+\.\d+-slim$'
       maxTags: 3
 
+  # timescaledb: use -pg17-oss tag (Alpine-based OSS, no Bitnami wrapper).
   - name: "timescale/timescaledb"
-    image: "docker.io/timescale/timescaledb"
+    image: "mirror.gcr.io/timescale/timescaledb"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+-pg\d+$'
+      pattern: '^\d+\.\d+\.\d+-pg17-oss$'
       maxTags: 3
 
+  # mongo-express: use alpine variant. Default Alpine 3.11 base breaks Copa's
+  # Node.js patching; alpine3.19+ works cleanly.
   - name: "library/mongo-express"
     image: "mirror.gcr.io/library/mongo-express"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
+      pattern: '^\d+\.\d+\.\d+-\d+-alpine3\.\d+$'
       maxTags: 3
 
   # ============================================================================
@@ -581,42 +553,20 @@ images:
       pattern: '^v\d+\.\d+\.\d+$'
       maxTags: 3
 
-  - name: "pytorch/pytorch"
-    image: "docker.io/pytorch/pytorch"
-    platforms: ["linux/amd64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+-cuda.*-runtime$'
-      maxTags: 2
-
   - name: "tensorflow/serving"
-    image: "docker.io/tensorflow/serving"
+    image: "mirror.gcr.io/tensorflow/serving"
     platforms: ["linux/amd64"]
     tags:
       strategy: "pattern"
       pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
-
-  - name: "jupyter/base-notebook"
-    image: "quay.io/jupyter/base-notebook"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d{4}-\d{2}-\d{2}$'
-      maxTags: 2
 
   - name: "ollama/ollama"
-    image: "docker.io/ollama/ollama"
+    image: "mirror.gcr.io/ollama/ollama"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
       pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
-
-  - name: "vllm/vllm-openai"
-    image: "docker.io/vllm/vllm-openai"
-    platforms: ["linux/amd64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 2
+    goVcsUrl: "https://github.com/ollama/ollama"
+    goVcsTagPrefix: "v"
