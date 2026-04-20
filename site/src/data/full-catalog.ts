@@ -192,18 +192,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         source: "copa",
         upstream: "mirror.gcr.io/library/solr",
       },
-      {
-        name: "timescale/timescaledb",
-        label: "timescaledb",
-        source: "copa",
-        upstream: "mirror.gcr.io/timescale/timescaledb",
-      },
-      {
-        name: "library/mongo-express",
-        label: "mongo-express",
-        source: "copa",
-        upstream: "mirror.gcr.io/library/mongo-express",
-      },
     ],
   },
 
