@@ -130,7 +130,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         name: "mongodb/mongodb-community-server",
         label: "mongodb",
         source: "copa",
-        upstream: "docker.io/mongodb/mongodb-community-server",
+        upstream: "quay.io/mongodb/mongodb-community-server",
       },
       { name: "mariadb", source: "integer" },
       {
@@ -501,7 +501,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         name: "victoriametrics/victoria-logs",
         label: "victoria-logs",
         source: "copa",
-        upstream: "docker.io/victoriametrics/victoria-logs",
+        upstream: "quay.io/victoriametrics/victoria-logs",
       },
     ],
   },
