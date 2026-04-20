@@ -12,143 +12,232 @@ const exampleImage =
   catalog.images?.find((img) => img.beforeVulns.total - img.afterVulns.total > 0) ??
   catalog.images?.[0];
 const exampleRef = exampleImage?.patchedRef ?? "ghcr.io/verity-org/prometheus/prometheus:v3.9.1";
+const pullCmd = `docker pull ${exampleRef}`;
+
+const pipelineSteps = [
+  { n: "01", t: "Discover" },
+  { n: "02", t: "Scan" },
+  { n: "03", t: "Patch", active: true },
+  { n: "04", t: "Sign" },
+  { n: "05", t: "Publish" },
+];
 ---
 
-<div class="mb-12">
-  <h1 class="text-4xl font-bold mb-6 tracking-[0.3em]">VERITY</h1>
+<section class="relative mb-16 -mt-8 pt-16 pb-8">
+  <div
+    class="absolute inset-x-0 top-0 h-[480px] pointer-events-none"
+    style="background: var(--grad-glow-radial);"
+  >
+  </div>
 
-  <div class="bg-verity-surface border-l-4 border-verity-nucleus rounded-r-lg p-6 mb-8">
-    <p class="text-verity-text-primary text-base leading-relaxed mb-3">
-      Container images ship with packages — OS and application-level — that accumulate CVEs daily.
-      Upstream maintainers patch on their own schedule — if at all. That leaves you choosing between
-      manually rebuilding every image or running known-vulnerable containers in production.
-    </p>
-    <p class="text-verity-nucleus text-base leading-relaxed font-medium">
-      Verity eliminates that trade-off. It continuously scans images, patches them in-place with <a
+  <div class="relative">
+    <div class="text-[10px] tracking-[0.25em] text-verity-text-muted uppercase mb-7">
+      SELF-MAINTAINING REGISTRY · PATCHED DAILY · 02:00 UTC
+    </div>
+
+    <h1
+      class="text-4xl sm:text-5xl lg:text-[52px] leading-[1.15] tracking-[0.12em] text-verity-text uppercase font-normal mb-6"
+    >
+      CONTAINER IMAGES<br />
+      <span class="text-verity-nucleus" style="text-shadow: 0 0 24px rgba(0,240,204,0.25);"
+        >PATCHED IN-PLACE,</span
+      ><br />
+      SIGNED &amp; ATTESTED.
+    </h1>
+
+    <p class="text-[15px] leading-[1.7] text-verity-text max-w-[640px] mb-8">
+      Verity scans upstream container images for fixable CVEs, patches their OS packages with <a
         href="https://github.com/project-copacetic/copacetic"
-        class="underline decoration-verity-orbit hover:text-verity-teal-light transition-colors"
+        class="text-verity-nucleus hover:[text-shadow:0_0_8px_rgba(0,240,204,0.5)] transition-colors underline decoration-verity-orbit"
         >Copa</a
-      > (no Dockerfile rebuild), and publishes signed, attested, drop-in replacements.
+      > — no Dockerfile rebuild — and publishes signed, attested, drop-in replacements to <code
+        class="font-[var(--font-code)] bg-verity-surface border border-verity-border rounded-sm px-1.5 py-0.5 text-[13px] text-verity-nucleus"
+        >ghcr.io/verity-org</code
+      >.
     </p>
-  </div>
 
-  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
-    <div
-      class="bg-verity-surface border border-verity-border rounded-lg p-4 text-center hover:border-verity-orbit transition-colors"
-    >
-      <div class="text-2xl font-bold text-verity-text-primary">{totalImages}</div>
-      <div class="text-sm text-verity-text-secondary tracking-wider uppercase">Images</div>
+    <div class="flex flex-wrap gap-3 mb-10">
+      <a
+        href="#catalog"
+        class="inline-flex items-center text-xs tracking-[0.12em] uppercase px-5 py-3 rounded-md bg-verity-nucleus text-[#002820] shadow-[0_0_24px_rgba(0,240,204,0.25)] hover:bg-[#33FFD6] active:bg-verity-orbit active:shadow-none transition-all duration-[180ms]"
+      >
+        Browse Catalog →
+      </a>
+      <a
+        href="https://github.com/verity-org/verity"
+        class="inline-flex items-center text-xs tracking-[0.12em] uppercase px-5 py-3 rounded-md bg-transparent text-verity-text border border-verity-border-2 hover:border-verity-nucleus hover:text-verity-nucleus transition-colors duration-[180ms]"
+      >
+        View on GitHub
+      </a>
     </div>
-    <div
-      class="bg-verity-surface border border-verity-border rounded-lg p-4 text-center hover:border-verity-orbit transition-colors"
-    >
-      <div class="text-2xl font-bold text-verity-text-primary">{totalCategories}</div>
-      <div class="text-sm text-verity-text-secondary tracking-wider uppercase">Categories</div>
-    </div>
-    <div
-      class="bg-verity-surface border border-verity-border rounded-lg p-4 text-center hover:border-verity-orbit transition-colors"
-    >
-      <div class="text-lg font-bold text-verity-text-primary">amd64 + arm64</div>
-      <div class="text-sm text-verity-text-secondary tracking-wider uppercase">Platforms</div>
-    </div>
-    <div
-      class="bg-verity-surface border border-verity-nucleus rounded-lg p-4 text-center hover:border-verity-teal-light transition-colors"
-    >
-      <div class="text-2xl font-bold text-verity-nucleus">FIPS</div>
-      <div class="text-sm text-verity-nucleus tracking-wider uppercase opacity-80">Available</div>
-    </div>
-  </div>
 
-  <div class="grid md:grid-cols-2 gap-6 mb-4">
-    <div class="bg-verity-surface border border-verity-border rounded-lg p-5">
-      <h2 class="text-sm font-semibold text-verity-text-primary tracking-wider uppercase mb-4">
-        How it works
-      </h2>
-      <div class="space-y-3 text-sm">
-        <div class="flex items-start gap-3">
-          <span class="text-verity-nucleus font-bold shrink-0 w-5 text-right">1</span>
-          <div>
-            <span class="text-verity-text-primary font-medium">Discover</span>
-            <span class="text-verity-text-muted">
-              — images from Helm charts and copa-config.yaml</span
+    <div class="bg-black border border-verity-border rounded overflow-hidden max-w-[780px] mb-10">
+      <div
+        class="bg-verity-surface border-b border-verity-border px-3.5 py-2 flex items-center justify-between"
+      >
+        <span class="text-[10px] tracking-[0.12em] uppercase text-verity-text-muted">
+          $ pull a patched image
+        </span>
+        <CopyButton text={pullCmd} />
+      </div>
+      <pre
+        class="m-0 p-4 font-[var(--font-code)] text-[13px] text-verity-text-primary overflow-auto"><span class="text-verity-nucleus mr-2">$</span>{pullCmd}</pre>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-y-2">
+      {
+        pipelineSteps.map((step, i) => (
+          <>
+            <div
+              class:list={[
+                "border rounded px-4 py-3 min-w-[120px] text-center transition-all duration-[180ms]",
+                step.active
+                  ? "border-verity-nucleus bg-verity-surface shadow-[0_0_20px_rgba(0,240,204,0.25)]"
+                  : "border-verity-border-2 bg-verity-surface",
+              ]}
             >
-          </div>
-        </div>
-        <div class="flex items-start gap-3">
-          <span class="text-verity-nucleus font-bold shrink-0 w-5 text-right">2</span>
-          <div>
-            <span class="text-verity-text-primary font-medium">Scan</span>
-            <span class="text-verity-text-muted"> — Trivy detects known CVEs</span>
-          </div>
-        </div>
-        <div class="flex items-start gap-3">
-          <span class="text-verity-nucleus font-bold shrink-0 w-5 text-right">3</span>
-          <div>
-            <span class="text-verity-text-primary font-medium">Patch</span>
-            <span class="text-verity-text-muted"> — Copa fixes packages in-place (no rebuild)</span>
-          </div>
-        </div>
-        <div class="flex items-start gap-3">
-          <span class="text-verity-nucleus font-bold shrink-0 w-5 text-right">4</span>
-          <div>
-            <span class="text-verity-text-primary font-medium">Sign</span>
-            <span class="text-verity-text-muted"> — cosign + SLSA L3 + SBOM attestations</span>
-          </div>
-        </div>
-        <div class="flex items-start gap-3">
-          <span class="text-verity-nucleus font-bold shrink-0 w-5 text-right">5</span>
-          <div>
-            <span class="text-verity-text-primary font-medium">Publish</span>
-            <span class="text-verity-text-muted"> — pushed to </span>
-            <code class="text-verity-text-primary text-xs">ghcr.io/verity-org</code>
-          </div>
-        </div>
-        <div class="mt-4 pt-3 border-t border-verity-border text-xs text-verity-text-muted">
-          Runs daily at 02:00 UTC and on every config change.
-          <a
-            href="https://github.com/verity-org/verity"
-            class="text-verity-orbit hover:text-verity-nucleus transition-colors underline ml-1"
-            >Source</a
+              <span class="block text-[9px] tracking-[0.25em] text-verity-text-muted">
+                {step.n}
+              </span>
+              <span
+                class:list={[
+                  "block text-xs tracking-[0.12em] uppercase mt-1",
+                  step.active ? "text-verity-nucleus" : "text-verity-text",
+                ]}
+              >
+                {step.t}
+              </span>
+            </div>
+            {i < pipelineSteps.length - 1 && (
+              <span class="text-verity-nucleus px-2.5 text-base">→</span>
+            )}
+          </>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<section class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10">
+  <div
+    class="bg-verity-surface border border-verity-border rounded p-4 text-center hover:border-verity-border-2 hover:bg-verity-surface-2 transition-colors"
+  >
+    <div class="text-2xl text-verity-text">{totalImages}</div>
+    <div class="text-[10px] tracking-[0.25em] text-verity-text-muted uppercase mt-1">Images</div>
+  </div>
+  <div
+    class="bg-verity-surface border border-verity-border rounded p-4 text-center hover:border-verity-border-2 hover:bg-verity-surface-2 transition-colors"
+  >
+    <div class="text-2xl text-verity-text">{totalCategories}</div>
+    <div class="text-[10px] tracking-[0.25em] text-verity-text-muted uppercase mt-1">
+      Categories
+    </div>
+  </div>
+  <div
+    class="bg-verity-surface border border-verity-border rounded p-4 text-center hover:border-verity-border-2 hover:bg-verity-surface-2 transition-colors"
+  >
+    <div class="text-base text-verity-text tracking-[0.04em]">amd64 + arm64</div>
+    <div class="text-[10px] tracking-[0.25em] text-verity-text-muted uppercase mt-1">Platforms</div>
+  </div>
+  <div
+    class="bg-[rgba(0,240,204,0.06)] border border-verity-nucleus rounded p-4 text-center hover:shadow-[0_0_20px_rgba(0,240,204,0.2)] transition-all"
+  >
+    <div class="text-2xl text-verity-nucleus">FIPS</div>
+    <div class="text-[10px] tracking-[0.25em] text-verity-nucleus uppercase mt-1 opacity-90">
+      Available
+    </div>
+  </div>
+</section>
+
+<section class="grid md:grid-cols-2 gap-4 mb-4">
+  <div class="bg-verity-surface border border-verity-border rounded p-5">
+    <h2 class="text-[10px] tracking-[0.25em] text-verity-text-muted uppercase mb-4">
+      How it works
+    </h2>
+    <div class="space-y-3 text-sm">
+      <div class="flex items-start gap-3">
+        <span class="text-verity-nucleus shrink-0 w-5 text-right">1</span>
+        <div>
+          <span class="text-verity-text">Discover</span>
+          <span class="text-verity-text-muted">
+            — images from Helm charts and copa-config.yaml</span
           >
         </div>
       </div>
-    </div>
-
-    <div class="bg-verity-surface border border-verity-border rounded-lg p-5">
-      <h2 class="text-sm font-semibold text-verity-text-primary tracking-wider uppercase mb-4">
-        Use a patched image
-      </h2>
-      <p class="text-sm text-verity-text-muted mb-3">Replace your image reference. That's it.</p>
-      <div
-        class="bg-verity-void border border-verity-border rounded p-3 font-mono text-xs text-verity-text-primary overflow-x-auto mb-3"
-      >
-        <div class="text-verity-text-muted"># Pull a patched image</div>
-        <div>docker pull {exampleRef}</div>
+      <div class="flex items-start gap-3">
+        <span class="text-verity-nucleus shrink-0 w-5 text-right">2</span>
+        <div>
+          <span class="text-verity-text">Scan</span>
+          <span class="text-verity-text-muted"> — Trivy detects known CVEs</span>
+        </div>
       </div>
-      <div class="flex items-center gap-2">
-        <CopyButton text={`docker pull ${exampleRef}`} />
+      <div class="flex items-start gap-3">
+        <span class="text-verity-nucleus shrink-0 w-5 text-right">3</span>
+        <div>
+          <span class="text-verity-text">Patch</span>
+          <span class="text-verity-text-muted"> — Copa fixes packages in-place (no rebuild)</span>
+        </div>
       </div>
-      <div class="mt-4 pt-3 border-t border-verity-border flex items-center justify-between">
-        <span class="text-xs text-verity-text-muted"> Every image is signed and attested. </span>
+      <div class="flex items-start gap-3">
+        <span class="text-verity-nucleus shrink-0 w-5 text-right">4</span>
+        <div>
+          <span class="text-verity-text">Sign</span>
+          <span class="text-verity-text-muted"> — cosign + SLSA L3 + SBOM attestations</span>
+        </div>
+      </div>
+      <div class="flex items-start gap-3">
+        <span class="text-verity-nucleus shrink-0 w-5 text-right">5</span>
+        <div>
+          <span class="text-verity-text">Publish</span>
+          <span class="text-verity-text-muted"> — pushed to </span>
+          <code class="text-verity-text-primary text-xs">ghcr.io/verity-org</code>
+        </div>
+      </div>
+      <div class="mt-4 pt-3 border-t border-verity-border text-xs text-verity-text-muted">
+        Runs daily at 02:00 UTC and on every config change.
         <a
-          href={`${base}compliance/`}
-          class="text-xs text-verity-orbit hover:text-verity-nucleus transition-colors underline"
+          href="https://github.com/verity-org/verity"
+          class="text-verity-orbit hover:text-verity-nucleus transition-colors underline ml-1"
+          >Source</a
         >
-          Compliance details
-        </a>
       </div>
     </div>
   </div>
 
-  <div
-    class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mt-6 text-xs text-verity-text-muted"
-  >
-    <span>{copaCount} Copa-patched upstream images</span>
-    <span class="text-verity-border">|</span>
-    <span>{integerCount} Wolfi-based hardened images</span>
-    <span class="text-verity-border">|</span>
-    <span>{chartCount} Helm wrapper {chartCount === 1 ? "chart" : "charts"}</span>
-    <span class="text-verity-border">|</span>
-    <span>cosign signed + SLSA L3 + CycloneDX SBOM</span>
+  <div class="bg-verity-surface border border-verity-border rounded p-5">
+    <h2 class="text-[10px] tracking-[0.25em] text-verity-text-muted uppercase mb-4">
+      Use a patched image
+    </h2>
+    <p class="text-sm text-verity-text-muted mb-3">Replace your image reference. That's it.</p>
+    <div
+      class="bg-verity-void border border-verity-border rounded p-3 font-mono text-xs text-verity-text-primary overflow-x-auto mb-3"
+    >
+      <div class="text-verity-text-muted"># Pull a patched image</div>
+      <div>docker pull {exampleRef}</div>
+    </div>
+    <div class="flex items-center gap-2">
+      <CopyButton text={pullCmd} />
+    </div>
+    <div class="mt-4 pt-3 border-t border-verity-border flex items-center justify-between">
+      <span class="text-xs text-verity-text-muted"> Every image is signed and attested. </span>
+      <a
+        href={`${base}compliance/`}
+        class="text-xs text-verity-orbit hover:text-verity-nucleus transition-colors underline"
+      >
+        Compliance details
+      </a>
+    </div>
   </div>
+</section>
+
+<div
+  class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mt-6 mb-8 text-xs text-verity-text-muted"
+>
+  <span>{copaCount} Copa-patched upstream images</span>
+  <span class="text-verity-border">|</span>
+  <span>{integerCount} Wolfi-based hardened images</span>
+  <span class="text-verity-border">|</span>
+  <span>{chartCount} Helm wrapper {chartCount === 1 ? "chart" : "charts"}</span>
+  <span class="text-verity-border">|</span>
+  <span>cosign signed + SLSA L3 + CycloneDX SBOM</span>
 </div>
