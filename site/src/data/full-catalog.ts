@@ -186,12 +186,6 @@ export const fullCatalog: FullCatalogCategory[] = [
       },
       { name: "minio", source: "integer" },
       { name: "minio-client", source: "integer" },
-      {
-        name: "library/solr",
-        label: "solr",
-        source: "copa",
-        upstream: "mirror.gcr.io/library/solr",
-      },
     ],
   },
 
