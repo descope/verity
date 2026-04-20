@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.69.3"
   },
-  "ReportID": "019d806d-7db0-7d8e-9cf0-a78cbfefb179",
-  "CreatedAt": "2026-04-12T06:42:32.496890119Z",
+  "ReportID": "019da8a7-4dfa-778f-8d25-52f1aa64ac64",
+  "CreatedAt": "2026-04-20T02:10:30.010497134Z",
   "ArtifactID": "sha256:06196dc330202e7befc73dc2b39843e9a8c1e2305493c3850b858395585b0c76",
   "ArtifactName": "quay.io/prometheus/prometheus:v3.11.1",
   "ArtifactType": "container_image",
@@ -3829,6 +3829,7 @@
           "Description": "The Delete function fails to properly validate offsets when processing malformed JSON input. This can lead to a negative slice index and a runtime panic, allowing a denial of service attack.",
           "Severity": "HIGH",
           "VendorSeverity": {
+            "amazon": 3,
             "ghsa": 3,
             "redhat": 3
           },
@@ -3893,6 +3894,7 @@
           "VendorSeverity": {
             "ghsa": 3,
             "nvd": 3,
+            "photon": 3,
             "redhat": 2
           },
           "CVSS": {
@@ -3956,8 +3958,10 @@
             "CWE-193"
           ],
           "VendorSeverity": {
+            "amazon": 2,
             "ghsa": 2,
             "nvd": 3,
+            "photon": 3,
             "redhat": 3
           },
           "CVSS": {
@@ -3986,6 +3990,56 @@
           ],
           "PublishedDate": "2026-03-31T03:15:57.523Z",
           "LastModifiedDate": "2026-04-03T17:23:21.307Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-40179",
+          "VendorIDs": [
+            "GHSA-vffh-x6r8-xx99"
+          ],
+          "PkgID": "github.com/prometheus/prometheus@v3.11.1",
+          "PkgName": "github.com/prometheus/prometheus",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/github.com/prometheus/prometheus@3.11.1",
+            "UID": "9fae2b3c55d59d9"
+          },
+          "InstalledVersion": "3.11.1",
+          "FixedVersion": "0.311.2-0.20260410083055-07c6232d159b",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:fe50feeb938c4b166961ac7497e56e4d32cd6bedd0a9c25fdbe50cbe6bab2acd",
+            "DiffID": "sha256:2fd11ad62112299afbe6571dcc278fdac79e6ae456b95d0095d00fc718f34d9d"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-40179",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Go",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
+          },
+          "Fingerprint": "sha256:ef18c9f04aad3930787e122cba77e725bdd706a267792d9899449da6568d7dc3",
+          "Title": "Prometheus has Stored XSS via metric names and label values in Prometheus web UI tooltips and metrics explorer",
+          "Description": "Prometheus is an open-source monitoring system and time series database. Versions 3.0 through 3.5.1 and 3.6.0 through 3.11.1 have stored cross-site scripting vulnerabilities in multiple components of the Prometheus web UI where metric names and label values are injected into innerHTML without escaping. In both the Mantine UI and old React UI, chart tooltips on the Graph page render metric names containing HTML/JavaScript without sanitization. In the old React UI, the Metric Explorer fuzzy search results use dangerouslySetInnerHTML without escaping, and heatmap cell tooltips interpolate le label values without sanitization. With Prometheus v3.x defaulting to UTF-8 metric and label name validation, characters like \u003c, \u003e, and \" are now valid in metric names and labels. An attacker who can inject metrics via a compromised scrape target, remote write, or OTLP receiver endpoint can execute arbitrary JavaScript in the browser of any Prometheus user who views the metric in the Graph UI, potentially enabling configuration exfiltration, data deletion, or Prometheus shutdown depending on enabled flags. This issue has been fixed in versions 3.5.2 and 3.11.2. If developers are unable to immediately update, the following workarounds are recommended: ensure that the remote write receiver (--web.enable-remote-write-receiver) and the OTLP receiver (--web.enable-otlp-receiver) are not exposed to untrusted sources; verify that all scrape targets are trusted and not under attacker control; avoid enabling admin or mutating API endpoints (e.g., --web.enable-admin-api or --web.enable-lifecycle) in environments where untrusted data may be ingested; and refrain from clicking untrusted links, particularly those containing functions such as label_replace, as they may generate poisoned label names and values.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-79"
+          ],
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:N/VI:N/VA:N/SC:L/SI:L/SA:N",
+              "V40Score": 5.3
+            }
+          },
+          "References": [
+            "https://github.com/prometheus/prometheus",
+            "https://github.com/prometheus/prometheus/commit/07c6232d159bfb474a077788be184d87adcfac3c",
+            "https://github.com/prometheus/prometheus/pull/18506",
+            "https://github.com/prometheus/prometheus/security/advisories/GHSA-vffh-x6r8-xx99"
+          ],
+          "PublishedDate": "2026-04-15T23:16:09.87Z",
+          "LastModifiedDate": "2026-04-15T23:16:09.87Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39882",
@@ -4094,6 +4148,154 @@
           "LastModifiedDate": "2026-04-10T21:16:27.12Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-32280",
+          "VendorIDs": [
+            "GO-2026-4947"
+          ],
+          "PkgID": "stdlib@v1.26.1",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.26.1",
+            "UID": "ba82bc0de74157d3"
+          },
+          "InstalledVersion": "v1.26.1",
+          "FixedVersion": "1.25.9, 1.26.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:fe50feeb938c4b166961ac7497e56e4d32cd6bedd0a9c25fdbe50cbe6bab2acd",
+            "DiffID": "sha256:2fd11ad62112299afbe6571dcc278fdac79e6ae456b95d0095d00fc718f34d9d"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32280",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:052f90f29674f191d87d773b5eaee03face44e0f3baeb22ffa70f0514b3972af",
+          "Title": "During chain building, the amount of work that is done is not correctl ...",
+          "Description": "During chain building, the amount of work that is done is not correctly limited when a large number of intermediate certificates are passed in VerifyOptions.Intermediates, which can lead to a denial of service. This affects both direct users of crypto/x509 and users of crypto/tls.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-770"
+          ],
+          "VendorSeverity": {
+            "bitnami": 3
+          },
+          "CVSS": {
+            "bitnami": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://go.dev/cl/758320",
+            "https://go.dev/issue/78282",
+            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-32280",
+            "https://pkg.go.dev/vuln/GO-2026-4947"
+          ],
+          "PublishedDate": "2026-04-08T02:16:03.247Z",
+          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-32282",
+          "VendorIDs": [
+            "GO-2026-4864"
+          ],
+          "PkgID": "stdlib@v1.26.1",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.26.1",
+            "UID": "ba82bc0de74157d3"
+          },
+          "InstalledVersion": "v1.26.1",
+          "FixedVersion": "1.25.9, 1.26.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:fe50feeb938c4b166961ac7497e56e4d32cd6bedd0a9c25fdbe50cbe6bab2acd",
+            "DiffID": "sha256:2fd11ad62112299afbe6571dcc278fdac79e6ae456b95d0095d00fc718f34d9d"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32282",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:0c5126e04dfaa78d06f24403b6ecb97e65fdf4c5fa70a3902fdeaf8cb9bda110",
+          "Title": "golang: internal/syscall/unix: Root.Chmod can follow symlinks out of the root",
+          "Description": "On Linux, if the target of Root.Chmod is replaced with a symlink while the chmod operation is in progress, Chmod can operate on the target of the symlink, even when the target lies outside the root. The Linux fchmodat syscall silently ignores the AT_SYMLINK_NOFOLLOW flag, which Root.Chmod uses to avoid symlink traversal. Root.Chmod checks its target before acting and returns an error if the target is a symlink lying outside the root, so the impact is limited to cases where the target is replaced with a symlink between the check and operation.",
+          "Severity": "HIGH",
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H",
+              "V3Score": 7.8
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-32282",
+            "https://go.dev/cl/763761",
+            "https://go.dev/issue/78293",
+            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-32282",
+            "https://pkg.go.dev/vuln/GO-2026-4864",
+            "https://www.cve.org/CVERecord?id=CVE-2026-32282"
+          ],
+          "PublishedDate": "2026-04-08T02:16:03.467Z",
+          "LastModifiedDate": "2026-04-13T19:16:39.807Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-33810",
+          "VendorIDs": [
+            "GO-2026-4866"
+          ],
+          "PkgID": "stdlib@v1.26.1",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.26.1",
+            "UID": "ba82bc0de74157d3"
+          },
+          "InstalledVersion": "v1.26.1",
+          "FixedVersion": "1.26.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:fe50feeb938c4b166961ac7497e56e4d32cd6bedd0a9c25fdbe50cbe6bab2acd",
+            "DiffID": "sha256:2fd11ad62112299afbe6571dcc278fdac79e6ae456b95d0095d00fc718f34d9d"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-33810",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:b4fd57479502cc7486d81be6112df1238ee49ca4e8d618f2103405df07a56a79",
+          "Title": "crypto/x509: golang: Go crypto/x509: Certificate validation bypass due to incorrect DNS constraint application",
+          "Description": "When verifying a certificate chain containing excluded DNS constraints, these constraints are not correctly applied to wildcard DNS SANs which use a different case than the constraint. This only affects validation of otherwise trusted certificate chains, issued by a root CA in the VerifyOptions.Roots CertPool, or in the system certificate pool.",
+          "Severity": "HIGH",
+          "VendorSeverity": {
+            "redhat": 3
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:L",
+              "V3Score": 8.8
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-33810",
+            "https://go.dev/cl/763763",
+            "https://go.dev/issue/78332",
+            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-33810",
+            "https://pkg.go.dev/vuln/GO-2026-4866",
+            "https://www.cve.org/CVERecord?id=CVE-2026-33810"
+          ],
+          "PublishedDate": "2026-04-08T02:16:03.95Z",
+          "LastModifiedDate": "2026-04-13T19:16:42.317Z"
+        },
+        {
           "VulnerabilityID": "CVE-2026-32281",
           "VendorIDs": [
             "GO-2026-4946"
@@ -4140,7 +4342,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-32281"
           ],
           "PublishedDate": "2026-04-08T02:16:03.35Z",
-          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
+          "LastModifiedDate": "2026-04-13T19:16:39.607Z"
         },
         {
           "VulnerabilityID": "CVE-2026-32288",
@@ -4189,7 +4391,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-32288"
           ],
           "PublishedDate": "2026-04-08T02:16:03.707Z",
-          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
+          "LastModifiedDate": "2026-04-13T19:16:40.21Z"
         },
         {
           "VulnerabilityID": "CVE-2026-32289",
@@ -4238,84 +4440,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-32289"
           ],
           "PublishedDate": "2026-04-08T02:16:03.82Z",
-          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-32280",
-          "VendorIDs": [
-            "GO-2026-4947"
-          ],
-          "PkgID": "stdlib@v1.26.1",
-          "PkgName": "stdlib",
-          "PkgIdentifier": {
-            "PURL": "pkg:golang/stdlib@v1.26.1",
-            "UID": "ba82bc0de74157d3"
-          },
-          "InstalledVersion": "v1.26.1",
-          "FixedVersion": "1.25.9, 1.26.2",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:fe50feeb938c4b166961ac7497e56e4d32cd6bedd0a9c25fdbe50cbe6bab2acd",
-            "DiffID": "sha256:2fd11ad62112299afbe6571dcc278fdac79e6ae456b95d0095d00fc718f34d9d"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32280",
-          "DataSource": {
-            "ID": "govulndb",
-            "Name": "The Go Vulnerability Database",
-            "URL": "https://pkg.go.dev/vuln/"
-          },
-          "Fingerprint": "sha256:052f90f29674f191d87d773b5eaee03face44e0f3baeb22ffa70f0514b3972af",
-          "Title": "During chain building, the amount of work that is done is not correctl ...",
-          "Description": "During chain building, the amount of work that is done is not correctly limited when a large number of intermediate certificates are passed in VerifyOptions.Intermediates, which can lead to a denial of service. This affects both direct users of crypto/x509 and users of crypto/tls.",
-          "Severity": "UNKNOWN",
-          "CweIDs": [
-            "CWE-770"
-          ],
-          "References": [
-            "https://go.dev/cl/758320",
-            "https://go.dev/issue/78282",
-            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
-            "https://pkg.go.dev/vuln/GO-2026-4947"
-          ],
-          "PublishedDate": "2026-04-08T02:16:03.247Z",
-          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-32282",
-          "VendorIDs": [
-            "GO-2026-4864"
-          ],
-          "PkgID": "stdlib@v1.26.1",
-          "PkgName": "stdlib",
-          "PkgIdentifier": {
-            "PURL": "pkg:golang/stdlib@v1.26.1",
-            "UID": "ba82bc0de74157d3"
-          },
-          "InstalledVersion": "v1.26.1",
-          "FixedVersion": "1.25.9, 1.26.2",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:fe50feeb938c4b166961ac7497e56e4d32cd6bedd0a9c25fdbe50cbe6bab2acd",
-            "DiffID": "sha256:2fd11ad62112299afbe6571dcc278fdac79e6ae456b95d0095d00fc718f34d9d"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32282",
-          "DataSource": {
-            "ID": "govulndb",
-            "Name": "The Go Vulnerability Database",
-            "URL": "https://pkg.go.dev/vuln/"
-          },
-          "Fingerprint": "sha256:0c5126e04dfaa78d06f24403b6ecb97e65fdf4c5fa70a3902fdeaf8cb9bda110",
-          "Title": "On Linux, if the target of Root.Chmod is replaced with a symlink while ...",
-          "Description": "On Linux, if the target of Root.Chmod is replaced with a symlink while the chmod operation is in progress, Chmod can operate on the target of the symlink, even when the target lies outside the root. The Linux fchmodat syscall silently ignores the AT_SYMLINK_NOFOLLOW flag, which Root.Chmod uses to avoid symlink traversal. Root.Chmod checks its target before acting and returns an error if the target is a symlink lying outside the root, so the impact is limited to cases where the target is replaced with a symlink between the check and operation.",
-          "Severity": "UNKNOWN",
-          "References": [
-            "https://go.dev/cl/763761",
-            "https://go.dev/issue/78293",
-            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
-            "https://pkg.go.dev/vuln/GO-2026-4864"
-          ],
-          "PublishedDate": "2026-04-08T02:16:03.467Z",
-          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
+          "LastModifiedDate": "2026-04-13T19:16:40.41Z"
         },
         {
           "VulnerabilityID": "CVE-2026-32283",
@@ -4349,47 +4474,11 @@
             "https://go.dev/cl/763767",
             "https://go.dev/issue/78334",
             "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-32283",
             "https://pkg.go.dev/vuln/GO-2026-4870"
           ],
           "PublishedDate": "2026-04-08T02:16:03.58Z",
-          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-33810",
-          "VendorIDs": [
-            "GO-2026-4866"
-          ],
-          "PkgID": "stdlib@v1.26.1",
-          "PkgName": "stdlib",
-          "PkgIdentifier": {
-            "PURL": "pkg:golang/stdlib@v1.26.1",
-            "UID": "ba82bc0de74157d3"
-          },
-          "InstalledVersion": "v1.26.1",
-          "FixedVersion": "1.26.2",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:fe50feeb938c4b166961ac7497e56e4d32cd6bedd0a9c25fdbe50cbe6bab2acd",
-            "DiffID": "sha256:2fd11ad62112299afbe6571dcc278fdac79e6ae456b95d0095d00fc718f34d9d"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-33810",
-          "DataSource": {
-            "ID": "govulndb",
-            "Name": "The Go Vulnerability Database",
-            "URL": "https://pkg.go.dev/vuln/"
-          },
-          "Fingerprint": "sha256:b4fd57479502cc7486d81be6112df1238ee49ca4e8d618f2103405df07a56a79",
-          "Title": "When verifying a certificate chain containing excluded DNS constraints ...",
-          "Description": "When verifying a certificate chain containing excluded DNS constraints, these constraints are not correctly applied to wildcard DNS SANs which use a different case than the constraint. This only affects validation of otherwise trusted certificate chains, issued by a root CA in the VerifyOptions.Roots CertPool, or in the system certificate pool.",
-          "Severity": "UNKNOWN",
-          "References": [
-            "https://go.dev/cl/763763",
-            "https://go.dev/issue/78332",
-            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
-            "https://pkg.go.dev/vuln/GO-2026-4866"
-          ],
-          "PublishedDate": "2026-04-08T02:16:03.95Z",
-          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
+          "LastModifiedDate": "2026-04-13T19:16:40Z"
         }
       ]
     },
@@ -7303,6 +7392,7 @@
           "VendorSeverity": {
             "ghsa": 3,
             "nvd": 3,
+            "photon": 3,
             "redhat": 2
           },
           "CVSS": {
@@ -7366,8 +7456,10 @@
             "CWE-193"
           ],
           "VendorSeverity": {
+            "amazon": 2,
             "ghsa": 2,
             "nvd": 3,
+            "photon": 3,
             "redhat": 3
           },
           "CVSS": {
@@ -7396,6 +7488,204 @@
           ],
           "PublishedDate": "2026-03-31T03:15:57.523Z",
           "LastModifiedDate": "2026-04-03T17:23:21.307Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-40179",
+          "VendorIDs": [
+            "GHSA-vffh-x6r8-xx99"
+          ],
+          "PkgID": "github.com/prometheus/prometheus@v3.11.1",
+          "PkgName": "github.com/prometheus/prometheus",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/github.com/prometheus/prometheus@3.11.1",
+            "UID": "6e7dadcfd899d54f"
+          },
+          "InstalledVersion": "3.11.1",
+          "FixedVersion": "0.311.2-0.20260410083055-07c6232d159b",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:7580c2f726fec88258e46467c793c7948597e74e4f34b6ae748f0c82e56731c1",
+            "DiffID": "sha256:521721d781174f20abce8683c73f5675701d50aba6943b283dbbb0b91835da01"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-40179",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Go",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
+          },
+          "Fingerprint": "sha256:3b5715175e78d2a4636f92be130acc062357824f30d101683c419bfde8bce454",
+          "Title": "Prometheus has Stored XSS via metric names and label values in Prometheus web UI tooltips and metrics explorer",
+          "Description": "Prometheus is an open-source monitoring system and time series database. Versions 3.0 through 3.5.1 and 3.6.0 through 3.11.1 have stored cross-site scripting vulnerabilities in multiple components of the Prometheus web UI where metric names and label values are injected into innerHTML without escaping. In both the Mantine UI and old React UI, chart tooltips on the Graph page render metric names containing HTML/JavaScript without sanitization. In the old React UI, the Metric Explorer fuzzy search results use dangerouslySetInnerHTML without escaping, and heatmap cell tooltips interpolate le label values without sanitization. With Prometheus v3.x defaulting to UTF-8 metric and label name validation, characters like \u003c, \u003e, and \" are now valid in metric names and labels. An attacker who can inject metrics via a compromised scrape target, remote write, or OTLP receiver endpoint can execute arbitrary JavaScript in the browser of any Prometheus user who views the metric in the Graph UI, potentially enabling configuration exfiltration, data deletion, or Prometheus shutdown depending on enabled flags. This issue has been fixed in versions 3.5.2 and 3.11.2. If developers are unable to immediately update, the following workarounds are recommended: ensure that the remote write receiver (--web.enable-remote-write-receiver) and the OTLP receiver (--web.enable-otlp-receiver) are not exposed to untrusted sources; verify that all scrape targets are trusted and not under attacker control; avoid enabling admin or mutating API endpoints (e.g., --web.enable-admin-api or --web.enable-lifecycle) in environments where untrusted data may be ingested; and refrain from clicking untrusted links, particularly those containing functions such as label_replace, as they may generate poisoned label names and values.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-79"
+          ],
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:N/VI:N/VA:N/SC:L/SI:L/SA:N",
+              "V40Score": 5.3
+            }
+          },
+          "References": [
+            "https://github.com/prometheus/prometheus",
+            "https://github.com/prometheus/prometheus/commit/07c6232d159bfb474a077788be184d87adcfac3c",
+            "https://github.com/prometheus/prometheus/pull/18506",
+            "https://github.com/prometheus/prometheus/security/advisories/GHSA-vffh-x6r8-xx99"
+          ],
+          "PublishedDate": "2026-04-15T23:16:09.87Z",
+          "LastModifiedDate": "2026-04-15T23:16:09.87Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-32280",
+          "VendorIDs": [
+            "GO-2026-4947"
+          ],
+          "PkgID": "stdlib@v1.26.1",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.26.1",
+            "UID": "7c792f438b5bc4d"
+          },
+          "InstalledVersion": "v1.26.1",
+          "FixedVersion": "1.25.9, 1.26.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:7580c2f726fec88258e46467c793c7948597e74e4f34b6ae748f0c82e56731c1",
+            "DiffID": "sha256:521721d781174f20abce8683c73f5675701d50aba6943b283dbbb0b91835da01"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32280",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:37f7e96f9ce9c744d6b410a34219041d2a361c511ba4ffc13aff5e696ddf5170",
+          "Title": "During chain building, the amount of work that is done is not correctl ...",
+          "Description": "During chain building, the amount of work that is done is not correctly limited when a large number of intermediate certificates are passed in VerifyOptions.Intermediates, which can lead to a denial of service. This affects both direct users of crypto/x509 and users of crypto/tls.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-770"
+          ],
+          "VendorSeverity": {
+            "bitnami": 3
+          },
+          "CVSS": {
+            "bitnami": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://go.dev/cl/758320",
+            "https://go.dev/issue/78282",
+            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-32280",
+            "https://pkg.go.dev/vuln/GO-2026-4947"
+          ],
+          "PublishedDate": "2026-04-08T02:16:03.247Z",
+          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-32282",
+          "VendorIDs": [
+            "GO-2026-4864"
+          ],
+          "PkgID": "stdlib@v1.26.1",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.26.1",
+            "UID": "7c792f438b5bc4d"
+          },
+          "InstalledVersion": "v1.26.1",
+          "FixedVersion": "1.25.9, 1.26.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:7580c2f726fec88258e46467c793c7948597e74e4f34b6ae748f0c82e56731c1",
+            "DiffID": "sha256:521721d781174f20abce8683c73f5675701d50aba6943b283dbbb0b91835da01"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32282",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:a5b4309e8a7a324d455840bd3359042b8fe48857313f0ae6a802d59bc7c2fd2e",
+          "Title": "golang: internal/syscall/unix: Root.Chmod can follow symlinks out of the root",
+          "Description": "On Linux, if the target of Root.Chmod is replaced with a symlink while the chmod operation is in progress, Chmod can operate on the target of the symlink, even when the target lies outside the root. The Linux fchmodat syscall silently ignores the AT_SYMLINK_NOFOLLOW flag, which Root.Chmod uses to avoid symlink traversal. Root.Chmod checks its target before acting and returns an error if the target is a symlink lying outside the root, so the impact is limited to cases where the target is replaced with a symlink between the check and operation.",
+          "Severity": "HIGH",
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H",
+              "V3Score": 7.8
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-32282",
+            "https://go.dev/cl/763761",
+            "https://go.dev/issue/78293",
+            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-32282",
+            "https://pkg.go.dev/vuln/GO-2026-4864",
+            "https://www.cve.org/CVERecord?id=CVE-2026-32282"
+          ],
+          "PublishedDate": "2026-04-08T02:16:03.467Z",
+          "LastModifiedDate": "2026-04-13T19:16:39.807Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-33810",
+          "VendorIDs": [
+            "GO-2026-4866"
+          ],
+          "PkgID": "stdlib@v1.26.1",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.26.1",
+            "UID": "7c792f438b5bc4d"
+          },
+          "InstalledVersion": "v1.26.1",
+          "FixedVersion": "1.26.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:7580c2f726fec88258e46467c793c7948597e74e4f34b6ae748f0c82e56731c1",
+            "DiffID": "sha256:521721d781174f20abce8683c73f5675701d50aba6943b283dbbb0b91835da01"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-33810",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:d3227bcb3ad5736e578258e07df3e4289b6b742e3475b1905fc1f295ece605a8",
+          "Title": "crypto/x509: golang: Go crypto/x509: Certificate validation bypass due to incorrect DNS constraint application",
+          "Description": "When verifying a certificate chain containing excluded DNS constraints, these constraints are not correctly applied to wildcard DNS SANs which use a different case than the constraint. This only affects validation of otherwise trusted certificate chains, issued by a root CA in the VerifyOptions.Roots CertPool, or in the system certificate pool.",
+          "Severity": "HIGH",
+          "VendorSeverity": {
+            "redhat": 3
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:L",
+              "V3Score": 8.8
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-33810",
+            "https://go.dev/cl/763763",
+            "https://go.dev/issue/78332",
+            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-33810",
+            "https://pkg.go.dev/vuln/GO-2026-4866",
+            "https://www.cve.org/CVERecord?id=CVE-2026-33810"
+          ],
+          "PublishedDate": "2026-04-08T02:16:03.95Z",
+          "LastModifiedDate": "2026-04-13T19:16:42.317Z"
         },
         {
           "VulnerabilityID": "CVE-2026-32281",
@@ -7444,7 +7734,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-32281"
           ],
           "PublishedDate": "2026-04-08T02:16:03.35Z",
-          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
+          "LastModifiedDate": "2026-04-13T19:16:39.607Z"
         },
         {
           "VulnerabilityID": "CVE-2026-32288",
@@ -7493,7 +7783,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-32288"
           ],
           "PublishedDate": "2026-04-08T02:16:03.707Z",
-          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
+          "LastModifiedDate": "2026-04-13T19:16:40.21Z"
         },
         {
           "VulnerabilityID": "CVE-2026-32289",
@@ -7542,84 +7832,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-32289"
           ],
           "PublishedDate": "2026-04-08T02:16:03.82Z",
-          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-32280",
-          "VendorIDs": [
-            "GO-2026-4947"
-          ],
-          "PkgID": "stdlib@v1.26.1",
-          "PkgName": "stdlib",
-          "PkgIdentifier": {
-            "PURL": "pkg:golang/stdlib@v1.26.1",
-            "UID": "7c792f438b5bc4d"
-          },
-          "InstalledVersion": "v1.26.1",
-          "FixedVersion": "1.25.9, 1.26.2",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:7580c2f726fec88258e46467c793c7948597e74e4f34b6ae748f0c82e56731c1",
-            "DiffID": "sha256:521721d781174f20abce8683c73f5675701d50aba6943b283dbbb0b91835da01"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32280",
-          "DataSource": {
-            "ID": "govulndb",
-            "Name": "The Go Vulnerability Database",
-            "URL": "https://pkg.go.dev/vuln/"
-          },
-          "Fingerprint": "sha256:37f7e96f9ce9c744d6b410a34219041d2a361c511ba4ffc13aff5e696ddf5170",
-          "Title": "During chain building, the amount of work that is done is not correctl ...",
-          "Description": "During chain building, the amount of work that is done is not correctly limited when a large number of intermediate certificates are passed in VerifyOptions.Intermediates, which can lead to a denial of service. This affects both direct users of crypto/x509 and users of crypto/tls.",
-          "Severity": "UNKNOWN",
-          "CweIDs": [
-            "CWE-770"
-          ],
-          "References": [
-            "https://go.dev/cl/758320",
-            "https://go.dev/issue/78282",
-            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
-            "https://pkg.go.dev/vuln/GO-2026-4947"
-          ],
-          "PublishedDate": "2026-04-08T02:16:03.247Z",
-          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-32282",
-          "VendorIDs": [
-            "GO-2026-4864"
-          ],
-          "PkgID": "stdlib@v1.26.1",
-          "PkgName": "stdlib",
-          "PkgIdentifier": {
-            "PURL": "pkg:golang/stdlib@v1.26.1",
-            "UID": "7c792f438b5bc4d"
-          },
-          "InstalledVersion": "v1.26.1",
-          "FixedVersion": "1.25.9, 1.26.2",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:7580c2f726fec88258e46467c793c7948597e74e4f34b6ae748f0c82e56731c1",
-            "DiffID": "sha256:521721d781174f20abce8683c73f5675701d50aba6943b283dbbb0b91835da01"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32282",
-          "DataSource": {
-            "ID": "govulndb",
-            "Name": "The Go Vulnerability Database",
-            "URL": "https://pkg.go.dev/vuln/"
-          },
-          "Fingerprint": "sha256:a5b4309e8a7a324d455840bd3359042b8fe48857313f0ae6a802d59bc7c2fd2e",
-          "Title": "On Linux, if the target of Root.Chmod is replaced with a symlink while ...",
-          "Description": "On Linux, if the target of Root.Chmod is replaced with a symlink while the chmod operation is in progress, Chmod can operate on the target of the symlink, even when the target lies outside the root. The Linux fchmodat syscall silently ignores the AT_SYMLINK_NOFOLLOW flag, which Root.Chmod uses to avoid symlink traversal. Root.Chmod checks its target before acting and returns an error if the target is a symlink lying outside the root, so the impact is limited to cases where the target is replaced with a symlink between the check and operation.",
-          "Severity": "UNKNOWN",
-          "References": [
-            "https://go.dev/cl/763761",
-            "https://go.dev/issue/78293",
-            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
-            "https://pkg.go.dev/vuln/GO-2026-4864"
-          ],
-          "PublishedDate": "2026-04-08T02:16:03.467Z",
-          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
+          "LastModifiedDate": "2026-04-13T19:16:40.41Z"
         },
         {
           "VulnerabilityID": "CVE-2026-32283",
@@ -7653,47 +7866,11 @@
             "https://go.dev/cl/763767",
             "https://go.dev/issue/78334",
             "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-32283",
             "https://pkg.go.dev/vuln/GO-2026-4870"
           ],
           "PublishedDate": "2026-04-08T02:16:03.58Z",
-          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-33810",
-          "VendorIDs": [
-            "GO-2026-4866"
-          ],
-          "PkgID": "stdlib@v1.26.1",
-          "PkgName": "stdlib",
-          "PkgIdentifier": {
-            "PURL": "pkg:golang/stdlib@v1.26.1",
-            "UID": "7c792f438b5bc4d"
-          },
-          "InstalledVersion": "v1.26.1",
-          "FixedVersion": "1.26.2",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:7580c2f726fec88258e46467c793c7948597e74e4f34b6ae748f0c82e56731c1",
-            "DiffID": "sha256:521721d781174f20abce8683c73f5675701d50aba6943b283dbbb0b91835da01"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-33810",
-          "DataSource": {
-            "ID": "govulndb",
-            "Name": "The Go Vulnerability Database",
-            "URL": "https://pkg.go.dev/vuln/"
-          },
-          "Fingerprint": "sha256:d3227bcb3ad5736e578258e07df3e4289b6b742e3475b1905fc1f295ece605a8",
-          "Title": "When verifying a certificate chain containing excluded DNS constraints ...",
-          "Description": "When verifying a certificate chain containing excluded DNS constraints, these constraints are not correctly applied to wildcard DNS SANs which use a different case than the constraint. This only affects validation of otherwise trusted certificate chains, issued by a root CA in the VerifyOptions.Roots CertPool, or in the system certificate pool.",
-          "Severity": "UNKNOWN",
-          "References": [
-            "https://go.dev/cl/763763",
-            "https://go.dev/issue/78332",
-            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
-            "https://pkg.go.dev/vuln/GO-2026-4866"
-          ],
-          "PublishedDate": "2026-04-08T02:16:03.95Z",
-          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
+          "LastModifiedDate": "2026-04-13T19:16:40Z"
         }
       ]
     }
