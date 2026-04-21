@@ -505,7 +505,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "quay.io/victoriametrics/victoria-logs",
       },
       { name: "opentelemetry-collector", source: "integer" },
-      { name: "blackbox-exporter", source: "integer" },
     ],
   },
 
