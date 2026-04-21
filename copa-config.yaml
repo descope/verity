@@ -69,28 +69,14 @@ images:
   #  DATABASES
   # ============================================================================
 
-  - name: "valkey/valkey"
-    image: "mirror.gcr.io/valkey/valkey"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
-  - name: "valkey/valkey-bundle"
-    image: "mirror.gcr.io/valkey/valkey-bundle"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-
+  # MongoDB Community Server is only published with UBI-suffixed tags
+  # (no plain semver variants exist). Use -ubi9 for current RHEL UBI 9 base.
   - name: "mongodb/mongodb-community-server"
-    image: "docker.io/mongodb/mongodb-community-server"
+    image: "quay.io/mongodb/mongodb-community-server"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
+      pattern: '^\d+\.\d+\.\d+-ubi9$'
       maxTags: 3
 
   - name: "cockroachdb/cockroach"
@@ -127,7 +113,6 @@ images:
       pattern: '^v\d+\.\d+\.\d+$'
       maxTags: 3
     goVcsUrl: "https://github.com/zalando/postgres-operator"
-
 
   # ============================================================================
   #  MESSAGING & STREAMING
@@ -305,7 +290,7 @@ images:
 
   # -- VictoriaMetrics --
   - name: "victoriametrics/victoria-logs"
-    image: "docker.io/victoriametrics/victoria-logs"
+    image: "quay.io/victoriametrics/victoria-logs"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -541,3 +526,21 @@ images:
       strategy: "pattern"
       pattern: '^v\d+\.\d+\.\d+$'
       maxTags: 3
+
+  - name: "tensorflow/serving"
+    image: "mirror.gcr.io/tensorflow/serving"
+    platforms: ["linux/amd64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "ollama/ollama"
+    image: "mirror.gcr.io/ollama/ollama"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/ollama/ollama"
+    goVcsTagPrefix: "v"

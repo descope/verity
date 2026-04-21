@@ -125,24 +125,12 @@ export const fullCatalog: FullCatalogCategory[] = [
     label: "Databases & Caching",
     images: [
       { name: "postgres", source: "integer", variants: ["default", "dev"] },
-      {
-        name: "valkey/valkey",
-        label: "valkey",
-        source: "copa",
-        upstream: "mirror.gcr.io/valkey/valkey",
-      },
-      {
-        name: "valkey/valkey-bundle",
-        label: "valkey-bundle",
-        source: "copa",
-        upstream: "mirror.gcr.io/valkey/valkey-bundle",
-      },
       { name: "valkey", source: "integer" },
       {
         name: "mongodb/mongodb-community-server",
         label: "mongodb",
         source: "copa",
-        upstream: "docker.io/mongodb/mongodb-community-server",
+        upstream: "quay.io/mongodb/mongodb-community-server",
       },
       { name: "mariadb", source: "integer" },
       {
@@ -513,7 +501,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         name: "victoriametrics/victoria-logs",
         label: "victoria-logs",
         source: "copa",
-        upstream: "docker.io/victoriametrics/victoria-logs",
+        upstream: "quay.io/victoriametrics/victoria-logs",
       },
     ],
   },
@@ -732,6 +720,18 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "ghcr.io/kubeflow/spark-operator",
       },
       { name: "mlflow/mlflow", label: "mlflow", source: "copa", upstream: "ghcr.io/mlflow/mlflow" },
+      {
+        name: "tensorflow/serving",
+        label: "tensorflow-serving",
+        source: "copa",
+        upstream: "mirror.gcr.io/tensorflow/serving",
+      },
+      {
+        name: "ollama/ollama",
+        label: "ollama",
+        source: "copa",
+        upstream: "mirror.gcr.io/ollama/ollama",
+      },
     ],
   },
 
