@@ -338,6 +338,8 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "ghcr.io/aws/eks-distro/kubernetes-csi/node-driver-registrar",
       },
       { name: "metrics-server", source: "integer" },
+      { name: "velero", source: "integer" },
+      { name: "sealed-secrets", source: "integer" },
     ],
   },
 
@@ -505,6 +507,9 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "quay.io/victoriametrics/victoria-logs",
       },
       { name: "opentelemetry-collector", source: "integer" },
+      { name: "jaeger", source: "integer" },
+      { name: "tempo", source: "integer" },
+      { name: "grafana-alloy", source: "integer" },
     ],
   },
 
@@ -566,6 +571,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         source: "copa",
         upstream: "ghcr.io/renovatebot/renovate",
       },
+      { name: "kaniko", source: "integer" },
     ],
   },
 
@@ -627,6 +633,8 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "cosign", source: "integer", variants: ["default", "fips"] },
       { name: "trivy", source: "integer" },
       { name: "dex", source: "integer" },
+      { name: "falco", source: "integer" },
+      { name: "oauth2-proxy", source: "integer" },
     ],
   },
 
