@@ -337,6 +337,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         source: "copa",
         upstream: "ghcr.io/aws/eks-distro/kubernetes-csi/node-driver-registrar",
       },
+      { name: "metrics-server", source: "integer" },
     ],
   },
 
@@ -503,6 +504,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         source: "copa",
         upstream: "quay.io/victoriametrics/victoria-logs",
       },
+      { name: "opentelemetry-collector", source: "integer" },
     ],
   },
 
@@ -623,6 +625,8 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "ghcr.io/openbao/openbao",
       },
       { name: "cosign", source: "integer", variants: ["default", "fips"] },
+      { name: "trivy", source: "integer" },
+      { name: "dex", source: "integer" },
     ],
   },
 
