@@ -212,10 +212,15 @@ images:
       pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
 
-  - name: "eck-operator"
+  - name: "elastic/eck-operator"
     image: "mirror.gcr.io/elastic/eck-operator"
     platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
     goVcsUrl: "https://github.com/elastic/cloud-on-k8s"
+    goVcsTagPrefix: "v"
 ```
 
 Images declaring `goVcsUrl` trigger Copa's Go binary patching path. Around a
