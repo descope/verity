@@ -87,15 +87,42 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full technical breakdown.
 
 ### What Can (and Can't) Be Patched
 
-Copa patches **OS-level packages** (`apt`, `yum`/`dnf`, `apk`) and
-**Python packages** installed via `pip` (experimental). This covers the majority
-of container CVEs.
+Copa patches:
+
+- **OS-level packages** (`apt`, `yum`/`dnf`, `apk`)
+- **Python packages** installed via `pip`
+- **Go binaries** (via `goVcsUrl` declaring the upstream module VCS path)
 
 It **cannot** patch:
 
-- Compiled binaries with statically-linked vulnerable libraries (e.g. Go modules)
+- Statically-linked non-Go binaries with vulnerable libraries compiled in
 - Vulnerabilities without an available upstream package fix
-- Distroless images (Verity uses base-image overrides for these)
+- Distroless images directly (Verity uses base-image overrides, or publishes a
+  Wolfi/Integer equivalent)
+
+## Two Kinds of Images
+
+Verity publishes two image types with identical supply-chain guarantees:
+
+| Type | Description |
+| --- | --- |
+| **Copa-patched** | Upstream images with OS/app packages patched in-place. No Dockerfile rebuild. |
+| **Integer (Wolfi-based)** | From-scratch hardened rebuilds using Wolfi packages. Minimal attack surface. |
+
+Both are cosign-signed with SLSA L3 provenance, CycloneDX SBOM, and Rekor
+transparency log entries. FIPS variants available for: golang, nginx, caddy,
+helm, terraform, cosign, crane.
+
+### Helm Wrapper Charts
+
+For Helm users, Verity provides drop-in wrapper charts that override all image
+references to patched equivalents:
+
+```bash
+helm install prometheus oci://ghcr.io/verity-org/charts/prometheus --version 29.2.0
+```
+
+Browse all charts at [verity.supply/charts](https://verity.supply/charts/).
 
 ## Verify the Supply Chain
 
@@ -129,7 +156,7 @@ Open an issue with the **Request New Image** template. Verity creates a PR autom
 # Helm chart — Copa auto-discovers all container images from templates
 charts:
   - name: prometheus
-    version: "28.9.1"
+    version: "29.2.0"
     repository: "oci://ghcr.io/prometheus-community/charts"
 
 # Standalone image with tag strategy
@@ -157,10 +184,18 @@ Merge the PR and the pipeline handles the rest.
 # Build
 go build -o verity .
 
-# Scan images and generate Trivy reports
+# Available commands
+./verity scan        # Trivy scan images from copa-config.yaml
+./verity catalog     # Generate site catalog JSON from scan reports
+./verity discover    # Enumerate image+tag combos (Copa + charts)
+./verity integer     # Build/validate Wolfi-based Integer images (subcommand group)
+./verity preflight   # Manage preflight manifest for build skipping
+./verity chart-gen   # Generate patched Helm wrapper charts
+
+# Example: scan images and generate Trivy reports
 ./verity scan --config copa-config.yaml --output reports/
 
-# Generate site catalog from patch results
+# Example: generate site catalog from patch results
 ./verity catalog \
   --images-json images.json \
   --output site/src/data/catalog.json \

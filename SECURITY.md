@@ -45,9 +45,10 @@ trust the `-patched` tag.
 **Scanning.** Trivy scans every image before patching to identify fixable
 CVEs. Only images with actionable vulnerabilities proceed through the pipeline.
 
-**Patching.** Copa patches OS-level packages (`apt`, `yum`/`dnf`, `apk`) and
-Python packages in-place without rebuilding from a Dockerfile. This eliminates
-the risk of accidental dependency changes during a rebuild.
+**Patching.** Copa patches OS-level packages (`apt`, `yum`/`dnf`, `apk`),
+Python packages (`pip`), and Go binaries (via `goVcsUrl` declaring the upstream
+module VCS path) in-place without rebuilding from a Dockerfile. This
+eliminates the risk of accidental dependency changes during a rebuild.
 
 ## Verifying Images
 

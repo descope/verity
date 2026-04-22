@@ -1,51 +1,74 @@
 # Architecture
 
-Verity is a Go CLI tool and a GitHub Actions pipeline that continuously scans,
-patches, signs, and publishes container images. This document covers the system
-design, component responsibilities, and pipeline mechanics.
+Verity is a Go CLI tool and a suite of GitHub Actions workflows that continuously
+scans, patches, rebuilds, signs, and publishes container images. This document
+covers the system design, component responsibilities, and pipeline mechanics.
 
 ## Components
 
 | Component | Role |
 | --- | --- |
-| **Verity CLI** (Go) | Orchestrates scanning and catalog generation |
-| **Copa** | Patches OS and application packages in container images without rebuilding |
+| **Verity CLI** (Go) | Orchestrates scanning, discovery, Integer builds, chart generation, and catalog assembly |
+| **Copa** | Patches OS, Python (`pip`), and Go packages in container images without rebuilding |
 | **Trivy** | Vulnerability scanner (CVE detection, SBOM generation) |
-| **BuildKit** | Builds patched container images |
+| **BuildKit** | Builds patched container images (`moby/buildkit:v0.29.0`) |
+| **apko / melange** | Builds Wolfi-based Integer images from source (apko rootfs + melange APKs) |
+| **Helm** | Packages patched wrapper charts pushed to `oci://ghcr.io/verity-org/charts` |
 | **cosign** | Keyless image signing via Sigstore OIDC |
-| **GitHub Actions** | CI/CD pipeline orchestration |
+| **GitHub Actions** | CI/CD pipeline orchestration (10 workflows) |
+
+## Two Kinds of Images
+
+Verity publishes two image families, both with identical supply-chain guarantees
+(cosign signatures, SLSA L3 provenance, CycloneDX SBOM, Trivy attestations, Rekor
+transparency log).
+
+| Family | What it is | How it's produced |
+| --- | --- | --- |
+| **Copa-patched** | Upstream image with OS + Python + Go packages patched in-place | `copa patch` via BuildKit — no Dockerfile rebuild |
+| **Integer (Wolfi-based)** | From-scratch hardened rebuild using Wolfi packages with minimal attack surface | `apko` rootfs build + `melange` APK build from `images/*.yaml` |
+
+FIPS variants are available for a curated set of images (`golang`, `nginx`,
+`caddy`, `helm`, `terraform`, `cosign`, `crane`).
 
 ## Source Layout
 
 ```text
 verity/
-├── main.go                         CLI entry point (urfave/cli)
-├── cmd/
+├── main.go                         CLI entry (urfave/cli/v3, version "2.0.0")
+├── cmd/                            Top-level subcommands
 │   ├── scan.go                     `verity scan` — parallel Trivy scanning
-│   ├── catalog.go                  `verity catalog` — site data generation
-│   ├── scan_test.go                Scan command tests
-│   └── patch_test.go               Patch tag versioning tests
+│   ├── catalog.go                  `verity catalog` — Copa site catalog JSON
+│   ├── discover.go                 `verity discover` — enumerate image+tag combos
+│   ├── preflight.go                `verity preflight update-manifest`
+│   ├── chart_gen.go                `verity chart-gen` — Helm wrapper generation
+│   ├── integer.go                  `verity integer` (subcommand group)
+│   ├── integer_{build,discover,sync,validate,catalog}.go
+│   └── *_test.go
 ├── internal/
-│   ├── copaconfig.go               copa-config.yaml parsing and image discovery
-│   ├── copaconfig_test.go          Config parser tests
-│   ├── sitedata.go                 Catalog JSON generation from Trivy reports
-│   ├── sitedata_test.go            Catalog generation tests
-│   └── types.go                    Image reference models and parsing
-├── copa-config.yaml                Image/chart registry (the source of truth)
-├── site/                           Astro static site (catalog + compliance)
-│   ├── src/pages/                  index, compliance, image detail pages
-│   ├── src/components/             UI components
-│   ├── src/lib/                    TypeScript data models
-│   └── src/data/catalog.json       Generated catalog data
-├── .github/
-│   ├── workflows/
-│   │   ├── patch-matrix.yaml       Main pipeline (scan → patch → sign → publish)
-│   │   ├── ci.yaml                 Unit tests on PRs
-│   │   ├── lint.yaml               Code quality (8 linters)
-│   │   └── new-issue.yaml          Auto-PR from issue templates
-│   └── scripts/                    Shell helpers for workflow steps
-├── Makefile                        Local development targets
-└── CONTRIBUTING.md                 Development guide
+│   ├── chartgen/                   Helm wrapper chart generator
+│   ├── config/                     Shared config types (CopaConfig, VerityConfig, …)
+│   ├── discovery/                  Image discovery (Copa + Helm + verity.yaml)
+│   ├── integer/                    Wolfi subsystem (apkindex, config, discovery, render)
+│   ├── preflight/                  Preflight manifest for build skipping
+│   ├── copaconfig.go               copa-config.yaml parsing
+│   ├── sitedata.go                 Catalog JSON generation
+│   └── types.go                    Image reference models
+├── copa-config.yaml                Standalone image registry (Copa's domain)
+├── Chart.yaml                      Helm chart dependencies (standard format)
+├── verity.yaml                     Verity-specific overrides (tag variants + chart-gen replacements)
+├── integer.yaml                    Integer/Wolfi build config
+├── images/                         Wolfi melange configs (100+ *.yaml per image)
+├── packages/
+│   ├── bespoke/                    Bespoke melange package builds (crane, dive, ko, pgweb)
+│   ├── overrides/fips.env          FIPS environment overrides
+│   └── upstream.lock.json          Locked upstream package versions
+├── site/                           Astro 6 static site
+├── .github/workflows/              10 workflows (see Pipeline)
+├── .github/scripts/                Workflow helper scripts
+├── docker-compose.yaml             Local dev: registry on :5555, BuildKit v0.29.0
+├── Makefile                        Dev targets incl. integer-validate, integer-gen
+└── CONTRIBUTING.md / SECURITY.md / README.md
 ```
 
 ## CLI Reference
@@ -56,6 +79,10 @@ verity - Self-maintaining registry of security-patched container images
 Commands:
   scan        Scan images from copa-config.yaml and generate Trivy reports
   catalog     Generate site catalog JSON from patch reports
+  discover    Enumerate image+tag combos from copa-config.yaml, Chart.yaml, and verity.yaml
+  integer     Build and manage Wolfi-based OCI images from source (subcommand group)
+  preflight   Manage preflight manifest for build skipping
+  chart-gen   Generate and push patched wrapper Helm charts from Chart.yaml
 
 Use "verity [command] --help" for command-specific options.
 ```
@@ -64,15 +91,6 @@ Use "verity [command] --help" for command-specific options.
 
 Reads `copa-config.yaml`, resolves tags using the configured strategy, and runs
 Trivy against each image in parallel. Outputs one JSON report per image.
-
-```bash
-./verity scan \
-  --config copa-config.yaml \
-  --target-registry ghcr.io/verity-org \
-  --trivy-server http://localhost:4954 \
-  --parallel 10 \
-  --output reports/
-```
 
 | Flag | Default | Description |
 | --- | --- | --- |
@@ -86,16 +104,8 @@ Trivy against each image in parallel. Outputs one JSON report per image.
 ### `verity catalog`
 
 Reads Trivy reports (pre-patch and post-patch) and an `images.json` manifest to
-produce `catalog.json` — the data file consumed by the Astro site.
-
-```bash
-./verity catalog \
-  --output site/src/data/catalog.json \
-  --images-json images.json \
-  --registry ghcr.io/verity-org \
-  --reports-dir reports/ \
-  --post-reports-dir post-reports/
-```
+produce `catalog.json` — the data file consumed by the Astro site for Copa-patched
+images.
 
 | Flag | Default | Description |
 | --- | --- | --- |
@@ -105,9 +115,81 @@ produce `catalog.json` — the data file consumed by the Astro site.
 | `--reports-dir` | | Pre-patch Trivy report directory |
 | `--post-reports-dir` | | Post-patch Trivy report directory |
 
-## Configuration: `copa-config.yaml`
+### `verity discover`
 
-The single source of truth for which images Verity monitors.
+Enumerates every image+tag combination Verity is responsible for. Three sources
+are merged: `copa-config.yaml` (standalone images), `Chart.yaml` (Helm chart
+dependencies, rendered via `helm template`), and `verity.yaml` (tag variant
+overrides). Output is a JSON array consumed by the orchestrator to fan out
+per-image patch runs.
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--config, -c` | *(required)* | Path to `copa-config.yaml` |
+| `--charts-file` | `Chart.yaml` | Helm Chart.yaml whose `dependencies:` provides chart images |
+| `--verity-config` | `verity.yaml` | Tag variant overrides + chart-gen image replacements |
+| `--target-registry` | | Override the target registry from config |
+| `--only` | | Comma-separated list of image names to include (empty = all) |
+| `--exclude-names` | | Comma-separated names to exclude (typically Integer/Wolfi names) |
+| `--preflight` | `false` | Enable digest-based skip (compares upstream digests to manifest) |
+| `--github-repo` | | Required when `--preflight` is enabled |
+
+### `verity preflight update-manifest`
+
+Updates the preflight manifest on the `reports` branch. The manifest tracks
+upstream image digests and remaining fixable-vuln counts so the orchestrator can
+skip rebuilds that would produce identical output. Requires `GH_TOKEN` or
+`GITHUB_TOKEN` in the environment.
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--github-repo` | *(required)* | GitHub repository (`owner/repo`) |
+| `--reports-branch` | `reports` | Branch where `preflight-manifest.json` is stored |
+| `--image` | *(required)* | Image name |
+| `--tag` | *(required)* | Image tag |
+| `--upstream-digest` | | Upstream image digest (`sha256:…`) |
+| `--patched-vulns` | `0` | Number of fixable vulnerabilities remaining after patching |
+
+### `verity integer`
+
+Subcommand group for Wolfi-based Integer images — from-scratch hardened rebuilds
+using apko + melange. Each image is defined by a melange YAML file under
+`images/`.
+
+| Subcommand | Purpose |
+| --- | --- |
+| `integer discover` | List all image+variant combos as JSON (CI matrix input) |
+| `integer validate` | Schema-validate every file in `images/` against `integer.yaml` |
+| `integer build` | Local single-arch apko build of one image variant |
+| `integer sync` | Fetch Wolfi APKINDEX and report new/stale versions; `--apply` rewrites image files |
+| `integer catalog` | Generate `catalog.json` for the Integer catalog on the site |
+
+Common flags: `--config/-c` (path to `integer.yaml`, default `integer.yaml`),
+`--images-dir` (default `images`), `--apkindex-url` (Wolfi APKINDEX URL).
+
+### `verity chart-gen`
+
+Generates patched wrapper Helm charts from `Chart.yaml`. For each dependency,
+Verity produces a thin wrapper chart whose `values.yaml` overrides every image
+reference to point at the patched equivalent in the target registry (Copa-patched
+or Integer, according to `verity.yaml`). Wrappers are pushed as OCI artifacts.
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--charts-file` | `Chart.yaml` | Dependency source |
+| `--verity-config` | `verity.yaml` | Tag variant overrides and value-path hints |
+| `--target-registry` | *(required)* | Registry where patched images live (e.g., `ghcr.io/verity-org`) |
+| `--chart-registry` | *(required)* | OCI registry for wrapper charts (e.g., `oci://ghcr.io/verity-org/charts`) |
+| `--exclude-names` | | Comma-separated names to exclude |
+| `--dry-run` | `false` | Output JSON plan without pushing charts |
+
+## Configuration
+
+Verity's behavior is driven by four YAML files at the repo root.
+
+### `copa-config.yaml`
+
+Copa's native config for standalone images and the catch-all overrides.
 
 ```yaml
 apiVersion: copa.sh/v1alpha1
@@ -115,11 +197,6 @@ kind: PatchConfig
 
 target:
   registry: "ghcr.io/verity-org"
-
-charts:
-  - name: prometheus
-    version: "28.9.1"
-    repository: "oci://ghcr.io/prometheus-community/charts"
 
 overrides:
   "timberio/vector":
@@ -134,26 +211,54 @@ images:
       strategy: "pattern"
       pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
+    goVcsUrl: "https://github.com/nginx/nginx"
 ```
 
-### Image Sources
+Images declaring `goVcsUrl` trigger Copa's Go binary patching path. 14 images in
+`copa-config.yaml` currently use this (cert-manager components, promtail, rabbitmq
+operators, and others).
 
-**Charts** — Copa renders Helm chart templates and auto-discovers every
-container image referenced. No manual image enumeration needed.
+### `Chart.yaml`
 
-**Images** — Standalone image entries with explicit registry, platform, and tag
-strategy configuration.
+Standard Helm `Chart.yaml` dependency format. Verity renders each chart via
+`helm template` and patches every container image the templates reference.
 
-**Overrides** — Base-image substitutions for images Copa can't patch directly
-(e.g., distroless). Copa patches the substitute and maps it back.
+```yaml
+dependencies:
+  - name: prometheus
+    version: "29.2.0"
+    repository: "oci://ghcr.io/prometheus-community/charts"
+  - name: victoria-logs-single
+    version: "0.11.31"
+    repository: "https://victoriametrics.github.io/helm-charts"
+  - name: postgres-operator
+    version: "1.15.1"
+    repository: "https://opensource.zalando.com/postgres-operator/charts/postgres-operator"
+```
+
+### `verity.yaml`
+
+Verity-specific settings that don't belong in Copa's config or Helm's Chart.yaml:
+
+- **Tag variant overrides** — e.g., replace `-fips` upstream tags with
+  `-fips-patched` in the target.
+- **Image replacements for chart-gen** — map upstream image paths to Verity
+  Integer (Wolfi) equivalents so wrapper charts route to the hardened rebuild
+  instead of the Copa-patched upstream.
+
+### `integer.yaml`
+
+Top-level Integer build config (`apiVersion: integer.verity.supply/v1alpha1`).
+Declares the target registry and default platforms; per-image detail lives in
+`images/<name>.yaml` melange configs.
 
 ### Tag Strategies
 
 | Strategy | Behavior |
 | --- | --- |
-| `pattern` | Regex filter on available tags. `maxTags` limits to the N most recent semver matches. |
-| `latest` | Resolves the latest semver tag from the registry. |
-| `list` | Explicit list of tags to patch. |
+| `pattern` | Regex filter on available tags; `maxTags` limits to the N most recent semver matches |
+| `latest` | Resolves the latest semver tag from the registry |
+| `list` | Explicit list of tags to patch |
 
 ### Image Naming
 
@@ -163,93 +268,141 @@ The registry prefix is stripped and replaced:
 - **Source:** `quay.io/prometheus/prometheus:v3.9.1`
 - **Patched:** `ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched`
 
-On subsequent re-patches, the suffix increments: `-patched-2`, `-patched-3`, etc.
+On subsequent re-patches the suffix increments: `-patched-2`, `-patched-3`, etc.
 
-## Pipeline: `patch-matrix.yaml`
+## Pipeline
 
-The main GitHub Actions workflow runs daily and on `copa-config.yaml` changes.
-It has eight stages:
+Ten GitHub Actions workflows cover patching, Wolfi rebuilds, chart generation,
+site deployment, and PR validation. Nightly runs are scheduled in sequence:
 
 ```text
-┌────────────────┐
-│ mirror-buildkit │  Mirror BuildKit image to GHCR (avoids upstream flakiness)
-└───────┬────────┘
-        ▼
-┌────────────────┐
-│     scan       │  verity scan → Trivy reports
-│                │  Copa dry-run → discovery matrix + skip detection
-└───────┬────────┘
-        ▼
-┌────────────────┐
-│     patch      │  Matrix job: one per image × platform (amd64, arm64)
-│                │  Copa patches packages via BuildKit
-└───────┬────────┘
-        ▼
-┌────────────────┐
-│    combine     │  Create multi-arch manifest lists
-│                │  cosign signs each image (keyless OIDC)
-└───────┬────────┘
-        ▼
-┌────────────────┐
-│     attest     │  Attach CycloneDX SBOM attestations
-│                │  Attach SLSA L3 build provenance
-└───────┬────────┘
-        ▼
-┌────────────────┐
-│   post-scan    │  Trivy scans patched images
-│                │  Captures remaining (unfixable) vulnerabilities
-└───────┬────────┘
-        ▼
-┌────────────────┐
-│    assemble    │  verity catalog → catalog.json
-│                │  Before/after vulnerability metrics
-└───────┬────────┘
-        ▼
-┌────────────────┐
-│  deploy-site   │  Build Astro site → deploy to GitHub Pages
-└────────────────┘
+02:00 UTC — orchestrator.yaml            (Copa patching dispatcher)
+03:00 UTC — integer-orchestrator.yaml    (Wolfi rebuild dispatcher)
+04:00 UTC — chart-gen.yaml               (Helm wrapper generation)
+05:00 UTC — build-site.yaml              (catalog assembly + site deploy)
 ```
 
-### PR Mode vs. Production Mode
+### `orchestrator.yaml` — Copa dispatcher
 
-On pull requests the pipeline validates the config without publishing:
+Runs `verity discover` against `copa-config.yaml`, `Chart.yaml`, and
+`verity.yaml`, then dispatches one `patch-image.yaml` run per image+tag.
+Fire-and-forget — does NOT wait for per-image runs to complete. This keeps the
+dispatcher fast and lets each image patch in its own isolated workflow with its
+own logs and artifacts.
 
-- Uses a local Docker registry (`localhost:5000`) instead of GHCR
-- Skips signing, attestation, and site deployment
-- Uploads test artifacts (images.json, reports, catalog) for review
+Triggers: nightly cron `0 2 * * *`, push to `main` touching
+`copa-config.yaml`/`Chart.yaml`/`verity.yaml`, and `workflow_dispatch` with an
+optional `image` input to patch a single image on demand.
 
-On push to `main`, the full pipeline runs with signing, attestation, and
-deployment. See [.github/PR-TESTING.md](.github/PR-TESTING.md) for details.
+### `patch-image.yaml` — reusable per-image lifecycle
 
-### Skip Detection
+```text
+┌──────────┐   scan-before.sh: Pre-patch Trivy (or skip on preflight hit)
+│   scan   │
+└────┬─────┘
+     ▼
+┌──────────┐   Copa patches packages on matrix (linux/amd64, linux/arm64)
+│  patch   │
+└────┬─────┘
+     ▼
+┌──────────┐   Multi-arch manifest, cosign keyless sign, SLSA L3 + CycloneDX +
+│ finalize │   Trivy attestations, push to target registry, push reports to
+└──────────┘   `reports` branch, update preflight manifest
+```
 
-Copa checks whether the existing patched image already addresses all fixable
-vulnerabilities. If so, the image is skipped — avoiding unnecessary rebuilds
-and registry churn.
+Callable two ways:
+
+- `workflow_call` from `pr-test.yaml` with `is-pr: true` — skips signing,
+  attestations, and the reports-branch push.
+- `workflow_dispatch` from `orchestrator.yaml` — full production run.
+
+### `integer-orchestrator.yaml` + `integer-build-image.yaml`
+
+The Integer dispatcher offsets itself one hour after Copa (03:00 UTC) to avoid
+resource contention. It runs `verity integer discover` to build a matrix of
+(image × version × variant) combinations, then dispatches
+`integer-build-image.yaml` per entry. Each per-image build runs apko + melange,
+pushes to the target registry, and captures a post-build Trivy scan.
+
+### `chart-gen.yaml`
+
+Runs at 04:00 UTC (after both Copa and Integer have had time to settle). Calls
+`verity chart-gen` to generate one wrapper chart per dependency in `Chart.yaml`
+and pushes to `oci://ghcr.io/verity-org/charts`. Each wrapper's `values.yaml`
+overrides upstream image references to point at the patched (or Integer)
+equivalent.
+
+### `build-site.yaml`
+
+Runs at 05:00 UTC, fully decoupled from patching. Assembles `catalog.json` from
+three independent sources:
+
+1. `copa-config.yaml` via `verity discover` — source of truth for intended images
+2. The `reports` branch — pre/post Trivy reports written by `patch-image.yaml`
+3. The registry (via `crane`) — confirms patched images are actually published
+
+Then builds the Astro site and deploys to GitHub Pages. Running catalog
+assembly on its own schedule means the site always reflects the registry's
+actual state, even if individual patch runs failed or haven't completed yet.
+
+### `pr-test.yaml` — lightweight PR validation
+
+Pull requests do NOT run the full nightly orchestration. Instead, `pr-test.yaml`
+runs:
+
+- `verity discover` — validates config syntax end-to-end
+- Integer smoke tests via `melange-check.sh` + `melange-build.sh`
+- A single `patch-image.yaml` call with `is-pr: true` for changed images, which
+  patches to a cache registry without signing or publishing
+
+This keeps PR feedback fast while still exercising the real patch path. See
+[.github/PR-TESTING.md](.github/PR-TESTING.md) for details.
+
+### Remaining workflows
+
+| Workflow | Purpose |
+| --- | --- |
+| `ci.yaml` | Go unit tests on every PR |
+| `lint.yaml` | Code quality (`golangci-lint`, `shellcheck`, `yamllint`, `actionlint`, `markdownlint`, `gosec`, `govulncheck`) |
+| `new-issue.yaml` | Parses `new-image` issue form; opens PR that adds the entry to `copa-config.yaml` |
+
+### Skip Detection (Preflight)
+
+`verity preflight` maintains a manifest on the `reports` branch that records
+each published image's upstream digest and remaining fixable-vuln count. When
+`verity discover --preflight` runs, images whose upstream digest hasn't changed
+AND whose fixable-vuln count is zero are skipped — avoiding unnecessary
+rebuilds, registry churn, and signing traffic.
 
 ## Site Architecture
 
-The catalog site is an Astro static site deployed to GitHub Pages.
-
-**Data flow:** `catalog.json` (generated by `verity catalog`) drives all pages.
+The catalog site is an Astro 6 static site (Tailwind 4) deployed to GitHub
+Pages. `catalog.json` + `integer-catalog.json` drive every page.
 
 | Page | Source | Content |
 | --- | --- | --- |
-| Home | `pages/index.astro` | Stats dashboard, searchable image catalog |
-| Image detail | `pages/images/[id].astro` | Patched ref, supply chain badges, vulnerability breakdown |
-| Compliance | `pages/compliance.astro` | Framework mappings (SLSA, FedRAMP, SOC 2, ISO 27001, OWASP) |
+| Home | `pages/index.astro` | HeroSection, top 3 Helm charts, searchable image catalog |
+| Charts | `pages/charts/index.astro` | Full listing of patched Helm wrapper charts + override counts per chart |
+| Catalog detail | `pages/catalog/[...name].astro` | Per-image page: Copa variant, Integer variant, vulnerability breakdown, supply-chain badges |
+| Image detail | `pages/images/[id].astro` | Legacy Copa-patched image detail |
+| Compliance | `pages/compliance.astro` | Framework mappings (SLSA, FedRAMP, SOC 2, ISO 27001, OWASP, NIST CSF 2.0, CISA Secure by Design) |
+| `llms.txt` | `pages/llms.txt.ts` | LLM-targeted sitemap and overview |
+| `llms-full.txt` | `pages/llms-full.txt.ts` | Complete documentation dump for LLM consumption |
+| `index.md` / `compliance.md` / `charts/index.md` | `*.md.ts` | Markdown variants of the main pages for agent consumption |
 
 ## Automation
 
 ### Daily Scans
 
-A cron trigger at 02:00 UTC runs the full pipeline. If new fixable
-vulnerabilities are found, images are patched and published automatically.
+Cron triggers cascade across the night: Copa at 02:00 UTC, Integer at 03:00,
+chart-gen at 04:00, site build at 05:00. If new fixable vulnerabilities are
+found, images are patched and published automatically.
 
 ### Dependency Updates (Renovate)
 
 Renovate monitors Go modules, GitHub Actions versions, and tool versions in
-`mise.toml`. Security patches auto-merge. See [.github/RENOVATE.md](.github/RENOVATE.md).
+`mise.toml`. Security patches auto-merge. See
+[.github/RENOVATE.md](.github/RENOVATE.md).
 
 ### New Image Requests
 
@@ -258,7 +411,7 @@ the issue form, adds the image to `copa-config.yaml`, and opens a PR.
 
 ## Security Model
 
-Every patched image carries:
+Every published image — Copa-patched or Integer — carries:
 
 1. **cosign signature** — Keyless OIDC via GitHub Actions workflow identity
 2. **SLSA L3 provenance** — Platform-generated, outside the build's control
@@ -270,5 +423,8 @@ The signing identity is scoped to the Verity repository workflow:
 `https://github.com/verity-org/verity/.github/workflows/` issued by
 `https://token.actions.githubusercontent.com`.
 
-Patched images never modify the upstream application layer beyond updating
-vulnerable packages (OS-level and pip), preserving the original image's behavior.
+Copa-patched images never modify the upstream application layer beyond updating
+vulnerable packages (OS, Python, and Go binaries via `goVcsUrl`), preserving
+original image behavior. Integer images are rebuilt from Wolfi source — the
+application layer may differ from upstream but the tradeoff is a minimal
+attack-surface base with every package built deterministically from source.

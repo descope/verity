@@ -19,7 +19,7 @@ This repository uses Renovate to automatically update dependencies and trigger t
 
 Custom manager tracks:
 
-- `moby/buildkit:v0.19.0` in CI workflows
+- `moby/buildkit:v0.29.0` in CI workflows
 - Automatically updates to latest stable version
 
 ### 4. Tool Versions (mise.toml)

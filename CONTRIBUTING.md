@@ -42,7 +42,8 @@ We maintain high code quality standards using automated tools.
 
 ```bash
 # Run all quality checks (recommended before committing)
-make quality
+make quality  # lint + lint-vuln + lint-workflows + lint-yaml + lint-shell +
+              # lint-markdown + check-frontend + integer-validate + test
 
 # Or run individual checks:
 make fmt           # Format code
@@ -53,6 +54,7 @@ make test          # Run tests
 make lint-workflows  # Lint GitHub Actions
 make lint-yaml     # Lint YAML files
 make lint-shell    # Lint shell scripts
+make integer-validate  # Validate Integer image configs
 ```
 
 ### Pre-commit Hooks (Recommended)
@@ -143,23 +145,55 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full system design.
 
 ### Workflows
 
-- **patch-matrix.yaml**: Main pipeline (scan → patch → sign → publish)
-  - Triggers: PR validation, push to main, daily scheduled scans
-- **ci.yaml**: Unit tests on pull requests
-- **lint.yaml**: Code quality checks (8 linters)
-- **new-issue.yaml**: Automated image additions via GitHub issues
+Patching pipeline (production):
+
+- **orchestrator.yaml**: Nightly Copa dispatcher (02:00 UTC)
+- **patch-image.yaml**: Reusable per-image scan/patch/sign
+- **integer-orchestrator.yaml**: Nightly Wolfi rebuild dispatcher (03:00)
+- **integer-build-image.yaml**: Per-image Wolfi build
+- **chart-gen.yaml**: Helm wrapper generation (04:00)
+- **build-site.yaml**: Catalog assembly + site deploy (05:00)
+
+The main patching pipeline (orchestrator.yaml + patch-image.yaml) runs on: PR
+validation (via pr-test.yaml), push to main, daily scheduled scans.
+
+Validation:
+
+- **ci.yaml**: Go unit tests on PRs
+- **pr-test.yaml**: Lightweight PR validation (discover + integer smoke)
+- **lint.yaml**: Code quality (8 linters)
+
+Automation:
+
+- **new-issue.yaml**: Auto-PR from "new-image" issue template
 
 ### Key Components
 
-- **cmd/**: CLI commands
-  - `scan.go`: Parallel Trivy scanning
-  - `catalog.go`: Site catalog generation
-- **internal/**: Core logic
-  - `copaconfig.go`: `copa-config.yaml` parsing and image discovery
-  - `sitedata.go`: Catalog JSON generation from Trivy reports
-  - `types.go`: Image reference models and parsing
-- **.github/scripts/**: Workflow helper scripts
-- **site/**: Astro-based static site
+**cmd/** — CLI commands (urfave/cli/v3)
+
+- `scan.go`: Parallel Trivy scanning
+- `catalog.go`: Copa site catalog JSON
+- `discover.go`: Enumerate image+tag combos from 3 sources
+- `preflight.go`: Preflight manifest for build skipping
+- `chart_gen.go`: Helm wrapper chart generation
+- `integer.go`: Subcommand group
+- `integer_{build,discover,sync,validate,catalog}.go`
+
+**internal/** — Core logic
+
+- `copaconfig.go`: copa-config.yaml parsing
+- `sitedata.go`: Catalog JSON generation
+- `types.go`: Image reference models
+- `chartgen/`: Helm wrapper chart generator
+- `config/`: Shared config types
+- `discovery/`: Image discovery
+- `integer/`: Wolfi subsystem (apkindex, config, discovery, render)
+- `preflight/`: Preflight manifest management
+
+**images/**: Wolfi melange configs (100+ *.yaml files)  
+**packages/**: Bespoke melange packages + FIPS overrides  
+**.github/scripts/**: Workflow helper scripts  
+**site/**: Astro static site
 
 ## Local Testing
 
@@ -204,7 +238,7 @@ Ensure all slice returns use empty slices (`[]Type{}`), not `nil`.
 
 ### Empty charts on site
 
-Charts need reports embedded. Trigger the patch-matrix workflow manually.
+Charts need reports embedded. Trigger the orchestrator workflow manually.
 
 ### OCI authentication issues
 
