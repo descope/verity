@@ -24,17 +24,16 @@ Lightweight validation that runs on pull requests:
 
 ## What Gets Tested in PRs
 
-✅ Copa bulk config validation (via `verity discover`)
+✅ Config validation via `verity discover` (merges `copa-config.yaml` + `Chart.yaml` + `verity.yaml`)
 ✅ Per-image patching via Copa (validates config + patching logic)
 ✅ Trivy pre/post scanning
 ✅ Integer/Wolfi build smoke tests
 ✅ Per-image multi-arch manifest creation
-✅ Catalog JSON generation format (in `build-site.yaml`, on main only)
 
 ❌ Image signing (production credentials only)
 ❌ Registry publishing (uses cache / ephemeral registry only)
 ❌ Reports-branch push (main only)
-❌ Site deployment (`build-site.yaml` on main only)
+❌ Catalog JSON generation and site deployment (`build-site.yaml`, main only)
 
 ## Reviewing PR Results
 
@@ -42,7 +41,7 @@ Lightweight validation that runs on pull requests:
 
 Each PR run includes a summary showing:
 
-- Number of images discovered from `copa-config.yaml`
+- Number of images discovered by `verity discover` (merged from `copa-config.yaml`, `Chart.yaml`, and `verity.yaml`)
 - Integer image config validation status
 - Smoke test results for sample images
 - Copa patching validation (when config changes)
@@ -51,7 +50,9 @@ Each PR run includes a summary showing:
 
 PR runs upload test artifacts (retained for 7 days):
 
-- `images.json` - List of discovered images from `copa-config.yaml`
+- `images.json` - Merged discovery output from `verity discover` (standalone
+  images from `copa-config.yaml` + chart-discovered images from `Chart.yaml` +
+  overrides from `verity.yaml`)
 - Trivy reports (`trivy-*.json`)
 - Copa scan reports (`before.json`, `after.json`) for changed images
 

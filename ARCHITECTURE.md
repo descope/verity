@@ -11,7 +11,7 @@ covers the system design, component responsibilities, and pipeline mechanics.
 | **Verity CLI** (Go) | Orchestrates scanning, discovery, Integer builds, chart generation, and catalog assembly |
 | **Copa** | Patches OS, Python (`pip`), and Go packages in container images without rebuilding |
 | **Trivy** | Vulnerability scanner (CVE detection, SBOM generation) |
-| **BuildKit** | Builds patched container images (`moby/buildkit:v0.29.0`) |
+| **BuildKit** | Builds patched container images (production pipeline uses the GHCR-mirrored `buildx-stable-1` digest; PR smoke tests use a pinned buildx driver image; local `docker-compose.yaml` currently pins `moby/buildkit:v0.29.0`) |
 | **apko / melange** | Builds Wolfi-based Integer images from source (apko rootfs + melange APKs) |
 | **Helm** | Packages patched wrapper charts pushed to `oci://ghcr.io/verity-org/charts` |
 | **cosign** | Keyless image signing via Sigstore OIDC |
@@ -58,7 +58,7 @@ verity/
 ├── Chart.yaml                      Helm chart dependencies (standard format)
 ├── verity.yaml                     Verity-specific overrides (tag variants + chart-gen replacements)
 ├── integer.yaml                    Integer/Wolfi build config
-├── images/                         Wolfi melange configs (100+ *.yaml per image)
+├── images/                         Wolfi melange configs (one `<name>.yaml` per image; 100+ images)
 ├── packages/
 │   ├── bespoke/                    Bespoke melange package builds (crane, dive, ko, pgweb)
 │   ├── overrides/fips.env          FIPS environment overrides
@@ -211,12 +211,16 @@ images:
       strategy: "pattern"
       pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
-    goVcsUrl: "https://github.com/nginx/nginx"
+
+  - name: "eck-operator"
+    image: "mirror.gcr.io/elastic/eck-operator"
+    platforms: ["linux/amd64", "linux/arm64"]
+    goVcsUrl: "https://github.com/elastic/cloud-on-k8s"
 ```
 
-Images declaring `goVcsUrl` trigger Copa's Go binary patching path. 14 images in
-`copa-config.yaml` currently use this (cert-manager components, promtail, rabbitmq
-operators, and others).
+Images declaring `goVcsUrl` trigger Copa's Go binary patching path. Around a
+dozen images in `copa-config.yaml` currently use this (cert-manager components,
+promtail, rabbitmq operators, VictoriaLogs, and others).
 
 ### `Chart.yaml`
 
@@ -226,10 +230,10 @@ Standard Helm `Chart.yaml` dependency format. Verity renders each chart via
 ```yaml
 dependencies:
   - name: prometheus
-    version: "29.2.0"
+    version: "29.2.1"
     repository: "oci://ghcr.io/prometheus-community/charts"
   - name: victoria-logs-single
-    version: "0.11.31"
+    version: "0.12.0"
     repository: "https://victoriametrics.github.io/helm-charts"
   - name: postgres-operator
     version: "1.15.1"

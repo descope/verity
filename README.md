@@ -119,8 +119,12 @@ For Helm users, Verity provides drop-in wrapper charts that override all image
 references to patched equivalents:
 
 ```bash
-helm install prometheus oci://ghcr.io/verity-org/charts/prometheus --version 29.2.0
+helm install prometheus oci://ghcr.io/verity-org/charts/prometheus --version 29.2.1
 ```
+
+Wrapper chart versions track the corresponding `dependencies:` version in
+[`Chart.yaml`](Chart.yaml); see the
+[charts catalog](https://verity.supply/charts/) for the currently-published set.
 
 Browse all charts at [verity.supply/charts](https://verity.supply/charts/).
 
@@ -150,15 +154,13 @@ Full compliance details (SLSA, FedRAMP, SOC 2, ISO 27001, NIST, OWASP):
 
 Open an issue with the **Request New Image** template. Verity creates a PR automatically.
 
-### Via `copa-config.yaml`
+### Via `copa-config.yaml` (standalone images) or `Chart.yaml` (Helm dependencies)
+
+Helm charts live in the top-level [`Chart.yaml`](Chart.yaml) using standard
+Helm dependency format. Everything else — standalone images, tag strategies,
+and base-image overrides — goes in `copa-config.yaml`:
 
 ```yaml
-# Helm chart — Copa auto-discovers all container images from templates
-charts:
-  - name: prometheus
-    version: "29.2.0"
-    repository: "oci://ghcr.io/prometheus-community/charts"
-
 # Standalone image with tag strategy
 images:
   - name: "nginx"

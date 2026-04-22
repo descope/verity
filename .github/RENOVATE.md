@@ -17,10 +17,15 @@ This repository uses Renovate to automatically update dependencies and trigger t
 
 ### 3. Docker Images in Workflows
 
-Custom manager tracks:
+Custom manager tracks BuildKit references used by the pipeline, including:
 
-- `moby/buildkit:v0.29.0` in CI workflows
-- Automatically updates to latest stable version
+- The mirrored `buildx-stable-1` digest consumed by `orchestrator.yaml` /
+  `patch-image.yaml` (pinned by `renovate: datasource=docker depName=moby/buildkit`)
+- The `moby/buildkit:v0.29.0` pin in `docker-compose.yaml` for local development
+- The `buildx` driver image pin in `pr-test.yaml`
+
+Renovate opens separate PRs for each of these so they can be reviewed and
+rolled out independently.
 
 ### 4. Tool Versions (mise.toml)
 
