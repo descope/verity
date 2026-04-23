@@ -163,7 +163,9 @@ which does its own inline Copa patch pass without signing or publishing.
 Validation:
 
 - **ci.yaml**: Go unit tests on PRs
-- **pr-test.yaml**: Lightweight PR validation (discover + integer smoke)
+- **pr-test.yaml**: Lightweight PR validation — `verity discover`, Integer
+  config validation and smoke builds, plus an inline Copa patch pass on
+  changed images (single-arch, no signing/attestation/publish)
 - **lint.yaml**: Code quality (8 linters)
 
 Automation:
