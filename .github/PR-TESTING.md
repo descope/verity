@@ -10,27 +10,35 @@ Pull requests automatically validate the Verity pipeline without pushing to the 
 
 - `orchestrator.yaml` runs at 02:00 UTC, dispatches `patch-image.yaml` per image
 - Pushes to `ghcr.io/verity-org` with `-patched` suffix
-- Signs with cosign, attests SBOMs and vulnerability reports
+- Signs with cosign keyless and attaches an SBOM attestation via `actions/attest`
 - Catalog assembly and site deploy happen in `build-site.yaml` at 05:00 UTC (decoupled)
 
 ### PR Testing Mode (`pr-test.yaml`)
 
-Lightweight validation that runs on pull requests:
+Lightweight validation that runs on pull requests. `pr-test.yaml` is a
+standalone workflow — it does NOT invoke `patch-image.yaml` via
+`workflow_call`. Jobs include:
 
-- Runs `verity discover` to validate config syntax
-- Runs Integer smoke tests via `melange-check.sh` + `melange-build.sh`
-- May call `patch-image.yaml` via `workflow_call` with `is-pr: true` to validate patching without publishing
-- **Skips:** Signing, attestation, registry publishing, and reports-branch push
+- `verity discover` — validates the merged discovery output from
+  `copa-config.yaml`, `Chart.yaml`, and `verity.yaml`
+- Integer config validation (`verity integer validate`) and smoke builds via
+  `melange-check.sh` + `melange-build.sh`
+- For images changed in the PR, an inline Copa patch pass using
+  `.github/scripts/patch-image.sh` against a local/cache registry (single-arch,
+  typically `linux/amd64`)
+- **Skips:** Signing, SBOM attestation, multi-arch manifest creation,
+  registry publishing, and reports-branch push
 
 ## What Gets Tested in PRs
 
 ✅ Config validation via `verity discover` (merges `copa-config.yaml` + `Chart.yaml` + `verity.yaml`)
-✅ Per-image patching via Copa (validates config + patching logic)
-✅ Trivy pre/post scanning
-✅ Integer/Wolfi build smoke tests
-✅ Per-image multi-arch manifest creation
+✅ Per-image Copa patching for changed images (single-arch, validates config + patching logic)
+✅ Trivy pre/post scanning on patched images
+✅ Integer/Wolfi config validation and single-image smoke builds
 
 ❌ Image signing (production credentials only)
+❌ SBOM attestation (`actions/attest` runs only in production)
+❌ Multi-arch manifest creation (production pipeline only)
 ❌ Registry publishing (uses cache / ephemeral registry only)
 ❌ Reports-branch push (main only)
 ❌ Catalog JSON generation and site deployment (`build-site.yaml`, main only)

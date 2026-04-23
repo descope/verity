@@ -154,8 +154,11 @@ Patching pipeline (production):
 - **chart-gen.yaml**: Helm wrapper generation (04:00)
 - **build-site.yaml**: Catalog assembly + site deploy (05:00)
 
-The main patching pipeline (orchestrator.yaml + patch-image.yaml) runs on: PR
-validation (via pr-test.yaml), push to main, daily scheduled scans.
+The main patching pipeline (`orchestrator.yaml` + `patch-image.yaml`) is
+production-only — it runs nightly and on `main` pushes that touch
+`copa-config.yaml` / `Chart.yaml` / `verity.yaml`, and via
+`workflow_dispatch`. Pull requests use the standalone `pr-test.yaml` workflow,
+which does its own inline Copa patch pass without signing or publishing.
 
 Validation:
 

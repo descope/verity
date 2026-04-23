@@ -37,7 +37,7 @@ and are shellcheck validated.
 | Script                | Purpose                                                                        |
 | --------------------- | ------------------------------------------------------------------------------ |
 | `verify-artifacts.sh` | Verify cosign signatures and GitHub attestations for published images (manual) |
-| `pr-summary.sh`       | Write a pipeline summary to the step summary (invoked inline when needed)      |
+| `pr-summary.sh`       | Legacy PR pipeline summary helper — not currently referenced by any workflow   |
 
 ## Development
 
