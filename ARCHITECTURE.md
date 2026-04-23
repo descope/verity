@@ -152,7 +152,7 @@ produce identical output. Requires `GH_TOKEN` or
 | `--image` | *(required)* | Image name |
 | `--tag` | *(required)* | Image tag |
 | `--upstream-digest` | | Upstream image digest (`sha256:…`) |
-| `--patched-vulns` | `0` | Count of vulnerabilities remaining after patching. The CLI flag's help text calls these "fixable", but the pipeline currently passes the raw Trivy count from `post.json` (no `--ignore-unfixed`), so the recorded value includes unfixable CVEs |
+| `--patched-vulns` | `0` | Count of vulnerabilities remaining after patching. The CLI flag's help text calls these "fixable". This CLI is not currently invoked by the workflows — today `patch-image.yaml` updates `preflight-manifest.json` inline via `gh api` + `jq`, writing the raw Trivy post-patch count from `post.json` (no `--ignore-unfixed`, so the value includes unfixable CVEs) — but the CLI exists as a programmatic alternative |
 
 ### `verity integer`
 
@@ -412,11 +412,17 @@ Pages. `catalog.json` + `integer-catalog.json` drive every page.
 ### Daily Scans
 
 Cron triggers cascade across the night: Copa at 02:00 UTC, Integer at 03:00,
-chart-gen at 04:00, site build at 05:00. Whether each image actually publishes
-depends on the skip checks (see Skip Detection above) and on whether the
+chart-gen at 04:00, site build at 05:00.
+
+For **Copa-patched images**, whether an image actually re-publishes on a given
+run depends on the skip checks (see Skip Detection above) plus whether the
 post-patch Trivy vulnerability-ID set has changed since the previous
 published report on the `reports` branch — a change, including the appearance
 of a previously-unseen unfixable CVE, triggers a new push.
+
+For **Integer (Wolfi) images**, the build runs on a schedule or when
+`images/<name>.yaml` changes; there is no vuln-ID-set delta comparison, so
+rebuilt images are published whenever the build succeeds.
 
 ### Dependency Updates (Renovate)
 
