@@ -1,9 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Patches a single platform-specific image using Copa and pushes to the staging registry.
-# Falls back to crane copy if Copa finds no OS package updates (exits 0 but skips push).
+# Patches a single platform-specific image using `verity patch` (which imports
+# Copa as a Go library — see internal/patch and cmd/patch.go). Pushes to the
+# staging registry. Falls back to `crane copy` if Copa finds no OS package
+# updates (verity patch exits 0 but does not push).
+#
 # Required env vars: PLATFORM, SOURCE, IMAGE_NAME, STAGING_REGISTRY
+#
+# Optional env vars:
+#   GO_VCS_URL     Explicit Go module VCS URL for stripped/distroless binaries.
+#                  Currently a no-op at the Go layer (upstream copa PR #1546
+#                  is still open); verity patch logs a warning when set. Go
+#                  binary rebuilds still work via copa's embedded buildinfo
+#                  auto-detect on non-stripped binaries, with the retry below
+#                  falling back to OS-only patches if the rebuild fails.
 
 : "${PLATFORM:?PLATFORM is required}"
 : "${SOURCE:?SOURCE is required}"
@@ -25,12 +36,13 @@ REPORT_FILE="reports/$(echo "$SOURCE" | sed 's/[\/:]/_/g').json"
 
 echo "Using report file: $REPORT_FILE"
 
-# Copa patches the native platform of this runner (amd64 or arm64).
+# verity patch wraps copa's pkg/patch.Patch. It accepts the same flag surface
+# the legacy `copa patch` did, so the arg list below is largely unchanged.
 # --pkg-types os,library patches both OS packages and app-level deps (pip, npm)
 # --library-patch-level major allows major version bumps for library fixes
-COPA_LOG=$(mktemp)
+PATCH_LOG=$(mktemp)
 set +e
-COPA_ARGS=(
+PATCH_ARGS=(
   --image "$SOURCE"
   --tag "$PLATFORM_TAG"
   --report "$REPORT_FILE"
@@ -38,52 +50,61 @@ COPA_ARGS=(
   --library-patch-level major
   --toolchain-patch-level patch
   --push
-  --addr buildx://copa-builder
+  --buildkit-addr buildx://copa-builder
   --timeout 30m
 )
 if [ -n "${GO_VCS_URL:-}" ]; then
-  COPA_ARGS+=(--go-vcs-url "$GO_VCS_URL")
+  PATCH_ARGS+=(--go-vcs-url "$GO_VCS_URL")
 fi
-copa patch "${COPA_ARGS[@]}" 2>&1 | tee "$COPA_LOG"
-COPA_EXIT=${PIPESTATUS[0]}
+./verity patch "${PATCH_ARGS[@]}" 2>&1 | tee "$PATCH_LOG"
+PATCH_EXIT=${PIPESTATUS[0]}
 set -e
 
-if [ "$COPA_EXIT" -ne 0 ]; then
-  if grep -q 'no package updates found' "$COPA_LOG"; then
+if [ "$PATCH_EXIT" -ne 0 ]; then
+  if grep -q 'no package updates found' "$PATCH_LOG"; then
     echo "No package updates found — image is already clean"
   elif [ -n "${GO_VCS_URL:-}" ]; then
-    # Go binary rebuild failed — retry with OS-only patches.
-    # Copa still attempts Go rebuild even without --go-vcs-url (uses VCS
-    # info from the binary). Using --pkg-types os skips language managers
-    # entirely. Some Go/library CVEs remain but OS packages get patched.
-    echo "::warning::Copa failed with --go-vcs-url, retrying without Go rebuild"
+    # The retry branch only triggers when GO_VCS_URL is set because that
+    # flag marks catalog entries with a rebuildable Go binary — i.e., the
+    # images most likely to fail on the Go-rebuild code path. When the
+    # initial --pkg-types os,library attempt fails on such an image, we
+    # retry with --pkg-types os to drop language managers entirely: OS
+    # CVEs still get patched; Go/library CVEs remain unfixed for this run.
+    #
+    # Historical note: with the legacy verity-org/copacetic fork, passing
+    # --go-vcs-url gave copa an explicit VCS URL override. Upstream copa
+    # (currently pinned) doesn't yet expose that option; verity patch
+    # accepts --go-vcs-url for flag compatibility but treats it as a
+    # no-op pending upstream PR #1546. Once that merges, --go-vcs-url
+    # will resume being wired through; the retry gate stays the same.
+    echo "::warning::Patch failed for Go-rebuild image, retrying with OS-only patches"
     RETRY_ARGS=(
       --image "$SOURCE"
       --tag "$PLATFORM_TAG"
       --report "$REPORT_FILE"
       --pkg-types "os"
       --push
-      --addr buildx://copa-builder
+      --buildkit-addr buildx://copa-builder
       --timeout 30m
     )
     set +e
-    copa patch "${RETRY_ARGS[@]}" 2>&1 | tee "$COPA_LOG"
+    ./verity patch "${RETRY_ARGS[@]}" 2>&1 | tee "$PATCH_LOG"
     RETRY_EXIT=${PIPESTATUS[0]}
     set -e
     if [ "$RETRY_EXIT" -ne 0 ]; then
-      if grep -q 'no package updates found' "$COPA_LOG"; then
+      if grep -q 'no package updates found' "$PATCH_LOG"; then
         echo "No package updates found on retry — image is already clean"
       else
-        rm -f "$COPA_LOG"
+        rm -f "$PATCH_LOG"
         exit "$RETRY_EXIT"
       fi
     fi
   else
-    rm -f "$COPA_LOG"
-    exit "$COPA_EXIT"
+    rm -f "$PATCH_LOG"
+    exit "$PATCH_EXIT"
   fi
 fi
-rm -f "$COPA_LOG"
+rm -f "$PATCH_LOG"
 
 # When Copa finds no OS package updates it exits 0 but does not push.
 # Copy the source image to the staging tag so the combine step can build

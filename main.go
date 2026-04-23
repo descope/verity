@@ -21,6 +21,7 @@ func main() {
 			cmd.IntegerCommand,
 			cmd.PreflightCommand,
 			cmd.ChartGenCommand,
+			cmd.PatchCommand,
 		},
 		Version: "2.0.0",
 	}
