@@ -45,12 +45,16 @@ run is decided by two checks rather than a "fixable CVE" filter:
 
 1. **Preflight manifest** — `verity discover --preflight` compares the
    upstream image digest against the last published entry in the preflight
-   manifest on the `reports` branch. An unchanged digest with zero remaining
-   fixable vulnerabilities is skipped.
+   manifest on the `reports` branch. An unchanged digest whose recorded
+   post-patch vulnerability count is zero is skipped.
 2. **Existing patched tag check** — `patch-image.yaml` resolves any existing
-   `-patched` tag in the target registry and re-scans it. If the existing
-   tag has zero vulnerabilities the run is skipped; otherwise the image is
-   re-patched.
+   `-patched` tag in the target registry and re-scans it with Trivy (same
+   `--vuln-type os,library`, no `--ignore-unfixed`). If the scan reports
+   zero vulnerabilities the run is skipped; otherwise the image is re-patched.
+
+Both checks count every vulnerability Trivy reports — fixable and unfixable
+alike — so the skip condition is strict: any CVE present in the existing
+patched image triggers a re-patch.
 
 Pre- and post-patch scan reports are pushed to the `reports` branch for
 auditability, but are not currently attached to images as in-toto attestations.
