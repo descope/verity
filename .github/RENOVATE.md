@@ -17,10 +17,22 @@ This repository uses Renovate to automatically update dependencies and trigger t
 
 ### 3. Docker Images in Workflows
 
-Custom manager tracks:
+Custom managers track the BuildKit references that carry the required
+metadata:
 
-- `moby/buildkit:v0.19.0` in CI workflows
-- Automatically updates to latest stable version
+- The mirrored `buildx-stable-1` digest consumed by `orchestrator.yaml` /
+  `patch-image.yaml` — picked up by the `customManagers` regex rule which
+  matches lines with a preceding `# renovate: datasource=docker depName=...`
+  comment and a `...:TAG@sha256:...` pin.
+- The `moby/buildkit:v0.29.0` image in `docker-compose.yaml` — picked up
+  automatically by Renovate's built-in `docker-compose` manager.
+
+Not currently tracked:
+
+- The `--driver-opt image=moby/buildkit:…` pin in `pr-test.yaml`. It lives
+  inside a shell command, has no digest, and has no `# renovate:` marker, so
+  the regex custom manager doesn't match it. Bump it by hand when needed, or
+  add a `# renovate:`-annotated digest pin if you want it auto-managed.
 
 ### 4. Tool Versions (mise.toml)
 
