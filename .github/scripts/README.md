@@ -5,12 +5,12 @@ and are shellcheck validated.
 
 ## Patching pipeline
 
-| Script              | Used by                                        | Purpose                                                       |
-| ------------------- | ---------------------------------------------- | ------------------------------------------------------------- |
-| `patch-image.sh`    | `patch-image.yaml`, `pr-test.yaml`             | Copa patch + crane fallback for one platform image            |
-| `scan-before.sh`    | `pr-test.yaml`                                 | Pre-patch Trivy scan                                          |
-| `verify-patched.sh` | `pr-test.yaml`                                 | Verify patched image vs. pre-patch CVE state                  |
-| `push-reports.sh`   | `patch-image.yaml`, `integer-build-image.yaml` | Push Trivy reports and preflight manifest to `reports` branch |
+| Script              | Used by                                        | Purpose                                                                                                                                        |
+| ------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `patch-image.sh`    | `patch-image.yaml`, `pr-test.yaml`             | Copa patch + crane fallback for one platform image                                                                                             |
+| `scan-before.sh`    | `pr-test.yaml`                                 | Pre-patch Trivy scan                                                                                                                           |
+| `verify-patched.sh` | `pr-test.yaml`                                 | Verify patched image vs. pre-patch CVE state                                                                                                   |
+| `push-reports.sh`   | `patch-image.yaml`, `integer-build-image.yaml` | Push JSON files (pre/post Copa scan reports, Integer build reports) to the `reports` branch via the Contents API (with retry)                  |
 
 ## Integer (Wolfi) build
 
@@ -19,11 +19,11 @@ and are shellcheck validated.
 | `melange-check.sh` | `pr-test.yaml` | Check whether an image type needs melange; emit build config |
 | `melange-build.sh` | `pr-test.yaml` | Resolve melange source and build a single-arch APK           |
 
-## Site build
+## Copa input lookup
 
-| Script                  | Used by        | Purpose                                          |
-| ----------------------- | -------------- | ------------------------------------------------ |
-| `read-catalog-entry.sh` | `pr-test.yaml` | Read a single catalog entry during site assembly |
+| Script                  | Used by        | Purpose                                                                                                           |
+| ----------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `read-catalog-entry.sh` | `pr-test.yaml` | Look up `image` (and optional `goVcsUrl` / `goVcsTagPrefix`) from `copa-config.yaml` for a given image name + tag |
 
 ## Issue-to-PR automation
 
