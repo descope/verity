@@ -1,30 +1,43 @@
 # GitHub Actions Scripts
 
-Shell scripts used by GitHub Actions workflows. All follow `set -euo pipefail` and are shellcheck validated.
+Shell scripts used by GitHub Actions workflows. All follow `set -euo pipefail`
+and are shellcheck validated.
 
-## Workflow Scripts
+## Patching pipeline
 
-| Script | Used by | Purpose |
-|--------|---------|---------|
-| `copa-discover.sh` | `patch-matrix.yaml` / scan | Copa dry-run, matrix JSON generation |
-| `scan-chart-images.sh` | `patch-matrix.yaml` / scan | Trivy-scan chart images missing reports |
-| `patch-image.sh` | `patch-matrix.yaml` / patch | Copa patch + crane fallback for one platform image |
-| `create-manifests.sh` | `patch-matrix.yaml` / combine | Multi-platform manifest list creation |
-| `sign-manifests.sh` | `patch-matrix.yaml` / combine | Cosign keyless signing of all manifests |
-| `build-attestation-matrix.sh` | `patch-matrix.yaml` / combine | Build attest job matrix from manifest digests |
-| `generate-manifest-report.sh` | `patch-matrix.yaml` / combine | Per-image manifest report JSON files |
-| `generate-catalog.sh` | `patch-matrix.yaml` / assemble | Build catalog JSON from scan + patch results |
-| `pr-summary.sh` | `patch-matrix.yaml` / assemble | Write pipeline summary to step summary |
-| `parse-image-issue-form.sh` | `new-issue.yaml` | Parse image fields from GitHub issue form body |
-| `add-standalone-image.sh` | `new-issue.yaml` | Add image to `copa-config.yaml` and open PR |
-| `melange-check.sh` | `pr-test.yaml` / build | Check if image type needs melange, output config |
-| `melange-build.sh` | `pr-test.yaml` / build | Resolve melange source and build single-arch APK |
+| Script              | Used by                                        | Purpose                                                                                                                                        |
+| ------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `patch-image.sh`    | `patch-image.yaml`, `pr-test.yaml`             | Copa patch + crane fallback for one platform image                                                                                             |
+| `scan-before.sh`    | `pr-test.yaml`                                 | Pre-patch Trivy scan                                                                                                                           |
+| `verify-patched.sh` | `pr-test.yaml`                                 | Verify patched image vs. pre-patch CVE state                                                                                                   |
+| `push-reports.sh`   | `patch-image.yaml`, `integer-build-image.yaml` | Push JSON files (pre/post Copa scan reports, Integer build reports) to the `reports` branch via the Contents API (with retry)                  |
 
-## Utility Scripts
+## Integer (Wolfi) build
 
-| Script | Purpose |
-|--------|---------|
-| `verify-artifacts.sh` | Verify cosign signatures and GitHub attestations for published images |
+| Script             | Used by        | Purpose                                                      |
+| ------------------ | -------------- | ------------------------------------------------------------ |
+| `melange-check.sh` | `pr-test.yaml` | Check whether an image type needs melange; emit build config |
+| `melange-build.sh` | `pr-test.yaml` | Resolve melange source and build a single-arch APK           |
+
+## Copa input lookup
+
+| Script                  | Used by        | Purpose                                                                                                           |
+| ----------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `read-catalog-entry.sh` | `pr-test.yaml` | Look up `image` (and optional `goVcsUrl` / `goVcsTagPrefix`) from `copa-config.yaml` for a given image name + tag |
+
+## Issue-to-PR automation
+
+| Script                      | Used by          | Purpose                                             |
+| --------------------------- | ---------------- | --------------------------------------------------- |
+| `parse-image-issue-form.sh` | `new-issue.yaml` | Parse image fields from the GitHub issue form body  |
+| `add-standalone-image.sh`   | `new-issue.yaml` | Add image entry to `copa-config.yaml` and open a PR |
+
+## Utility / manual
+
+| Script                | Purpose                                                                        |
+| --------------------- | ------------------------------------------------------------------------------ |
+| `verify-artifacts.sh` | Verify cosign signatures and GitHub attestations for published images (manual) |
+| `pr-summary.sh`       | Legacy PR pipeline summary helper — not currently referenced by any workflow   |
 
 ## Development
 
