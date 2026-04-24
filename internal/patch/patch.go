@@ -9,8 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"os"
 	"time"
 
 	"github.com/moby/buildkit/util/progress/progressui"
@@ -86,11 +84,11 @@ type Config struct {
 
 	// GoVCSURL is the explicit Go module VCS URL used by copa's Go binary
 	// rebuild path when the binary lacks embedded buildinfo (stripped /
-	// distroless). This flag is currently UNWIRED because upstream copa
-	// (as of our pin) does not expose a GoVCSURL field on types.Options;
-	// support arrives when upstream PR #1546 merges. Verity accepts the
-	// flag to preserve CLI compatibility with the prior `copa patch`
-	// invocation, and logs a (value-redacted) warning when it is set.
+	// distroless). Flows through to types.Options.GoVCSURL, which is
+	// currently provided by a go.mod replace directive pointing at the
+	// verity-org/copacetic feat/go-vcs-resolution branch (upstream copa
+	// PR #1546). The replace directive is dropped once #1546 merges
+	// upstream and verity re-pins to a tagged release.
 	GoVCSURL string
 }
 
@@ -139,6 +137,7 @@ func (c *Config) toOptions() *types.Options {
 		Push:                c.Push,
 		BkAddr:              c.BuildKitAddr,
 		Timeout:             timeout,
+		GoVCSURL:            c.GoVCSURL,
 		Progress:            progressui.DisplayMode("plain"),
 	}
 	if c.Platform != "" {
@@ -151,10 +150,6 @@ func (c *Config) toOptions() *types.Options {
 // indirection so tests can inject a stub without touching copa or BuildKit.
 var patchFunc = copapatch.Patch
 
-// warnWriter is where the no-op warning about --go-vcs-url lands. Test
-// helpers swap this for a buffer; production code writes to stderr.
-var warnWriter io.Writer = os.Stderr
-
 // Run executes a single-image patch via copa's library API. It mirrors the
 // behaviour of `copa patch …` as invoked by `.github/scripts/patch-image.sh`.
 //
@@ -163,19 +158,6 @@ var warnWriter io.Writer = os.Stderr
 func Run(ctx context.Context, cfg *Config) error {
 	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("invalid patch config: %w", err)
-	}
-
-	if cfg.GoVCSURL != "" {
-		// Never print the raw URL: Go VCS URLs can include credentials
-		// (e.g. "https://user:token@host/org/repo"), tokens, or other
-		// sensitive query parameters. Logging the value to CI stderr
-		// would echo it into GitHub Actions logs. Log only that a
-		// value was provided, not what it was.
-		fmt.Fprintln(warnWriter,
-			"warning: --go-vcs-url is set but ignored; upstream copa "+
-				"does not yet expose Options.GoVCSURL (pending upstream "+
-				"PR #1546). Go binary rebuilds still work via copa's "+
-				"embedded buildinfo auto-detect on non-stripped binaries.")
 	}
 
 	if err := patchFunc(ctx, cfg.toOptions()); err != nil {

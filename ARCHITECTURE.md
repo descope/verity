@@ -210,7 +210,7 @@ workflow `.github/scripts/patch-image.sh` calls this command.
 | `--buildkit-addr` | *(empty)* | BuildKit endpoint (e.g., `buildx://copa-builder`) |
 | `--timeout` | `5m` | Upper bound on the whole patch operation |
 | `--platform` | *(empty)* | Single platform to build for (e.g. `linux/amd64`) |
-| `--go-vcs-url` | *(empty)* | Go module VCS URL for stripped/distroless binaries; currently a no-op pending upstream copa PR #1546 |
+| `--go-vcs-url` | *(empty)* | Go module VCS URL for stripped/distroless binaries. Wired through copa's `types.Options.GoVCSURL` via a temporary `go.mod` replace directive → `verity-org/copacetic feat/go-vcs-resolution` (upstream copa PR #1546). Replace directive is dropped once #1546 merges upstream. |
 
 Copa's sentinel `ErrNoUpdatesFound` maps to exit code `0` with stderr line
 `"no package updates found for image <ref>"` so `patch-image.sh`'s existing

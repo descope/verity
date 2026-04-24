@@ -137,3 +137,5 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	k8s.io/apimachinery v0.35.2 // indirect
 )
+
+replace github.com/project-copacetic/copacetic => github.com/verity-org/copacetic v0.0.0-20260424111537-fd4ff4a74837

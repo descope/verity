@@ -9,12 +9,14 @@ set -euo pipefail
 # Required env vars: PLATFORM, SOURCE, IMAGE_NAME, STAGING_REGISTRY
 #
 # Optional env vars:
-#   GO_VCS_URL     Explicit Go module VCS URL for stripped/distroless binaries.
-#                  Currently a no-op at the Go layer (upstream copa PR #1546
-#                  is still open); verity patch logs a warning when set. Go
-#                  binary rebuilds still work via copa's embedded buildinfo
-#                  auto-detect on non-stripped binaries, with the retry below
-#                  falling back to OS-only patches if the rebuild fails.
+#   GO_VCS_URL     Explicit Go module VCS URL for stripped/distroless Go
+#                  binaries. Flows through verity patch → copa's
+#                  types.Options.GoVCSURL (currently sourced from a go.mod
+#                  replace directive → verity-org/copacetic feat/go-vcs-
+#                  resolution; the replace directive is dropped once
+#                  upstream copa PR #1546 merges). The retry branch below
+#                  handles the residual case where the Go rebuild still
+#                  fails, falling back to OS-only patches.
 
 : "${PLATFORM:?PLATFORM is required}"
 : "${SOURCE:?SOURCE is required}"
@@ -68,13 +70,6 @@ if [ "$PATCH_EXIT" -ne 0 ]; then
     # initial --pkg-types os,library attempt fails on such an image, we
     # retry with --pkg-types os to drop language managers entirely: OS
     # CVEs still get patched; Go/library CVEs remain unfixed for this run.
-    #
-    # Historical note: with the legacy verity-org/copacetic fork, passing
-    # --go-vcs-url gave copa an explicit VCS URL override. Upstream copa
-    # (currently pinned) doesn't yet expose that option; verity patch
-    # accepts --go-vcs-url for flag compatibility but treats it as a
-    # no-op pending upstream PR #1546. Once that merges, --go-vcs-url
-    # will resume being wired through; the retry gate stays the same.
     echo "::warning::Patch failed for Go-rebuild image, retrying with OS-only patches"
     RETRY_ARGS=(
       --image "$SOURCE"

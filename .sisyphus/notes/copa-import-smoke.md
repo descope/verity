@@ -14,6 +14,32 @@ removes the docker/docker → moby/moby/client type conflict that previously
 blocked copa-as-a-library. v0.13.0 was released 2026-01-09 and is 64 commits
 behind this pin; it predates PR #1525 and will not build.
 
+### `replace` Directive for Go VCS Fallback (temporary)
+
+Upstream copa HEAD does not yet have `types.Options.GoVCSURL` — that field
+arrives with PR #1546 (still open upstream, blocked on rebase). Because
+verity actively uses `goVcsUrl` for 16+ images in `copa-config.yaml`
+(cert-manager, loki, consul, prometheus, victorialogs, rabbitmq operators,
+grafana-operator, gatekeeper, cloud-on-k8s, postgres-operator, ollama, …),
+shipping the migration without that field would silently lose Go CVE
+patching for those images.
+
+To preserve parity, `go.mod` carries a temporary replace directive:
+
+```
+replace github.com/project-copacetic/copacetic => github.com/verity-org/copacetic v0.0.0-20260424111537-fd4ff4a74837
+```
+
+`fd4ff4a7` is the HEAD of `verity-org/copacetic feat/go-vcs-resolution`,
+which is 10 commits ahead / 0 commits behind upstream main (i.e., upstream
+main + exactly the PR #1546 commits). The branch was authored by the
+verity team and is what was filed upstream as PR #1546.
+
+**Exit path:** once PR #1546 merges upstream and we re-pin to a tagged
+copa release, delete the replace directive in one line. No other code
+changes needed — `Options.GoVCSURL` becomes available directly from the
+upstream module.
+
 ## go.mod / go.sum Delta
 
 | Metric | Before | After | Delta |
@@ -64,12 +90,15 @@ BkKeyPath, Loader, OCIDir, OutputContext, EOLAPIBaseURL, ExitOnEOL.
    `copa patch`'s Cobra default). `TestPatchCommandDefaults` locks this in.
    CI always passes `--timeout 30m`, so the regression was invisible there.
 
-3. **No `GoVCSURL` field on `types.Options` at HEAD.** Upstream PR #1546 (Go
-   VCS fallback for stripped/distroless binaries) is still open. Verity
-   accepts `--go-vcs-url` for CLI compatibility with the prior
-   `copa patch` invocation but logs a warning and does not wire it. Support
-   arrives automatically when the field is added upstream; wiring is a
-   one-line change in `internal/patch/patch.go::toOptions()`.
+3. **`GoVCSURL` field on `types.Options` requires a `replace` directive.**
+   Upstream copa HEAD lacks this field; PR #1546 (authored by the verity
+   team) adds it. To avoid losing Go CVE coverage for the 16+
+   `goVcsUrl`-tagged images in `copa-config.yaml` during the migration
+   window, `go.mod` uses a temporary `replace` directive pointing at
+   `verity-org/copacetic feat/go-vcs-resolution` (upstream main + PR #1546).
+   `--go-vcs-url` is fully wired: CLI flag → `Config.GoVCSURL` →
+   `types.Options.GoVCSURL`. `TestRunPlumbsGoVCSURLToCopa` locks the
+   plumbing in. When PR #1546 merges upstream, drop the replace directive.
 
 4. **BuildKit connection is internal to copa** (plan Risk R3 resolved). Pass
    `BkAddr` string, copa calls `buildkit.NewClient` itself. No manual

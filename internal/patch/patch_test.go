@@ -1,10 +1,8 @@
 package patch
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
@@ -83,6 +81,7 @@ func TestToOptionsFieldMapping(t *testing.T) {
 		BuildKitAddr:        "buildx://copa-builder",
 		Timeout:             30 * time.Minute,
 		Platform:            "linux/amd64",
+		GoVCSURL:            "https://github.com/prometheus/prometheus",
 	}
 
 	opts := cfg.toOptions()
@@ -121,6 +120,9 @@ func TestToOptionsFieldMapping(t *testing.T) {
 	}
 	if len(opts.Platforms) != 1 || opts.Platforms[0] != cfg.Platform {
 		t.Errorf("opts.Platforms = %v, want [%q]", opts.Platforms, cfg.Platform)
+	}
+	if opts.GoVCSURL != cfg.GoVCSURL {
+		t.Errorf("opts.GoVCSURL = %q, want %q", opts.GoVCSURL, cfg.GoVCSURL)
 	}
 }
 
@@ -249,74 +251,38 @@ func TestRunPropagatesErrNoUpdatesFound(t *testing.T) {
 	}
 }
 
-// TestGoVCSURLRedaction guards the credential-leak fix. The reviewer flagged
-// that logging the raw --go-vcs-url value can expose credentials/tokens to
-// CI logs (e.g. "https://user:token@host/org/repo"). Run must emit a warning
-// when GoVCSURL is non-empty, but must NOT echo the value.
-func TestGoVCSURLRedaction(t *testing.T) {
-	var buf bytes.Buffer
-	restoreWriter := withWarnWriter(t, &buf)
-	defer restoreWriter()
+// TestRunPlumbsGoVCSURLToCopa guards the migration-window contract: the
+// --go-vcs-url flag must reach copa's types.Options.GoVCSURL. Before the
+// go.mod replace directive → verity-org/copacetic feat/go-vcs-resolution
+// (upstream PR #1546), copa's upstream Options struct lacked this field
+// and the value was silently dropped, breaking Go CVE patching for every
+// image with goVcsUrl in copa-config.yaml (cert-manager, loki, consul,
+// prometheus, …).
+func TestRunPlumbsGoVCSURLToCopa(t *testing.T) {
+	var gotOpts *types.Options
+	stub := func(_ context.Context, opts *types.Options) error {
+		gotOpts = opts
+		return nil
+	}
+	restore := withPatchFunc(t, stub)
+	defer restore()
 
-	stub := func(_ context.Context, _ *types.Options) error { return nil }
-	restoreFunc := withPatchFunc(t, stub)
-	defer restoreFunc()
-
-	// Simulated credential-bearing URL. The value pattern (user:token@host)
-	// is what real Git/Go-VCS URLs look like and what the prior code path
-	// would have echoed to CI logs; we assert none of its parts appear in
-	// the captured warning. Built at runtime from parts so the compile-time
-	// literal doesn't trip gosec's G101 hardcoded-credential detector —
-	// this is a redaction-check fixture, not a real credential.
-	user := "someuser"
-	token := "ghp_" + "supersecret"
-	secret := "https://" + user + ":" + token + "@github.com/private/repo@v1.2.3"
+	wantURL := "https://github.com/prometheus/prometheus"
 	cfg := &Config{
-		Image:      "alpine:3.18",
-		PatchedTag: "alpine-patched",
+		Image:      "quay.io/prometheus/prometheus:v3.9.1",
+		PatchedTag: "v3.9.1-patched",
 		Report:     "trivy.json",
-		GoVCSURL:   secret,
+		GoVCSURL:   wantURL,
 	}
 	if err := Run(context.Background(), cfg); err != nil {
 		t.Fatalf("Run() = %v, want nil", err)
 	}
-
-	logged := buf.String()
-	if logged == "" {
-		t.Fatal("expected a warning when --go-vcs-url is set, got no output")
+	if gotOpts == nil {
+		t.Fatal("patchFunc was not invoked")
 	}
-	if strings.Contains(logged, secret) ||
-		strings.Contains(logged, token) ||
-		strings.Contains(logged, user) {
-		t.Errorf("warning leaked the raw --go-vcs-url value: %q", logged)
-	}
-	if !strings.Contains(logged, "--go-vcs-url") {
-		t.Errorf("warning does not mention --go-vcs-url: %q", logged)
-	}
-	if !strings.Contains(logged, "#1546") {
-		t.Errorf("warning does not reference upstream PR #1546: %q", logged)
-	}
-}
-
-func TestRunSkipsGoVCSWarningWhenEmpty(t *testing.T) {
-	var buf bytes.Buffer
-	restoreWriter := withWarnWriter(t, &buf)
-	defer restoreWriter()
-
-	stub := func(_ context.Context, _ *types.Options) error { return nil }
-	restoreFunc := withPatchFunc(t, stub)
-	defer restoreFunc()
-
-	cfg := &Config{
-		Image:      "alpine:3.18",
-		PatchedTag: "alpine-patched",
-		Report:     "trivy.json",
-	}
-	if err := Run(context.Background(), cfg); err != nil {
-		t.Fatalf("Run() = %v, want nil", err)
-	}
-	if buf.Len() != 0 {
-		t.Errorf("unexpected warning output when GoVCSURL is empty: %q", buf.String())
+	if gotOpts.GoVCSURL != wantURL {
+		t.Errorf("opts.GoVCSURL = %q, want %q (upstream PR #1546 carry-patch must plumb this through)",
+			gotOpts.GoVCSURL, wantURL)
 	}
 }
 
@@ -327,13 +293,4 @@ func withPatchFunc(t *testing.T, stub func(context.Context, *types.Options) erro
 	orig := patchFunc
 	patchFunc = stub
 	return func() { patchFunc = orig }
-}
-
-// withWarnWriter temporarily replaces warnWriter with w and returns a
-// restore func. Used to capture the --go-vcs-url warning for assertions.
-func withWarnWriter(t *testing.T, w *bytes.Buffer) func() {
-	t.Helper()
-	orig := warnWriter
-	warnWriter = w
-	return func() { warnWriter = orig }
 }
