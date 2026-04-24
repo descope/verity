@@ -188,10 +188,10 @@ func TestRunValidationFails(t *testing.T) {
 	}
 }
 
-// Tests that swap the package-level patchFunc / warnWriter must NOT run in
-// parallel with each other or with Run (which reads those vars). Running
-// sequentially avoids a data race; the test body is short so serialization
-// costs nothing meaningful.
+// Tests that swap the package-level patchFunc must NOT run in parallel with
+// each other or with Run (which reads that shared function variable).
+// Running sequentially avoids a data race; the test body is short so
+// serialization costs nothing meaningful.
 
 func TestRunCallsPatchFunc(t *testing.T) {
 	var gotOpts *types.Options

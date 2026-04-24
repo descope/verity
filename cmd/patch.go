@@ -72,8 +72,8 @@ var PatchCommand = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name: "go-vcs-url",
-			Usage: "Go module VCS URL for stripped/distroless binaries " +
-				"(currently a no-op; support lands with upstream copa PR #1546)",
+			Usage: "Go module VCS URL used when patching stripped/distroless " +
+				"Go binaries (overrides copa's embedded buildinfo auto-detect)",
 		},
 	},
 	Action: patchAction,

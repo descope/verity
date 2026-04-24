@@ -129,7 +129,7 @@ upstream fell into three buckets (established in the prior copa-side session):
 
 | Fork feature | Exposed to verity? | Status in migration |
 |---|---|---|
-| Go VCS fallback (PR #1546) | Yes — `--go-vcs-url` flag | **Documented no-op.** Verity accepts the flag for CLI compatibility and warns; copa's embedded buildinfo auto-detect still handles non-stripped binaries. Shell retry to `--pkg-types os` handles the stripped-binary fallback that previously relied on the fork. Full restoration once PR #1546 merges. |
+| Go VCS fallback (PR #1546) | Yes — `--go-vcs-url` flag | **Fully wired** via a temporary `go.mod` replace directive → `verity-org/copacetic feat/go-vcs-resolution` (upstream main + PR #1546 rebased on it). `--go-vcs-url` flows through to copa's `types.Options.GoVCSURL`. Replace directive is dropped once PR #1546 merges upstream; no other code changes needed then. |
 | Helm chart patching (PR #1547) | **No.** | Verity's chart-gen command does helm wrapper charts in pure Go (`internal/chartgen`). Copa's helm patching (in-place) was never invoked from verity. Fork's branch is functionally irrelevant to verity. |
 | Bulk engine extras: `--dry-run`, `--output-json`, `target.registry`, per-arch tag exclusion | **No.** | Verity's pipeline uses GH Actions matrix fan-out to call `./verity patch` per-image-per-platform (which wraps copa's single-image `Patch()` via the library), not copa's bulk engine. Skip-detection happens at verity's `scan` job layer (checks existing patched image vulns, only dispatches patch if needed). None of the fork's bulk extras are invoked from verity's workflows. |
 
