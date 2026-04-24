@@ -40,15 +40,17 @@ const DefaultTimeout = 5 * time.Minute
 // copa field not listed here is left at copa's zero-value default.
 type Config struct {
 	// Image is the source image reference (e.g.
-	// "mirror.gcr.io/library/nginx:1.29.3"). Required.
+	// "mirror.gcr.io/library/nginx:1.29.3"). Required: Validate rejects
+	// an empty value with ErrEmptyImage.
 	Image string
 
-	// PatchedTag is the output tag that copa pushes to. Required. The tag
+	// PatchedTag is the output tag that copa pushes to. The tag
 	// typically includes a platform suffix (e.g. "1.29.3-linux-amd64-patched").
+	// Required: Validate rejects an empty value with ErrEmptyTag.
 	PatchedTag string
 
 	// Report is the path to a Trivy JSON report for the source image.
-	// Required.
+	// Required: Validate rejects an empty value with ErrEmptyReport.
 	Report string
 
 	// PkgTypes is a comma-separated list of package ecosystems to patch.

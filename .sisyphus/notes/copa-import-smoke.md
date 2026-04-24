@@ -22,10 +22,10 @@ behind this pin; it predates PR #1525 and will not build.
 | Direct requires | 5 | 6 | +1 (copa) |
 | Binary size | ~15 MB | ~39 MB | +24 MB (~2.6x) |
 
-Delta is well under the plan's +3000 alarm threshold and below the expected
-+1500 upper bound. Binary growth is the primary cost: 15 MB → 39 MB largely
-from buildkit, containerd, moby client, trivy-db, and opentelemetry packages
-copa pulls in transitively.
+Delta is below the plan's +3000 alarm threshold and the expected +1500 upper
+bound. Binary growth is the main cost: 15 MB → 39 MB, largely from buildkit,
+containerd, moby client, trivy-db, and opentelemetry packages that copa pulls
+in transitively.
 
 ## Options Fields Actually Used
 
@@ -62,8 +62,7 @@ BkKeyPath, Loader, OCIDir, OutputContext, EOLAPIBaseURL, ExitOnEOL.
    `"patch exceeded timeout 0s"` before any work starts. Fix: the CLI flag
    `--timeout` now has `Value: defaultPatchTimeout` (5m, matching legacy
    `copa patch`'s Cobra default). `TestPatchCommandDefaults` locks this in.
-   Caught by code review, not runtime — CI always passes `--timeout 30m` so
-   the regression was invisible to CI.
+   CI always passes `--timeout 30m`, so the regression was invisible there.
 
 3. **No `GoVCSURL` field on `types.Options` at HEAD.** Upstream PR #1546 (Go
    VCS fallback for stripped/distroless binaries) is still open. Verity
@@ -88,17 +87,15 @@ BkKeyPath, Loader, OCIDir, OutputContext, EOLAPIBaseURL, ExitOnEOL.
    `tui.RenderError(getErrorInfo(err))` unconditionally on any non-nil
    return, including the sentinel. Verity swallows `ErrNoUpdatesFound` and
    exits 0, but the red "Patch Failed" panel has already been printed to
-   stderr by the time we see the error. This will confuse log readers on
-   clean images ("why is it failing but passing?"). Low severity: exit code
-   is correct, grep-compatible stderr line still appears, CI retry gate
-   works. Documenting here so anyone reading CI logs during migration knows
-   it's cosmetic. Fixing upstream would require either intercepting copa's
-   stderr or a `SuppressTUIOnNoUpdates` option — both intrusive; deferring.
+   stderr by the time we see the error. Low severity: exit code is correct,
+   the grep-compatible stderr line still appears, and the CI retry gate
+   works. Fixing upstream would require either intercepting copa's stderr or
+   a `SuppressTUIOnNoUpdates` option; deferring.
 
 ## Fork Parity Verification (Review #5)
 
 Reviewer asked whether the `verity-org/copacetic` fork carried unupstreamed
-logic that silently vanishes with this migration. The fork's 68 commits above
+logic that would disappear with this migration. The fork's 68 commits above
 upstream fell into three buckets (established in the prior copa-side session):
 
 | Fork feature | Exposed to verity? | Status in migration |
@@ -112,7 +109,7 @@ Evidence that bulk engine is not used:
 - No verity script or workflow invokes copa's bulk engine, `upgrade-report`, or any bulk-config mode.
 - Skip detection lives in `cmd/scan.go` (patched-image scan, emits `needs-patch=true/false` workflow output consumed by `patch-image.yaml:scan` job).
 
-Conclusion: the only fork feature with a functional verity surface is the Go VCS fallback. Both the no-op acceptance of `--go-vcs-url` and the OS-only retry fallback preserve the existing behavior envelope. The migration does not silently drop any live functionality.
+Conclusion: the only fork feature with a functional verity surface is the Go VCS fallback. Both the no-op acceptance of `--go-vcs-url` and the OS-only retry fallback preserve the existing behavior envelope. The migration does not drop any live functionality.
 
 ## End-to-End QA Scenario Result (Plan §6 Phase 1)
 

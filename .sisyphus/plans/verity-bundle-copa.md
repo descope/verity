@@ -155,11 +155,10 @@ grep (which breaks on i18n, log format changes, etc).
 
 ### Stream output
 
-`patch.Patch(ctx, opts)` writes diagnostic output through a `*progress.Writer`
-or similar mechanism (to be confirmed during Phase 1 smoke test). Wire it to
-`os.Stderr` so GH Actions log output is unchanged. Any structured result from
-`patch.Patch` (what was patched, skipped, failed) gets printed as one summary
-line for log-grep compatibility.
+`patch.Patch(ctx, opts)` writes diagnostic output through a `*progress.Writer`.
+Wire it to `os.Stderr` so GH Actions log output is unchanged. Any structured
+result from `patch.Patch` (what was patched, skipped, failed) gets printed as
+one summary line for log-grep compatibility.
 
 ---
 
@@ -172,7 +171,7 @@ Things that must be true before starting Phase 1.
 - [x] Upstream PR #1525 (moby/moby/client) merged (Apr 22).
 - [x] `verity-org/copacetic` `verity` branch rebased onto upstream/main.
 - [ ] **D1 answered** (see §4). D1's default is executable; no action needed unless overriding.
-- [ ] Record chosen copa revision (commit hash) in `.sisyphus/notes/copa-pin.md` for the smoke test.
+- [ ] Record chosen copa revision (commit hash) in the Phase 1 smoke note (`.sisyphus/notes/copa-import-smoke.md` under the "Pin" section) so the pin is discoverable alongside the other verification artifacts.
 
 D2 and D3 do not block Phase 1. Defer until Phase 5 kickoff.
 
@@ -206,8 +205,8 @@ Steps:
 5. Write a minimal `patch.Patch(ctx, &types.Options{…})` call against a tiny
    test image (e.g., `mirror.gcr.io/library/alpine:3.18.0` with a known CVE).
 6. Run locally with a BuildKit container; verify a patched image is produced.
-7. If dep tree looks ugly, note which deps are the worst and decide: acceptable,
-   or file an issue upstream first.
+7. If the dependency tree looks too large, record the worst offenders and
+   decide whether to accept it or file an upstream issue first.
 
 **Deliverable:** a written note in `.sisyphus/notes/copa-import-smoke.md`
 recording:

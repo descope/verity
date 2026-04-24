@@ -21,10 +21,8 @@ set -euo pipefail
 : "${IMAGE_NAME:?IMAGE_NAME is required}"
 : "${STAGING_REGISTRY:?STAGING_REGISTRY is required}"
 
-# Extract platform arch for tag suffix (linux/amd64 -> amd64)
 PLATFORM_ARCH=$(echo "$PLATFORM" | cut -d/ -f2)
 
-# Extract source tag (e.g., nginx:1.29.4 -> 1.29.4)
 SOURCE_TAG=$(echo "$SOURCE" | cut -d: -f2)
 
 # Sanitize image name: chart images contain registry paths with slashes (invalid in OCI tags)

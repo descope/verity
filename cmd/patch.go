@@ -79,7 +79,6 @@ var PatchCommand = &cli.Command{
 	Action: patchAction,
 }
 
-// patchAction is extracted so the inline closure stays under funlen's limit.
 func patchAction(ctx context.Context, cmd *cli.Command) error {
 	cfg := &patch.Config{
 		Image:               cmd.String("image"),
