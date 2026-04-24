@@ -162,9 +162,9 @@ func TestPatchCommandDefaults(t *testing.T) {
 		}
 	}
 
-	// Keep defaultPatchTimeout stable — callers (tests, downstream tools)
-	// may rely on 5m specifically.
-	if defaultPatchTimeout != 5*time.Minute {
-		t.Errorf("defaultPatchTimeout = %v, want 5m (matches legacy `copa patch`)", defaultPatchTimeout)
+	// Keep patch.DefaultTimeout stable — callers (tests, downstream tools)
+	// may rely on 5m specifically to match legacy `copa patch`.
+	if patch.DefaultTimeout != 5*time.Minute {
+		t.Errorf("patch.DefaultTimeout = %v, want 5m (matches legacy `copa patch`)", patch.DefaultTimeout)
 	}
 }

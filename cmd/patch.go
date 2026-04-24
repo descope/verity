@@ -5,17 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/urfave/cli/v3"
 
 	"github.com/verity-org/verity/internal/patch"
 )
-
-// defaultPatchTimeout matches the upstream `copa patch` CLI default. Without
-// a non-zero default, copa would build `context.WithTimeout(ctx, 0)` and
-// return "patch exceeded timeout 0s" before doing any real work.
-const defaultPatchTimeout = 5 * time.Minute
 
 // PatchCommand wraps copa's pkg/patch.Patch entry point so verity can patch a
 // single image without shelling out to a separate `copa` binary. The flag
@@ -70,7 +64,7 @@ var PatchCommand = &cli.Command{
 		&cli.DurationFlag{
 			Name:  "timeout",
 			Usage: "Upper bound on the whole patch operation (e.g. 30m)",
-			Value: defaultPatchTimeout,
+			Value: patch.DefaultTimeout,
 		},
 		&cli.StringFlag{
 			Name:  "platform",

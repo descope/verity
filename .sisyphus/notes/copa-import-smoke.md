@@ -105,11 +105,11 @@ upstream fell into three buckets (established in the prior copa-side session):
 |---|---|---|
 | Go VCS fallback (PR #1546) | Yes — `--go-vcs-url` flag | **Documented no-op.** Verity accepts the flag for CLI compatibility and warns; copa's embedded buildinfo auto-detect still handles non-stripped binaries. Shell retry to `--pkg-types os` handles the stripped-binary fallback that previously relied on the fork. Full restoration once PR #1546 merges. |
 | Helm chart patching (PR #1547) | **No.** | Verity's chart-gen command does helm wrapper charts in pure Go (`internal/chartgen`). Copa's helm patching (in-place) was never invoked from verity. Fork's branch is functionally irrelevant to verity. |
-| Bulk engine extras: `--dry-run`, `--output-json`, `target.registry`, per-arch tag exclusion | **No.** | Verity's pipeline uses GH Actions matrix fan-out to call `copa patch` per-image-per-platform, not copa's bulk engine. Skip-detection happens at verity's `scan` job layer (checks existing patched image vulns, only dispatches patch if needed). None of the fork's bulk extras are invoked from verity's workflows. |
+| Bulk engine extras: `--dry-run`, `--output-json`, `target.registry`, per-arch tag exclusion | **No.** | Verity's pipeline uses GH Actions matrix fan-out to call `./verity patch` per-image-per-platform (which wraps copa's single-image `Patch()` via the library), not copa's bulk engine. Skip-detection happens at verity's `scan` job layer (checks existing patched image vulns, only dispatches patch if needed). None of the fork's bulk extras are invoked from verity's workflows. |
 
 Evidence that bulk engine is not used:
-- `.github/workflows/patch-image.yaml` fans out a matrix job per image+tag, each calling `patch-image.sh` which invokes `copa patch` (single image).
-- No verity script or workflow invokes `copa bulk`, `copa upgrade-report`, or any bulk-config mode.
+- `.github/workflows/patch-image.yaml` fans out a matrix job per image+tag, each calling `patch-image.sh` which invokes `./verity patch` (single image, wrapping copa's `pkg/patch.Patch`).
+- No verity script or workflow invokes copa's bulk engine, `upgrade-report`, or any bulk-config mode.
 - Skip detection lives in `cmd/scan.go` (patched-image scan, emits `needs-patch=true/false` workflow output consumed by `patch-image.yaml:scan` job).
 
 Conclusion: the only fork feature with a functional verity surface is the Go VCS fallback. Both the no-op acceptance of `--go-vcs-url` and the OS-only retry fallback preserve the existing behavior envelope. The migration does not silently drop any live functionality.

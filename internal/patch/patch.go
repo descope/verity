@@ -9,11 +9,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
 	"github.com/moby/buildkit/util/progress/progressui"
-	"github.com/project-copacetic/copacetic/pkg/patch"
+	copapatch "github.com/project-copacetic/copacetic/pkg/patch"
 	"github.com/project-copacetic/copacetic/pkg/types"
 )
 
@@ -27,6 +28,12 @@ var ErrEmptyTag = errors.New("patched tag is required")
 // ErrEmptyReport is returned when Config.Report is blank. Copa requires a
 // Trivy report to determine which packages to patch.
 var ErrEmptyReport = errors.New("trivy report path is required")
+
+// DefaultTimeout matches the upstream `copa patch` CLI default. Callers that
+// leave Config.Timeout as zero are upgraded to this value inside toOptions;
+// copa's Patch() calls context.WithTimeout(ctx, opts.Timeout) unconditionally
+// and a zero duration yields an already-expired context, so we guard here.
+const DefaultTimeout = 5 * time.Minute
 
 // Config collects all inputs for a single-image patch operation. It mirrors
 // the subset of copa's types.Options that verity actually uses from CI; any
@@ -66,7 +73,9 @@ type Config struct {
 	// Empty string lets copa auto-detect via its default socket lookup.
 	BuildKitAddr string
 
-	// Timeout bounds the entire patch operation. Zero leaves copa's default.
+	// Timeout bounds the entire patch operation. Values <= 0 are replaced
+	// with DefaultTimeout (5m) inside toOptions; copa rejects a literal zero
+	// duration as "already expired".
 	Timeout time.Duration
 
 	// Platform optionally restricts copa to a single platform (e.g.
@@ -79,7 +88,7 @@ type Config struct {
 	// (as of our pin) does not expose a GoVCSURL field on types.Options;
 	// support arrives when upstream PR #1546 merges. Verity accepts the
 	// flag to preserve CLI compatibility with the prior `copa patch`
-	// invocation, and logs a warning when it is set.
+	// invocation, and logs a (value-redacted) warning when it is set.
 	GoVCSURL string
 }
 
@@ -108,8 +117,15 @@ func (c *Config) Validate() error {
 const defaultScanner = "trivy"
 
 // toOptions maps Config onto the subset of copa's types.Options that verity
-// wires up. Fields left zero-valued use copa's defaults.
+// wires up. Fields left zero-valued use copa's defaults. The returned
+// Timeout is always strictly positive; callers that set Timeout <= 0 get
+// DefaultTimeout, because copa treats zero as an already-expired deadline.
 func (c *Config) toOptions() *types.Options {
+	timeout := c.Timeout
+	if timeout <= 0 {
+		timeout = DefaultTimeout
+	}
+
 	opts := &types.Options{
 		Image:               c.Image,
 		PatchedTag:          c.PatchedTag,
@@ -120,7 +136,7 @@ func (c *Config) toOptions() *types.Options {
 		ToolchainPatchLevel: c.ToolchainPatchLevel,
 		Push:                c.Push,
 		BkAddr:              c.BuildKitAddr,
-		Timeout:             c.Timeout,
+		Timeout:             timeout,
 		Progress:            progressui.DisplayMode("plain"),
 	}
 	if c.Platform != "" {
@@ -128,6 +144,14 @@ func (c *Config) toOptions() *types.Options {
 	}
 	return opts
 }
+
+// patchFunc matches copapatch.Patch's signature. Exposed as a package-level
+// indirection so tests can inject a stub without touching copa or BuildKit.
+var patchFunc = copapatch.Patch
+
+// warnWriter is where the no-op warning about --go-vcs-url lands. Test
+// helpers swap this for a buffer; production code writes to stderr.
+var warnWriter io.Writer = os.Stderr
 
 // Run executes a single-image patch via copa's library API. It mirrors the
 // behaviour of `copa patch …` as invoked by `.github/scripts/patch-image.sh`.
@@ -140,16 +164,19 @@ func Run(ctx context.Context, cfg *Config) error {
 	}
 
 	if cfg.GoVCSURL != "" {
-		fmt.Fprintf(os.Stderr,
-			"warning: --go-vcs-url was provided (%q) but is ignored; "+
-				"upstream copa does not yet expose Options.GoVCSURL "+
-				"(pending upstream PR #1546). "+
-				"Go binary rebuilds still work via copa's embedded buildinfo "+
-				"auto-detect on non-stripped binaries.\n",
-			cfg.GoVCSURL)
+		// Never print the raw URL: Go VCS URLs can include credentials
+		// (e.g. "https://user:token@host/org/repo"), tokens, or other
+		// sensitive query parameters. Logging the value to CI stderr
+		// would echo it into GitHub Actions logs. Log only that a
+		// value was provided, not what it was.
+		fmt.Fprintln(warnWriter,
+			"warning: --go-vcs-url is set but ignored; upstream copa "+
+				"does not yet expose Options.GoVCSURL (pending upstream "+
+				"PR #1546). Go binary rebuilds still work via copa's "+
+				"embedded buildinfo auto-detect on non-stripped binaries.")
 	}
 
-	if err := patch.Patch(ctx, cfg.toOptions()); err != nil {
+	if err := patchFunc(ctx, cfg.toOptions()); err != nil {
 		return fmt.Errorf("copa patch %s: %w", cfg.Image, err)
 	}
 	return nil

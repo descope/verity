@@ -208,7 +208,7 @@ workflow `.github/scripts/patch-image.sh` calls this command.
 | `--toolchain-patch-level` | `patch` | Go toolchain upgrade aggression (`patch`/`minor`/`major`) |
 | `--push` | `false` | Push the patched image to the registry |
 | `--buildkit-addr` | *(empty)* | BuildKit endpoint (e.g., `buildx://copa-builder`) |
-| `--timeout` | `0` | Upper bound on the whole patch operation |
+| `--timeout` | `5m` | Upper bound on the whole patch operation |
 | `--platform` | *(empty)* | Single platform to build for (e.g. `linux/amd64`) |
 | `--go-vcs-url` | *(empty)* | Go module VCS URL for stripped/distroless binaries; currently a no-op pending upstream copa PR #1546 |
 

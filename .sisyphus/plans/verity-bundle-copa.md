@@ -64,7 +64,7 @@ practical.** This is the change that unlocks Option B (bundle copa into verity).
           BuildKit (via copa)                     GHCR (patched images)
 ```
 
-- `./verity patch --image X --report Y --patched-tag Z [--go-vcs-url U]` replaces
+- `./verity patch --image X --report Y --tag Z [--go-vcs-url U]` replaces
   the `copa patch` shell call.
 - `.github/actions/setup-binaries` drops the Copa build step entirely.
 - `.github/scripts/patch-image.sh` calls `./verity patch …` and implements the

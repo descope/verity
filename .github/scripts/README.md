@@ -7,7 +7,7 @@ and are shellcheck validated.
 
 | Script              | Used by                                        | Purpose                                                                                                                                        |
 | ------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `patch-image.sh`    | `patch-image.yaml`, `pr-test.yaml`             | Copa patch + crane fallback for one platform image                                                                                             |
+| `patch-image.sh`    | `patch-image.yaml`, `pr-test.yaml`             | `./verity patch` (Copa as a library) + crane fallback for one platform image                                                                   |
 | `scan-before.sh`    | `pr-test.yaml`                                 | Pre-patch Trivy scan                                                                                                                           |
 | `verify-patched.sh` | `pr-test.yaml`                                 | Verify patched image vs. pre-patch CVE state                                                                                                   |
 | `push-reports.sh`   | `patch-image.yaml`, `integer-build-image.yaml` | Push JSON files (pre/post Copa scan reports, Integer build reports) to the `reports` branch via the Contents API (with retry)                  |

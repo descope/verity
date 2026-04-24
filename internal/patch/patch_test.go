@@ -1,0 +1,333 @@
+package patch
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/project-copacetic/copacetic/pkg/types"
+)
+
+func TestConfigValidate(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		cfg     Config
+		wantErr error
+	}{
+		{
+			name: "all required fields populated",
+			cfg: Config{
+				Image:      "nginx:1.25",
+				PatchedTag: "1.25-patched",
+				Report:     "trivy.json",
+			},
+			wantErr: nil,
+		},
+		{
+			name: "empty image",
+			cfg: Config{
+				PatchedTag: "1.25-patched",
+				Report:     "trivy.json",
+			},
+			wantErr: ErrEmptyImage,
+		},
+		{
+			name: "empty tag",
+			cfg: Config{
+				Image:  "nginx:1.25",
+				Report: "trivy.json",
+			},
+			wantErr: ErrEmptyTag,
+		},
+		{
+			name: "empty report",
+			cfg: Config{
+				Image:      "nginx:1.25",
+				PatchedTag: "1.25-patched",
+			},
+			wantErr: ErrEmptyReport,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := tt.cfg.Validate()
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("Validate() = %v, want %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestToOptionsFieldMapping(t *testing.T) {
+	t.Parallel()
+
+	cfg := &Config{
+		Image:               "mirror.gcr.io/library/nginx:1.29.3",
+		PatchedTag:          "1.29.3-linux-amd64-patched",
+		Report:              "reports/nginx.json",
+		PkgTypes:            "os,library",
+		LibraryPatchLevel:   "major",
+		ToolchainPatchLevel: "patch",
+		Push:                true,
+		BuildKitAddr:        "buildx://copa-builder",
+		Timeout:             30 * time.Minute,
+		Platform:            "linux/amd64",
+	}
+
+	opts := cfg.toOptions()
+
+	if opts.Image != cfg.Image {
+		t.Errorf("opts.Image = %q, want %q", opts.Image, cfg.Image)
+	}
+	if opts.PatchedTag != cfg.PatchedTag {
+		t.Errorf("opts.PatchedTag = %q, want %q", opts.PatchedTag, cfg.PatchedTag)
+	}
+	if opts.Report != cfg.Report {
+		t.Errorf("opts.Report = %q, want %q", opts.Report, cfg.Report)
+	}
+	if opts.Scanner != defaultScanner {
+		t.Errorf("opts.Scanner = %q, want %q (hardcoded default — copa requires non-empty)",
+			opts.Scanner, defaultScanner)
+	}
+	if opts.PkgTypes != cfg.PkgTypes {
+		t.Errorf("opts.PkgTypes = %q, want %q", opts.PkgTypes, cfg.PkgTypes)
+	}
+	if opts.LibraryPatchLevel != cfg.LibraryPatchLevel {
+		t.Errorf("opts.LibraryPatchLevel = %q, want %q", opts.LibraryPatchLevel, cfg.LibraryPatchLevel)
+	}
+	if opts.ToolchainPatchLevel != cfg.ToolchainPatchLevel {
+		t.Errorf("opts.ToolchainPatchLevel = %q, want %q",
+			opts.ToolchainPatchLevel, cfg.ToolchainPatchLevel)
+	}
+	if opts.Push != cfg.Push {
+		t.Errorf("opts.Push = %v, want %v", opts.Push, cfg.Push)
+	}
+	if opts.BkAddr != cfg.BuildKitAddr {
+		t.Errorf("opts.BkAddr = %q, want %q", opts.BkAddr, cfg.BuildKitAddr)
+	}
+	if opts.Timeout != cfg.Timeout {
+		t.Errorf("opts.Timeout = %v, want %v", opts.Timeout, cfg.Timeout)
+	}
+	if len(opts.Platforms) != 1 || opts.Platforms[0] != cfg.Platform {
+		t.Errorf("opts.Platforms = %v, want [%q]", opts.Platforms, cfg.Platform)
+	}
+}
+
+func TestToOptionsPlatformOmittedWhenBlank(t *testing.T) {
+	t.Parallel()
+
+	cfg := &Config{Timeout: time.Minute}
+	opts := cfg.toOptions()
+	if len(opts.Platforms) != 0 {
+		t.Errorf("opts.Platforms = %v, want empty when Config.Platform is blank", opts.Platforms)
+	}
+}
+
+// TestToOptionsAppliesTimeoutDefault guards against the bug where copa's
+// context.WithTimeout(ctx, 0) fires Done() immediately and returns
+// "patch exceeded timeout 0s". Any Config with Timeout <= 0 must end up
+// with a strictly positive opts.Timeout.
+func TestToOptionsAppliesTimeoutDefault(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name string
+		in   time.Duration
+	}{
+		{"zero", 0},
+		{"negative", -1 * time.Second},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			cfg := &Config{Timeout: tc.in}
+			opts := cfg.toOptions()
+			if opts.Timeout != DefaultTimeout {
+				t.Errorf("opts.Timeout = %v, want DefaultTimeout (%v)", opts.Timeout, DefaultTimeout)
+			}
+		})
+	}
+}
+
+func TestDefaultTimeoutIsFiveMinutes(t *testing.T) {
+	t.Parallel()
+	if DefaultTimeout != 5*time.Minute {
+		t.Errorf("DefaultTimeout = %v, want 5m (matches legacy `copa patch`)", DefaultTimeout)
+	}
+}
+
+func TestErrNoUpdatesFoundReExport(t *testing.T) {
+	t.Parallel()
+	if ErrNoUpdatesFound != types.ErrNoUpdatesFound {
+		t.Error("ErrNoUpdatesFound must be an exact re-export of types.ErrNoUpdatesFound so errors.Is works across package boundaries")
+	}
+}
+
+func TestRunValidationFails(t *testing.T) {
+	t.Parallel()
+
+	cfg := &Config{
+		PatchedTag: "bar",
+		Report:     "r.json",
+	}
+	err := Run(context.Background(), cfg)
+	if !errors.Is(err, ErrEmptyImage) {
+		t.Errorf("Run() = %v, want error wrapping ErrEmptyImage", err)
+	}
+}
+
+func TestRunCallsPatchFunc(t *testing.T) {
+	t.Parallel()
+
+	var gotOpts *types.Options
+	stub := func(_ context.Context, opts *types.Options) error {
+		gotOpts = opts
+		return nil
+	}
+	restore := withPatchFunc(t, stub)
+	defer restore()
+
+	cfg := &Config{
+		Image:      "alpine:3.18",
+		PatchedTag: "alpine-patched",
+		Report:     "trivy.json",
+		Timeout:    time.Minute,
+	}
+	if err := Run(context.Background(), cfg); err != nil {
+		t.Fatalf("Run() = %v, want nil", err)
+	}
+	if gotOpts == nil {
+		t.Fatal("patchFunc was not invoked")
+	}
+	if gotOpts.Image != "alpine:3.18" {
+		t.Errorf("patchFunc received Image %q, want %q", gotOpts.Image, "alpine:3.18")
+	}
+}
+
+func TestRunWrapsCopaError(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("copa boom")
+	stub := func(_ context.Context, _ *types.Options) error { return sentinel }
+	restore := withPatchFunc(t, stub)
+	defer restore()
+
+	cfg := &Config{
+		Image:      "alpine:3.18",
+		PatchedTag: "alpine-patched",
+		Report:     "trivy.json",
+	}
+	err := Run(context.Background(), cfg)
+	if !errors.Is(err, sentinel) {
+		t.Errorf("Run() = %v, want wrapped sentinel %v", err, sentinel)
+	}
+}
+
+func TestRunPropagatesErrNoUpdatesFound(t *testing.T) {
+	t.Parallel()
+
+	stub := func(_ context.Context, _ *types.Options) error { return types.ErrNoUpdatesFound }
+	restore := withPatchFunc(t, stub)
+	defer restore()
+
+	cfg := &Config{
+		Image:      "alpine:3.18",
+		PatchedTag: "alpine-patched",
+		Report:     "trivy.json",
+	}
+	err := Run(context.Background(), cfg)
+	if !errors.Is(err, ErrNoUpdatesFound) {
+		t.Errorf("Run() = %v, want error wrapping ErrNoUpdatesFound", err)
+	}
+}
+
+// TestGoVCSURLRedaction guards the credential-leak fix. The reviewer flagged
+// that logging the raw --go-vcs-url value can expose credentials/tokens to
+// CI logs (e.g. "https://user:token@host/org/repo"). Run must emit a warning
+// when GoVCSURL is non-empty, but must NOT echo the value.
+func TestGoVCSURLRedaction(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	restoreWriter := withWarnWriter(t, &buf)
+	defer restoreWriter()
+
+	stub := func(_ context.Context, _ *types.Options) error { return nil }
+	restoreFunc := withPatchFunc(t, stub)
+	defer restoreFunc()
+
+	secret := "https://someuser:ghp_supersecret@github.com/private/repo@v1.2.3"
+	cfg := &Config{
+		Image:      "alpine:3.18",
+		PatchedTag: "alpine-patched",
+		Report:     "trivy.json",
+		GoVCSURL:   secret,
+	}
+	if err := Run(context.Background(), cfg); err != nil {
+		t.Fatalf("Run() = %v, want nil", err)
+	}
+
+	logged := buf.String()
+	if logged == "" {
+		t.Fatal("expected a warning when --go-vcs-url is set, got no output")
+	}
+	if strings.Contains(logged, secret) ||
+		strings.Contains(logged, "ghp_supersecret") ||
+		strings.Contains(logged, "someuser") {
+		t.Errorf("warning leaked the raw --go-vcs-url value: %q", logged)
+	}
+	if !strings.Contains(logged, "--go-vcs-url") {
+		t.Errorf("warning does not mention --go-vcs-url: %q", logged)
+	}
+	if !strings.Contains(logged, "#1546") {
+		t.Errorf("warning does not reference upstream PR #1546: %q", logged)
+	}
+}
+
+func TestRunSkipsGoVCSWarningWhenEmpty(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	restoreWriter := withWarnWriter(t, &buf)
+	defer restoreWriter()
+
+	stub := func(_ context.Context, _ *types.Options) error { return nil }
+	restoreFunc := withPatchFunc(t, stub)
+	defer restoreFunc()
+
+	cfg := &Config{
+		Image:      "alpine:3.18",
+		PatchedTag: "alpine-patched",
+		Report:     "trivy.json",
+	}
+	if err := Run(context.Background(), cfg); err != nil {
+		t.Fatalf("Run() = %v, want nil", err)
+	}
+	if buf.Len() != 0 {
+		t.Errorf("unexpected warning output when GoVCSURL is empty: %q", buf.String())
+	}
+}
+
+// withPatchFunc temporarily replaces the package-level patchFunc with stub
+// and returns a restore func. t is carried for Helper() and future t.Cleanup.
+func withPatchFunc(t *testing.T, stub func(context.Context, *types.Options) error) func() {
+	t.Helper()
+	orig := patchFunc
+	patchFunc = stub
+	return func() { patchFunc = orig }
+}
+
+// withWarnWriter temporarily replaces warnWriter with w and returns a
+// restore func. Used to capture the --go-vcs-url warning for assertions.
+func withWarnWriter(t *testing.T, w *bytes.Buffer) func() {
+	t.Helper()
+	orig := warnWriter
+	warnWriter = w
+	return func() { warnWriter = orig }
+}
