@@ -340,6 +340,10 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "metrics-server", source: "integer" },
       { name: "velero", source: "integer" },
       { name: "sealed-secrets", source: "integer" },
+      { name: "external-secrets", source: "integer" },
+      { name: "kube-rbac-proxy", source: "integer" },
+      { name: "metallb-controller", source: "integer" },
+      { name: "metallb-speaker", source: "integer" },
     ],
   },
 
@@ -510,6 +514,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "jaeger", source: "integer" },
       { name: "tempo", source: "integer" },
       { name: "grafana-alloy", source: "integer" },
+      { name: "cortex", source: "integer" },
     ],
   },
 
@@ -572,6 +577,8 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "ghcr.io/renovatebot/renovate",
       },
       { name: "kaniko", source: "integer" },
+      { name: "flux", source: "integer" },
+      { name: "gitea", source: "integer" },
     ],
   },
 
@@ -732,6 +739,8 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "ghcr.io/kubeflow/spark-operator",
       },
       { name: "mlflow/mlflow", label: "mlflow", source: "copa", upstream: "ghcr.io/mlflow/mlflow" },
+      { name: "temporal", source: "integer" },
+      { name: "meilisearch", source: "integer" },
       {
         name: "tensorflow/serving",
         label: "tensorflow-serving",
