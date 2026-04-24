@@ -97,9 +97,11 @@ func patchAction(ctx context.Context, cmd *cli.Command) error {
 
 	if err := patch.Run(ctx, cfg); err != nil {
 		// ErrNoUpdatesFound is informational, not an error: the image is
-		// already clean. Print to stderr so CI logs stay grep-compatible
-		// with the legacy "no package updates found" string that
-		// patch-image.sh still detects for its retry gate.
+		// already clean. Print the legacy "no package updates found ..."
+		// string to stderr so CI logs stay grep-compatible with the
+		// pre-migration format; patch-image.sh's retry-branch grep only
+		// runs on non-zero exits, and we exit 0 here, so this is for log
+		// readability and defensive back-compat — not control flow.
 		if errors.Is(err, patch.ErrNoUpdatesFound) {
 			fmt.Fprintf(os.Stderr, "no package updates found for image %s\n", cfg.Image)
 			return nil
