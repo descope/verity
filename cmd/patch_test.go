@@ -142,6 +142,13 @@ func TestPatchCommandDefaults(t *testing.T) {
 	if timeoutFlag.Value <= 0 {
 		t.Errorf("--timeout default = %v, want > 0 (copa interprets 0 as 'already expired')", timeoutFlag.Value)
 	}
+	if timeoutFlag.Value != patch.DefaultTimeout {
+		t.Errorf("--timeout default = %v, want patch.DefaultTimeout (%v) so the CLI inherits the library default",
+			timeoutFlag.Value, patch.DefaultTimeout)
+	}
+	if timeoutFlag.Value != 5*time.Minute {
+		t.Errorf("--timeout default = %v, want 5m (matches legacy `copa patch` CLI default)", timeoutFlag.Value)
+	}
 
 	wantStringDefaults := map[string]string{
 		"pkg-types":             "os,library",
