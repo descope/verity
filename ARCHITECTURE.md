@@ -8,8 +8,8 @@ covers the system design, component responsibilities, and pipeline mechanics.
 
 | Component | Role |
 | --- | --- |
-| **Verity CLI** (Go) | Orchestrates scanning, discovery, Integer builds, chart generation, and catalog assembly |
-| **Copa** | Patches OS, Python (`pip`), and Go packages in container images without rebuilding |
+| **Verity CLI** (Go) | Orchestrates scanning, discovery, Integer builds, chart generation, patching, and catalog assembly |
+| **Copa** | Go library (`github.com/project-copacetic/copacetic/pkg/patch`) bundled into the verity binary via `internal/patch`. Patches OS, Python (`pip`), and Go packages in container images without rebuilding. Exposed as `verity patch` |
 | **Trivy** | Vulnerability scanner (CVE detection, SBOM generation) |
 | **BuildKit** | Builds patched container images (production pipeline uses the GHCR-mirrored `buildx-stable-1` digest; PR smoke tests use a pinned buildx driver image; local `docker-compose.yaml` currently pins `moby/buildkit:v0.29.0`) |
 | **apko / melange** | Builds Wolfi-based Integer images from source (apko rootfs + melange APKs) |
@@ -28,7 +28,7 @@ images ship an SPDX SBOM produced by apko.
 
 | Family | What it is | How it's produced |
 | --- | --- | --- |
-| **Copa-patched** | Upstream image with OS + Python + Go packages patched in-place | `copa patch` via BuildKit — no Dockerfile rebuild |
+| **Copa-patched** | Upstream image with OS + Python + Go packages patched in-place | `verity patch` (wraps Copa's Go library) via BuildKit — no Dockerfile rebuild |
 | **Integer (Wolfi-based)** | From-scratch hardened rebuild using Wolfi packages with minimal attack surface | `apko` rootfs build + `melange` APK build from `images/*.yaml` |
 
 FIPS variants are available for a curated set of images (`golang`, `nginx`,
@@ -45,6 +45,7 @@ verity/
 │   ├── discover.go                 `verity discover` — enumerate image+tag combos
 │   ├── preflight.go                `verity preflight update-manifest`
 │   ├── chart_gen.go                `verity chart-gen` — Helm wrapper generation
+│   ├── patch.go                    `verity patch` — single-image patch via Copa library
 │   ├── integer.go                  `verity integer` (subcommand group)
 │   ├── integer_{build,discover,sync,validate,catalog}.go
 │   └── *_test.go
@@ -53,6 +54,7 @@ verity/
 │   ├── config/                     Shared config types (CopaConfig, VerityConfig, …)
 │   ├── discovery/                  Image discovery (Copa + Helm + verity.yaml)
 │   ├── integer/                    Wolfi subsystem (apkindex, config, discovery, render)
+│   ├── patch/                      Thin wrapper around Copa's pkg/patch.Patch library
 │   ├── preflight/                  Preflight manifest for build skipping
 │   ├── copaconfig.go               copa-config.yaml parsing
 │   ├── sitedata.go                 Catalog JSON generation
@@ -86,6 +88,7 @@ Commands:
   integer     Build and manage Wolfi-based OCI images from source (subcommand group)
   preflight   Manage preflight manifest for build skipping
   chart-gen   Generate and push patched wrapper Helm charts from Chart.yaml
+  patch       Patch a single image via Copa (imported as a library)
 
 Use "verity [command] --help" for command-specific options.
 ```
@@ -186,6 +189,32 @@ or Integer, according to `verity.yaml`). Wrappers are pushed as OCI artifacts.
 | `--chart-registry` | *(required)* | OCI registry for wrapper charts (e.g., `oci://ghcr.io/verity-org/charts`) |
 | `--exclude-names` | | Comma-separated names to exclude |
 | `--dry-run` | `false` | Output JSON plan without pushing charts |
+
+### `verity patch`
+
+Patches a single image via the Copa Go library. Copa is imported as a Go
+dependency (`github.com/project-copacetic/copacetic/pkg/patch`) and called
+directly — no separate `copa` binary is needed on the runner. This is the
+Go-native replacement for the prior `copa patch` shell invocation; the CI
+workflow `.github/scripts/patch-image.sh` calls this command.
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--image` | *(required)* | Source image reference (e.g. `mirror.gcr.io/library/nginx:1.29.3`) |
+| `--tag` | *(required)* | Output tag for the patched image |
+| `--report` | *(required)* | Path to Trivy JSON vulnerability report for `--image` |
+| `--pkg-types` | `os,library` | Package ecosystems to patch (`os`, `library`, or `os,library`) |
+| `--library-patch-level` | `patch` | Library version bump aggression (`patch`/`minor`/`major`) |
+| `--toolchain-patch-level` | `patch` | Go toolchain upgrade aggression (`patch`/`minor`/`major`) |
+| `--push` | `false` | Push the patched image to the registry |
+| `--buildkit-addr` | *(empty)* | BuildKit endpoint (e.g., `buildx://copa-builder`) |
+| `--timeout` | `5m` | Upper bound on the whole patch operation |
+| `--platform` | *(empty)* | Single platform to build for (e.g. `linux/amd64`) |
+| `--go-vcs-url` | *(empty)* | Go module VCS URL for stripped/distroless binaries. Wired through copa's `types.Options.GoVCSURL` via a temporary `go.mod` replace directive → `verity-org/copacetic feat/go-vcs-resolution` (upstream copa PR #1546). Replace directive is dropped once #1546 merges upstream. |
+
+Copa's sentinel `ErrNoUpdatesFound` maps to exit code `0` with stderr line
+`"no package updates found for image <ref>"` so `patch-image.sh`'s existing
+retry gate works unchanged.
 
 ## Configuration
 

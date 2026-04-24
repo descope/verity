@@ -1,18 +1,13 @@
 name: Setup Binaries
-description: Install Copa and Verity with cache fallback to build-from-source
+description: Build and cache the verity binary. Copa is now bundled as a Go library inside verity (see internal/patch), so no separate copa binary is installed.
 
 inputs:
   github-token:
-    description: GitHub token for API access
-    required: true
+    description: GitHub token for API access (reserved for future use)
+    required: false
+    default: ""
 
 outputs:
-  copa-cache-hit:
-    description: Whether Copa was found in cache
-    value: ${{ steps.copa-cache.outputs.cache-hit }}
-  copa-version:
-    description: Copa commit hash
-    value: ${{ steps.copa-hash.outputs.hash }}
   verity-cache-hit:
     description: Whether verity was found in cache
     value: ${{ steps.verity-cache.outputs.cache-hit }}
@@ -23,56 +18,11 @@ outputs:
 runs:
   using: composite
   steps:
-    # ── Copa Setup ────────────────────────────────────────────────────────
-    - name: Get GOPATH
-      id: gopath
-      shell: bash
-      run: echo "path=$(go env GOPATH)" >> "$GITHUB_OUTPUT"
-
-    - name: Get Copa commit hash
-      id: copa-hash
-      shell: bash
-      run: |
-        COMMIT=$(gh api repos/verity-org/copacetic/commits/verity --jq .sha 2>/dev/null || \
-                 gh api repos/verity-org/copacetic/commits/feat/bulk-skip-detection --jq .sha)
-        echo "hash=$COMMIT" >> "$GITHUB_OUTPUT"
-        echo "Copa commit: $COMMIT"
-      env:
-        GH_TOKEN: ${{ inputs.github-token }}
-
-    - name: Restore Copa from cache
-      id: copa-cache
-      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-      with:
-        path: ${{ steps.gopath.outputs.path }}/bin/copa
-        key: copa-${{ runner.os }}-${{ runner.arch }}-${{ steps.copa-hash.outputs.hash }}
-
-    - name: Build Copa from source
-      if: steps.copa-cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
-        echo "Building Copa from commit: ${{ steps.copa-hash.outputs.hash }}"
-        git clone --depth 1 https://github.com/verity-org/copacetic.git /tmp/copa
-        cd /tmp/copa
-        git fetch --depth 1 origin ${{ steps.copa-hash.outputs.hash }}
-        git checkout ${{ steps.copa-hash.outputs.hash }}
-        go build -o "$(go env GOPATH)/bin/copa" .
-      env:
-        GH_TOKEN: ${{ inputs.github-token }}
-
-    - name: Make Copa executable
-      if: steps.copa-cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: chmod +x "$(go env GOPATH)/bin/copa"
-
-    - name: Save Copa to cache
-      if: steps.copa-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-      with:
-        path: ${{ steps.gopath.outputs.path }}/bin/copa
-        key: copa-${{ runner.os }}-${{ runner.arch }}-${{ steps.copa-hash.outputs.hash }}
-
     # ── Verity Setup ──────────────────────────────────────────────────────
+    # Copa is bundled into the verity binary via `internal/patch` importing
+    # `github.com/project-copacetic/copacetic/pkg/patch` as a Go module
+    # dependency. Building verity builds copa too — no separate `copa`
+    # binary is needed.
     - name: Get Verity version
       id: verity-version
       shell: bash
