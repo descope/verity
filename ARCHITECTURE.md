@@ -140,8 +140,9 @@ per-image patch runs.
 ### `verity preflight update-manifest`
 
 Updates the preflight manifest on the `reports` branch. The manifest tracks
-upstream image digests and remaining fixable-vuln counts so the orchestrator can
-skip rebuilds that would produce identical output. Requires `GH_TOKEN` or
+upstream image digests and post-patch vulnerability counts (raw Trivy counts,
+including unfixable CVEs) so the orchestrator can skip rebuilds that would
+produce identical output. Requires `GH_TOKEN` or
 `GITHUB_TOKEN` in the environment.
 
 | Flag | Default | Description |
@@ -151,7 +152,7 @@ skip rebuilds that would produce identical output. Requires `GH_TOKEN` or
 | `--image` | *(required)* | Image name |
 | `--tag` | *(required)* | Image tag |
 | `--upstream-digest` | | Upstream image digest (`sha256:…`) |
-| `--patched-vulns` | `0` | Number of fixable vulnerabilities remaining after patching |
+| `--patched-vulns` | `0` | Count of vulnerabilities remaining after patching. The CLI flag's help text calls these "fixable". This CLI is not currently invoked by the workflows — today `patch-image.yaml` updates `preflight-manifest.json` inline via `gh api` + `jq`, writing the raw Trivy post-patch count from `post.json` (no `--ignore-unfixed`, so the value includes unfixable CVEs) — but the CLI exists as a programmatic alternative |
 
 ### `verity integer`
 
@@ -383,10 +384,12 @@ This keeps PR feedback fast while still exercising the real patch path. See
 ### Skip Detection (Preflight)
 
 `verity preflight` maintains a manifest on the `reports` branch that records
-each published image's upstream digest and remaining fixable-vuln count. When
-`verity discover --preflight` runs, images whose upstream digest hasn't changed
-AND whose fixable-vuln count is zero are skipped — avoiding unnecessary
-rebuilds, registry churn, and signing traffic.
+each published image's upstream digest and post-patch vulnerability count
+(raw Trivy count from `post.json` — includes unfixable CVEs, since the pipeline
+does not pass `--ignore-unfixed`). When `verity discover --preflight` runs,
+images whose upstream digest hasn't changed AND whose recorded vulnerability
+count is zero are skipped — avoiding unnecessary rebuilds, registry churn,
+and signing traffic.
 
 ## Site Architecture
 
@@ -409,8 +412,17 @@ Pages. `catalog.json` + `integer-catalog.json` drive every page.
 ### Daily Scans
 
 Cron triggers cascade across the night: Copa at 02:00 UTC, Integer at 03:00,
-chart-gen at 04:00, site build at 05:00. If new fixable vulnerabilities are
-found, images are patched and published automatically.
+chart-gen at 04:00, site build at 05:00.
+
+For **Copa-patched images**, whether an image actually re-publishes on a given
+run depends on the skip checks (see Skip Detection above) plus whether the
+post-patch Trivy vulnerability-ID set has changed since the previous
+published report on the `reports` branch — a change, including the appearance
+of a previously-unseen unfixable CVE, triggers a new push.
+
+For **Integer (Wolfi) images**, the build runs on a schedule or when
+`images/<name>.yaml` changes; there is no vuln-ID-set delta comparison, so
+rebuilt images are published whenever the build succeeds.
 
 ### Dependency Updates (Renovate)
 
