@@ -1,8 +1,6 @@
 // Package patch wraps Copa's single-image Patch entry point. It is the
 // Go-native replacement for invoking the `copa patch` CLI binary via
-// subprocess. See `cmd/patch.go` for the command-line surface and
-// `.sisyphus/plans/verity-bundle-copa.md` for the migration plan that
-// motivated this package.
+// subprocess. See `cmd/patch.go` for the command-line surface.
 package patch
 
 import (

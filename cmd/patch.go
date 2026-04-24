@@ -14,8 +14,7 @@ import (
 // PatchCommand wraps copa's pkg/patch.Patch entry point so verity can patch a
 // single image without shelling out to a separate `copa` binary. The flag
 // surface mirrors `.github/scripts/patch-image.sh`'s prior `copa patch`
-// invocation so swapping one for the other is drop-in. See
-// `.sisyphus/plans/verity-bundle-copa.md` for the migration plan.
+// invocation so swapping one for the other is drop-in.
 var PatchCommand = &cli.Command{
 	Name:  "patch",
 	Usage: "Patch a single image via Copa (imported as a library)",
