@@ -76,6 +76,27 @@ func TestCheckCopaImage_UnchangedWithVulns(t *testing.T) {
 	assert.Contains(t, result.Reason, "5 vulns remain in patched image")
 }
 
+func TestCheckCopaImage_SingleVulnUsesSingular(t *testing.T) {
+	manifest := Manifest{
+		"valkey/9.0.3": {UpstreamDigest: testDigestSame, PatchedVulns: 1},
+	}
+	img := discovery.DiscoveredImage{
+		Name:   "valkey",
+		Source: "mirror.gcr.io/valkey/valkey:9.0.3",
+	}
+
+	origFn := digestFn
+	digestFn = func(_ string) (string, error) { return testDigestSame, nil }
+	defer func() { digestFn = origFn }()
+
+	result := checkCopaImage(&img, manifest)
+	assert.True(t, result.NeedsWork)
+	assert.Contains(t, result.Reason, "1 vuln remain in patched image",
+		"single-vuln case must use singular 'vuln', not '1 vulns'")
+	assert.NotContains(t, result.Reason, "1 vulns",
+		"regression guard: prevent '1 vulns' grammatical error from returning")
+}
+
 func TestCheckCopaImage_UnchangedClean(t *testing.T) {
 	manifest := Manifest{
 		"nginx/1.29.3": {UpstreamDigest: testDigestSame, PatchedVulns: 0},

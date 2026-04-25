@@ -41,13 +41,11 @@ func extractTag(source string) string {
 //
 // Gate 1: If the image is not in the manifest → first time → needs work.
 // Gate 2: Fetch current upstream digest. If different from stored → needs work.
-// Gate 3: If digest unchanged but patched image still has any reported vulns
-//
-//	→ needs work. (PatchedVulns is populated from `trivy image` output
-//	without --ignore-unfixed, so it counts every reported vuln, fixable
-//	or not.)
-//
+// Gate 3: If digest unchanged but patched image still has any reported vulns → needs work.
 // Otherwise: skip.
+//
+// PatchedVulns is populated from `trivy image` output without
+// --ignore-unfixed, so it counts every reported vuln, fixable or not.
 func checkCopaImage(img *discovery.DiscoveredImage, manifest Manifest) CheckResult {
 	tag := extractTag(img.Source)
 	if tag == "" {
@@ -71,7 +69,11 @@ func checkCopaImage(img *discovery.DiscoveredImage, manifest Manifest) CheckResu
 	}
 
 	if entry.PatchedVulns > 0 {
-		return CheckResult{NeedsWork: true, Reason: fmt.Sprintf("%s: %d vulns remain in patched image", key, entry.PatchedVulns)}
+		noun := "vulns"
+		if entry.PatchedVulns == 1 {
+			noun = "vuln"
+		}
+		return CheckResult{NeedsWork: true, Reason: fmt.Sprintf("%s: %d %s remain in patched image", key, entry.PatchedVulns, noun)}
 	}
 
 	return CheckResult{NeedsWork: false, Reason: key + ": unchanged, 0 vulns — skipping"}
