@@ -69,11 +69,11 @@ func checkCopaImage(img *discovery.DiscoveredImage, manifest Manifest) CheckResu
 	}
 
 	if entry.PatchedVulns > 0 {
-		noun := "vulns"
+		noun, verb := "vulns", "remain"
 		if entry.PatchedVulns == 1 {
-			noun = "vuln"
+			noun, verb = "vuln", "remains"
 		}
-		return CheckResult{NeedsWork: true, Reason: fmt.Sprintf("%s: %d %s remain in patched image", key, entry.PatchedVulns, noun)}
+		return CheckResult{NeedsWork: true, Reason: fmt.Sprintf("%s: %d %s %s in patched image", key, entry.PatchedVulns, noun, verb)}
 	}
 
 	return CheckResult{NeedsWork: false, Reason: key + ": unchanged, 0 vulns — skipping"}

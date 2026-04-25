@@ -91,10 +91,12 @@ func TestCheckCopaImage_SingleVulnUsesSingular(t *testing.T) {
 
 	result := checkCopaImage(&img, manifest)
 	assert.True(t, result.NeedsWork)
-	assert.Contains(t, result.Reason, "1 vuln remain in patched image",
-		"single-vuln case must use singular 'vuln', not '1 vulns'")
+	assert.Contains(t, result.Reason, "1 vuln remains in patched image",
+		"single-vuln case must use singular noun and matching singular verb ('1 vuln remains'), not '1 vuln remain' or '1 vulns'")
 	assert.NotContains(t, result.Reason, "1 vulns",
-		"regression guard: prevent '1 vulns' grammatical error from returning")
+		"regression guard: prevent plural noun returning for count==1")
+	assert.NotContains(t, result.Reason, "1 vuln remain ",
+		"regression guard: prevent singular noun + plural verb ('1 vuln remain') subject-verb agreement bug")
 }
 
 func TestCheckCopaImage_UnchangedClean(t *testing.T) {
