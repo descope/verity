@@ -71,12 +71,6 @@ jobs:
     if: ${{ needs.discover-charts.outputs.matrix != '[]' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-    # A failing shard means the *published* chart has a problem (chart-gen
-    # rewrite gap, missing patched image, runtime crash). That's the signal
-    # we want to surface — not a regression in this PR. continue-on-error
-    # keeps the workflow green so smoke-test results are visible nightly
-    # without blocking unrelated PRs that happen to overlap a broken chart.
-    continue-on-error: true
     permissions:
       contents: read
       packages: read
@@ -112,10 +106,31 @@ jobs:
           restore-keys: chart-it-${{ runner.os }}-
 
       - name: Run chart smoke test
+        id: smoke
+        # A failing shard means the *published* chart has a problem (chart-gen
+        # rewrite gap, missing patched image, runtime crash). That's the signal
+        # we want to surface as logs and artifacts — not a regression in this
+        # PR. continue-on-error here lets the per-shard check stay green so
+        # branch protection isn't blocked by transient chart-publish state,
+        # while the actual failure remains visible in the step's log and as
+        # uploaded diagnostics. The shard's outcome is recorded as a step
+        # outcome and surfaced via the summary job below.
+        continue-on-error: true
         run: make chart-integration
 
+      - name: Record shard outcome
+        if: always()
+        run: |
+          {
+            echo "## ${{ matrix.chart }}: ${{ steps.smoke.outcome }}"
+            echo ""
+            if [ "${{ steps.smoke.outcome }}" = "failure" ]; then
+              echo "Smoke test reported a failure. Inspect the run log above and the uploaded \`diagnostics-${{ matrix.chart }}\` artifact for kubectl cluster-info dump and kind logs."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload diagnostics on failure
-        if: failure()
+        if: steps.smoke.outcome == 'failure'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: diagnostics-${{ matrix.chart }}
