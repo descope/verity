@@ -229,13 +229,6 @@ jobs:
     needs: scan
     if: needs.scan.outputs.needs-patch == 'true'
     runs-on: ${{ matrix.runner }}
-    outputs:
-      timing-amd64: ${{ matrix.platform == 'linux/amd64' && steps.copa.outputs.duration-seconds || '' }}
-      timing-arm64: ${{ matrix.platform == 'linux/arm64' && steps.copa.outputs.duration-seconds || '' }}
-      copa-exit-amd64: ${{ matrix.platform == 'linux/amd64' && steps.copa.outputs.exit-code || '' }}
-      copa-exit-arm64: ${{ matrix.platform == 'linux/arm64' && steps.copa.outputs.exit-code || '' }}
-      staging-digest-amd64: ${{ matrix.platform == 'linux/amd64' && steps.copa.outputs.staging-digest || '' }}
-      staging-digest-arm64: ${{ matrix.platform == 'linux/arm64' && steps.copa.outputs.staging-digest || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -337,6 +330,40 @@ jobs:
           mkdir -p reports
           cp pre.json "reports/$(echo "${SOURCE}" | sed 's/[\/:]/_/g').json"
           .github/scripts/patch-image.sh
+
+      - name: Write per-platform metrics
+        if: ${{ !cancelled() && steps.platform-check.outputs.enabled == 'true' }}
+        id: pl-meta
+        env:
+          ARCH: ${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
+          DURATION: ${{ steps.copa.outputs.duration-seconds }}
+          EXIT_CODE: ${{ steps.copa.outputs.exit-code }}
+          DIGEST: ${{ steps.copa.outputs.staging-digest }}
+        run: |
+          set -euo pipefail
+          OUT="${RUNNER_TEMP}/platform-${ARCH}.json"
+          jq -n \
+            --arg arch "$ARCH" \
+            --arg duration "$DURATION" \
+            --arg exit_code "$EXIT_CODE" \
+            --arg digest "$DIGEST" \
+            '{
+               arch: $arch,
+               copa_duration_seconds: ($duration | tonumber? // null),
+               copa_exit_code: ($exit_code | tonumber? // null),
+               staging_digest: (if $digest == "" then null else $digest end)
+             }' > "$OUT"
+          cat "$OUT"
+          echo "path=$OUT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload per-platform metrics artifact
+        if: ${{ !cancelled() && steps.platform-check.outputs.enabled == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: _pl-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}-${{ needs.scan.outputs.safe-name }}-${{ needs.scan.outputs.source-tag }}
+          path: ${{ steps.pl-meta.outputs.path }}
+          retention-days: 1
+          if-no-files-found: error
 
       - name: Cache otel-cli
         if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && env.HONEYCOMB_API_KEY != '' && steps.platform-check.outputs.enabled == 'true' }}
@@ -659,6 +686,32 @@ jobs:
             post.json
           retention-days: 7
 
+      # Companion artifacts follow _pl-${arch}-${safe-name}-${source-tag}.
+      - name: Download per-platform metrics
+        if: ${{ !cancelled() }}
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: _pl-*-${{ needs.scan.outputs.safe-name }}-${{ needs.scan.outputs.source-tag }}
+          path: ${{ runner.temp }}/pl-meta
+          merge-multiple: true
+
+      # merge-multiple writes platform-amd64.json / platform-arm64.json into one directory.
+      - name: Merge per-platform metadata
+        if: ${{ !cancelled() }}
+        id: pl-merged
+        run: |
+          set -euo pipefail
+          AMD64="$(jq -c '. // null' "${RUNNER_TEMP}/pl-meta/platform-amd64.json" 2>/dev/null || echo 'null')"
+          ARM64="$(jq -c '. // null' "${RUNNER_TEMP}/pl-meta/platform-arm64.json" 2>/dev/null || echo 'null')"
+          {
+            echo "amd64<<EOF"
+            echo "$AMD64"
+            echo "EOF"
+            echo "arm64<<EOF"
+            echo "$ARM64"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build consolidated metrics JSON
         if: ${{ !cancelled() }}
         id: metrics-json
@@ -700,12 +753,8 @@ jobs:
             --argjson vuln_after "${VULN_AFTER:-0}" \
             --argjson sev_before "$SEVERITIES_BEFORE" \
             --argjson sev_after "$SEVERITIES_AFTER" \
-            --arg t_amd64 "${{ needs.patch.outputs.timing-amd64 }}" \
-            --arg t_arm64 "${{ needs.patch.outputs.timing-arm64 }}" \
-            --arg e_amd64 "${{ needs.patch.outputs.copa-exit-amd64 }}" \
-            --arg e_arm64 "${{ needs.patch.outputs.copa-exit-arm64 }}" \
-            --arg d_amd64 "${{ needs.patch.outputs.staging-digest-amd64 }}" \
-            --arg d_arm64 "${{ needs.patch.outputs.staging-digest-arm64 }}" \
+            --argjson amd64 '${{ steps.pl-merged.outputs.amd64 }}' \
+            --argjson arm64 '${{ steps.pl-merged.outputs.arm64 }}' \
             --arg rekor_url "${{ steps.cosign-sign.outputs.rekor-url }}" \
             --arg attestation_id "${{ steps.attest.outputs.attestation-id }}" \
             --arg sbom_digest "${SBOM_DIGEST}" \
@@ -730,16 +779,8 @@ jobs:
                 after: { vuln_count: $vuln_after, by_severity: $sev_after }
               },
               platforms: {
-                amd64: (if $t_amd64 == "" then null else {
-                  copa_duration_seconds: ($t_amd64 | tonumber? // null),
-                  copa_exit_code: ($e_amd64 | tonumber? // null),
-                  staging_digest: (if $d_amd64 == "" then null else $d_amd64 end)
-                } end),
-                arm64: (if $t_arm64 == "" then null else {
-                  copa_duration_seconds: ($t_arm64 | tonumber? // null),
-                  copa_exit_code: ($e_arm64 | tonumber? // null),
-                  staging_digest: (if $d_arm64 == "" then null else $d_arm64 end)
-                } end)
+                amd64: $amd64,
+                arm64: $arm64
               },
               supply_chain: {
                 rekor_url: (if $rekor_url == "" then null else $rekor_url end),
