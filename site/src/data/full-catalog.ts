@@ -348,6 +348,8 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "k9s", source: "integer" },
       { name: "stern", source: "integer" },
       { name: "minio-operator", source: "integer" },
+      { name: "argocd-image-updater", source: "integer" },
+      { name: "nfs-subdir-external-provisioner", source: "integer" },
     ],
   },
 
@@ -438,6 +440,9 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "quay.io/calico/key-cert-provisioner",
       },
       { name: "contour", source: "integer" },
+      { name: "hubble", source: "integer" },
+      { name: "cert-manager-istio-csr", source: "integer" },
+      { name: "cloudflared", source: "integer" },
     ],
   },
 
@@ -591,6 +596,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "pulumi", source: "integer" },
       { name: "argo-workflows", source: "integer" },
       { name: "argo-rollouts", source: "integer" },
+      { name: "gomplate", source: "integer" },
     ],
   },
 
@@ -660,6 +666,9 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "spicedb", source: "integer" },
       { name: "checkov", source: "integer" },
       { name: "step-ca", source: "integer" },
+      { name: "tetragon", source: "integer" },
+      { name: "kratos", source: "integer" },
+      { name: "hydra", source: "integer" },
     ],
   },
 
@@ -748,6 +757,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         integerName: "cert-manager-cmctl",
         upstream: "quay.io/jetstack/cert-manager-cmctl",
       },
+      { name: "cert-manager-csi-driver", source: "integer" },
       {
         name: "cert-manager/cert-manager-openshift-routes",
         label: "cert-manager-openshift-routes",
@@ -857,6 +867,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "crane", source: "integer", variants: ["default", "fips"] },
       { name: "grype", source: "integer" },
       { name: "coredns", source: "integer" },
+      { name: "rclone", source: "integer" },
     ],
   },
 ];
