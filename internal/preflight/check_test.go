@@ -73,7 +73,7 @@ func TestCheckCopaImage_UnchangedWithVulns(t *testing.T) {
 
 	result := checkCopaImage(&img, manifest)
 	assert.True(t, result.NeedsWork)
-	assert.Contains(t, result.Reason, "5 fixable vulns")
+	assert.Contains(t, result.Reason, "5 vulns remain in patched image")
 }
 
 func TestCheckCopaImage_UnchangedClean(t *testing.T) {
