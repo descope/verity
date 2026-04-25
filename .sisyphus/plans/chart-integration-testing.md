@@ -32,22 +32,39 @@ reconstruction, not a unit test. We pull what was published and run it.
 - Multi-arch -> amd64 only; arm64 covered by the publish pipeline.
 - Production-scale issues -> single-node kind, no real load.
 
-## Test Flow (per chart)
+## Test Flow
+
+The kind cluster is created **once per Go test process** and reused
+across charts via `TestMain`. CI dispatches one matrix shard per
+chart (`VERITY_CHART=<name>`), so each shard gets its own fresh
+cluster — no cross-chart leakage. A local `make chart-integration`
+without `VERITY_CHART` reuses the same cluster across charts; that's
+fast but means cluster-scoped resources (CRDs, ClusterRoles) from an
+earlier chart can persist when the next chart installs. For
+correctness-sensitive runs use `VERITY_CHART=<name>` per chart.
+
+Per-chart inside the test process:
 
 ```text
-1. Stand up kind v1.35 cluster.
-2. helm install <chart> oci://ghcr.io/verity-org/charts/<chart>
+1. helm install <chart> oci://ghcr.io/verity-org/charts/<chart>
        --version <pinned> --wait --timeout=10m
-   (no local registry, no chart-gen invocation, no image seeding -
+   (no local registry, no chart-gen invocation, no image seeding —
     we install exactly what was published.)
-3. helm test <release>          (no-op if chart ships no test hooks)
-4. sleep 30 s                   (settle window for delayed crashes)
-5. assert: every container's restartCount == 0
-6. assert: every running container image starts with
+2. helm test <release>          (no-op if chart ships no test hooks)
+3. sleep 30 s                   (settle window for delayed crashes)
+4. assert: every container's restartCount == 0
+5. assert: every running container image starts with
             ghcr.io/verity-org/  OR  is in the chart's optional
             allowlist file
-7. helm uninstall + delete namespace
-8. Tear down kind cluster.
+6. helm uninstall + delete namespace
+```
+
+Cluster lifecycle (TestMain):
+
+```text
+A. Stand up kind v1.35 cluster (once)            — Setup
+B. Run all matched charts as subtests            — m.Run
+C. Tear down kind cluster (only if we created it) — Teardown
 ```
 
 The image-origin assertion is the canary: when chart-gen has a gap, the
