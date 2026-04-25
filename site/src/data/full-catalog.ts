@@ -455,9 +455,11 @@ export const fullCatalog: FullCatalogCategory[] = [
       {
         name: "grafana/grafana-operator",
         label: "grafana-operator",
-        source: "copa",
+        source: "integer",
+        integerName: "grafana-operator",
         upstream: "ghcr.io/grafana/grafana-operator",
       },
+      { name: "mimir", source: "integer" },
       {
         name: "prometheus/node-exporter",
         label: "prometheus-node-exporter",
@@ -582,6 +584,9 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "kaniko", source: "integer" },
       { name: "flux", source: "integer" },
       { name: "gitea", source: "integer" },
+      { name: "buildah", source: "integer" },
+      { name: "podman", source: "integer" },
+      { name: "pulumi", source: "integer" },
     ],
   },
 
@@ -645,6 +650,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "dex", source: "integer" },
       { name: "falco", source: "integer" },
       { name: "oauth2-proxy", source: "integer" },
+      { name: "step-ca", source: "integer" },
     ],
   },
 
