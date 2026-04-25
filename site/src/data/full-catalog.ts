@@ -460,7 +460,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         integerName: "grafana-operator",
         upstream: "ghcr.io/grafana/grafana-operator",
       },
-      { name: "mimir", source: "integer" },
       {
         name: "prometheus/node-exporter",
         label: "prometheus-node-exporter",
