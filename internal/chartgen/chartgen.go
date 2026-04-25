@@ -3,6 +3,7 @@ package chartgen
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -67,14 +68,15 @@ func Run(cfg *Config) (*DryRunResult, error) {
 		}
 	}
 
-	// Loud summary so silent regressions (chart added to Chart.yaml but
-	// every image excluded → zero wrappers produced) are visible in CI.
+	// Loud summary so silent regressions (chart added to the configured
+	// charts file but every image excluded → zero wrappers produced) are
+	// visible in CI.
 	verb := "produced"
 	if cfg.DryRun {
 		verb = "would produce"
 	}
-	fmt.Fprintf(os.Stderr, "info: chart-gen summary: %d charts in Chart.yaml, %s %d wrappers, %d skipped (no patched mappings)\n",
-		len(charts), verb, len(result.Charts), skipped)
+	fmt.Fprintf(os.Stderr, "info: chart-gen summary: %d charts in %s, %s %d wrappers, %d skipped (no patched mappings)\n",
+		len(charts), filepath.Base(cfg.ChartsFile), verb, len(result.Charts), skipped)
 
 	return result, nil
 }
@@ -184,10 +186,11 @@ func applyReplacements(imageRefs []string, vc *config.VerityConfig, excludeNames
 		// Replacements are the authoritative signal — try them before
 		// considering --exclude-names. Otherwise a chart image whose
 		// basename collides with an Integer rebuild filename (the source
-		// of exclude-names) would be silently skipped before its explicit
-		// replacement entry could fire, leaving the chart with no
-		// wrapper at all. See PR #248-followup for the silent-failure
-		// case this prevents.
+		// of exclude-names, derived in CI from `images/*.yaml`) would be
+		// silently skipped before its explicit replacement entry could
+		// fire, leaving the chart with no wrapper at all (chart-gen would
+		// then warn "no patched image mappings" and skip the chart, but
+		// exit 0).
 		matched := false
 		for _, pattern := range patterns {
 			if name != pattern && !strings.Contains(name, pattern) {
