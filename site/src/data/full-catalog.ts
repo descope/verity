@@ -436,6 +436,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         integerName: "calico-key-cert-provisioner",
         upstream: "quay.io/calico/key-cert-provisioner",
       },
+      { name: "contour", source: "integer" },
     ],
   },
 
