@@ -78,3 +78,10 @@ func TestIsAccepted(t *testing.T) {
 		})
 	}
 }
+
+func TestHarnessClusterCreatedFieldDefault(t *testing.T) {
+	h := NewHarness(stdoutLogger{}, "/tmp")
+	if h.clusterCreated {
+		t.Fatal("new Harness must start with clusterCreated=false; otherwise Teardown could delete a pre-existing cluster the harness did not create")
+	}
+}

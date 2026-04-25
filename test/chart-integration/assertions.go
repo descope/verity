@@ -172,8 +172,12 @@ func getPods(ctx context.Context, h *Harness, namespace string) (*podList, error
 		"--namespace", namespace,
 		"--output=json",
 	)
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
+		stderr := strings.TrimSpace(string(out))
+		if stderr != "" {
+			return nil, fmt.Errorf("kubectl get pods -n %s: %s: %w", namespace, stderr, err)
+		}
 		return nil, fmt.Errorf("kubectl get pods -n %s: %w", namespace, err)
 	}
 	var pods podList
