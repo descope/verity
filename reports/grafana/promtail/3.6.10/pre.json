@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.69.3"
   },
-  "ReportID": "019da8a8-7a4a-78fa-a13b-52873e7a3a51",
-  "CreatedAt": "2026-04-20T02:11:46.890589494Z",
+  "ReportID": "019dc3e0-c986-7759-b136-ea9dc7f125c9",
+  "CreatedAt": "2026-04-25T09:03:02.022483112Z",
   "ArtifactID": "sha256:7ec96304b22110822655ae6a0aae2e45a9ba6ba0e09e0ee9c855cf4af65f310b",
   "ArtifactName": "mirror.gcr.io/grafana/promtail:3.6.10",
   "ArtifactType": "container_image",
@@ -8028,6 +8028,511 @@
       ],
       "Vulnerabilities": [
         {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "bsdutils@1:2.39.3-9ubuntu6.4",
+          "PkgName": "bsdutils",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/bsdutils@2.39.3-9ubuntu6.4?arch=amd64\u0026distro=ubuntu-24.04\u0026epoch=1",
+            "UID": "8b657002dfbb4188"
+          },
+          "InstalledVersion": "1:2.39.3-9ubuntu6.4",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:18dbadc1f2f937d7ebdfa4481fb1f6f43b26e93f5bdc4cef3cef98d7f0ae77aa",
+            "DiffID": "sha256:f2a7f072635332d307212e318e07284948b89f4167fce5c4d7c9cfb7590b74b6"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:9f933db9987356daf169dd2b62736c33d61043fd321b5c086cbfabd3f1dc0fb2",
+          "Title": "util-linux: TOCTOU in the mount program when setting up loop devices",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "VendorSeverity": {
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 4.7
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-27456",
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-27456",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27456"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-22T16:08:55.1Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-2219",
+          "PkgID": "dpkg@1.22.6ubuntu6.5",
+          "PkgName": "dpkg",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/dpkg@1.22.6ubuntu6.5?arch=amd64\u0026distro=ubuntu-24.04",
+            "UID": "9a800f8edd580c03"
+          },
+          "InstalledVersion": "1.22.6ubuntu6.5",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:18dbadc1f2f937d7ebdfa4481fb1f6f43b26e93f5bdc4cef3cef98d7f0ae77aa",
+            "DiffID": "sha256:f2a7f072635332d307212e318e07284948b89f4167fce5c4d7c9cfb7590b74b6"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-2219",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:f60f41e400d43a4e69f919a7fb4f92f72062eaffd3097baacc98290d6b2d507b",
+          "Title": "It was discovered that dpkg-deb (a component of dpkg, the Debian packa ...",
+          "Description": "It was discovered that dpkg-deb (a component of dpkg, the Debian package management system) does not properly validate the end of the data stream when uncompressing a zstd-compressed .deb archive, which may result in denial of service (infinite loop spinning the CPU).",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-835"
+          ],
+          "VendorSeverity": {
+            "ubuntu": 2
+          },
+          "References": [
+            "https://bugs.debian.org/1129722",
+            "https://git.dpkg.org/cgit/dpkg/dpkg.git/commit/?id=6610297a62c0780dd0e80b0e302ef64fdcc9d313",
+            "https://www.cve.org/CVERecord?id=CVE-2026-2219"
+          ],
+          "PublishedDate": "2026-03-07T09:16:07.823Z",
+          "LastModifiedDate": "2026-03-09T15:15:57.87Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "libblkid1@2.39.3-9ubuntu6.4",
+          "PkgName": "libblkid1",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/libblkid1@2.39.3-9ubuntu6.4?arch=amd64\u0026distro=ubuntu-24.04",
+            "UID": "c231868bdbac4320"
+          },
+          "InstalledVersion": "2.39.3-9ubuntu6.4",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:18dbadc1f2f937d7ebdfa4481fb1f6f43b26e93f5bdc4cef3cef98d7f0ae77aa",
+            "DiffID": "sha256:f2a7f072635332d307212e318e07284948b89f4167fce5c4d7c9cfb7590b74b6"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:c927f4b5fcd3de28ac806ba9c562c12478c51661c6b3c04016ce16b158b0e3e5",
+          "Title": "util-linux: TOCTOU in the mount program when setting up loop devices",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "VendorSeverity": {
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 4.7
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-27456",
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-27456",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27456"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-22T16:08:55.1Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-4046",
+          "PkgID": "libc-bin@2.39-0ubuntu8.7",
+          "PkgName": "libc-bin",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/libc-bin@2.39-0ubuntu8.7?arch=amd64\u0026distro=ubuntu-24.04",
+            "UID": "b1e363217d254154"
+          },
+          "InstalledVersion": "2.39-0ubuntu8.7",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:18dbadc1f2f937d7ebdfa4481fb1f6f43b26e93f5bdc4cef3cef98d7f0ae77aa",
+            "DiffID": "sha256:f2a7f072635332d307212e318e07284948b89f4167fce5c4d7c9cfb7590b74b6"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-4046",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:707cc52ff123e0a751df86a361fdaf8b1989c8b48167433d4bb8765cadec5041",
+          "Title": "glibc: glibc: Denial of Service via iconv() function with specific character sets",
+          "Description": "The iconv() function in the GNU C Library versions 2.43 and earlier may crash due to an assertion failure when converting inputs from the IBM1390 or IBM1399 character sets, which may be used to remotely crash an application.\n\n\n\nThis vulnerability can be trivially mitigated by removing the IBM1390 and IBM1399 character sets from systems that do not need them.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-617"
+          ],
+          "VendorSeverity": {
+            "photon": 3,
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+              "V3Score": 5.3
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-4046",
+            "https://inbox.sourceware.org/libc-announce/76814edf-cf7f-47ec-979d-2dce0a2c76bf@gotplt.org/T/#u",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-4046",
+            "https://packages.fedoraproject.org/pkgs/glibc/glibc-gconv-extra/",
+            "https://sourceware.org/bugzilla/show_bug.cgi?id=33980",
+            "https://sourceware.org/git/?p=glibc.git;a=blob_plain;f=advisories/GLIBC-SA-2026-0007",
+            "https://sourceware.org/git/?p=glibc.git;a=blob_plain;f=advisories/GLIBC-SA-2026-0007;hb=HEAD",
+            "https://www.cve.org/CVERecord?id=CVE-2026-4046"
+          ],
+          "PublishedDate": "2026-03-30T18:16:19.573Z",
+          "LastModifiedDate": "2026-04-20T22:16:23.623Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-4437",
+          "PkgID": "libc-bin@2.39-0ubuntu8.7",
+          "PkgName": "libc-bin",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/libc-bin@2.39-0ubuntu8.7?arch=amd64\u0026distro=ubuntu-24.04",
+            "UID": "b1e363217d254154"
+          },
+          "InstalledVersion": "2.39-0ubuntu8.7",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:18dbadc1f2f937d7ebdfa4481fb1f6f43b26e93f5bdc4cef3cef98d7f0ae77aa",
+            "DiffID": "sha256:f2a7f072635332d307212e318e07284948b89f4167fce5c4d7c9cfb7590b74b6"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-4437",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:78d9752a582b1a38d8d3bd0e10bb9da1aaf1f23aaf0c2500639eb8692651f768",
+          "Title": "glibc: glibc: Incorrect DNS response parsing via crafted DNS server response",
+          "Description": "Calling gethostbyaddr or gethostbyaddr_r with a configured nsswitch.conf that specifies the library's DNS backend in the GNU C Library version 2.34 to version 2.43 could, with a crafted response from the configured DNS server, result in a violation of the DNS specification that causes the application to treat a non-answer section of the DNS response as a valid answer.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-125"
+          ],
+          "VendorSeverity": {
+            "azure": 2,
+            "photon": 2,
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:L",
+              "V3Score": 6.5
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-4437",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-4437",
+            "https://sourceware.org/bugzilla/show_bug.cgi?id=34014",
+            "https://www.cve.org/CVERecord?id=CVE-2026-4437",
+            "https://www.openwall.com/lists/oss-security/2026/03/23/2"
+          ],
+          "PublishedDate": "2026-03-20T20:16:49.477Z",
+          "LastModifiedDate": "2026-04-07T18:41:36.647Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-4438",
+          "PkgID": "libc-bin@2.39-0ubuntu8.7",
+          "PkgName": "libc-bin",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/libc-bin@2.39-0ubuntu8.7?arch=amd64\u0026distro=ubuntu-24.04",
+            "UID": "b1e363217d254154"
+          },
+          "InstalledVersion": "2.39-0ubuntu8.7",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:18dbadc1f2f937d7ebdfa4481fb1f6f43b26e93f5bdc4cef3cef98d7f0ae77aa",
+            "DiffID": "sha256:f2a7f072635332d307212e318e07284948b89f4167fce5c4d7c9cfb7590b74b6"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-4438",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:0f0cc207748ca1aeeb27d7938b826d71591563908dda1382cb0c5bd3f5883469",
+          "Title": "glibc: glibc: Invalid DNS hostname returned via gethostbyaddr functions",
+          "Description": "Calling gethostbyaddr or gethostbyaddr_r with a configured nsswitch.conf that specifies the library's DNS backend in the GNU C library version 2.34 to version 2.43 could result in an invalid DNS hostname being returned to the caller in violation of the DNS specification.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-20",
+            "CWE-88"
+          ],
+          "VendorSeverity": {
+            "azure": 2,
+            "photon": 4,
+            "redhat": 1,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
+              "V3Score": 4
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-4438",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-4438",
+            "https://sourceware.org/bugzilla/show_bug.cgi?id=34015",
+            "https://www.cve.org/CVERecord?id=CVE-2026-4438",
+            "https://www.openwall.com/lists/oss-security/2026/03/23/2"
+          ],
+          "PublishedDate": "2026-03-20T20:16:49.623Z",
+          "LastModifiedDate": "2026-04-07T18:40:02.177Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-4046",
+          "PkgID": "libc6@2.39-0ubuntu8.7",
+          "PkgName": "libc6",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.7?arch=amd64\u0026distro=ubuntu-24.04",
+            "UID": "e114ee2826ff22cd"
+          },
+          "InstalledVersion": "2.39-0ubuntu8.7",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:18dbadc1f2f937d7ebdfa4481fb1f6f43b26e93f5bdc4cef3cef98d7f0ae77aa",
+            "DiffID": "sha256:f2a7f072635332d307212e318e07284948b89f4167fce5c4d7c9cfb7590b74b6"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-4046",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:337150f9815c022e4f185be2368a79a755f726b6cdc8e95684da5eb233738a03",
+          "Title": "glibc: glibc: Denial of Service via iconv() function with specific character sets",
+          "Description": "The iconv() function in the GNU C Library versions 2.43 and earlier may crash due to an assertion failure when converting inputs from the IBM1390 or IBM1399 character sets, which may be used to remotely crash an application.\n\n\n\nThis vulnerability can be trivially mitigated by removing the IBM1390 and IBM1399 character sets from systems that do not need them.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-617"
+          ],
+          "VendorSeverity": {
+            "photon": 3,
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+              "V3Score": 5.3
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-4046",
+            "https://inbox.sourceware.org/libc-announce/76814edf-cf7f-47ec-979d-2dce0a2c76bf@gotplt.org/T/#u",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-4046",
+            "https://packages.fedoraproject.org/pkgs/glibc/glibc-gconv-extra/",
+            "https://sourceware.org/bugzilla/show_bug.cgi?id=33980",
+            "https://sourceware.org/git/?p=glibc.git;a=blob_plain;f=advisories/GLIBC-SA-2026-0007",
+            "https://sourceware.org/git/?p=glibc.git;a=blob_plain;f=advisories/GLIBC-SA-2026-0007;hb=HEAD",
+            "https://www.cve.org/CVERecord?id=CVE-2026-4046"
+          ],
+          "PublishedDate": "2026-03-30T18:16:19.573Z",
+          "LastModifiedDate": "2026-04-20T22:16:23.623Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-4437",
+          "PkgID": "libc6@2.39-0ubuntu8.7",
+          "PkgName": "libc6",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.7?arch=amd64\u0026distro=ubuntu-24.04",
+            "UID": "e114ee2826ff22cd"
+          },
+          "InstalledVersion": "2.39-0ubuntu8.7",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:18dbadc1f2f937d7ebdfa4481fb1f6f43b26e93f5bdc4cef3cef98d7f0ae77aa",
+            "DiffID": "sha256:f2a7f072635332d307212e318e07284948b89f4167fce5c4d7c9cfb7590b74b6"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-4437",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:c9609755013e80021f3482594c879e424d25bf2cb7afd6ba0c3e65f0a472b373",
+          "Title": "glibc: glibc: Incorrect DNS response parsing via crafted DNS server response",
+          "Description": "Calling gethostbyaddr or gethostbyaddr_r with a configured nsswitch.conf that specifies the library's DNS backend in the GNU C Library version 2.34 to version 2.43 could, with a crafted response from the configured DNS server, result in a violation of the DNS specification that causes the application to treat a non-answer section of the DNS response as a valid answer.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-125"
+          ],
+          "VendorSeverity": {
+            "azure": 2,
+            "photon": 2,
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:L",
+              "V3Score": 6.5
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-4437",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-4437",
+            "https://sourceware.org/bugzilla/show_bug.cgi?id=34014",
+            "https://www.cve.org/CVERecord?id=CVE-2026-4437",
+            "https://www.openwall.com/lists/oss-security/2026/03/23/2"
+          ],
+          "PublishedDate": "2026-03-20T20:16:49.477Z",
+          "LastModifiedDate": "2026-04-07T18:41:36.647Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-4438",
+          "PkgID": "libc6@2.39-0ubuntu8.7",
+          "PkgName": "libc6",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.7?arch=amd64\u0026distro=ubuntu-24.04",
+            "UID": "e114ee2826ff22cd"
+          },
+          "InstalledVersion": "2.39-0ubuntu8.7",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:18dbadc1f2f937d7ebdfa4481fb1f6f43b26e93f5bdc4cef3cef98d7f0ae77aa",
+            "DiffID": "sha256:f2a7f072635332d307212e318e07284948b89f4167fce5c4d7c9cfb7590b74b6"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-4438",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:d17ed22c85a4d10b6ac46c459a19796bf8b7483f786dbdbbb290a3f5fe96df4f",
+          "Title": "glibc: glibc: Invalid DNS hostname returned via gethostbyaddr functions",
+          "Description": "Calling gethostbyaddr or gethostbyaddr_r with a configured nsswitch.conf that specifies the library's DNS backend in the GNU C library version 2.34 to version 2.43 could result in an invalid DNS hostname being returned to the caller in violation of the DNS specification.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-20",
+            "CWE-88"
+          ],
+          "VendorSeverity": {
+            "azure": 2,
+            "photon": 4,
+            "redhat": 1,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
+              "V3Score": 4
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-4438",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-4438",
+            "https://sourceware.org/bugzilla/show_bug.cgi?id=34015",
+            "https://www.cve.org/CVERecord?id=CVE-2026-4438",
+            "https://www.openwall.com/lists/oss-security/2026/03/23/2"
+          ],
+          "PublishedDate": "2026-03-20T20:16:49.623Z",
+          "LastModifiedDate": "2026-04-07T18:40:02.177Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-4878",
+          "PkgID": "libcap2@1:2.66-5ubuntu2.2",
+          "PkgName": "libcap2",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/libcap2@2.66-5ubuntu2.2?arch=amd64\u0026distro=ubuntu-24.04\u0026epoch=1",
+            "UID": "65519c8784483f30"
+          },
+          "InstalledVersion": "1:2.66-5ubuntu2.2",
+          "FixedVersion": "1:2.66-5ubuntu2.4",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:18dbadc1f2f937d7ebdfa4481fb1f6f43b26e93f5bdc4cef3cef98d7f0ae77aa",
+            "DiffID": "sha256:f2a7f072635332d307212e318e07284948b89f4167fce5c4d7c9cfb7590b74b6"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-4878",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:fe44c6efaf1dd59098d33beca2f1edf419c225cc0048dbf7bd036a7d42b20d17",
+          "Title": "libcap: libcap: Privilege escalation via TOCTOU race condition in cap_set_file()",
+          "Description": "A flaw was found in libcap. A local unprivileged user can exploit a Time-of-check-to-time-of-use (TOCTOU) race condition in the `cap_set_file()` function. This allows an attacker with write access to a parent directory to redirect file capability updates to an attacker-controlled file. By doing so, capabilities can be injected into or stripped from unintended executables, leading to privilege escalation.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-367"
+          ],
+          "VendorSeverity": {
+            "redhat": 3,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:R/S:U/C:H/I:H/A:H",
+              "V3Score": 6.7
+            }
+          },
+          "References": [
+            "http://www.openwall.com/lists/oss-security/2026/04/07/14",
+            "http://www.openwall.com/lists/oss-security/2026/04/07/4",
+            "http://www.openwall.com/lists/oss-security/2026/04/08/9",
+            "http://www.openwall.com/lists/oss-security/2026/04/09/5",
+            "http://www.openwall.com/lists/oss-security/2026/04/09/6",
+            "https://access.redhat.com/errata/RHSA-2026:7473",
+            "https://access.redhat.com/security/cve/CVE-2026-4878",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2447554",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2451615",
+            "https://github.com/AndrewGMorgan/libcap_mirror/security/advisories/GHSA-f78v-p5hx-m7hh",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-4878",
+            "https://sites.google.com/site/fullycapable/release-notes-for-libcap#h.x4zn8j3lss6r",
+            "https://ubuntu.com/security/notices/USN-8193-1",
+            "https://www.cve.org/CVERecord?id=CVE-2026-4878"
+          ],
+          "PublishedDate": "2026-04-09T16:16:31.987Z",
+          "LastModifiedDate": "2026-04-25T02:16:03.29Z"
+        },
+        {
           "VulnerabilityID": "CVE-2024-2236",
           "PkgID": "libgcrypt20@1.10.3-2build1",
           "PkgName": "libgcrypt20",
@@ -8093,6 +8598,108 @@
           "LastModifiedDate": "2026-04-15T00:35:42.02Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "libmount1@2.39.3-9ubuntu6.4",
+          "PkgName": "libmount1",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/libmount1@2.39.3-9ubuntu6.4?arch=amd64\u0026distro=ubuntu-24.04",
+            "UID": "5f9f7b775053d1a6"
+          },
+          "InstalledVersion": "2.39.3-9ubuntu6.4",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:18dbadc1f2f937d7ebdfa4481fb1f6f43b26e93f5bdc4cef3cef98d7f0ae77aa",
+            "DiffID": "sha256:f2a7f072635332d307212e318e07284948b89f4167fce5c4d7c9cfb7590b74b6"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:3f98dba03196295cf8234f4192f160e0d278f1ee55c2650d6af73662f50a7f73",
+          "Title": "util-linux: TOCTOU in the mount program when setting up loop devices",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "VendorSeverity": {
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 4.7
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-27456",
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-27456",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27456"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-22T16:08:55.1Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "libsmartcols1@2.39.3-9ubuntu6.4",
+          "PkgName": "libsmartcols1",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/libsmartcols1@2.39.3-9ubuntu6.4?arch=amd64\u0026distro=ubuntu-24.04",
+            "UID": "9cbdf44cde061a51"
+          },
+          "InstalledVersion": "2.39.3-9ubuntu6.4",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:18dbadc1f2f937d7ebdfa4481fb1f6f43b26e93f5bdc4cef3cef98d7f0ae77aa",
+            "DiffID": "sha256:f2a7f072635332d307212e318e07284948b89f4167fce5c4d7c9cfb7590b74b6"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:3fb096e262b66078b9a5bdfe77019c105594e9650ddcbb3d40d0828a47b9b3cd",
+          "Title": "util-linux: TOCTOU in the mount program when setting up loop devices",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "VendorSeverity": {
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 4.7
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-27456",
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-27456",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27456"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-22T16:08:55.1Z"
+        },
+        {
           "VulnerabilityID": "CVE-2026-31790",
           "PkgID": "libssl3t64@3.0.13-0ubuntu3.7",
           "PkgName": "libssl3t64",
@@ -8148,7 +8755,7 @@
             "https://www.openwall.com/lists/oss-security/2026/04/07/11"
           ],
           "PublishedDate": "2026-04-07T22:16:21.77Z",
-          "LastModifiedDate": "2026-04-08T21:27:00.663Z"
+          "LastModifiedDate": "2026-04-23T15:39:44.033Z"
         },
         {
           "VulnerabilityID": "CVE-2026-28387",
@@ -8181,11 +8788,16 @@
           ],
           "VendorSeverity": {
             "amazon": 3,
+            "nvd": 3,
             "photon": 3,
             "redhat": 1,
             "ubuntu": 1
           },
           "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 8.1
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L",
               "V3Score": 3.7
@@ -8206,7 +8818,7 @@
             "https://www.openwall.com/lists/oss-security/2026/04/07/11"
           ],
           "PublishedDate": "2026-04-07T22:16:20.7Z",
-          "LastModifiedDate": "2026-04-08T21:27:00.663Z"
+          "LastModifiedDate": "2026-04-23T15:39:25.323Z"
         },
         {
           "VulnerabilityID": "CVE-2026-28388",
@@ -8240,11 +8852,16 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
+            "nvd": 3,
             "photon": 3,
             "redhat": 1,
             "ubuntu": 1
           },
           "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 5.9
@@ -8265,7 +8882,7 @@
             "https://www.openwall.com/lists/oss-security/2026/04/07/11"
           ],
           "PublishedDate": "2026-04-07T22:16:20.863Z",
-          "LastModifiedDate": "2026-04-10T21:16:23.157Z"
+          "LastModifiedDate": "2026-04-23T15:40:08.41Z"
         },
         {
           "VulnerabilityID": "CVE-2026-28389",
@@ -8299,11 +8916,16 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
+            "nvd": 3,
             "photon": 3,
             "redhat": 1,
             "ubuntu": 1
           },
           "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 5.9
@@ -8324,7 +8946,7 @@
             "https://www.openwall.com/lists/oss-security/2026/04/07/11"
           ],
           "PublishedDate": "2026-04-07T22:16:21.03Z",
-          "LastModifiedDate": "2026-04-10T21:16:23.41Z"
+          "LastModifiedDate": "2026-04-23T15:40:00.107Z"
         },
         {
           "VulnerabilityID": "CVE-2026-28390",
@@ -8358,11 +8980,16 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
+            "nvd": 3,
             "photon": 3,
             "redhat": 2,
             "ubuntu": 1
           },
           "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 7.5
@@ -8383,7 +9010,7 @@
             "https://www.openwall.com/lists/oss-security/2026/04/07/11"
           ],
           "PublishedDate": "2026-04-07T22:16:21.19Z",
-          "LastModifiedDate": "2026-04-10T21:16:23.67Z"
+          "LastModifiedDate": "2026-04-23T15:39:52.52Z"
         },
         {
           "VulnerabilityID": "CVE-2026-31789",
@@ -8416,11 +9043,16 @@
           ],
           "VendorSeverity": {
             "azure": 2,
+            "nvd": 4,
             "photon": 3,
             "redhat": 1,
             "ubuntu": 1
           },
           "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 9.8
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:N/UI:R/S:U/C:L/I:L/A:H",
               "V3Score": 5.8
@@ -8440,7 +9072,58 @@
             "https://www.openwall.com/lists/oss-security/2026/04/07/11"
           ],
           "PublishedDate": "2026-04-07T22:16:21.617Z",
-          "LastModifiedDate": "2026-04-08T21:27:00.663Z"
+          "LastModifiedDate": "2026-04-23T15:39:34.377Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "libuuid1@2.39.3-9ubuntu6.4",
+          "PkgName": "libuuid1",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/libuuid1@2.39.3-9ubuntu6.4?arch=amd64\u0026distro=ubuntu-24.04",
+            "UID": "b435b14530e3d742"
+          },
+          "InstalledVersion": "2.39.3-9ubuntu6.4",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:18dbadc1f2f937d7ebdfa4481fb1f6f43b26e93f5bdc4cef3cef98d7f0ae77aa",
+            "DiffID": "sha256:f2a7f072635332d307212e318e07284948b89f4167fce5c4d7c9cfb7590b74b6"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:650ec1d1502a45960f97eb342456aa0d6fa021a025644692a8b5903f643facb3",
+          "Title": "util-linux: TOCTOU in the mount program when setting up loop devices",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "VendorSeverity": {
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 4.7
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-27456",
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-27456",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27456"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-22T16:08:55.1Z"
         },
         {
           "VulnerabilityID": "CVE-2024-56433",
@@ -8491,7 +9174,7 @@
             "https://bugzilla.redhat.com/show_bug.cgi?id=2334165",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2024-56433",
             "https://errata.almalinux.org/9/ALSA-2025-20559.html",
-            "https://errata.rockylinux.org/RLSA-2025:20145",
+            "https://errata.rockylinux.org/RLSA-2025:20559",
             "https://github.com/shadow-maint/shadow/blob/e2512d5741d4a44bdd81a8c2d0029b6222728cf0/etc/login.defs#L238-L241",
             "https://github.com/shadow-maint/shadow/issues/1157",
             "https://github.com/shadow-maint/shadow/releases/tag/4.4",
@@ -8502,6 +9185,57 @@
           ],
           "PublishedDate": "2024-12-26T09:15:07.267Z",
           "LastModifiedDate": "2026-04-15T00:35:42.02Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "mount@2.39.3-9ubuntu6.4",
+          "PkgName": "mount",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/mount@2.39.3-9ubuntu6.4?arch=amd64\u0026distro=ubuntu-24.04",
+            "UID": "d416124955633dd8"
+          },
+          "InstalledVersion": "2.39.3-9ubuntu6.4",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:18dbadc1f2f937d7ebdfa4481fb1f6f43b26e93f5bdc4cef3cef98d7f0ae77aa",
+            "DiffID": "sha256:f2a7f072635332d307212e318e07284948b89f4167fce5c4d7c9cfb7590b74b6"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:4d14a2335e5ffc895df13da391500e17f024abf5169a4fc85cb00071c8e4f352",
+          "Title": "util-linux: TOCTOU in the mount program when setting up loop devices",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "VendorSeverity": {
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 4.7
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-27456",
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-27456",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27456"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-22T16:08:55.1Z"
         },
         {
           "VulnerabilityID": "CVE-2026-31790",
@@ -8559,7 +9293,7 @@
             "https://www.openwall.com/lists/oss-security/2026/04/07/11"
           ],
           "PublishedDate": "2026-04-07T22:16:21.77Z",
-          "LastModifiedDate": "2026-04-08T21:27:00.663Z"
+          "LastModifiedDate": "2026-04-23T15:39:44.033Z"
         },
         {
           "VulnerabilityID": "CVE-2026-28387",
@@ -8592,11 +9326,16 @@
           ],
           "VendorSeverity": {
             "amazon": 3,
+            "nvd": 3,
             "photon": 3,
             "redhat": 1,
             "ubuntu": 1
           },
           "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 8.1
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L",
               "V3Score": 3.7
@@ -8617,7 +9356,7 @@
             "https://www.openwall.com/lists/oss-security/2026/04/07/11"
           ],
           "PublishedDate": "2026-04-07T22:16:20.7Z",
-          "LastModifiedDate": "2026-04-08T21:27:00.663Z"
+          "LastModifiedDate": "2026-04-23T15:39:25.323Z"
         },
         {
           "VulnerabilityID": "CVE-2026-28388",
@@ -8651,11 +9390,16 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
+            "nvd": 3,
             "photon": 3,
             "redhat": 1,
             "ubuntu": 1
           },
           "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 5.9
@@ -8676,7 +9420,7 @@
             "https://www.openwall.com/lists/oss-security/2026/04/07/11"
           ],
           "PublishedDate": "2026-04-07T22:16:20.863Z",
-          "LastModifiedDate": "2026-04-10T21:16:23.157Z"
+          "LastModifiedDate": "2026-04-23T15:40:08.41Z"
         },
         {
           "VulnerabilityID": "CVE-2026-28389",
@@ -8710,11 +9454,16 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
+            "nvd": 3,
             "photon": 3,
             "redhat": 1,
             "ubuntu": 1
           },
           "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 5.9
@@ -8735,7 +9484,7 @@
             "https://www.openwall.com/lists/oss-security/2026/04/07/11"
           ],
           "PublishedDate": "2026-04-07T22:16:21.03Z",
-          "LastModifiedDate": "2026-04-10T21:16:23.41Z"
+          "LastModifiedDate": "2026-04-23T15:40:00.107Z"
         },
         {
           "VulnerabilityID": "CVE-2026-28390",
@@ -8769,11 +9518,16 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
+            "nvd": 3,
             "photon": 3,
             "redhat": 2,
             "ubuntu": 1
           },
           "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 7.5
@@ -8794,7 +9548,7 @@
             "https://www.openwall.com/lists/oss-security/2026/04/07/11"
           ],
           "PublishedDate": "2026-04-07T22:16:21.19Z",
-          "LastModifiedDate": "2026-04-10T21:16:23.67Z"
+          "LastModifiedDate": "2026-04-23T15:39:52.52Z"
         },
         {
           "VulnerabilityID": "CVE-2026-31789",
@@ -8827,11 +9581,16 @@
           ],
           "VendorSeverity": {
             "azure": 2,
+            "nvd": 4,
             "photon": 3,
             "redhat": 1,
             "ubuntu": 1
           },
           "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 9.8
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:N/UI:R/S:U/C:L/I:L/A:H",
               "V3Score": 5.8
@@ -8851,7 +9610,7 @@
             "https://www.openwall.com/lists/oss-security/2026/04/07/11"
           ],
           "PublishedDate": "2026-04-07T22:16:21.617Z",
-          "LastModifiedDate": "2026-04-08T21:27:00.663Z"
+          "LastModifiedDate": "2026-04-23T15:39:34.377Z"
         },
         {
           "VulnerabilityID": "CVE-2024-56433",
@@ -8902,7 +9661,7 @@
             "https://bugzilla.redhat.com/show_bug.cgi?id=2334165",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2024-56433",
             "https://errata.almalinux.org/9/ALSA-2025-20559.html",
-            "https://errata.rockylinux.org/RLSA-2025:20145",
+            "https://errata.rockylinux.org/RLSA-2025:20559",
             "https://github.com/shadow-maint/shadow/blob/e2512d5741d4a44bdd81a8c2d0029b6222728cf0/etc/login.defs#L238-L241",
             "https://github.com/shadow-maint/shadow/issues/1157",
             "https://github.com/shadow-maint/shadow/releases/tag/4.4",
@@ -8963,7 +9722,7 @@
             "https://bugzilla.redhat.com/show_bug.cgi?id=2379592",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-45582",
             "https://errata.almalinux.org/9/ALSA-2026-0067.html",
-            "https://errata.rockylinux.org/RLSA-2026:0002",
+            "https://errata.rockylinux.org/RLSA-2026:0067",
             "https://github.com/i900008/vulndb/blob/main/Gnu_tar_vuln.md",
             "https://linux.oracle.com/cve/CVE-2025-45582.html",
             "https://linux.oracle.com/errata/ELSA-2026-0067.html",
@@ -8977,6 +9736,112 @@
           ],
           "PublishedDate": "2025-07-11T17:15:37.183Z",
           "LastModifiedDate": "2025-11-02T01:15:32.307Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-5704",
+          "PkgID": "tar@1.35+dfsg-3build1",
+          "PkgName": "tar",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/tar@1.35%2Bdfsg-3build1?arch=amd64\u0026distro=ubuntu-24.04",
+            "UID": "78facbd799fed253"
+          },
+          "InstalledVersion": "1.35+dfsg-3build1",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:18dbadc1f2f937d7ebdfa4481fb1f6f43b26e93f5bdc4cef3cef98d7f0ae77aa",
+            "DiffID": "sha256:f2a7f072635332d307212e318e07284948b89f4167fce5c4d7c9cfb7590b74b6"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-5704",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:f3108c5b3d62faebfd15548b0387db4cf515a89df853cfacd99d0d6bd9532670",
+          "Title": "tar: tar: Hidden file injection via crafted archives",
+          "Description": "A flaw was found in tar. A remote attacker could exploit this vulnerability by crafting a malicious archive, leading to hidden file injection with fully attacker-controlled content. This bypasses pre-extraction inspection mechanisms, potentially allowing an attacker to introduce malicious files onto a system without detection.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-434"
+          ],
+          "VendorSeverity": {
+            "nvd": 2,
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N",
+              "V3Score": 5.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:R/S:U/C:N/I:H/A:N",
+              "V3Score": 5
+            }
+          },
+          "References": [
+            "http://www.openwall.com/lists/oss-security/2026/04/11/10",
+            "http://www.openwall.com/lists/oss-security/2026/04/11/11",
+            "http://www.openwall.com/lists/oss-security/2026/04/12/2",
+            "https://access.redhat.com/security/cve/CVE-2026-5704",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2455360",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-5704",
+            "https://www.cve.org/CVERecord?id=CVE-2026-5704"
+          ],
+          "PublishedDate": "2026-04-06T16:16:42.14Z",
+          "LastModifiedDate": "2026-04-22T20:08:59.92Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27456",
+          "PkgID": "util-linux@2.39.3-9ubuntu6.4",
+          "PkgName": "util-linux",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/util-linux@2.39.3-9ubuntu6.4?arch=amd64\u0026distro=ubuntu-24.04",
+            "UID": "48223e89f47f9be3"
+          },
+          "InstalledVersion": "2.39.3-9ubuntu6.4",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:18dbadc1f2f937d7ebdfa4481fb1f6f43b26e93f5bdc4cef3cef98d7f0ae77aa",
+            "DiffID": "sha256:f2a7f072635332d307212e318e07284948b89f4167fce5c4d7c9cfb7590b74b6"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27456",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:a3e1d2c0182482e20efe6c76deb64de69236bd1201f97a59cd8f728e56c5e765",
+          "Title": "util-linux: TOCTOU in the mount program when setting up loop devices",
+          "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-59",
+            "CWE-269",
+            "CWE-367"
+          ],
+          "VendorSeverity": {
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 4.7
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-27456",
+            "https://github.com/util-linux/util-linux/commit/5e390467b26a3cf3fecc04e1a0d482dff3162fc4",
+            "https://github.com/util-linux/util-linux/releases/tag/v2.41.4",
+            "https://github.com/util-linux/util-linux/security/advisories/GHSA-qq4x-vfq4-9h9g",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-27456",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27456"
+          ],
+          "PublishedDate": "2026-04-03T22:16:25.4Z",
+          "LastModifiedDate": "2026-04-22T16:08:55.1Z"
         }
       ]
     },
@@ -13713,22 +14578,33 @@
             "CWE-79"
           ],
           "VendorSeverity": {
-            "ghsa": 2
+            "bitnami": 2,
+            "ghsa": 2,
+            "nvd": 2
           },
           "CVSS": {
+            "bitnami": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:N/VI:N/VA:N/SC:L/SI:L/SA:N",
+              "V40Score": 5.3
+            },
             "ghsa": {
               "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:N/VI:N/VA:N/SC:L/SI:L/SA:N",
               "V40Score": 5.3
+            },
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+              "V3Score": 6.1
             }
           },
           "References": [
             "https://github.com/prometheus/prometheus",
             "https://github.com/prometheus/prometheus/commit/07c6232d159bfb474a077788be184d87adcfac3c",
             "https://github.com/prometheus/prometheus/pull/18506",
-            "https://github.com/prometheus/prometheus/security/advisories/GHSA-vffh-x6r8-xx99"
+            "https://github.com/prometheus/prometheus/security/advisories/GHSA-vffh-x6r8-xx99",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-40179"
           ],
           "PublishedDate": "2026-04-15T23:16:09.87Z",
-          "LastModifiedDate": "2026-04-15T23:16:09.87Z"
+          "LastModifiedDate": "2026-04-22T20:04:15.1Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39882",
@@ -13963,79 +14839,40 @@
             "URL": "https://pkg.go.dev/vuln/"
           },
           "Fingerprint": "sha256:fe0626cdeb2cca97947416784ee4d816799cc420caeee9411b45c8ce36e3d7ba",
-          "Title": "During chain building, the amount of work that is done is not correctl ...",
+          "Title": "crypto/x509: crypto/tls: golang: Go: Denial of Service vulnerability in certificate chain building",
           "Description": "During chain building, the amount of work that is done is not correctly limited when a large number of intermediate certificates are passed in VerifyOptions.Intermediates, which can lead to a denial of service. This affects both direct users of crypto/x509 and users of crypto/tls.",
           "Severity": "HIGH",
           "CweIDs": [
             "CWE-770"
           ],
           "VendorSeverity": {
-            "bitnami": 3
+            "bitnami": 3,
+            "oracle-oval": 3,
+            "redhat": 3
           },
           "CVSS": {
             "bitnami": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 7.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
             }
           },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-32280",
             "https://go.dev/cl/758320",
             "https://go.dev/issue/78282",
             "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
+            "https://linux.oracle.com/cve/CVE-2026-32280.html",
+            "https://linux.oracle.com/errata/ELSA-2026-10219.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-32280",
-            "https://pkg.go.dev/vuln/GO-2026-4947"
+            "https://pkg.go.dev/vuln/GO-2026-4947",
+            "https://www.cve.org/CVERecord?id=CVE-2026-32280"
           ],
           "PublishedDate": "2026-04-08T02:16:03.247Z",
-          "LastModifiedDate": "2026-04-08T21:26:35.91Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-32282",
-          "VendorIDs": [
-            "GO-2026-4864"
-          ],
-          "PkgID": "stdlib@v1.25.8",
-          "PkgName": "stdlib",
-          "PkgIdentifier": {
-            "PURL": "pkg:golang/stdlib@v1.25.8",
-            "UID": "1dcf7aca3bae1ad2"
-          },
-          "InstalledVersion": "v1.25.8",
-          "FixedVersion": "1.25.9, 1.26.2",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:3ace2a0e2bde71a1cb755635d95e111ccba42ae0708aaa20559277c7048f7971",
-            "DiffID": "sha256:69b5ce8af74cced9514dac4423eee23343eb2cc0f01f0bf4161cd46d49261b55"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32282",
-          "DataSource": {
-            "ID": "govulndb",
-            "Name": "The Go Vulnerability Database",
-            "URL": "https://pkg.go.dev/vuln/"
-          },
-          "Fingerprint": "sha256:758bb653236b8dc85da9da1f4524670237bb37a7ed5ee7669781202b79d9de86",
-          "Title": "golang: internal/syscall/unix: Root.Chmod can follow symlinks out of the root",
-          "Description": "On Linux, if the target of Root.Chmod is replaced with a symlink while the chmod operation is in progress, Chmod can operate on the target of the symlink, even when the target lies outside the root. The Linux fchmodat syscall silently ignores the AT_SYMLINK_NOFOLLOW flag, which Root.Chmod uses to avoid symlink traversal. Root.Chmod checks its target before acting and returns an error if the target is a symlink lying outside the root, so the impact is limited to cases where the target is replaced with a symlink between the check and operation.",
-          "Severity": "HIGH",
-          "VendorSeverity": {
-            "redhat": 2
-          },
-          "CVSS": {
-            "redhat": {
-              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H",
-              "V3Score": 7.8
-            }
-          },
-          "References": [
-            "https://access.redhat.com/security/cve/CVE-2026-32282",
-            "https://go.dev/cl/763761",
-            "https://go.dev/issue/78293",
-            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
-            "https://nvd.nist.gov/vuln/detail/CVE-2026-32282",
-            "https://pkg.go.dev/vuln/GO-2026-4864",
-            "https://www.cve.org/CVERecord?id=CVE-2026-32282"
-          ],
-          "PublishedDate": "2026-04-08T02:16:03.467Z",
-          "LastModifiedDate": "2026-04-13T19:16:39.807Z"
+          "LastModifiedDate": "2026-04-16T19:16:42.18Z"
         },
         {
           "VulnerabilityID": "CVE-2026-32281",
@@ -14055,6 +14892,7 @@
             "Digest": "sha256:3ace2a0e2bde71a1cb755635d95e111ccba42ae0708aaa20559277c7048f7971",
             "DiffID": "sha256:69b5ce8af74cced9514dac4423eee23343eb2cc0f01f0bf4161cd46d49261b55"
           },
+          "SeveritySource": "nvd",
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32281",
           "DataSource": {
             "ID": "govulndb",
@@ -14064,11 +14902,24 @@
           "Fingerprint": "sha256:9d7ce0eaedbac34f4f09c4521bb38bf28dcf93fe29c6e7669e8ee045ba89bc5f",
           "Title": "crypto/x509: golang: Go crypto/x509: Denial of Service via inefficient certificate chain validation",
           "Description": "Validating certificate chains which use policies is unexpectedly inefficient when certificates in the chain contain a very large number of policy mappings, possibly causing denial of service. This only affects validation of otherwise trusted certificate chains, issued by a root CA in the VerifyOptions.Roots CertPool, or in the system certificate pool.",
-          "Severity": "MEDIUM",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-295"
+          ],
           "VendorSeverity": {
+            "bitnami": 3,
+            "nvd": 3,
             "redhat": 2
           },
           "CVSS": {
+            "bitnami": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            },
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 5.9
@@ -14084,105 +14935,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-32281"
           ],
           "PublishedDate": "2026-04-08T02:16:03.35Z",
-          "LastModifiedDate": "2026-04-13T19:16:39.607Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-32288",
-          "VendorIDs": [
-            "GO-2026-4869"
-          ],
-          "PkgID": "stdlib@v1.25.8",
-          "PkgName": "stdlib",
-          "PkgIdentifier": {
-            "PURL": "pkg:golang/stdlib@v1.25.8",
-            "UID": "1dcf7aca3bae1ad2"
-          },
-          "InstalledVersion": "v1.25.8",
-          "FixedVersion": "1.25.9, 1.26.2",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:3ace2a0e2bde71a1cb755635d95e111ccba42ae0708aaa20559277c7048f7971",
-            "DiffID": "sha256:69b5ce8af74cced9514dac4423eee23343eb2cc0f01f0bf4161cd46d49261b55"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32288",
-          "DataSource": {
-            "ID": "govulndb",
-            "Name": "The Go Vulnerability Database",
-            "URL": "https://pkg.go.dev/vuln/"
-          },
-          "Fingerprint": "sha256:d32d20a03ecc19992c348275186347c68fb6bb100be13d043f5ff01a64c3d1a1",
-          "Title": "archive/tar: golang: Go's archive/tar package: Denial of Service via maliciously-crafted archive",
-          "Description": "tar.Reader can allocate an unbounded amount of memory when reading a maliciously-crafted archive containing a large number of sparse regions encoded in the \"old GNU sparse map\" format.",
-          "Severity": "MEDIUM",
-          "VendorSeverity": {
-            "redhat": 2
-          },
-          "CVSS": {
-            "redhat": {
-              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:L",
-              "V3Score": 4.3
-            }
-          },
-          "References": [
-            "https://access.redhat.com/security/cve/CVE-2026-32288",
-            "https://go.dev/cl/763766",
-            "https://go.dev/issue/78301",
-            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
-            "https://nvd.nist.gov/vuln/detail/CVE-2026-32288",
-            "https://pkg.go.dev/vuln/GO-2026-4869",
-            "https://www.cve.org/CVERecord?id=CVE-2026-32288"
-          ],
-          "PublishedDate": "2026-04-08T02:16:03.707Z",
-          "LastModifiedDate": "2026-04-13T19:16:40.21Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-32289",
-          "VendorIDs": [
-            "GO-2026-4865"
-          ],
-          "PkgID": "stdlib@v1.25.8",
-          "PkgName": "stdlib",
-          "PkgIdentifier": {
-            "PURL": "pkg:golang/stdlib@v1.25.8",
-            "UID": "1dcf7aca3bae1ad2"
-          },
-          "InstalledVersion": "v1.25.8",
-          "FixedVersion": "1.25.9, 1.26.2",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:3ace2a0e2bde71a1cb755635d95e111ccba42ae0708aaa20559277c7048f7971",
-            "DiffID": "sha256:69b5ce8af74cced9514dac4423eee23343eb2cc0f01f0bf4161cd46d49261b55"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32289",
-          "DataSource": {
-            "ID": "govulndb",
-            "Name": "The Go Vulnerability Database",
-            "URL": "https://pkg.go.dev/vuln/"
-          },
-          "Fingerprint": "sha256:af8619def2b9fd3162363cf5503f249df1a1828ebcb9d7a264cf6431a83eca22",
-          "Title": "html/template: golang: html/template: Cross-Site Scripting (XSS) via improper context and brace depth tracking in JS template literals",
-          "Description": "Context was not properly tracked across template branches for JS template literals, leading to possibly incorrect escaping of content when branches were used. Additionally template actions within JS template literals did not properly track the brace depth, leading to incorrect escaping being applied. These issues could cause actions within JS template literals to be incorrectly or improperly escaped, leading to XSS vulnerabilities.",
-          "Severity": "MEDIUM",
-          "VendorSeverity": {
-            "redhat": 2
-          },
-          "CVSS": {
-            "redhat": {
-              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
-              "V3Score": 5.4
-            }
-          },
-          "References": [
-            "https://access.redhat.com/security/cve/CVE-2026-32289",
-            "https://go.dev/cl/763762",
-            "https://go.dev/issue/78331",
-            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
-            "https://nvd.nist.gov/vuln/detail/CVE-2026-32289",
-            "https://pkg.go.dev/vuln/GO-2026-4865",
-            "https://www.cve.org/CVERecord?id=CVE-2026-32289"
-          ],
-          "PublishedDate": "2026-04-08T02:16:03.82Z",
-          "LastModifiedDate": "2026-04-13T19:16:40.41Z"
+          "LastModifiedDate": "2026-04-16T19:15:57.75Z"
         },
         {
           "VulnerabilityID": "CVE-2026-32283",
@@ -14202,6 +14955,7 @@
             "Digest": "sha256:3ace2a0e2bde71a1cb755635d95e111ccba42ae0708aaa20559277c7048f7971",
             "DiffID": "sha256:69b5ce8af74cced9514dac4423eee23343eb2cc0f01f0bf4161cd46d49261b55"
           },
+          "SeveritySource": "nvd",
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32283",
           "DataSource": {
             "ID": "govulndb",
@@ -14211,16 +14965,228 @@
           "Fingerprint": "sha256:a6679bee1fcfd6ea3180fa8b347bad9b1cdc9844dc1296085d5e384cce81434b",
           "Title": "If one side of the TLS connection sends multiple key update messages p ...",
           "Description": "If one side of the TLS connection sends multiple key update messages post-handshake in a single record, the connection can deadlock, causing uncontrolled consumption of resources. This can lead to a denial of service. This only affects TLS 1.3.",
-          "Severity": "UNKNOWN",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-770"
+          ],
+          "VendorSeverity": {
+            "bitnami": 3,
+            "nvd": 3,
+            "oracle-oval": 3
+          },
+          "CVSS": {
+            "bitnami": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            },
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
           "References": [
             "https://go.dev/cl/763767",
             "https://go.dev/issue/78334",
             "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
+            "https://linux.oracle.com/cve/CVE-2026-32283.html",
+            "https://linux.oracle.com/errata/ELSA-2026-10219.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-32283",
             "https://pkg.go.dev/vuln/GO-2026-4870"
           ],
           "PublishedDate": "2026-04-08T02:16:03.58Z",
-          "LastModifiedDate": "2026-04-13T19:16:40Z"
+          "LastModifiedDate": "2026-04-16T19:12:10.54Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-32282",
+          "VendorIDs": [
+            "GO-2026-4864"
+          ],
+          "PkgID": "stdlib@v1.25.8",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.25.8",
+            "UID": "1dcf7aca3bae1ad2"
+          },
+          "InstalledVersion": "v1.25.8",
+          "FixedVersion": "1.25.9, 1.26.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:3ace2a0e2bde71a1cb755635d95e111ccba42ae0708aaa20559277c7048f7971",
+            "DiffID": "sha256:69b5ce8af74cced9514dac4423eee23343eb2cc0f01f0bf4161cd46d49261b55"
+          },
+          "SeveritySource": "nvd",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32282",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:758bb653236b8dc85da9da1f4524670237bb37a7ed5ee7669781202b79d9de86",
+          "Title": "golang: internal/syscall/unix: Root.Chmod can follow symlinks out of the root",
+          "Description": "On Linux, if the target of Root.Chmod is replaced with a symlink while the chmod operation is in progress, Chmod can operate on the target of the symlink, even when the target lies outside the root. The Linux fchmodat syscall silently ignores the AT_SYMLINK_NOFOLLOW flag, which Root.Chmod uses to avoid symlink traversal. Root.Chmod checks its target before acting and returns an error if the target is a symlink lying outside the root, so the impact is limited to cases where the target is replaced with a symlink between the check and operation.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-59"
+          ],
+          "VendorSeverity": {
+            "bitnami": 2,
+            "nvd": 2,
+            "oracle-oval": 3,
+            "redhat": 2
+          },
+          "CVSS": {
+            "bitnami": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:H/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 6.4
+            },
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:H/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 6.4
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H",
+              "V3Score": 7.8
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-32282",
+            "https://go.dev/cl/763761",
+            "https://go.dev/issue/78293",
+            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
+            "https://linux.oracle.com/cve/CVE-2026-32282.html",
+            "https://linux.oracle.com/errata/ELSA-2026-10219.html",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-32282",
+            "https://pkg.go.dev/vuln/GO-2026-4864",
+            "https://www.cve.org/CVERecord?id=CVE-2026-32282"
+          ],
+          "PublishedDate": "2026-04-08T02:16:03.467Z",
+          "LastModifiedDate": "2026-04-16T19:15:39.4Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-32288",
+          "VendorIDs": [
+            "GO-2026-4869"
+          ],
+          "PkgID": "stdlib@v1.25.8",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.25.8",
+            "UID": "1dcf7aca3bae1ad2"
+          },
+          "InstalledVersion": "v1.25.8",
+          "FixedVersion": "1.25.9, 1.26.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:3ace2a0e2bde71a1cb755635d95e111ccba42ae0708aaa20559277c7048f7971",
+            "DiffID": "sha256:69b5ce8af74cced9514dac4423eee23343eb2cc0f01f0bf4161cd46d49261b55"
+          },
+          "SeveritySource": "nvd",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32288",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:d32d20a03ecc19992c348275186347c68fb6bb100be13d043f5ff01a64c3d1a1",
+          "Title": "archive/tar: golang: Go's archive/tar package: Denial of Service via maliciously-crafted archive",
+          "Description": "tar.Reader can allocate an unbounded amount of memory when reading a maliciously-crafted archive containing a large number of sparse regions encoded in the \"old GNU sparse map\" format.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-770"
+          ],
+          "VendorSeverity": {
+            "bitnami": 2,
+            "nvd": 2,
+            "redhat": 2
+          },
+          "CVSS": {
+            "bitnami": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+              "V3Score": 5.5
+            },
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+              "V3Score": 5.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:L",
+              "V3Score": 4.3
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-32288",
+            "https://go.dev/cl/763766",
+            "https://go.dev/issue/78301",
+            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-32288",
+            "https://pkg.go.dev/vuln/GO-2026-4869",
+            "https://www.cve.org/CVERecord?id=CVE-2026-32288"
+          ],
+          "PublishedDate": "2026-04-08T02:16:03.707Z",
+          "LastModifiedDate": "2026-04-16T19:08:52.24Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-32289",
+          "VendorIDs": [
+            "GO-2026-4865"
+          ],
+          "PkgID": "stdlib@v1.25.8",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.25.8",
+            "UID": "1dcf7aca3bae1ad2"
+          },
+          "InstalledVersion": "v1.25.8",
+          "FixedVersion": "1.25.9, 1.26.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:3ace2a0e2bde71a1cb755635d95e111ccba42ae0708aaa20559277c7048f7971",
+            "DiffID": "sha256:69b5ce8af74cced9514dac4423eee23343eb2cc0f01f0bf4161cd46d49261b55"
+          },
+          "SeveritySource": "nvd",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-32289",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:af8619def2b9fd3162363cf5503f249df1a1828ebcb9d7a264cf6431a83eca22",
+          "Title": "html/template: golang: html/template: Cross-Site Scripting (XSS) via improper context and brace depth tracking in JS template literals",
+          "Description": "Context was not properly tracked across template branches for JS template literals, leading to possibly incorrect escaping of content when branches were used. Additionally template actions within JS template literals did not properly track the brace depth, leading to incorrect escaping being applied. These issues could cause actions within JS template literals to be incorrectly or improperly escaped, leading to XSS vulnerabilities.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-79"
+          ],
+          "VendorSeverity": {
+            "bitnami": 2,
+            "nvd": 2,
+            "redhat": 2
+          },
+          "CVSS": {
+            "bitnami": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+              "V3Score": 6.1
+            },
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+              "V3Score": 6.1
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+              "V3Score": 5.4
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-32289",
+            "https://go.dev/cl/763762",
+            "https://go.dev/issue/78331",
+            "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-32289",
+            "https://pkg.go.dev/vuln/GO-2026-4865",
+            "https://www.cve.org/CVERecord?id=CVE-2026-32289"
+          ],
+          "PublishedDate": "2026-04-08T02:16:03.82Z",
+          "LastModifiedDate": "2026-04-16T19:06:57.367Z"
         }
       ]
     }
