@@ -1,0 +1,41 @@
+package:
+  name: contour
+  version: "1.33.4"
+  epoch: 0
+  description: "Contour is a Kubernetes ingress controller using Envoy proxy."
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/projectcontour/contour
+      tag: v${{package.version}}
+      expected-commit: 6eb0dafc582ae5742301af846968c3a8e0cd4b52
+
+  - uses: go/build
+    with:
+      packages: ./cmd/contour
+      output: contour
+      ldflags: |
+        -X github.com/projectcontour/contour/internal/build.Version=${{package.version}}
+        -X github.com/projectcontour/contour/internal/build.Sha=$(git rev-parse HEAD)
+        -X github.com/projectcontour/contour/internal/build.Branch=v${{package.version}}
+
+test:
+  pipeline:
+    - runs: |
+        contour version
