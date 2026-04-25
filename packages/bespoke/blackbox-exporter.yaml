@@ -1,0 +1,41 @@
+package:
+  name: prometheus-blackbox-exporter
+  version: "0.28.0"
+  epoch: 0
+  description: "Prometheus exporter that allows blackbox probing of endpoints"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/prometheus/blackbox_exporter
+      tag: v${{package.version}}
+      expected-commit: 5a059bee8d8ffa4e75947c5055fb0abeefc582e6
+
+  - uses: go/build
+    with:
+      packages: .
+      output: blackbox_exporter
+      ldflags: |
+        -X github.com/prometheus/common/version.Version=${{package.version}}
+        -X github.com/prometheus/common/version.Revision=$(git rev-parse HEAD)
+        -X github.com/prometheus/common/version.Branch=v${{package.version}}
+
+test:
+  pipeline:
+    - runs: |
+        blackbox_exporter --version

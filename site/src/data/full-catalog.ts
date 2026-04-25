@@ -520,6 +520,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "tempo", source: "integer" },
       { name: "grafana-alloy", source: "integer" },
       { name: "cortex", source: "integer" },
+      { name: "blackbox-exporter", source: "integer" },
     ],
   },
 
@@ -587,6 +588,8 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "buildah", source: "integer" },
       { name: "podman", source: "integer" },
       { name: "pulumi", source: "integer" },
+      { name: "argo-workflows", source: "integer" },
+      { name: "argo-rollouts", source: "integer" },
     ],
   },
 
