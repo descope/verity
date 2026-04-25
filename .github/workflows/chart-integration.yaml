@@ -148,7 +148,13 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload diagnostics on failure
-        if: steps.smoke.outcome == 'failure'
+        # always() is required: when continue-on-error is false (nightly /
+        # schedule / workflow_run / workflow_dispatch) and the smoke step
+        # fails, GHA's default behaviour is to skip subsequent steps. We
+        # want diagnostics uploaded EXACTLY when the smoke step failed —
+        # that's the only time they're useful — so override the skip with
+        # always() and gate on the step outcome.
+        if: always() && steps.smoke.outcome == 'failure'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: diagnostics-${{ matrix.chart }}
