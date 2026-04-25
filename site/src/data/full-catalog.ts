@@ -178,14 +178,12 @@ export const fullCatalog: FullCatalogCategory[] = [
         source: "copa",
         upstream: "mirror.gcr.io/elastic/eck-operator",
       },
-      {
-        name: "zalando/postgres-operator",
-        label: "postgres-operator",
-        source: "copa",
-        upstream: "ghcr.io/zalando/postgres-operator",
-      },
       { name: "minio", source: "integer" },
       { name: "minio-client", source: "integer" },
+      { name: "cassandra", source: "integer" },
+      { name: "neo4j", source: "integer" },
+      { name: "solr", source: "integer" },
+      { name: "postgres-operator", source: "integer" },
     ],
   },
 
