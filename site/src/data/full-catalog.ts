@@ -696,6 +696,12 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "cert-manager-cainjector", source: "integer" },
       { name: "cert-manager-cmctl", source: "integer" },
       {
+        name: "jetstack/cert-manager-acmesolver",
+        label: "cert-manager-acmesolver",
+        source: "copa",
+        upstream: "quay.io/jetstack/cert-manager-acmesolver",
+      },
+      {
         name: "cert-manager/cert-manager-openshift-routes",
         label: "cert-manager-openshift-routes",
         source: "copa",

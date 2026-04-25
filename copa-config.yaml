@@ -454,6 +454,18 @@ images:
   #  CERT MANAGEMENT
   # ============================================================================
 
+  # cert-manager-acmesolver: deferred Wolfi migration. Wolfi advisory DB references
+  # fix-versions (e.g. 1.19.4-r3+) for current CVEs but those apks aren't yet
+  # published. Tracking until upstream Wolfi catches up.
+  - name: "jetstack/cert-manager-acmesolver"
+    image: "quay.io/jetstack/cert-manager-acmesolver"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/cert-manager/cert-manager"
+
   - name: "cert-manager/cert-manager-openshift-routes"
     image: "ghcr.io/cert-manager/cert-manager-openshift-routes"
     platforms: ["linux/amd64", "linux/arm64"]
