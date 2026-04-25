@@ -344,6 +344,10 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "kube-rbac-proxy", source: "integer" },
       { name: "metallb-controller", source: "integer" },
       { name: "metallb-speaker", source: "integer" },
+      { name: "kustomize", source: "integer" },
+      { name: "k9s", source: "integer" },
+      { name: "stern", source: "integer" },
+      { name: "minio-operator", source: "integer" },
     ],
   },
 
