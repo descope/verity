@@ -1,0 +1,167 @@
+name: chart-integration
+
+on:
+  workflow_run:
+    workflows: ['Chart Generation']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      chart:
+        description: 'Single chart name (default: all charts in Chart.yaml)'
+        required: false
+        type: string
+  pull_request:
+    paths:
+      - 'test/chart-integration/**'
+      - '.github/workflows/chart-integration.yaml'
+      - 'mise.toml'
+      - 'Makefile'
+      - 'Chart.yaml'
+  schedule:
+    - cron: '0 5 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chart-integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  discover-charts:
+    name: discover charts
+    runs-on: ubuntu-24.04
+    if: |
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.build-matrix.outputs.matrix }}
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Install mise
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          install: true
+          cache: true
+
+      - id: build-matrix
+        name: Build chart matrix from Chart.yaml
+        run: |
+          set -euo pipefail
+          if [[ -n "${{ github.event.inputs.chart }}" ]]; then
+            charts="${{ github.event.inputs.chart }}"
+          else
+            charts="$(yq -r '.dependencies[].name' Chart.yaml)"
+          fi
+          json="$(printf '%s\n' "$charts" | jq -R -s -c 'split("\n") | map(select(length > 0))')"
+          echo "matrix=$json" >> "$GITHUB_OUTPUT"
+          echo "Discovered charts: $json"
+
+  chart-test:
+    name: ${{ matrix.chart }}
+    needs: discover-charts
+    if: ${{ needs.discover-charts.outputs.matrix != '[]' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        chart: ${{ fromJson(needs.discover-charts.outputs.matrix) }}
+    env:
+      VERITY_CHART: ${{ matrix.chart }}
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Install mise
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          install: true
+          cache: true
+
+      - name: Cache Go modules
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/dev/go/pkg/mod
+            ~/.cache/go-build
+          key: chart-it-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: chart-it-${{ runner.os }}-
+
+      - name: Log in to GHCR
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Harness compile and unit-test gate
+        env:
+          VERITY_IT_SKIP_CLUSTER: "1"
+        run: |
+          go test -tags=integration \
+            -run 'TestLoadAllowlist|TestLoadAllowlistMissing|TestIsAccepted|TestHarnessClusterCreatedFieldDefault|TestInstallChartRejectsArgumentInjection' \
+            -v ./test/chart-integration/...
+
+      - name: Run chart smoke test
+        id: smoke
+        # On pull_request: a failing shard means the *published* chart has a
+        # problem (chart-gen rewrite gap, missing patched image, runtime
+        # crash). That's not a regression in this PR, so the per-shard check
+        # stays green to avoid blocking unrelated PRs. The actual failure
+        # is still visible in the step log, the GITHUB_STEP_SUMMARY tab,
+        # and the uploaded diagnostics-<chart> artifact.
+        #
+        # On workflow_run / schedule / workflow_dispatch: this IS a regression
+        # detector, so failures must be loud — leave continue-on-error off so
+        # the workflow conclusion turns red, alerting and dashboards fire,
+        # and the failed run shows up cleanly in `gh run list` filters.
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        run: make chart-integration
+
+      - name: Record shard outcome
+        if: always()
+        run: |
+          {
+            echo "## ${{ matrix.chart }}: ${{ steps.smoke.outcome }}"
+            echo ""
+            if [ "${{ steps.smoke.outcome }}" = "failure" ]; then
+              echo "Smoke test reported a failure. Inspect the run log above and the uploaded \`diagnostics-${{ matrix.chart }}\` artifact for kubectl cluster-info dump and kind logs."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload diagnostics on failure
+        # always() is required: when continue-on-error is false (nightly /
+        # schedule / workflow_run / workflow_dispatch) and the smoke step
+        # fails, GHA's default behaviour is to skip subsequent steps. We
+        # want diagnostics uploaded EXACTLY when the smoke step failed —
+        # that's the only time they're useful — so override the skip with
+        # always() and gate on the step outcome.
+        if: always() && steps.smoke.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: diagnostics-${{ matrix.chart }}
+          path: |
+            _dump-${{ matrix.chart }}
+            _kind-logs-${{ matrix.chart }}
+          retention-days: 7
+          if-no-files-found: ignore
