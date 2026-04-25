@@ -235,12 +235,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "kubectl", source: "integer" },
       { name: "helm", source: "integer", variants: ["default", "fips"] },
       { name: "etcd", source: "integer" },
-      {
-        name: "aws/karpenter",
-        label: "karpenter",
-        source: "copa",
-        upstream: "ghcr.io/aws/karpenter",
-      },
+      { name: "karpenter", source: "integer" },
       {
         name: "kubernetes/autoscaler/cluster-autoscaler",
         label: "cluster-autoscaler",
@@ -697,29 +692,9 @@ export const fullCatalog: FullCatalogCategory[] = [
     id: "certs",
     label: "Cert Management",
     images: [
-      {
-        name: "jetstack/cert-manager-controller",
-        source: "copa",
-        upstream: "quay.io/jetstack/cert-manager-controller",
-      },
-      {
-        name: "jetstack/cert-manager-cainjector",
-        label: "cert-manager-cainjector",
-        source: "copa",
-        upstream: "quay.io/jetstack/cert-manager-cainjector",
-      },
-      {
-        name: "jetstack/cert-manager-acmesolver",
-        label: "cert-manager-acmesolver",
-        source: "copa",
-        upstream: "quay.io/jetstack/cert-manager-acmesolver",
-      },
-      {
-        name: "jetstack/cert-manager-cmctl",
-        label: "cert-manager-cmctl",
-        source: "copa",
-        upstream: "quay.io/jetstack/cert-manager-cmctl",
-      },
+      { name: "cert-manager-controller", source: "integer" },
+      { name: "cert-manager-cainjector", source: "integer" },
+      { name: "cert-manager-cmctl", source: "integer" },
       {
         name: "cert-manager/cert-manager-openshift-routes",
         label: "cert-manager-openshift-routes",
