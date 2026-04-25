@@ -546,9 +546,19 @@ jobs:
         if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false
         run: |
           set -o pipefail
-          cosign sign --yes "${{ steps.push.outputs.final-repo }}@${{ steps.push.outputs.digest }}" 2>&1 | tee /tmp/cosign-out
-          REKOR_URL=$(grep -oE 'https://rekor[^ ]+' /tmp/cosign-out | tail -n 1 || true)
-          if [ -n "${REKOR_URL}" ]; then
+          BUNDLE=/tmp/cosign-bundle.json
+          cosign sign --yes --bundle "$BUNDLE" "${{ steps.push.outputs.final-repo }}@${{ steps.push.outputs.digest }}" 2>&1 | tee /tmp/cosign-out
+          REKOR_URL=""
+          if [ -s "$BUNDLE" ]; then
+            LOG_INDEX=$(jq -r '.. | objects | .logIndex? // empty' "$BUNDLE" 2>/dev/null | head -n 1)
+            if [ -n "$LOG_INDEX" ]; then
+              REKOR_URL="https://rekor.sigstore.dev/api/v1/log/entries?logIndex=${LOG_INDEX}"
+            fi
+          fi
+          if [ -z "$REKOR_URL" ]; then
+            REKOR_URL=$(grep -oE 'https://rekor\.sigstore\.dev/api/v[0-9]+/log/entries[^ ]*' /tmp/cosign-out | head -n 1 || true)
+          fi
+          if [ -n "$REKOR_URL" ]; then
             echo "rekor-url=${REKOR_URL}" >> "$GITHUB_OUTPUT"
           fi
 
