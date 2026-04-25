@@ -178,14 +178,12 @@ export const fullCatalog: FullCatalogCategory[] = [
         source: "copa",
         upstream: "mirror.gcr.io/elastic/eck-operator",
       },
-      {
-        name: "zalando/postgres-operator",
-        label: "postgres-operator",
-        source: "copa",
-        upstream: "ghcr.io/zalando/postgres-operator",
-      },
       { name: "minio", source: "integer" },
       { name: "minio-client", source: "integer" },
+      { name: "cassandra", source: "integer" },
+      { name: "neo4j", source: "integer" },
+      { name: "solr", source: "integer" },
+      { name: "postgres-operator", source: "integer" },
     ],
   },
 
@@ -240,7 +238,8 @@ export const fullCatalog: FullCatalogCategory[] = [
       {
         name: "aws/karpenter",
         label: "karpenter",
-        source: "copa",
+        source: "integer",
+        integerName: "karpenter",
         upstream: "ghcr.io/aws/karpenter",
       },
       {
@@ -340,6 +339,14 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "metrics-server", source: "integer" },
       { name: "velero", source: "integer" },
       { name: "sealed-secrets", source: "integer" },
+      { name: "external-secrets", source: "integer" },
+      { name: "kube-rbac-proxy", source: "integer" },
+      { name: "metallb-controller", source: "integer" },
+      { name: "metallb-speaker", source: "integer" },
+      { name: "kustomize", source: "integer" },
+      { name: "k9s", source: "integer" },
+      { name: "stern", source: "integer" },
+      { name: "minio-operator", source: "integer" },
     ],
   },
 
@@ -429,6 +436,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         integerName: "calico-key-cert-provisioner",
         upstream: "quay.io/calico/key-cert-provisioner",
       },
+      { name: "contour", source: "integer" },
     ],
   },
 
@@ -448,7 +456,8 @@ export const fullCatalog: FullCatalogCategory[] = [
       {
         name: "grafana/grafana-operator",
         label: "grafana-operator",
-        source: "copa",
+        source: "integer",
+        integerName: "grafana-operator",
         upstream: "ghcr.io/grafana/grafana-operator",
       },
       {
@@ -510,6 +519,8 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "jaeger", source: "integer" },
       { name: "tempo", source: "integer" },
       { name: "grafana-alloy", source: "integer" },
+      { name: "cortex", source: "integer" },
+      { name: "blackbox-exporter", source: "integer" },
     ],
   },
 
@@ -572,6 +583,13 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "ghcr.io/renovatebot/renovate",
       },
       { name: "kaniko", source: "integer" },
+      { name: "flux", source: "integer" },
+      { name: "gitea", source: "integer" },
+      { name: "buildah", source: "integer" },
+      { name: "podman", source: "integer" },
+      { name: "pulumi", source: "integer" },
+      { name: "argo-workflows", source: "integer" },
+      { name: "argo-rollouts", source: "integer" },
     ],
   },
 
@@ -635,6 +653,12 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "dex", source: "integer" },
       { name: "falco", source: "integer" },
       { name: "oauth2-proxy", source: "integer" },
+      { name: "trivy-operator", source: "integer" },
+      { name: "kube-bench", source: "integer" },
+      { name: "openfga", source: "integer" },
+      { name: "spicedb", source: "integer" },
+      { name: "checkov", source: "integer" },
+      { name: "step-ca", source: "integer" },
     ],
   },
 
@@ -690,6 +714,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     images: [
       {
         name: "jetstack/cert-manager-controller",
+        label: "cert-manager-controller",
         source: "copa",
         upstream: "quay.io/jetstack/cert-manager-controller",
       },
@@ -708,7 +733,8 @@ export const fullCatalog: FullCatalogCategory[] = [
       {
         name: "jetstack/cert-manager-cmctl",
         label: "cert-manager-cmctl",
-        source: "copa",
+        source: "integer",
+        integerName: "cert-manager-cmctl",
         upstream: "quay.io/jetstack/cert-manager-cmctl",
       },
       {
@@ -732,6 +758,8 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "ghcr.io/kubeflow/spark-operator",
       },
       { name: "mlflow/mlflow", label: "mlflow", source: "copa", upstream: "ghcr.io/mlflow/mlflow" },
+      { name: "temporal", source: "integer" },
+      { name: "meilisearch", source: "integer" },
       {
         name: "tensorflow/serving",
         label: "tensorflow-serving",

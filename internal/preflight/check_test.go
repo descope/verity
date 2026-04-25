@@ -73,7 +73,30 @@ func TestCheckCopaImage_UnchangedWithVulns(t *testing.T) {
 
 	result := checkCopaImage(&img, manifest)
 	assert.True(t, result.NeedsWork)
-	assert.Contains(t, result.Reason, "5 fixable vulns")
+	assert.Contains(t, result.Reason, "5 vulns remain in patched image")
+}
+
+func TestCheckCopaImage_SingleVulnUsesSingular(t *testing.T) {
+	manifest := Manifest{
+		"valkey/9.0.3": {UpstreamDigest: testDigestSame, PatchedVulns: 1},
+	}
+	img := discovery.DiscoveredImage{
+		Name:   "valkey",
+		Source: "mirror.gcr.io/valkey/valkey:9.0.3",
+	}
+
+	origFn := digestFn
+	digestFn = func(_ string) (string, error) { return testDigestSame, nil }
+	defer func() { digestFn = origFn }()
+
+	result := checkCopaImage(&img, manifest)
+	assert.True(t, result.NeedsWork)
+	assert.Contains(t, result.Reason, "1 vuln remains in patched image",
+		"single-vuln case must use singular noun and matching singular verb ('1 vuln remains'), not '1 vuln remain' or '1 vulns'")
+	assert.NotContains(t, result.Reason, "1 vulns",
+		"regression guard: prevent plural noun returning for count==1")
+	assert.NotContains(t, result.Reason, "1 vuln remain ",
+		"regression guard: prevent singular noun + plural verb ('1 vuln remain') subject-verb agreement bug")
 }
 
 func TestCheckCopaImage_UnchangedClean(t *testing.T) {

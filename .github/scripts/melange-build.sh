@@ -7,8 +7,47 @@ set -euo pipefail
 
 mkdir -p melange-work
 
+validate_filename() {
+  local label="$1" value="$2"
+
+  if [[ ! "$value" =~ ^[A-Za-z0-9._-]+$ ]]; then
+    echo "${label} contains unsafe characters: '${value}'" >&2
+    exit 1
+  fi
+
+  if [[ "$value" == *".."* ]]; then
+    echo "${label} must not contain path traversal sequences ('..'): '${value}'" >&2
+    exit 1
+  fi
+}
+
 if [ -n "${BESPOKE:-}" ]; then
+  validate_filename "BESPOKE" "$BESPOKE"
+  if [ ! -f "packages/bespoke/${BESPOKE}" ]; then
+    echo "Bespoke build file not found: packages/bespoke/${BESPOKE}" >&2
+    exit 1
+  fi
+
   cp "packages/bespoke/${BESPOKE}" melange-work/build.yaml
+
+  # Bespoke builds may use Wolfi-specific pipelines (e.g. py/pip-build-install).
+  # Fetch the pipelines/ tree from the pinned wolfi_commit so they resolve.
+  commit=$(jq -r '.wolfi_commit' packages/upstream.lock.json)
+  if [ "$commit" = "null" ] || [ -z "$commit" ]; then
+    echo "wolfi_commit missing or null in packages/upstream.lock.json" >&2
+    exit 1
+  fi
+
+  echo "Fetching wolfi pipelines/ at commit ${commit} for bespoke build"
+  tmp_wolfi=$(mktemp -d)
+  trap 'rm -rf "$tmp_wolfi"' EXIT
+  git -C "$tmp_wolfi" init --quiet
+  git -C "$tmp_wolfi" remote add origin "https://github.com/wolfi-dev/os.git"
+  git -C "$tmp_wolfi" sparse-checkout set --no-cone pipelines
+  git -C "$tmp_wolfi" fetch --quiet --depth 1 --filter=blob:none origin "$commit"
+  git -C "$tmp_wolfi" checkout --quiet FETCH_HEAD -- pipelines
+  rm -rf melange-work/pipelines
+  cp -r "$tmp_wolfi/pipelines" melange-work/pipelines
 elif [ -n "${UPSTREAM:-}" ]; then
   commit=$(jq -r '.wolfi_commit' packages/upstream.lock.json)
   if [ "$commit" = "null" ] || [ -z "$commit" ]; then
