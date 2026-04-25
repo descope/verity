@@ -105,6 +105,21 @@ jobs:
           key: chart-it-${{ runner.os }}-${{ hashFiles('go.sum') }}
           restore-keys: chart-it-${{ runner.os }}-
 
+      - name: Log in to GHCR
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Harness compile and unit-test gate
+        env:
+          VERITY_IT_SKIP_CLUSTER: "1"
+        run: |
+          go test -tags=integration \
+            -run 'TestLoadAllowlist|TestLoadAllowlistMissing|TestIsAccepted|TestHarnessClusterCreatedFieldDefault|TestInstallChartRejectsArgumentInjection' \
+            -v ./test/chart-integration/...
+
       - name: Run chart smoke test
         id: smoke
         # A failing shard means the *published* chart has a problem (chart-gen

@@ -3,9 +3,12 @@
 package integration
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/verity-org/verity/internal/config"
 )
 
 func TestLoadAllowlist(t *testing.T) {
@@ -83,5 +86,24 @@ func TestHarnessClusterCreatedFieldDefault(t *testing.T) {
 	h := NewHarness(stdoutLogger{}, "/tmp")
 	if h.clusterCreated {
 		t.Fatal("new Harness must start with clusterCreated=false; otherwise Teardown could delete a pre-existing cluster the harness did not create")
+	}
+}
+
+func TestInstallChartRejectsArgumentInjection(t *testing.T) {
+	cases := []struct {
+		name string
+		spec config.ChartSpec
+	}{
+		{"name starts with dash", config.ChartSpec{Name: "-rf", Version: "1.0.0", Repository: "oci://example.com/charts"}},
+		{"version starts with dash", config.ChartSpec{Name: "ok", Version: "--exec", Repository: "oci://example.com/charts"}},
+		{"non-oci/http repo", config.ChartSpec{Name: "ok", Version: "1.0.0", Repository: "ssh://example.com/charts"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := InstallChart(context.Background(), &Harness{t: stdoutLogger{}}, c.spec, "")
+			if err == nil {
+				t.Fatalf("InstallChart should reject %v as argument-injection risk", c.spec)
+			}
+		})
 	}
 }

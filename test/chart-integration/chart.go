@@ -27,6 +27,9 @@ type ChartContext struct {
 }
 
 func InstallChart(ctx context.Context, h *Harness, spec config.ChartSpec, valuesDir string) (*ChartContext, error) {
+	if err := discovery.ValidateChartSpec(spec); err != nil {
+		return nil, fmt.Errorf("validate chart spec: %w", err)
+	}
 	cc := &ChartContext{
 		Spec:      spec,
 		Namespace: sanitizeNamespace(spec.Name),
@@ -65,7 +68,7 @@ func helmInstall(ctx context.Context, h *Harness, cc *ChartContext) error {
 		"--namespace", cc.Namespace,
 		"--create-namespace",
 		"--wait",
-		"--timeout", "10m",
+		"--timeout", helmInstallTimeout.String(),
 	}
 	if vals := valuesFile(cc); vals != "" {
 		args = append(args, "--values", vals)
