@@ -2,6 +2,7 @@ package chartgen
 
 import (
 	"encoding/json"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -117,8 +118,8 @@ func TestEnforceStrict(t *testing.T) {
 					tc.strict, tc.total, tc.skipped, err, tc.wantErr)
 			}
 			if tc.wantErr && err != nil {
-				if !strings.Contains(err.Error(), "strict mode") {
-					t.Errorf("error missing 'strict mode' prefix: %v", err)
+				if !errors.Is(err, ErrStrictModeUnmappedCharts) {
+					t.Errorf("error should wrap ErrStrictModeUnmappedCharts: %v", err)
 				}
 				if !strings.Contains(err.Error(), "Chart.yaml") {
 					t.Errorf("error should reference charts file basename: %v", err)

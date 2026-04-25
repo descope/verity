@@ -1,6 +1,7 @@
 package chartgen
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +12,12 @@ import (
 	"github.com/verity-org/verity/internal/config"
 	"github.com/verity-org/verity/internal/discovery"
 )
+
+// ErrStrictModeUnmappedCharts is returned by Run when --strict is set and at
+// least one chart in the configured charts file produced no patched image
+// mappings (i.e., chart-gen would otherwise have silently skipped it). The
+// usual root cause is a missing replacements: entry in verity.yaml.
+var ErrStrictModeUnmappedCharts = errors.New("strict mode: charts produced no patched image mappings")
 
 type Config struct {
 	ChartsFile     string
@@ -90,16 +97,17 @@ func Run(cfg *Config) (*DryRunResult, error) {
 	return result, nil
 }
 
-// enforceStrict returns an error when strict is true and any chart in the
-// charts file produced no patched image mappings. Extracted as a separate
-// function so the failure-mode logic is unit-testable without standing up
-// the full helm/crane machinery that Run() exercises.
+// enforceStrict returns an error wrapping ErrStrictModeUnmappedCharts when
+// strict is true and any chart in the charts file produced no patched image
+// mappings. Extracted as a separate function so the failure-mode logic is
+// unit-testable without standing up the full helm/crane machinery that
+// Run() exercises.
 func enforceStrict(strict bool, total, skipped int, chartsFile string) error {
 	if !strict || skipped == 0 {
 		return nil
 	}
-	return fmt.Errorf("strict mode: %d of %d charts produced no patched image mappings (likely a chart added to %s without a matching replacements: entry in verity.yaml, or whose Integer rebuild lacks the wiring); re-run without --strict to allow, or fix the underlying config gap",
-		skipped, total, filepath.Base(chartsFile))
+	return fmt.Errorf("%w: %d of %d charts skipped (likely a chart added to %s without a matching replacements: entry in verity.yaml, or whose Integer rebuild lacks the wiring); re-run without --strict to allow, or fix the underlying config gap",
+		ErrStrictModeUnmappedCharts, skipped, total, filepath.Base(chartsFile))
 }
 
 func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) (ChartResult, bool, error) {
