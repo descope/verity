@@ -98,8 +98,12 @@ func (h *Harness) exportKubeconfig(ctx context.Context) error {
 		return cerr
 	}
 	h.KubeconfigPath = tmp.Name()
-	out, err := exec.CommandContext(ctx, "kind", "get", "kubeconfig", "--name", clusterName).Output()
+	out, err := exec.CommandContext(ctx, "kind", "get", "kubeconfig", "--name", clusterName).CombinedOutput()
 	if err != nil {
+		stderr := strings.TrimSpace(string(out))
+		if stderr != "" {
+			return fmt.Errorf("kind get kubeconfig: %s: %w", stderr, err)
+		}
 		return fmt.Errorf("kind get kubeconfig: %w", err)
 	}
 	if err := os.WriteFile(tmp.Name(), out, 0o600); err != nil {
@@ -132,7 +136,7 @@ func runCmdOutput(ctx context.Context, dir string, env []string, name string, ar
 	}
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return string(out), fmt.Errorf("exec %s %s: %s: %w", name, strings.Join(args, " "), string(out), err)
+		return string(out), fmt.Errorf("exec %s %s: %w", name, strings.Join(args, " "), err)
 	}
 	return string(out), nil
 }

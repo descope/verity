@@ -93,7 +93,9 @@ func runChart(t *testing.T, spec config.ChartSpec) {
 	cc, installErr := InstallChart(ctx, testHarness, spec, valuesDir)
 	defer func() {
 		if t.Failed() {
-			DumpDiagnostics(ctx, testHarness, spec.Name)
+			dctx, dcancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			DumpDiagnostics(dctx, testHarness, spec.Name)
+			dcancel()
 		}
 		uctx, ucancel := context.WithTimeout(context.Background(), 3*time.Minute)
 		defer ucancel()
