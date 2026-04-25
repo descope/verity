@@ -245,7 +245,8 @@ export const fullCatalog: FullCatalogCategory[] = [
       {
         name: "kubernetes/autoscaler/cluster-autoscaler",
         label: "cluster-autoscaler",
-        source: "copa",
+        source: "integer",
+        integerName: "cluster-autoscaler",
         upstream: "ghcr.io/kubernetes/autoscaler/cluster-autoscaler",
       },
       {
@@ -715,20 +716,30 @@ export const fullCatalog: FullCatalogCategory[] = [
       {
         name: "jetstack/cert-manager-controller",
         label: "cert-manager-controller",
-        source: "copa",
+        source: "integer",
+        integerName: "cert-manager-controller",
         upstream: "quay.io/jetstack/cert-manager-controller",
       },
       {
         name: "jetstack/cert-manager-cainjector",
         label: "cert-manager-cainjector",
-        source: "copa",
+        source: "integer",
+        integerName: "cert-manager-cainjector",
         upstream: "quay.io/jetstack/cert-manager-cainjector",
       },
       {
         name: "jetstack/cert-manager-acmesolver",
         label: "cert-manager-acmesolver",
-        source: "copa",
+        source: "integer",
+        integerName: "cert-manager-acmesolver",
         upstream: "quay.io/jetstack/cert-manager-acmesolver",
+      },
+      {
+        name: "jetstack/cert-manager-webhook",
+        label: "cert-manager-webhook",
+        source: "integer",
+        integerName: "cert-manager-webhook",
+        upstream: "quay.io/jetstack/cert-manager-webhook",
       },
       {
         name: "jetstack/cert-manager-cmctl",

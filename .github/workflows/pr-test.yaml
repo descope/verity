@@ -461,12 +461,15 @@ jobs:
           # Find added image names
           ADDED=$(comm -13 <(echo "$OLD_NAMES") <(echo "$NEW_NAMES") | paste -sd, || true)
 
-          # Find changed image entries (compare full YAML blocks)
+          # Find changed image entries (compare full data blocks).
+          # Use JSON output to ignore comment shifts: yq attributes leading
+          # comments to the next node, so removing an entry can make adjacent
+          # section headers re-attach to a sibling that didn't actually change.
           CHANGED_NAMES=""
           while IFS= read -r name; do
             [ -z "$name" ] && continue
-            old_block=$(git show "${BASE_SHA}":copa-config.yaml 2>/dev/null | yq ".images[] | select(.name == \"$name\")" 2>/dev/null || true)
-            new_block=$(yq ".images[] | select(.name == \"$name\")" copa-config.yaml)
+            old_block=$(git show "${BASE_SHA}":copa-config.yaml 2>/dev/null | yq -o=json ".images[] | select(.name == \"$name\")" 2>/dev/null || true)
+            new_block=$(yq -o=json ".images[] | select(.name == \"$name\")" copa-config.yaml)
             if [ "$old_block" != "$new_block" ]; then
               CHANGED_NAMES="${CHANGED_NAMES:+$CHANGED_NAMES,}$name"
             fi
