@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.69.3"
   },
-  "ReportID": "019d8507-6829-7b12-a137-5b01d94a6cc3",
-  "CreatedAt": "2026-04-13T04:09:08.393727221Z",
+  "ReportID": "019dc3e1-7e46-79ff-9917-36f3e5c428bb",
+  "CreatedAt": "2026-04-25T09:03:48.294656755Z",
   "ArtifactID": "sha256:9b475e752ed2da6d93a93a2d9567395804677ad0557618283fa799b296a333d8",
   "ArtifactName": "ghcr.io/verity-org/cache:elastic-eck-operator-3.1.0",
   "ArtifactType": "container_image",
@@ -3170,6 +3170,66 @@
             "DiffID": "sha256:be833b0799c6dc259fe1cc3900261d50d35a9997b27c788ff3a0db7dd2bc635e"
           },
           "AnalyzedBy": "gobinary"
+        }
+      ],
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2026-35469",
+          "VendorIDs": [
+            "GHSA-pc3f-x583-g7j2"
+          ],
+          "PkgID": "github.com/moby/spdystream@v0.5.0",
+          "PkgName": "github.com/moby/spdystream",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/github.com/moby/spdystream@v0.5.0",
+            "UID": "e479566d277c20ec"
+          },
+          "InstalledVersion": "v0.5.0",
+          "FixedVersion": "0.5.1",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:ea24617ba7aa1cda77b7bc072303c84a54c70b08bfdd0fbd17cf733b966ef839",
+            "DiffID": "sha256:be833b0799c6dc259fe1cc3900261d50d35a9997b27c788ff3a0db7dd2bc635e"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-35469",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Go",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
+          },
+          "Fingerprint": "sha256:445dbaaf761b0348b4dab2063e8c6517ee24a902c7c0cdf8ae55911276a411f0",
+          "Title": "Kubelet: CRI-O: kube-apiserver: Kubelet, CRI-O, kube-apiserver: Denial of Service via SPDY streaming code",
+          "Description": "spdystream is a Go library for multiplexing streams over SPDY connections. In versions 0.5.0 and below, the SPDY/3 frame parser does not validate attacker-controlled counts and lengths before allocating memory. Three allocation paths are affected: the SETTINGS frame entry count, the header count in parseHeaderValueBlock, and individual header field sizes — all read as 32-bit integers and used directly as allocation sizes with no bounds checking. Because SPDY header blocks are zlib-compressed, a small on-the-wire payload can decompress into large attacker-controlled values. A remote peer that can send SPDY frames to a service using spdystream can exhaust process memory and cause an out-of-memory crash with a single crafted control frame. This issue has been fixed in version 0.5.1.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-770"
+          ],
+          "VendorSeverity": {
+            "azure": 3,
+            "ghsa": 3,
+            "redhat": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N",
+              "V40Score": 8.7
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 6.5
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-35469",
+            "https://github.com/moby/spdystream",
+            "https://github.com/moby/spdystream/releases/tag/v0.5.1",
+            "https://github.com/moby/spdystream/security/advisories/GHSA-pc3f-x583-g7j2",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-35469",
+            "https://www.cve.org/CVERecord?id=CVE-2026-35469"
+          ],
+          "PublishedDate": "2026-04-16T22:16:37.92Z",
+          "LastModifiedDate": "2026-04-17T15:38:09.243Z"
         }
       ]
     }
