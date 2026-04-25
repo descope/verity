@@ -170,10 +170,10 @@ func TestApplyReplacementsLongestPatternWins(t *testing.T) {
 	_, replacements := applyReplacements(refs, vc, nil)
 
 	want := map[string]string{
-		"reg.kyverno.io/kyverno/kyverno":            "ghcr.io/verity-org/kyverno",
-		"reg.kyverno.io/kyverno/kyverno-cli":        "ghcr.io/verity-org/kyverno-cli",
-		"opensearchproject/opensearch":              "ghcr.io/verity-org/opensearch",
-		"opensearchproject/opensearch-dashboards":   "ghcr.io/verity-org/opensearch-dashboards",
+		"reg.kyverno.io/kyverno/kyverno":          "ghcr.io/verity-org/kyverno",
+		"reg.kyverno.io/kyverno/kyverno-cli":      "ghcr.io/verity-org/kyverno-cli",
+		"opensearchproject/opensearch":            "ghcr.io/verity-org/opensearch",
+		"opensearchproject/opensearch-dashboards": "ghcr.io/verity-org/opensearch-dashboards",
 	}
 	if len(replacements) != len(want) {
 		t.Fatalf("replacements = %d, want %d", len(replacements), len(want))

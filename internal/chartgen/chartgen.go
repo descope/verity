@@ -143,10 +143,13 @@ func applyReplacements(imageRefs []string, vc *config.VerityConfig, excludeNames
 		return imageRefs, nil
 	}
 
-	// Sort patterns longest-first so more-specific patterns win over their
-	// substring prefixes when matching. e.g. "kyverno/kyverno-cli" must be
-	// tried before "kyverno/kyverno" so that the cli image isn't greedily
-	// claimed by the bare-kyverno pattern's Contains check below.
+	// Sort patterns longest-first so a more-specific pattern wins over a
+	// shorter pattern whose text is contained within it. The matcher below
+	// uses strings.Contains, so e.g. when both "kyverno/kyverno" and
+	// "kyverno/kyverno-cli" are configured, the cli pattern must be tried
+	// first or the bare "kyverno/kyverno" pattern would greedily claim the
+	// cli image (and the kyvernopre image too — which IS the desired
+	// behavior for kyvernopre, since it shares the kyverno binary).
 	// Ties broken alphabetically for deterministic order.
 	patterns := make([]string, 0, len(vc.Replacements))
 	for p := range vc.Replacements {
