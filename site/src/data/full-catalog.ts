@@ -178,14 +178,12 @@ export const fullCatalog: FullCatalogCategory[] = [
         source: "copa",
         upstream: "mirror.gcr.io/elastic/eck-operator",
       },
-      {
-        name: "zalando/postgres-operator",
-        label: "postgres-operator",
-        source: "copa",
-        upstream: "ghcr.io/zalando/postgres-operator",
-      },
       { name: "minio", source: "integer" },
       { name: "minio-client", source: "integer" },
+      { name: "cassandra", source: "integer" },
+      { name: "neo4j", source: "integer" },
+      { name: "solr", source: "integer" },
+      { name: "postgres-operator", source: "integer" },
     ],
   },
 
@@ -240,7 +238,8 @@ export const fullCatalog: FullCatalogCategory[] = [
       {
         name: "aws/karpenter",
         label: "karpenter",
-        source: "copa",
+        source: "integer",
+        integerName: "karpenter",
         upstream: "ghcr.io/aws/karpenter",
       },
       {
@@ -437,6 +436,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         integerName: "calico-key-cert-provisioner",
         upstream: "quay.io/calico/key-cert-provisioner",
       },
+      { name: "contour", source: "integer" },
     ],
   },
 
@@ -456,7 +456,8 @@ export const fullCatalog: FullCatalogCategory[] = [
       {
         name: "grafana/grafana-operator",
         label: "grafana-operator",
-        source: "copa",
+        source: "integer",
+        integerName: "grafana-operator",
         upstream: "ghcr.io/grafana/grafana-operator",
       },
       {
@@ -583,6 +584,9 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "kaniko", source: "integer" },
       { name: "flux", source: "integer" },
       { name: "gitea", source: "integer" },
+      { name: "buildah", source: "integer" },
+      { name: "podman", source: "integer" },
+      { name: "pulumi", source: "integer" },
     ],
   },
 
@@ -651,6 +655,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "openfga", source: "integer" },
       { name: "spicedb", source: "integer" },
       { name: "checkov", source: "integer" },
+      { name: "step-ca", source: "integer" },
     ],
   },
 
@@ -706,6 +711,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     images: [
       {
         name: "jetstack/cert-manager-controller",
+        label: "cert-manager-controller",
         source: "copa",
         upstream: "quay.io/jetstack/cert-manager-controller",
       },
@@ -724,7 +730,8 @@ export const fullCatalog: FullCatalogCategory[] = [
       {
         name: "jetstack/cert-manager-cmctl",
         label: "cert-manager-cmctl",
-        source: "copa",
+        source: "integer",
+        integerName: "cert-manager-cmctl",
         upstream: "quay.io/jetstack/cert-manager-cmctl",
       },
       {

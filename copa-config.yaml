@@ -105,15 +105,6 @@ images:
     goVcsUrl: "https://github.com/elastic/cloud-on-k8s"
     goVcsTagPrefix: "v"
 
-  - name: "zalando/postgres-operator"
-    image: "ghcr.io/zalando/postgres-operator"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-    goVcsUrl: "https://github.com/zalando/postgres-operator"
-
   # ============================================================================
   #  MESSAGING & STREAMING
   # ============================================================================
@@ -152,14 +143,6 @@ images:
   # ============================================================================
   #  KUBERNETES TOOLS
   # ============================================================================
-
-  - name: "aws/karpenter"
-    image: "ghcr.io/aws/karpenter"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v?\d+\.\d+\.\d+$'
-      maxTags: 3
 
   - name: "kubernetes/autoscaler/cluster-autoscaler"
     image: "ghcr.io/kubernetes/autoscaler/cluster-autoscaler"
@@ -346,15 +329,6 @@ images:
       maxTags: 3
 
   # -- Grafana ecosystem --
-  - name: "grafana/grafana-operator"
-    image: "ghcr.io/grafana/grafana-operator"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-    goVcsUrl: "https://github.com/grafana/grafana-operator"
-
   - name: "grafana/promtail"
     image: "mirror.gcr.io/grafana/promtail"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -471,6 +445,11 @@ images:
   #  CERT MANAGEMENT
   # ============================================================================
 
+  # cert-manager-{controller,cainjector,acmesolver}: deferred Wolfi migration.
+  # Wolfi advisory DB references fix-versions (e.g. 1.19.4-r3+) for current
+  # grpc-go and net/url CVEs, but those apks aren't yet published. Tracking
+  # until upstream Wolfi catches up; cmctl already migrated since it lives in
+  # a separate repo and is unaffected.
   - name: "jetstack/cert-manager-controller"
     image: "quay.io/jetstack/cert-manager-controller"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -497,15 +476,6 @@ images:
       pattern: '^v\d+\.\d+\.\d+$'
       maxTags: 3
     goVcsUrl: "https://github.com/cert-manager/cert-manager"
-
-  - name: "jetstack/cert-manager-cmctl"
-    image: "quay.io/jetstack/cert-manager-cmctl"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-    goVcsUrl: "https://github.com/cert-manager/cmctl"
 
   - name: "cert-manager/cert-manager-openshift-routes"
     image: "ghcr.io/cert-manager/cert-manager-openshift-routes"
