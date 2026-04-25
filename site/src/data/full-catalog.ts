@@ -235,7 +235,13 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "kubectl", source: "integer" },
       { name: "helm", source: "integer", variants: ["default", "fips"] },
       { name: "etcd", source: "integer" },
-      { name: "karpenter", source: "integer" },
+      {
+        name: "aws/karpenter",
+        label: "karpenter",
+        source: "integer",
+        integerName: "karpenter",
+        upstream: "ghcr.io/aws/karpenter",
+      },
       {
         name: "kubernetes/autoscaler/cluster-autoscaler",
         label: "cluster-autoscaler",
@@ -710,7 +716,13 @@ export const fullCatalog: FullCatalogCategory[] = [
         source: "copa",
         upstream: "quay.io/jetstack/cert-manager-acmesolver",
       },
-      { name: "cert-manager-cmctl", source: "integer" },
+      {
+        name: "jetstack/cert-manager-cmctl",
+        label: "cert-manager-cmctl",
+        source: "integer",
+        integerName: "cert-manager-cmctl",
+        upstream: "quay.io/jetstack/cert-manager-cmctl",
+      },
       {
         name: "cert-manager/cert-manager-openshift-routes",
         label: "cert-manager-openshift-routes",
