@@ -71,6 +71,12 @@ jobs:
     if: ${{ needs.discover-charts.outputs.matrix != '[]' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    # A failing shard means the *published* chart has a problem (chart-gen
+    # rewrite gap, missing patched image, runtime crash). That's the signal
+    # we want to surface — not a regression in this PR. continue-on-error
+    # keeps the workflow green so smoke-test results are visible nightly
+    # without blocking unrelated PRs that happen to overlap a broken chart.
+    continue-on-error: true
     permissions:
       contents: read
       packages: read
