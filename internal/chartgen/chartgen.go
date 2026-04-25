@@ -54,6 +54,7 @@ func Run(cfg *Config) (*DryRunResult, error) {
 		Charts:        make([]ChartResult, 0, len(charts)),
 	}
 
+	skipped := 0
 	for _, chart := range charts {
 		chartResult, include, err := processChart(cfg, chart, vc)
 		if err != nil {
@@ -61,8 +62,19 @@ func Run(cfg *Config) (*DryRunResult, error) {
 		}
 		if include {
 			result.Charts = append(result.Charts, chartResult)
+		} else {
+			skipped++
 		}
 	}
+
+	// Loud summary so silent regressions (chart added to Chart.yaml but
+	// every image excluded → zero wrappers produced) are visible in CI.
+	verb := "produced"
+	if cfg.DryRun {
+		verb = "would produce"
+	}
+	fmt.Fprintf(os.Stderr, "info: chart-gen summary: %d charts in Chart.yaml, %s %d wrappers, %d skipped (no patched mappings)\n",
+		len(charts), verb, len(result.Charts), skipped)
 
 	return result, nil
 }
@@ -169,11 +181,13 @@ func applyReplacements(imageRefs []string, vc *config.VerityConfig, excludeNames
 		name := repoPath(imageRef)
 		sourceRepo, sourceTag := splitRef(imageRef)
 
-		if isExcluded(name, imageRef, excludeNames) {
-			fmt.Fprintf(os.Stderr, "warning: skipping excluded image %q (%s)\n", name, imageRef)
-			continue
-		}
-
+		// Replacements are the authoritative signal — try them before
+		// considering --exclude-names. Otherwise a chart image whose
+		// basename collides with an Integer rebuild filename (the source
+		// of exclude-names) would be silently skipped before its explicit
+		// replacement entry could fire, leaving the chart with no
+		// wrapper at all. See PR #248-followup for the silent-failure
+		// case this prevents.
 		matched := false
 		for _, pattern := range patterns {
 			if name != pattern && !strings.Contains(name, pattern) {
@@ -195,9 +209,20 @@ func applyReplacements(imageRefs []string, vc *config.VerityConfig, excludeNames
 			matched = true
 			break
 		}
-		if !matched {
-			remaining = append(remaining, imageRef)
+		if matched {
+			continue
 		}
+
+		// No replacement matched — now apply --exclude-names so that
+		// images backed by an Integer rebuild but lacking an explicit
+		// replacement entry don't get crane-looked-up against the Copa
+		// patched registry (where they don't exist).
+		if isExcluded(name, imageRef, excludeNames) {
+			fmt.Fprintf(os.Stderr, "warning: skipping excluded image %q (%s)\n", name, imageRef)
+			continue
+		}
+
+		remaining = append(remaining, imageRef)
 	}
 
 	return remaining, replacements

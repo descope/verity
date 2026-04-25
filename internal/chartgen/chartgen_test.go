@@ -191,11 +191,14 @@ func TestApplyReplacementsLongestPatternWins(t *testing.T) {
 	}
 }
 
-func TestApplyReplacementsExcluded(t *testing.T) {
+func TestApplyReplacementsExcludedWithoutReplacement(t *testing.T) {
+	// An image present in --exclude-names but NOT covered by any
+	// replacement entry must be dropped (neither replaced nor passed
+	// through to crane lookup).
 	refs := []string{"quay.io/prometheus/pushgateway:v1.11.2"}
 	vc := &config.VerityConfig{
 		Replacements: map[string]config.Replacement{
-			"prometheus/pushgateway": {Registry: "ghcr.io/verity-org", Image: "pushgateway"},
+			"some-unrelated/image": {Registry: "ghcr.io/verity-org", Image: "other"},
 		},
 	}
 	exclude := map[string]struct{}{"pushgateway": {}}
@@ -205,6 +208,62 @@ func TestApplyReplacementsExcluded(t *testing.T) {
 		t.Errorf("remaining = %d, want 0 (excluded)", len(remaining))
 	}
 	if len(replacements) != 0 {
-		t.Errorf("replacements = %d, want 0 (excluded)", len(replacements))
+		t.Errorf("replacements = %d, want 0 (no replacement matches, excluded)", len(replacements))
+	}
+}
+
+func TestApplyReplacementsWinsOverExclude(t *testing.T) {
+	// Regression test for the silent-failure case where chart-gen
+	// produced zero wrappers for charts whose images had explicit
+	// replacements but whose basenames also collided with Integer
+	// rebuild filenames (the source of --exclude-names).
+	//
+	// Setup mirrors the real-world failure: an image whose basename
+	// matches an exclude entry AND has an explicit replacement entry.
+	// The replacement must win — otherwise the chart loses its mapping
+	// and gets skipped with "no patched image mappings".
+	refs := []string{
+		"opensearchproject/opensearch:3.6.0",
+		"registry.k8s.io/metrics-server/metrics-server:v0.8.0",
+		"reg.kyverno.io/kyverno/kyverno:v1.17.2",
+	}
+	vc := &config.VerityConfig{
+		Replacements: map[string]config.Replacement{
+			"opensearchproject/opensearch":  {Registry: "ghcr.io/verity-org", Image: "opensearch"},
+			"metrics-server/metrics-server": {Registry: "ghcr.io/verity-org", Image: "metrics-server"},
+			"kyverno/kyverno":               {Registry: "ghcr.io/verity-org", Image: "kyverno"},
+		},
+	}
+	// These exclude names match the basenames of the images above —
+	// derived in the workflow from `find images -name '*.yaml'`.
+	exclude := map[string]struct{}{
+		"opensearch":     {},
+		"metrics-server": {},
+		"kyverno":        {},
+	}
+
+	remaining, replacements := applyReplacements(refs, vc, exclude)
+
+	if len(remaining) != 0 {
+		t.Errorf("remaining = %d, want 0 (all should be replaced); remaining=%v", len(remaining), remaining)
+	}
+	if len(replacements) != 3 {
+		t.Fatalf("replacements = %d, want 3 (each image has an explicit replacement that must beat the exclude)", len(replacements))
+	}
+
+	want := map[string]string{
+		"opensearchproject/opensearch":                  "ghcr.io/verity-org/opensearch",
+		"registry.k8s.io/metrics-server/metrics-server": "ghcr.io/verity-org/metrics-server",
+		"reg.kyverno.io/kyverno/kyverno":                "ghcr.io/verity-org/kyverno",
+	}
+	for _, r := range replacements {
+		expected, ok := want[r.OriginalRepo]
+		if !ok {
+			t.Errorf("unexpected OriginalRepo: %q", r.OriginalRepo)
+			continue
+		}
+		if r.PatchedRepo != expected {
+			t.Errorf("OriginalRepo=%q: got PatchedRepo=%q, want %q (exclude must not block explicit replacement)", r.OriginalRepo, r.PatchedRepo, expected)
+		}
 	}
 }
