@@ -238,7 +238,8 @@ export const fullCatalog: FullCatalogCategory[] = [
       {
         name: "aws/karpenter",
         label: "karpenter",
-        source: "copa",
+        source: "integer",
+        integerName: "karpenter",
         upstream: "ghcr.io/aws/karpenter",
       },
       {
@@ -699,6 +700,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     images: [
       {
         name: "jetstack/cert-manager-controller",
+        label: "cert-manager-controller",
         source: "copa",
         upstream: "quay.io/jetstack/cert-manager-controller",
       },
@@ -717,7 +719,8 @@ export const fullCatalog: FullCatalogCategory[] = [
       {
         name: "jetstack/cert-manager-cmctl",
         label: "cert-manager-cmctl",
-        source: "copa",
+        source: "integer",
+        integerName: "cert-manager-cmctl",
         upstream: "quay.io/jetstack/cert-manager-cmctl",
       },
       {
