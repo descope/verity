@@ -91,7 +91,8 @@ jobs:
               break
             fi
 
-            git commit -m "metrics: run ${RUN_ID} attempt ${RUN_ATTEMPT}" -m "$(ls "$TARGET_DIR" | wc -l) image(s)"
+            COUNT=$(find "$TARGET_DIR" -maxdepth 1 -type f -name '*.json' | wc -l)
+            git commit -m "metrics: run ${RUN_ID} attempt ${RUN_ATTEMPT}" -m "${COUNT} image(s)"
 
             if git push origin _metrics; then
               echo "::notice::Pushed on attempt ${attempt}"
