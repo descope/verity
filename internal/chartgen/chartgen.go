@@ -143,12 +143,24 @@ func applyReplacements(imageRefs []string, vc *config.VerityConfig, excludeNames
 		return imageRefs, nil
 	}
 
-	// Sort patterns for deterministic match order.
+	// Sort patterns longest-first so a more-specific pattern wins over a
+	// shorter pattern whose text is contained within it. The matcher below
+	// uses strings.Contains, so e.g. when both "kyverno/kyverno" and
+	// "kyverno/kyverno-cli" are configured, the cli pattern must be tried
+	// first or the bare "kyverno/kyverno" pattern would greedily claim the
+	// cli image (and the kyvernopre image too — which IS the desired
+	// behavior for kyvernopre, since it shares the kyverno binary).
+	// Ties broken alphabetically for deterministic order.
 	patterns := make([]string, 0, len(vc.Replacements))
 	for p := range vc.Replacements {
 		patterns = append(patterns, p)
 	}
-	sort.Strings(patterns)
+	sort.Slice(patterns, func(i, j int) bool {
+		if len(patterns[i]) != len(patterns[j]) {
+			return len(patterns[i]) > len(patterns[j])
+		}
+		return patterns[i] < patterns[j]
+	})
 
 	remaining := make([]string, 0, len(imageRefs))
 	var replacements []ImageMapping

@@ -146,6 +146,51 @@ func TestApplyReplacementsNilConfig(t *testing.T) {
 	}
 }
 
+func TestApplyReplacementsLongestPatternWins(t *testing.T) {
+	// Regression test for substring-prefix collisions: a longer, more
+	// specific pattern must win over a shorter pattern that is a substring
+	// of the same image name. Lexicographic ordering would put the shorter
+	// "kyverno/kyverno" before "kyverno/kyverno-cli" and incorrectly claim
+	// the cli image; longest-first ordering fixes that.
+	refs := []string{
+		"reg.kyverno.io/kyverno/kyverno:v1.17.2",
+		"reg.kyverno.io/kyverno/kyverno-cli:v1.17.2",
+		"opensearchproject/opensearch:3.6.0",
+		"opensearchproject/opensearch-dashboards:3.6.0",
+	}
+	vc := &config.VerityConfig{
+		Replacements: map[string]config.Replacement{
+			"kyverno/kyverno":                         {Registry: "ghcr.io/verity-org", Image: "kyverno"},
+			"kyverno/kyverno-cli":                     {Registry: "ghcr.io/verity-org", Image: "kyverno-cli"},
+			"opensearchproject/opensearch":            {Registry: "ghcr.io/verity-org", Image: "opensearch"},
+			"opensearchproject/opensearch-dashboards": {Registry: "ghcr.io/verity-org", Image: "opensearch-dashboards"},
+		},
+	}
+
+	_, replacements := applyReplacements(refs, vc, nil)
+
+	want := map[string]string{
+		"reg.kyverno.io/kyverno/kyverno":          "ghcr.io/verity-org/kyverno",
+		"reg.kyverno.io/kyverno/kyverno-cli":      "ghcr.io/verity-org/kyverno-cli",
+		"opensearchproject/opensearch":            "ghcr.io/verity-org/opensearch",
+		"opensearchproject/opensearch-dashboards": "ghcr.io/verity-org/opensearch-dashboards",
+	}
+	if len(replacements) != len(want) {
+		t.Fatalf("replacements = %d, want %d", len(replacements), len(want))
+	}
+	for _, r := range replacements {
+		got := r.PatchedRepo
+		expected, ok := want[r.OriginalRepo]
+		if !ok {
+			t.Errorf("unexpected OriginalRepo: %q", r.OriginalRepo)
+			continue
+		}
+		if got != expected {
+			t.Errorf("OriginalRepo=%q: got PatchedRepo=%q, want %q", r.OriginalRepo, got, expected)
+		}
+	}
+}
+
 func TestApplyReplacementsExcluded(t *testing.T) {
 	refs := []string{"quay.io/prometheus/pushgateway:v1.11.2"}
 	vc := &config.VerityConfig{
