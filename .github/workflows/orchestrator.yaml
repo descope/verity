@@ -22,7 +22,7 @@ on:
         required: false
         default: ""
       preflight:
-        description: "Skip images that don't need work per the preflight manifest (unchanged upstream digest AND no remaining fixable vulns); may still rebuild when digests change or vulns remain"
+        description: "Skip images that don't need work per the preflight manifest (unchanged upstream digest AND zero remaining vulnerabilities in the previously-patched image); may still rebuild when digests change or any vulns are present"
         required: false
         type: boolean
         default: false
@@ -200,9 +200,9 @@ jobs:
 
           # --preflight and --only are orthogonal: --preflight uses the
           # manifest to skip images that don't need work (unchanged upstream
-          # digest AND no remaining fixable vulns); --only controls which
-          # images are considered. They compose, so split them into
-          # independent blocks.
+          # digest AND zero remaining vulns in the previously-patched
+          # image); --only controls which images are considered. They
+          # compose, so split them into independent blocks.
           if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.preflight }}" = "true" ]; then
             DISCOVER_ARGS+=(--preflight --github-repo "${{ github.repository }}")
           fi
