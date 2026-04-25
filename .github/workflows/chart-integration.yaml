@@ -122,15 +122,18 @@ jobs:
 
       - name: Run chart smoke test
         id: smoke
-        # A failing shard means the *published* chart has a problem (chart-gen
-        # rewrite gap, missing patched image, runtime crash). That's the signal
-        # we want to surface as logs and artifacts — not a regression in this
-        # PR. continue-on-error here lets the per-shard check stay green so
-        # branch protection isn't blocked by transient chart-publish state,
-        # while the actual failure remains visible in the step's log and as
-        # uploaded diagnostics. The shard's outcome is recorded as a step
-        # outcome and surfaced via the summary job below.
-        continue-on-error: true
+        # On pull_request: a failing shard means the *published* chart has a
+        # problem (chart-gen rewrite gap, missing patched image, runtime
+        # crash). That's not a regression in this PR, so the per-shard check
+        # stays green to avoid blocking unrelated PRs. The actual failure
+        # is still visible in the step log, the GITHUB_STEP_SUMMARY tab,
+        # and the uploaded diagnostics-<chart> artifact.
+        #
+        # On workflow_run / schedule / workflow_dispatch: this IS a regression
+        # detector, so failures must be loud — leave continue-on-error off so
+        # the workflow conclusion turns red, alerting and dashboards fire,
+        # and the failed run shows up cleanly in `gh run list` filters.
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
         run: make chart-integration
 
       - name: Record shard outcome

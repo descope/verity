@@ -65,9 +65,16 @@ func TestCharts(t *testing.T) {
 	if testHarness == nil {
 		t.Skip("cluster harness disabled (VERITY_IT_SKIP_CLUSTER=1)")
 	}
+	chartYamlPath := filepath.Join(repoRoot, "Chart.yaml")
+	if _, err := os.Stat(chartYamlPath); err != nil {
+		t.Fatalf("Chart.yaml not found at %s: %v (broken repo-root lookup or checkout?)", chartYamlPath, err)
+	}
 	charts, err := loadChartList(repoRoot)
 	if err != nil {
 		t.Fatalf("load Chart.yaml: %v", err)
+	}
+	if len(charts) == 0 {
+		t.Fatalf("Chart.yaml at %s has no dependencies — smoke test would silently pass with zero charts run", chartYamlPath)
 	}
 	filter := strings.TrimSpace(os.Getenv("VERITY_CHART"))
 	matched := 0
