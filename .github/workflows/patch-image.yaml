@@ -71,6 +71,10 @@ permissions:
   id-token: write       # cosign keyless signing + actions/attest
   attestations: write   # actions/attest
 
+env:
+  HONEYCOMB_API_KEY: ${{ secrets.HONEYCOMB_API_KEY }}
+  OTEL_CLI_VERSION: "0.4.5"
+
 jobs:
   # ── Job 1: Scan ────────────────────────────────────────────────────
   scan:
@@ -81,6 +85,7 @@ jobs:
       source-tag: ${{ steps.parse.outputs.source-tag }}
       staging-registry: ${{ steps.parse.outputs.staging-registry }}
       prev-report-exists: ${{ steps.prev-report.outputs.exists }}
+      pre-vuln-count: ${{ steps.trivy-pre.outputs.vuln-count }}
       safe-name: ${{ steps.parse.outputs.safe-name }}
 
     steps:
@@ -134,13 +139,16 @@ jobs:
           restore-keys: trivy-db-
 
       - name: Scan source image
+        id: trivy-pre
         run: |
           trivy image \
             --vuln-type os,library \
             --format json \
             --quiet \
             "${{ inputs.source-ref }}" > pre.json
-          echo "✓ Source scan: $(jq '[.Results[].Vulnerabilities // [] | .[]] | length' pre.json) vulnerabilities"
+          VULN_COUNT=$(jq '[.Results[]?.Vulnerabilities // [] | .[]] | length' pre.json)
+          echo "✓ Source scan: ${VULN_COUNT} vulnerabilities"
+          echo "vuln-count=${VULN_COUNT}" >> "$GITHUB_OUTPUT"
 
       - name: Check existing patched image for vulnerabilities
         id: check
@@ -221,6 +229,13 @@ jobs:
     needs: scan
     if: needs.scan.outputs.needs-patch == 'true'
     runs-on: ${{ matrix.runner }}
+    outputs:
+      timing-amd64: ${{ matrix.platform == 'linux/amd64' && steps.copa.outputs.duration-seconds || '' }}
+      timing-arm64: ${{ matrix.platform == 'linux/arm64' && steps.copa.outputs.duration-seconds || '' }}
+      copa-exit-amd64: ${{ matrix.platform == 'linux/amd64' && steps.copa.outputs.exit-code || '' }}
+      copa-exit-arm64: ${{ matrix.platform == 'linux/arm64' && steps.copa.outputs.exit-code || '' }}
+      staging-digest-amd64: ${{ matrix.platform == 'linux/amd64' && steps.copa.outputs.staging-digest || '' }}
+      staging-digest-arm64: ${{ matrix.platform == 'linux/arm64' && steps.copa.outputs.staging-digest || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -309,6 +324,7 @@ jobs:
           github-token: ${{ github.token }}
 
       - name: Patch image
+        id: copa
         if: steps.platform-check.outputs.enabled == 'true'
         env:
           COPA_EXPERIMENTAL: "1"
@@ -321,6 +337,46 @@ jobs:
           mkdir -p reports
           cp pre.json "reports/$(echo "${SOURCE}" | sed 's/[\/:]/_/g').json"
           .github/scripts/patch-image.sh
+
+      - name: Cache otel-cli
+        if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && env.HONEYCOMB_API_KEY != '' && steps.platform-check.outputs.enabled == 'true' }}
+        id: cache-otel
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.local/bin/otel-cli
+          key: otel-cli-v${{ env.OTEL_CLI_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Install otel-cli
+        if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && env.HONEYCOMB_API_KEY != '' && steps.platform-check.outputs.enabled == 'true' && steps.cache-otel.outputs.cache-hit != 'true' }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.local/bin
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64) ARCH=amd64 ;;
+            aarch64) ARCH=arm64 ;;
+          esac
+          curl -fsSL "https://github.com/equinix-labs/otel-cli/releases/download/v${OTEL_CLI_VERSION}/otel-cli_${OTEL_CLI_VERSION}_${OS}_${ARCH}.tar.gz" | tar -xz -C ~/.local/bin otel-cli
+          chmod +x ~/.local/bin/otel-cli
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Emit Honeycomb span (per-platform patch)
+        if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && env.HONEYCOMB_API_KEY != '' && steps.platform-check.outputs.enabled == 'true' }}
+        env:
+          HONEYCOMB_API_KEY: ${{ secrets.HONEYCOMB_API_KEY }}
+          OTEL_EXPORTER_OTLP_ENDPOINT: https://api.honeycomb.io
+          OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+          OTEL_EXPORTER_OTLP_HEADERS: x-honeycomb-team=${{ secrets.HONEYCOMB_API_KEY }}
+          OTEL_SERVICE_NAME: verity-ci
+        run: |
+          set -euo pipefail
+          PKG_HASH=$(jq -c '[.Results[]?.Vulnerabilities[]?.PkgName] | sort | unique' pre.json 2>/dev/null | sha256sum | cut -d' ' -f1 || echo "unknown")
+          ~/.local/bin/otel-cli span \
+            --name "patch-image.matrix" \
+            --service verity-ci \
+            --kind internal \
+            --attrs "image=${{ inputs.image-name }},platform=${{ matrix.platform }},source_tag=${{ needs.scan.outputs.source-tag }},cve_before=${{ needs.scan.outputs.pre-vuln-count }},copa_exit=${{ steps.copa.outputs.exit-code }},copa_duration_seconds=${{ steps.copa.outputs.duration-seconds }},staging_digest=${{ steps.copa.outputs.staging-digest }},package_list_sha256=${PKG_HASH},deployment.environment=verity-prod"
 
   # ── Job 3: Finalize ───────────────────────────────────────────────
   finalize:
@@ -433,6 +489,7 @@ jobs:
           fi
 
       - name: Push manifest to target registry
+        id: push
         if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false
         env:
           IMAGE_NAME: ${{ inputs.image-name }}
@@ -447,29 +504,82 @@ jobs:
           echo "✓ Pushed to target: ${FINAL_TAG} (${DIGEST})"
           echo "${FINAL_TAG}" > final-manifest.txt
           {
+            echo "digest=${DIGEST}"
+            echo "final-tag=${FINAL_TAG}"
+            echo "final-repo=${FINAL_REPO}"
+          } >> "$GITHUB_OUTPUT"
+          {
             echo "DIGEST=${DIGEST}"
             echo "FINAL_TAG=${FINAL_TAG}"
             echo "FINAL_REPO=${FINAL_REPO}"
           } >> "$GITHUB_ENV"
 
       - name: Sign manifest with cosign
-        if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false
-        run: cosign sign --yes "${{ env.FINAL_REPO }}@${{ env.DIGEST }}"
-
-      - name: Generate SBOM
+        id: cosign-sign
         if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false
         run: |
-          syft "${{ env.FINAL_TAG }}@${{ env.DIGEST }}" -o cyclonedx-json=sbom.json
+          set -o pipefail
+          cosign sign --yes "${{ steps.push.outputs.final-repo }}@${{ steps.push.outputs.digest }}" 2>&1 | tee /tmp/cosign-out
+          REKOR_URL=$(grep -oE 'https://rekor[^ ]+' /tmp/cosign-out | tail -n 1 || true)
+          if [ -n "${REKOR_URL}" ]; then
+            echo "rekor-url=${REKOR_URL}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate SBOM
+        id: sbom
+        if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false
+        run: |
+          syft "${{ steps.push.outputs.final-tag }}@${{ steps.push.outputs.digest }}" -o cyclonedx-json=sbom.json
 
       - name: Attest SBOM
+        id: attest
         if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
-          subject-name: ${{ env.FINAL_REPO }}
-          subject-digest: ${{ env.DIGEST }}
+          subject-name: ${{ steps.push.outputs.final-repo }}
+          subject-digest: ${{ steps.push.outputs.digest }}
           predicate-type: https://cyclonedx.org/bom
           predicate-path: sbom.json
           push-to-registry: true
+
+      - name: Cache otel-cli
+        if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && env.HONEYCOMB_API_KEY != '' }}
+        id: cache-otel-finalize
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.local/bin/otel-cli
+          key: otel-cli-v${{ env.OTEL_CLI_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Install otel-cli
+        if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && env.HONEYCOMB_API_KEY != '' && steps.cache-otel-finalize.outputs.cache-hit != 'true' }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.local/bin
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64) ARCH=amd64 ;;
+            aarch64) ARCH=arm64 ;;
+          esac
+          curl -fsSL "https://github.com/equinix-labs/otel-cli/releases/download/v${OTEL_CLI_VERSION}/otel-cli_${OTEL_CLI_VERSION}_${OS}_${ARCH}.tar.gz" | tar -xz -C ~/.local/bin otel-cli
+          chmod +x ~/.local/bin/otel-cli
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Emit Honeycomb span (per-image finalize)
+        if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && env.HONEYCOMB_API_KEY != '' }}
+        env:
+          HONEYCOMB_API_KEY: ${{ secrets.HONEYCOMB_API_KEY }}
+          OTEL_EXPORTER_OTLP_ENDPOINT: https://api.honeycomb.io
+          OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+          OTEL_EXPORTER_OTLP_HEADERS: x-honeycomb-team=${{ secrets.HONEYCOMB_API_KEY }}
+          OTEL_SERVICE_NAME: verity-ci
+        run: |
+          set -euo pipefail
+          ~/.local/bin/otel-cli span \
+            --name "patch-image.finalize" \
+            --service verity-ci \
+            --kind internal \
+            --attrs "image=${{ inputs.image-name }},source_tag=${{ needs.scan.outputs.source-tag }},manifest_digest=${{ steps.push.outputs.digest }},final_tag=${{ steps.push.outputs.final-tag }},final_repo=${{ steps.push.outputs.final-repo }},post_scan_vuln_count=${{ steps.postscan.outputs.vuln-count }},rekor_url=${{ steps.cosign-sign.outputs.rekor-url }},attestation_id=${{ steps.attest.outputs.attestation-id }},attestation_bundle_path=${{ steps.attest.outputs.bundle-path }},deployment.environment=verity-prod"
 
       - name: Push reports to reports branch
         if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false
@@ -548,3 +658,107 @@ jobs:
             pre.json
             post.json
           retention-days: 7
+
+      - name: Build consolidated metrics JSON
+        if: ${{ !cancelled() }}
+        id: metrics-json
+        env:
+          SAFE_NAME: ${{ needs.scan.outputs.safe-name }}
+          SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          OUT="metrics-${SAFE_NAME}-${SOURCE_TAG}.json"
+          STARTED_AT=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq '.run_started_at' 2>/dev/null || true)
+
+          SEVERITIES_BEFORE=$(jq -c '
+            {CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNKNOWN: 0} +
+            ([.Results[]?.Vulnerabilities[]?.Severity] | group_by(.) |
+              map({key: .[0], value: length}) | from_entries)
+          ' pre.json 2>/dev/null || echo '{"CRITICAL":0,"HIGH":0,"MEDIUM":0,"LOW":0,"UNKNOWN":0}')
+          SEVERITIES_AFTER=$(jq -c '
+            {CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNKNOWN: 0} +
+            ([.Results[]?.Vulnerabilities[]?.Severity] | group_by(.) |
+              map({key: .[0], value: length}) | from_entries)
+          ' post.json 2>/dev/null || echo '{"CRITICAL":0,"HIGH":0,"MEDIUM":0,"LOW":0,"UNKNOWN":0}')
+          VULN_BEFORE=${{ needs.scan.outputs.pre-vuln-count }}
+          VULN_AFTER=${{ steps.postscan.outputs.vuln-count }}
+          SBOM_DIGEST=$(sha256sum sbom.json 2>/dev/null | cut -d' ' -f1 || true)
+
+          jq -n \
+            --arg schema_version "v1" \
+            --arg run_id "${{ github.run_id }}" \
+            --arg run_attempt "${{ github.run_attempt }}" \
+            --arg started_at "${STARTED_AT}" \
+            --arg ended_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg conclusion "${{ needs.patch.result }}" \
+            --arg image_name "${{ inputs.image-name }}" \
+            --arg source_tag "${SOURCE_TAG}" \
+            --arg target_ref "${{ steps.push.outputs.final-tag }}" \
+            --arg manifest_digest "${{ steps.push.outputs.digest }}" \
+            --argjson vuln_before "${VULN_BEFORE:-0}" \
+            --argjson vuln_after "${VULN_AFTER:-0}" \
+            --argjson sev_before "$SEVERITIES_BEFORE" \
+            --argjson sev_after "$SEVERITIES_AFTER" \
+            --arg t_amd64 "${{ needs.patch.outputs.timing-amd64 }}" \
+            --arg t_arm64 "${{ needs.patch.outputs.timing-arm64 }}" \
+            --arg e_amd64 "${{ needs.patch.outputs.copa-exit-amd64 }}" \
+            --arg e_arm64 "${{ needs.patch.outputs.copa-exit-arm64 }}" \
+            --arg d_amd64 "${{ needs.patch.outputs.staging-digest-amd64 }}" \
+            --arg d_arm64 "${{ needs.patch.outputs.staging-digest-arm64 }}" \
+            --arg rekor_url "${{ steps.cosign-sign.outputs.rekor-url }}" \
+            --arg attestation_id "${{ steps.attest.outputs.attestation-id }}" \
+            --arg sbom_digest "${SBOM_DIGEST}" \
+            --arg attestation_bundle_path "${{ steps.attest.outputs.bundle-path }}" \
+            '{
+              schema_version: $schema_version,
+              run: {
+                id: ($run_id | tonumber),
+                attempt: ($run_attempt | tonumber),
+                started_at: $started_at,
+                ended_at: $ended_at,
+                conclusion: $conclusion
+              },
+              image: {
+                name: $image_name,
+                source_tag: $source_tag,
+                target_ref: (if $target_ref == "" then null else $target_ref end),
+                manifest_digest: (if $manifest_digest == "" then null else $manifest_digest end)
+              },
+              scan: {
+                before: { vuln_count: $vuln_before, by_severity: $sev_before },
+                after: { vuln_count: $vuln_after, by_severity: $sev_after }
+              },
+              platforms: {
+                amd64: (if $t_amd64 == "" then null else {
+                  copa_duration_seconds: ($t_amd64 | tonumber? // null),
+                  copa_exit_code: ($e_amd64 | tonumber? // null),
+                  staging_digest: (if $d_amd64 == "" then null else $d_amd64 end)
+                } end),
+                arm64: (if $t_arm64 == "" then null else {
+                  copa_duration_seconds: ($t_arm64 | tonumber? // null),
+                  copa_exit_code: ($e_arm64 | tonumber? // null),
+                  staging_digest: (if $d_arm64 == "" then null else $d_arm64 end)
+                } end)
+              },
+              supply_chain: {
+                rekor_url: (if $rekor_url == "" then null else $rekor_url end),
+                attestation_id: (if $attestation_id == "" then null else $attestation_id end),
+                sbom_digest: (if $sbom_digest == "" then null else ("sha256:" + $sbom_digest) end),
+                attestation_bundle_path: (if $attestation_bundle_path == "" then null else $attestation_bundle_path end)
+              }
+            }' > "$OUT"
+
+          cat "$OUT"
+          echo "filename=$OUT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload metrics artifact
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        env:
+          ACTIONS_ARTIFACT_UPLOAD_CONCURRENCY: 5
+        with:
+          name: metrics-${{ needs.scan.outputs.safe-name }}-${{ needs.scan.outputs.source-tag }}
+          path: ${{ steps.metrics-json.outputs.filename }}
+          retention-days: 1
+          if-no-files-found: warn
