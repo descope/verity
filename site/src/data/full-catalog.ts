@@ -646,6 +646,10 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "dex", source: "integer" },
       { name: "falco", source: "integer" },
       { name: "oauth2-proxy", source: "integer" },
+      { name: "trivy-operator", source: "integer" },
+      { name: "kube-bench", source: "integer" },
+      { name: "openfga", source: "integer" },
+      { name: "spicedb", source: "integer" },
     ],
   },
 
