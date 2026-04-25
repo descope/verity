@@ -22,7 +22,7 @@ on:
         required: false
         default: ""
       preflight:
-        description: "Skip already-patched images (preflight manifest)"
+        description: "Skip images that don't need work per the preflight manifest (unchanged upstream digest AND no remaining fixable vulns); may still rebuild when digests change or vulns remain"
         required: false
         type: boolean
         default: false
@@ -198,9 +198,11 @@ jobs:
             --target-registry "${TARGET_REGISTRY}"
           )
 
-          # --preflight and --only are orthogonal: preflight controls whether to
-          # skip already-published images; --only controls which images are
-          # considered. They compose, so split them into independent blocks.
+          # --preflight and --only are orthogonal: --preflight uses the
+          # manifest to skip images that don't need work (unchanged upstream
+          # digest AND no remaining fixable vulns); --only controls which
+          # images are considered. They compose, so split them into
+          # independent blocks.
           if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.preflight }}" = "true" ]; then
             DISCOVER_ARGS+=(--preflight --github-repo "${{ github.repository }}")
           fi
