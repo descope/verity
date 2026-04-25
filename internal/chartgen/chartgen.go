@@ -19,6 +19,11 @@ type Config struct {
 	ChartRegistry  string
 	ExcludeNames   map[string]struct{}
 	DryRun         bool
+	// Strict treats "no patched image mappings" skips as a fatal error.
+	// Use it in CI to catch silent config gaps — e.g., a chart added to
+	// Chart.yaml whose images have an Integer rebuild but no matching
+	// replacements: entry, leaving the wrapper unpublished.
+	Strict bool
 }
 
 type ChartResult struct {
@@ -78,7 +83,23 @@ func Run(cfg *Config) (*DryRunResult, error) {
 	fmt.Fprintf(os.Stderr, "info: chart-gen summary: %d charts in %s, %s %d wrappers, %d skipped (no patched mappings)\n",
 		len(charts), filepath.Base(cfg.ChartsFile), verb, len(result.Charts), skipped)
 
+	if err := enforceStrict(cfg.Strict, len(charts), skipped, cfg.ChartsFile); err != nil {
+		return result, err
+	}
+
 	return result, nil
+}
+
+// enforceStrict returns an error when strict is true and any chart in the
+// charts file produced no patched image mappings. Extracted as a separate
+// function so the failure-mode logic is unit-testable without standing up
+// the full helm/crane machinery that Run() exercises.
+func enforceStrict(strict bool, total, skipped int, chartsFile string) error {
+	if !strict || skipped == 0 {
+		return nil
+	}
+	return fmt.Errorf("strict mode: %d of %d charts produced no patched image mappings (likely a chart added to %s without a matching replacements: entry in verity.yaml, or whose Integer rebuild lacks the wiring); re-run without --strict to allow, or fix the underlying config gap",
+		skipped, total, filepath.Base(chartsFile))
 }
 
 func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) (ChartResult, bool, error) {

@@ -3,6 +3,7 @@ package chartgen
 import (
 	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/verity-org/verity/internal/config"
@@ -89,6 +90,63 @@ func TestRunDryRunNoCharts(t *testing.T) {
 	}
 	if len(res.Charts) != 0 {
 		t.Fatalf("Run() charts length = %d, want 0", len(res.Charts))
+	}
+}
+
+func TestEnforceStrict(t *testing.T) {
+	cases := []struct {
+		name    string
+		strict  bool
+		total   int
+		skipped int
+		wantErr bool
+	}{
+		{name: "non-strict: 0 skipped is fine", strict: false, total: 5, skipped: 0, wantErr: false},
+		{name: "non-strict: skipped tolerated", strict: false, total: 5, skipped: 3, wantErr: false},
+		{name: "strict: 0 skipped is fine", strict: true, total: 5, skipped: 0, wantErr: false},
+		{name: "strict: 1 skipped fails", strict: true, total: 5, skipped: 1, wantErr: true},
+		{name: "strict: many skipped fails", strict: true, total: 5, skipped: 5, wantErr: true},
+		{name: "non-strict, no charts: fine", strict: false, total: 0, skipped: 0, wantErr: false},
+		{name: "strict, no charts: fine", strict: true, total: 0, skipped: 0, wantErr: false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := enforceStrict(tc.strict, tc.total, tc.skipped, "/tmp/Chart.yaml")
+			if (err != nil) != tc.wantErr {
+				t.Errorf("enforceStrict(strict=%v, total=%d, skipped=%d) err=%v, wantErr=%v",
+					tc.strict, tc.total, tc.skipped, err, tc.wantErr)
+			}
+			if tc.wantErr && err != nil {
+				if !strings.Contains(err.Error(), "strict mode") {
+					t.Errorf("error missing 'strict mode' prefix: %v", err)
+				}
+				if !strings.Contains(err.Error(), "Chart.yaml") {
+					t.Errorf("error should reference charts file basename: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestRunDryRunStrictNoChartsPasses(t *testing.T) {
+	// With no charts loaded (empty Chart.yaml or missing file), strict
+	// mode should NOT fail — there's nothing to skip. Guards against
+	// over-eager error-on-empty.
+	tmpDir := t.TempDir()
+	res, err := Run(&Config{
+		ChartsFile:     filepath.Join(tmpDir, "does-not-exist.yaml"),
+		VerityConfig:   filepath.Join(tmpDir, "does-not-exist.yaml"),
+		TargetRegistry: "ghcr.io/verity-org",
+		ChartRegistry:  "oci://ghcr.io/verity-org/charts",
+		ExcludeNames:   map[string]struct{}{},
+		DryRun:         true,
+		Strict:         true,
+	})
+	if err != nil {
+		t.Fatalf("Run with strict=true and no charts: err=%v, want nil", err)
+	}
+	if res == nil || len(res.Charts) != 0 {
+		t.Fatalf("expected 0 charts in result, got %v", res)
 	}
 }
 
