@@ -45,6 +45,10 @@ var ChartGenCommand = &cli.Command{
 			Name:  "dry-run",
 			Usage: "Output JSON plan without pushing charts",
 		},
+		&cli.BoolFlag{
+			Name:  "strict",
+			Usage: "Fail (exit non-zero) if any chart in the charts file produces zero patched image mappings — surfaces silent config gaps (e.g., chart added without a matching replacements: entry)",
+		},
 	},
 	Action: func(_ context.Context, cmd *cli.Command) error {
 		cfg := &chartgen.Config{
@@ -54,6 +58,7 @@ var ChartGenCommand = &cli.Command{
 			ChartRegistry:  cmd.String("chart-registry"),
 			ExcludeNames:   parseNameSet(cmd.String("exclude-names")),
 			DryRun:         cmd.Bool("dry-run"),
+			Strict:         cmd.Bool("strict"),
 		}
 
 		result, err := chartgen.Run(cfg)
