@@ -21,6 +21,11 @@ on:
         description: "Image name to patch (empty = all)"
         required: false
         default: ""
+      preflight:
+        description: "Skip images that don't need work per the preflight manifest (unchanged upstream digest AND zero remaining vulnerabilities in the previously-patched image); may still rebuild when digests change or any vulns are present"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -193,9 +198,16 @@ jobs:
             --target-registry "${TARGET_REGISTRY}"
           )
 
-          if [ "${{ github.event_name }}" = "schedule" ]; then
+          # --preflight and --only are orthogonal: --preflight uses the
+          # manifest to skip images that don't need work (unchanged upstream
+          # digest AND zero remaining vulns in the previously-patched
+          # image); --only controls which images are considered. They
+          # compose, so split them into independent blocks.
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.preflight }}" = "true" ]; then
             DISCOVER_ARGS+=(--preflight --github-repo "${{ github.repository }}")
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$DISPATCH_IMAGE" ]; then
+          fi
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$DISPATCH_IMAGE" ]; then
             # Validate dispatch input matches safe pattern
             if [[ ! "$DISPATCH_IMAGE" =~ ^[a-z0-9][a-z0-9./_-]*$ ]]; then
               echo "Invalid image name: ${DISPATCH_IMAGE}" >&2
