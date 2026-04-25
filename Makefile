@@ -1,4 +1,4 @@
-.PHONY: help build test test-coverage lint lint-vuln lint-workflows lint-yaml lint-shell lint-markdown lint-frontend fmt-frontend check-frontend integer-validate integer-gen integer-build-all integer-melange-prep clean install-tools quality up down
+.PHONY: help build test test-coverage lint lint-vuln lint-workflows lint-yaml lint-shell lint-markdown lint-frontend fmt-frontend check-frontend integer-validate integer-gen integer-build-all integer-melange-prep chart-integration clean install-tools quality up down
 
 # Default target
 help:
@@ -9,6 +9,7 @@ help:
 	@echo "  make down             - Stop local test environment"
 	@echo "  make lint             - Run Go linter (golangci-lint with gofumpt, goimports, gosec)"
 	@echo "  make quality          - Run ALL linters and tests"
+	@echo "  make chart-integration - Smoke-test published wrapper charts on a kind cluster"
 	@echo "  make clean            - Clean build artifacts"
 	@echo "  make install-tools    - Install development tools via mise"
 
@@ -152,3 +153,19 @@ up:
 # Stop local test environment
 down:
 	docker compose down
+
+# ── Chart Integration Smoke Tests ─────────────────────────────────────
+
+# Smoke-test the wrapper charts published nightly to ghcr.io/verity-org/charts.
+# Spins up a kind cluster, helm-installs each chart in Chart.yaml from the
+# published OCI registry, waits for healthy, asserts every running container
+# image is from ghcr.io/verity-org and no container restarted within 30s.
+#
+#   make chart-integration                           # all charts in Chart.yaml
+#   VERITY_CHART=victoria-logs-single make chart-integration   # single chart
+chart-integration:
+	@which kind > /dev/null    || (echo "kind not found. Run: make install-tools" && exit 1)
+	@which kubectl > /dev/null || (echo "kubectl not found. Run: make install-tools" && exit 1)
+	@which helm > /dev/null    || (echo "helm not found. Run: make install-tools" && exit 1)
+	@which docker > /dev/null  || (echo "docker not found in PATH" && exit 1)
+	go test -tags=integration -v -timeout=45m ./test/chart-integration/...
