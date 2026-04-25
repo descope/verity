@@ -650,6 +650,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "kube-bench", source: "integer" },
       { name: "openfga", source: "integer" },
       { name: "spicedb", source: "integer" },
+      { name: "checkov", source: "integer" },
     ],
   },
 
