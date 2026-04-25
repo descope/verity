@@ -454,9 +454,29 @@ images:
   #  CERT MANAGEMENT
   # ============================================================================
 
-  # cert-manager-acmesolver: deferred Wolfi migration. Wolfi advisory DB references
-  # fix-versions (e.g. 1.19.4-r3+) for current CVEs but those apks aren't yet
-  # published. Tracking until upstream Wolfi catches up.
+  # cert-manager-{controller,cainjector,acmesolver}: deferred Wolfi migration.
+  # Wolfi advisory DB references fix-versions (e.g. 1.19.4-r3+) for current
+  # grpc-go and net/url CVEs, but those apks aren't yet published. Tracking
+  # until upstream Wolfi catches up; cmctl already migrated since it lives in
+  # a separate repo and is unaffected.
+  - name: "jetstack/cert-manager-controller"
+    image: "quay.io/jetstack/cert-manager-controller"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/cert-manager/cert-manager"
+
+  - name: "jetstack/cert-manager-cainjector"
+    image: "quay.io/jetstack/cert-manager-cainjector"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/cert-manager/cert-manager"
+
   - name: "jetstack/cert-manager-acmesolver"
     image: "quay.io/jetstack/cert-manager-acmesolver"
     platforms: ["linux/amd64", "linux/arm64"]
