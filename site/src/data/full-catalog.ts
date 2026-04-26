@@ -350,6 +350,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "minio-operator", source: "integer" },
       { name: "argocd-image-updater", source: "integer" },
       { name: "nfs-subdir-external-provisioner", source: "integer" },
+      { name: "kind", source: "integer" },
     ],
   },
 
@@ -443,6 +444,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "hubble", source: "integer" },
       { name: "cert-manager-istio-csr", source: "integer" },
       { name: "cloudflared", source: "integer" },
+      { name: "linkerd", source: "integer" },
     ],
   },
 
@@ -522,6 +524,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "quay.io/victoriametrics/victoria-logs",
       },
       { name: "opentelemetry-collector", source: "integer" },
+      { name: "opentelemetry-collector-contrib", source: "integer" },
       { name: "jaeger", source: "integer" },
       { name: "tempo", source: "integer" },
       { name: "grafana-alloy", source: "integer" },
@@ -597,6 +600,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "argo-workflows", source: "integer" },
       { name: "argo-rollouts", source: "integer" },
       { name: "gomplate", source: "integer" },
+      { name: "tflint", source: "integer" },
     ],
   },
 
@@ -669,6 +673,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "tetragon", source: "integer" },
       { name: "kratos", source: "integer" },
       { name: "hydra", source: "integer" },
+      { name: "kubescape", source: "integer" },
     ],
   },
 
@@ -781,6 +786,8 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "mlflow/mlflow", label: "mlflow", source: "copa", upstream: "ghcr.io/mlflow/mlflow" },
       { name: "temporal", source: "integer" },
       { name: "meilisearch", source: "integer" },
+      { name: "qdrant", source: "integer" },
+      { name: "weaviate", source: "integer" },
       {
         name: "tensorflow/serving",
         label: "tensorflow-serving",
