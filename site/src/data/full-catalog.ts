@@ -351,6 +351,10 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "argocd-image-updater", source: "integer" },
       { name: "nfs-subdir-external-provisioner", source: "integer" },
       { name: "kind", source: "integer" },
+      { name: "actions-runner-controller", source: "integer" },
+      { name: "aws-load-balancer-controller", source: "integer" },
+      { name: "aws-node-termination-handler", source: "integer" },
+      { name: "argo-workflow-controller", source: "integer" },
     ],
   },
 
@@ -445,6 +449,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "cert-manager-istio-csr", source: "integer" },
       { name: "cloudflared", source: "integer" },
       { name: "linkerd", source: "integer" },
+      { name: "apisix-ingress-controller", source: "integer" },
     ],
   },
 
@@ -530,6 +535,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "grafana-alloy", source: "integer" },
       { name: "cortex", source: "integer" },
       { name: "blackbox-exporter", source: "integer" },
+      { name: "aws-otel-collector", source: "integer" },
     ],
   },
 
@@ -601,6 +607,9 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "argo-rollouts", source: "integer" },
       { name: "gomplate", source: "integer" },
       { name: "tflint", source: "integer" },
+      { name: "atlantis", source: "integer" },
+      { name: "act", source: "integer" },
+      { name: "buf", source: "integer" },
     ],
   },
 
@@ -674,6 +683,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "kratos", source: "integer" },
       { name: "hydra", source: "integer" },
       { name: "kubescape", source: "integer" },
+      { name: "bank-vaults", source: "integer" },
     ],
   },
 
@@ -875,6 +885,9 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "grype", source: "integer" },
       { name: "coredns", source: "integer" },
       { name: "rclone", source: "integer" },
+      { name: "age", source: "integer" },
+      { name: "bat", source: "integer" },
+      { name: "atuin", source: "integer" },
     ],
   },
 ];
