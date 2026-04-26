@@ -313,4 +313,52 @@ spec:
 			}
 		}
 	})
+
+	t.Run("discovers configmap image values from operator charts", func(t *testing.T) {
+		got, err := extractImagesFromManifests(readDiscoveryFixture(t, "rook-ceph-operator-configmap.yaml"))
+		if err != nil {
+			t.Fatalf("extractImagesFromManifests() error = %v", err)
+		}
+
+		wantImages := []string{
+			"quay.io/cephcsi/cephcsi:v3.16.2",
+			"registry.k8s.io/sig-storage/csi-provisioner:v6.1.1",
+			"registry.k8s.io/sig-storage/csi-attacher:v4.11.0",
+			"quay.io/csiaddons/k8s-sidecar:v0.14.0",
+		}
+
+		gotSet := make(map[string]struct{}, len(got))
+		for _, image := range got {
+			gotSet[image] = struct{}{}
+		}
+
+		for _, want := range wantImages {
+			if _, ok := gotSet[want]; !ok {
+				t.Fatalf("extractImagesFromManifests() missing ConfigMap image %q in %v", want, got)
+			}
+		}
+	})
+
+	t.Run("splits multiline image maps into distinct refs", func(t *testing.T) {
+		got, err := extractImagesFromManifests(readDiscoveryFixture(t, "strimzi-kafka-operator-env.yaml"))
+		if err != nil {
+			t.Fatalf("extractImagesFromManifests() error = %v", err)
+		}
+
+		wantImages := []string{
+			"quay.io/strimzi/kafka:0.51.0-kafka-4.1.0",
+			"quay.io/strimzi/kafka:0.51.0-kafka-4.2.0",
+		}
+
+		gotSet := make(map[string]struct{}, len(got))
+		for _, image := range got {
+			gotSet[image] = struct{}{}
+		}
+
+		for _, want := range wantImages {
+			if _, ok := gotSet[want]; !ok {
+				t.Fatalf("extractImagesFromManifests() missing multiline image %q in %v", want, got)
+			}
+		}
+	})
 }
