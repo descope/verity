@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os/exec"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -30,11 +32,21 @@ var (
 // ExtractChartImages runs helm template for a chart and returns all unique image references found.
 // Overrides are applied to substitute tag variants (e.g., distroless-libc → debian).
 func ExtractChartImages(chart config.ChartSpec, overrides map[string]config.Override) ([]string, error) {
+	return ExtractChartImagesWithValues(chart, overrides, nil)
+}
+
+// ExtractChartImagesWithValues runs helm template for a chart using optional
+// scalar value overrides and returns all unique image references found.
+// Overrides are applied to substitute tag variants (e.g., distroless-libc → debian).
+func ExtractChartImagesWithValues(chart config.ChartSpec, overrides map[string]config.Override, chartValues map[string]any) ([]string, error) {
 	if err := ValidateChartSpec(chart); err != nil {
 		return nil, err
 	}
 
-	args := helmTemplateArgs(chart)
+	args, err := helmTemplateArgs(chart, chartValues)
+	if err != nil {
+		return nil, fmt.Errorf("build helm template args for %s: %w", chart.Name, err)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "helm", args...)
@@ -60,20 +72,77 @@ func ExtractChartImages(chart config.ChartSpec, overrides map[string]config.Over
 }
 
 // helmTemplateArgs builds the helm template argument list for a chart spec.
-func helmTemplateArgs(chart config.ChartSpec) []string {
+
+func helmTemplateArgs(chart config.ChartSpec, chartValues map[string]any) ([]string, error) {
+	var args []string
 	if strings.HasPrefix(chart.Repository, "oci://") {
 		// OCI registry: helm template <name> <oci-repo>/<name> --version <ver>
-		return []string{
+		args = []string{
 			"template", chart.Name,
 			chart.Repository + "/" + chart.Name,
 			"--version", chart.Version,
 		}
+	} else {
+		// HTTP repository: helm template <name> <name> --repo <url> --version <ver>
+		args = []string{
+			"template", chart.Name, chart.Name,
+			"--repo", chart.Repository,
+			"--version", chart.Version,
+		}
 	}
-	// HTTP repository: helm template <name> <name> --repo <url> --version <ver>
-	return []string{
-		"template", chart.Name, chart.Name,
-		"--repo", chart.Repository,
-		"--version", chart.Version,
+
+	setArgs, err := helmSetArgs(chartValues)
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, setArgs...)
+	return args, nil
+}
+
+func helmSetArgs(chartValues map[string]any) ([]string, error) {
+	if len(chartValues) == 0 {
+		return nil, nil
+	}
+
+	keys := make([]string, 0, len(chartValues))
+	for key := range chartValues {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	args := make([]string, 0, len(keys)*2)
+	for _, key := range keys {
+		flag, encoded, err := helmSetPair(key, chartValues[key])
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, flag, key+"="+encoded)
+	}
+	return args, nil
+}
+
+func helmSetPair(path string, value any) (flag, encoded string, err error) {
+	switch v := value.(type) {
+	case string:
+		return "--set-string", v, nil
+	case bool:
+		return "--set", strconv.FormatBool(v), nil
+	case int:
+		return "--set", strconv.Itoa(v), nil
+	case int8, int16, int32, int64,
+		uint, uint8, uint16, uint32, uint64:
+		return "--set", fmt.Sprintf("%v", v), nil
+	case float32:
+		return "--set", strconv.FormatFloat(float64(v), 'f', -1, 32), nil
+	case float64:
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return "", "", fmt.Errorf("chart value %q: unsupported float %v", path, v)
+		}
+		return "--set", strconv.FormatFloat(v, 'f', -1, 64), nil
+	case nil:
+		return "", "", fmt.Errorf("chart value %q: nil is unsupported", path)
+	default:
+		return "", "", fmt.Errorf("chart value %q: unsupported type %T (use scalar string/bool/number)", path, value)
 	}
 }
 

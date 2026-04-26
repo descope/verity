@@ -411,6 +411,37 @@ chartImageOverrides:
 	}
 }
 
+func TestLoadVerityConfig_ChartValues(t *testing.T) {
+	yaml := `
+chartValues:
+  loki:
+    loki.useTestSchema: true
+    gateway.enabled: false
+    loki.storage.bucketNames.chunks: chunks
+`
+	dir := t.TempDir()
+	path := filepath.Join(dir, "verity.yaml")
+	if err := os.WriteFile(path, []byte(yaml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	vc, err := LoadVerityConfig(path)
+	if err != nil {
+		t.Fatalf("LoadVerityConfig() error = %v", err)
+	}
+
+	values := vc.ChartValues["loki"]
+	if got, ok := values["loki.useTestSchema"].(bool); !ok || !got {
+		t.Fatalf("loki.useTestSchema = %#v, want true", values["loki.useTestSchema"])
+	}
+	if got, ok := values["gateway.enabled"].(bool); !ok || got {
+		t.Fatalf("gateway.enabled = %#v, want false", values["gateway.enabled"])
+	}
+	if got, ok := values["loki.storage.bucketNames.chunks"].(string); !ok || got != "chunks" {
+		t.Fatalf("loki.storage.bucketNames.chunks = %#v, want chunks", values["loki.storage.bucketNames.chunks"])
+	}
+}
+
 func TestLoadVerityConfig_Missing(t *testing.T) {
 	vc, err := LoadVerityConfig("/nonexistent/verity.yaml")
 	if err != nil {

@@ -93,7 +93,10 @@ func TestHelmTemplateArgs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := helmTemplateArgs(tc.chart)
+			got, err := helmTemplateArgs(tc.chart, nil)
+			if err != nil {
+				t.Fatalf("helmTemplateArgs() error = %v", err)
+			}
 			if len(got) != len(tc.want) {
 				t.Fatalf("helmTemplateArgs() = %v, want %v", got, tc.want)
 			}
