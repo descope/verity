@@ -378,6 +378,39 @@ overrides:
 	}
 }
 
+func TestLoadVerityConfig_ChartImageOverrides(t *testing.T) {
+	yaml := `
+chartImageOverrides:
+  strimzi-kafka-operator:
+    - source: STRIMZI_DEFAULT_KAFKA_EXPORTER_IMAGE
+      path: kafka.image
+    - source: STRIMZI_KAFKA_IMAGES
+      type: csv
+      path: kafka.versions["{version}"]
+`
+	dir := t.TempDir()
+	path := filepath.Join(dir, "verity.yaml")
+	if err := os.WriteFile(path, []byte(yaml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	vc, err := LoadVerityConfig(path)
+	if err != nil {
+		t.Fatalf("LoadVerityConfig() error = %v", err)
+	}
+
+	overrides := vc.ChartImageOverrides["strimzi-kafka-operator"]
+	if len(overrides) != 2 {
+		t.Fatalf("len(strimzi overrides) = %d, want 2", len(overrides))
+	}
+	if overrides[0].Source != "STRIMZI_DEFAULT_KAFKA_EXPORTER_IMAGE" || overrides[0].Path != "kafka.image" {
+		t.Fatalf("overrides[0] = %+v, want single-source override", overrides[0])
+	}
+	if overrides[1].Source != "STRIMZI_KAFKA_IMAGES" || overrides[1].Type != "csv" || overrides[1].Path != "kafka.versions[\"{version}\"]" {
+		t.Fatalf("overrides[1] = %+v, want csv override", overrides[1])
+	}
+}
+
 func TestLoadVerityConfig_Missing(t *testing.T) {
 	vc, err := LoadVerityConfig("/nonexistent/verity.yaml")
 	if err != nil {
