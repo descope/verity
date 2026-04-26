@@ -16,11 +16,13 @@ type CopaConfig struct {
 // UnpatchableImages lists image names that should be skipped by the
 // orchestrator regardless of source (standalone copa-config.yaml entry or
 // chart-discovered). Names use the post-repoPath shape — registry stripped,
-// no tag — e.g. "kyverno/cleanup-controller" or
-// "cert-manager/cert-manager-openshift-routes". Use this for distroless
-// images without a Wolfi rebuild yet, or for images whose upstream chart
-// still references a registry/tag we no longer publish (e.g. argo-cd's
-// hard-coded redis reference after the redis→valkey migration in #227).
+// no tag — e.g. "docker/library/redis". Reserve this list for images that
+// have NO Wolfi/Integer rebuild AND no replacement we control: typically
+// upstream chart references to registries/tags we no longer publish (such
+// as argo-cd's hard-coded redis after the redis→valkey migration in #227).
+// For distroless images without a rebuild, the preferred path is to author
+// the rebuild stub at images/<name>.yaml and let --exclude-names handle
+// the chart-discovery skip.
 type VerityConfig struct {
 	Overrides         map[string]Override    `yaml:"overrides,omitempty"`
 	Replacements      map[string]Replacement `yaml:"replacements,omitempty"`
