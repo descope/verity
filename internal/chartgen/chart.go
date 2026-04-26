@@ -139,7 +139,7 @@ func buildValuesTree(chartName string, overrides []ValueOverride) map[string]any
 	root[chartName] = chartRoot
 
 	for _, override := range overrides {
-		parts := strings.Split(override.Path, ".")
+		parts := splitOverridePath(override.Path)
 		current := chartRoot
 
 		for i, part := range parts {
@@ -148,6 +148,10 @@ func buildValuesTree(chartName string, overrides []ValueOverride) map[string]any
 			}
 
 			if i == len(parts)-1 {
+				if override.Value != "" {
+					current[part] = override.Value
+					break
+				}
 				current[part] = map[string]any{
 					"repository": override.Repository,
 					"tag":        override.Tag,
@@ -173,4 +177,63 @@ func buildValuesTree(chartName string, overrides []ValueOverride) map[string]any
 	}
 
 	return root
+}
+
+func splitOverridePath(path string) []string {
+	if path == "" {
+		return nil
+	}
+
+	parts := make([]string, 0, strings.Count(path, ".")+1)
+	var current strings.Builder
+	inBracket := false
+	var quote byte
+
+	flush := func() {
+		if current.Len() == 0 {
+			return
+		}
+		parts = append(parts, current.String())
+		current.Reset()
+	}
+
+	for i := range len(path) {
+		ch := path[i]
+		if inBracket {
+			if quote != 0 {
+				if ch == quote {
+					quote = 0
+					continue
+				}
+				current.WriteByte(ch)
+				continue
+			}
+
+			switch ch {
+			case '\'', '"':
+				quote = ch
+			case ']':
+				inBracket = false
+				flush()
+			case ' ':
+				continue
+			default:
+				current.WriteByte(ch)
+			}
+			continue
+		}
+
+		switch ch {
+		case '.':
+			flush()
+		case '[':
+			flush()
+			inBracket = true
+		default:
+			current.WriteByte(ch)
+		}
+	}
+
+	flush()
+	return parts
 }

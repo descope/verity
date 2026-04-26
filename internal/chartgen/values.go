@@ -17,6 +17,7 @@ type ValueOverride struct {
 	Path       string `json:"path"`
 	Repository string `json:"repository"`
 	Tag        string `json:"tag"`
+	Value      string `json:"value,omitempty"`
 }
 
 type repoTagPair struct {

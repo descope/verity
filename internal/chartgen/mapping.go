@@ -17,6 +17,7 @@ import (
 type ImageMapping struct {
 	OriginalRepo string `json:"originalRepo"`
 	OriginalTag  string `json:"originalTag"`
+	Source       string `json:"source,omitempty"`
 	PatchedRepo  string `json:"patchedRepo"`
 	PatchedTag   string `json:"patchedTag"`
 }
@@ -31,7 +32,7 @@ func BuildImageMappings(imageRefs []string, targetRegistry string, excludeNames 
 		sourceRepo, sourceTag := splitRef(imageRef)
 		name := repoPath(imageRef)
 
-		if isExcluded(name, imageRef, excludeNames) {
+		if isExcluded(name, excludeNames) {
 			fmt.Fprintf(os.Stderr, "warning: skipping excluded image %q (%s)\n", name, imageRef)
 			continue
 		}
@@ -69,7 +70,7 @@ func BuildImageMappings(imageRefs []string, targetRegistry string, excludeNames 
 }
 
 // isExcluded checks whether a chart-discovered image should be skipped.
-func isExcluded(name, imageRef string, excludeNames map[string]struct{}) bool {
+func isExcluded(name string, excludeNames map[string]struct{}) bool {
 	if len(excludeNames) == 0 {
 		return false
 	}

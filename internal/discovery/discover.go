@@ -171,7 +171,8 @@ func LoadConfig(path string) (*config.CopaConfig, error) {
 	return &cfg, nil
 }
 
-// LoadVerityConfig reads verity-specific configuration from verity.yaml.
+// LoadVerityConfig reads verity-specific configuration from verity.yaml,
+// including overrides, replacements, chartImageOverrides, and unpatchableImages.
 // Returns an empty config (not an error) if the file does not exist.
 func LoadVerityConfig(path string) (*config.VerityConfig, error) {
 	data, err := os.ReadFile(path)

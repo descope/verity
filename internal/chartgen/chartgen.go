@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -17,7 +18,13 @@ import (
 // least one chart in the configured charts file produced no patched image
 // mappings (i.e., chart-gen would otherwise have silently skipped it). The
 // usual root cause is a missing replacements: entry in verity.yaml.
-var ErrStrictModeUnmappedCharts = errors.New("strict mode: charts produced no patched image mappings")
+var (
+	ErrStrictModeUnmappedCharts          = errors.New("strict mode: charts produced no patched image mappings")
+	ErrChartImageOverrideVersion         = errors.New("chartImageOverrides: derive version")
+	ErrUnsupportedChartImageOverrideType = errors.New("chartImageOverrides: unsupported type")
+)
+
+var chartImageOverrideVersionPattern = regexp.MustCompile(`v?\d+\.\d+\.\d+`)
 
 type Config struct {
 	ChartsFile     string
@@ -143,6 +150,12 @@ func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) 
 		return ChartResult{}, false, fmt.Errorf("resolve value paths for %s: %w", chart.Name, err)
 	}
 
+	chartImageOverrides, err := buildChartImageOverrides(chart.Name, allMappings, vc)
+	if err != nil {
+		return ChartResult{}, false, fmt.Errorf("build chart image overrides for %s: %w", chart.Name, err)
+	}
+	valueOverrides = append(valueOverrides, chartImageOverrides...)
+
 	wrapper, err := BuildWrapperChart(chart, valueOverrides)
 	if err != nil {
 		return ChartResult{}, false, fmt.Errorf("build wrapper chart for %s: %w", chart.Name, err)
@@ -249,7 +262,7 @@ func applyReplacements(imageRefs []string, vc *config.VerityConfig, excludeNames
 		// images backed by an Integer rebuild but lacking an explicit
 		// replacement entry don't get crane-looked-up against the Copa
 		// patched registry (where they don't exist).
-		if isExcluded(name, imageRef, excludeNames) {
+		if isExcluded(name, excludeNames) {
 			fmt.Fprintf(os.Stderr, "warning: skipping excluded image %q (%s)\n", name, imageRef)
 			continue
 		}
@@ -258,4 +271,68 @@ func applyReplacements(imageRefs []string, vc *config.VerityConfig, excludeNames
 	}
 
 	return remaining, replacements
+}
+
+func buildChartImageOverrides(chartName string, mappings []ImageMapping, vc *config.VerityConfig) ([]ValueOverride, error) {
+	if vc == nil {
+		return nil, nil
+	}
+
+	chartOverrides := vc.ChartImageOverrides[chartName]
+	if len(chartOverrides) == 0 {
+		return nil, nil
+	}
+
+	result := make([]ValueOverride, 0, len(chartOverrides))
+	for i := range mappings {
+		mapping := &mappings[i]
+		for _, override := range chartOverrides {
+			if mapping.Source != override.Source {
+				continue
+			}
+
+			overrideType := override.Type
+			if overrideType == "" {
+				overrideType = "single"
+			}
+
+			path := override.Path
+			switch overrideType {
+			case "single":
+			case "csv":
+				version, ok := chartImageOverrideVersion(mapping)
+				if !ok {
+					return nil, fmt.Errorf("%w: source %q", ErrChartImageOverrideVersion, override.Source)
+				}
+				path = strings.ReplaceAll(path, "{version}", version)
+			default:
+				return nil, fmt.Errorf("%w: %q for source %q", ErrUnsupportedChartImageOverrideType, override.Type, override.Source)
+			}
+
+			result = append(result, ValueOverride{
+				Path:  path,
+				Value: patchedImageRef(mapping),
+			})
+		}
+	}
+
+	return result, nil
+}
+
+func patchedImageRef(mapping *ImageMapping) string {
+	if mapping.PatchedTag == "" {
+		return mapping.PatchedRepo
+	}
+	return mapping.PatchedRepo + ":" + mapping.PatchedTag
+}
+
+func chartImageOverrideVersion(mapping *ImageMapping) (string, bool) {
+	haystacks := []string{mapping.OriginalTag, mapping.OriginalRepo + ":" + mapping.OriginalTag}
+	for _, haystack := range haystacks {
+		matches := chartImageOverrideVersionPattern.FindAllString(haystack, -1)
+		if len(matches) > 0 {
+			return matches[len(matches)-1], true
+		}
+	}
+	return "", false
 }
