@@ -81,6 +81,49 @@ replacements:
     registry: "ghcr.io/verity-org"
     image: "postgres-operator"
 
+  # cert-manager chart (1.20.2). Jetstack chart image refs keep the upstream
+  # quay.io/jetstack path and v-prefixed tag; Verity publishes the rebuilds at
+  # flattened ghcr.io/verity-org/<name> repos with non-v tags.
+  "jetstack/cert-manager-controller":
+    registry: "ghcr.io/verity-org"
+    image: "cert-manager-controller"
+    tag: "1.20.2"
+  "jetstack/cert-manager-cainjector":
+    registry: "ghcr.io/verity-org"
+    image: "cert-manager-cainjector"
+    tag: "1.20.2"
+  "jetstack/cert-manager-webhook":
+    registry: "ghcr.io/verity-org"
+    image: "cert-manager-webhook"
+    tag: "1.20.2"
+
+  # ingress-nginx chart (4.15.1) + external-dns chart (1.20.0). Existing
+  # Copa-patched repos preserve the standalone source naming used in
+  # copa-config.yaml rather than the charts' rendered repo paths.
+  "ingress-nginx/controller":
+    registry: "ghcr.io/verity-org"
+    image: "kubernetes/ingress-nginx/controller"
+  "ingress-nginx/kube-webhook-certgen":
+    registry: "ghcr.io/verity-org"
+    image: "kubernetes/ingress-nginx/kube-webhook-certgen"
+  "external-dns/external-dns":
+    registry: "ghcr.io/verity-org"
+    image: "kubernetes-sigs/external-dns"
+
+  # Integer-backed free wins.
+  "valkey/valkey":
+    registry: "ghcr.io/verity-org"
+    image: "valkey"
+    tag: "9.0"
+  "etcd-development/etcd":
+    registry: "ghcr.io/verity-org"
+    image: "etcd"
+    tag: "3.6.10"
+  "velero/velero":
+    registry: "ghcr.io/verity-org"
+    image: "velero"
+    tag: "1.18.0"
+
 # Images the orchestrator should skip entirely, regardless of source
 # (standalone copa-config.yaml entry OR chart-discovered). Reserve this
 # list for images that have NO Wolfi/Integer rebuild AND no replacement
