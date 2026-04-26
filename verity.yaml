@@ -27,8 +27,10 @@ replacements:
 
   # kyverno chart (3.7.2). Chart renders images under
   # `reg.kyverno.io/kyverno/*` (Kyverno's pull-through mirror); repoPath
-  # strips the host so keys match `kyverno/<name>`. kyvernopre runs the
-  # same kyverno binary and maps to the same Integer image.
+  # strips the host so keys match `kyverno/<name>`. The cleanup-controller,
+  # readiness-checker, and kyvernopre binaries each ship as their own
+  # subpackage of the upstream Wolfi `kyverno-1.17` recipe (kyvernopre's
+  # subpackage is named `kyverno-init-container-1.17`).
   "kyverno/kyverno":
     registry: "ghcr.io/verity-org"
     image: "kyverno"
@@ -38,6 +40,15 @@ replacements:
   "kyverno/reports-controller":
     registry: "ghcr.io/verity-org"
     image: "kyverno-reports-controller"
+  "kyverno/cleanup-controller":
+    registry: "ghcr.io/verity-org"
+    image: "kyverno-cleanup-controller"
+  "kyverno/readiness-checker":
+    registry: "ghcr.io/verity-org"
+    image: "kyverno-readiness-checker"
+  "kyverno/kyvernopre":
+    registry: "ghcr.io/verity-org"
+    image: "kyverno-kyvernopre"
   "kyverno/kyverno-cli":
     registry: "ghcr.io/verity-org"
     image: "kyverno-cli"
@@ -71,32 +82,15 @@ replacements:
     image: "postgres-operator"
 
 # Images the orchestrator should skip entirely, regardless of source
-# (standalone copa-config.yaml entry OR chart-discovered). Use a key here
-# when:
-#   1. The image is truly distroless (no shell, no package manager) and we
-#      do not have a Wolfi/Integer rebuild yet, so copa cannot patch it.
-#   2. The upstream chart still references an image we deliberately removed
-#      from our registry (e.g. argo-cd's hard-coded redis reference after
-#      the redis→valkey migration in #227).
+# (standalone copa-config.yaml entry OR chart-discovered). Reserve this
+# list for images that have NO Wolfi/Integer rebuild AND no replacement
+# we control. Distroless images for which a rebuild exists are handled
+# automatically via the images/*.yaml exclude path.
 # Format: post-repoPath name (registry stripped, no tag).
 unpatchableImages:
-  # ── Distroless images, no Wolfi rebuild yet ──────────────────────────
-  # kyverno chart 3.7.2 ships these as gcr.io/distroless/static.
-  # background-controller and reports-controller are NOT listed because
-  # images/kyverno-background-controller.yaml and images/kyverno-reports-
-  # controller.yaml already cover them via the Wolfi exclude path. Add
-  # images/<name>.yaml stubs and drop entries here to enable patching.
-  - "kyverno/cleanup-controller"
-  - "kyverno/kyvernopre"
-  - "kyverno/readiness-checker"
-
-  # Standalone copa-config.yaml entry; distroless, no Wolfi rebuild yet.
-  - "cert-manager/cert-manager-openshift-routes"
-
-  # ── Removed-from-registry references ─────────────────────────────────
   # argo-cd values.yaml hard-codes
   # repository: ecr-public.aws.com/docker/library/redis (a non-standard
-  # ECR Public alias). We migrated to valkey in #227 and never published
-  # this redis tag, so patching attempts always fail at the trivy
-  # "image not found" step.
+  # ECR Public alias). We migrated the rest of the pipeline to valkey in
+  # #227 but argo-cd still references redis upstream. Skipping the patch
+  # is correct — chart-gen handles wrapper-chart routing separately.
   - "docker/library/redis"
