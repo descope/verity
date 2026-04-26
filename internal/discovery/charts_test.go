@@ -2,10 +2,23 @@ package discovery
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/verity-org/verity/internal/config"
 )
+
+func readDiscoveryFixture(t *testing.T, name string) []byte {
+	t.Helper()
+
+	path := filepath.Join("testdata", name)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("os.ReadFile(%q) error = %v", path, err)
+	}
+	return data
+}
 
 func TestApplyOverride(t *testing.T) {
 	overrides := map[string]config.Override{
@@ -272,6 +285,32 @@ spec:
 		}
 		if got[0] != "ghcr.io/verity-org/tiny:v1.2.3" {
 			t.Fatalf("extractImagesFromManifests() = %v, want ghcr.io/verity-org/tiny:v1.2.3", got)
+		}
+	})
+
+	t.Run("discovers env var images from operator deployments", func(t *testing.T) {
+		got, err := extractImagesFromManifests(readDiscoveryFixture(t, "strimzi-kafka-operator-env.yaml"))
+		if err != nil {
+			t.Fatalf("extractImagesFromManifests() error = %v", err)
+		}
+
+		wantImages := []string{
+			"quay.io/strimzi/kafka:0.51.0-kafka-4.2.0",
+			"quay.io/strimzi/kafka-bridge:0.33.1",
+			"quay.io/strimzi/kaniko-executor:0.51.0",
+			"quay.io/strimzi/buildah:0.51.0",
+			"quay.io/strimzi/maven-builder:0.51.0",
+		}
+
+		gotSet := make(map[string]struct{}, len(got))
+		for _, image := range got {
+			gotSet[image] = struct{}{}
+		}
+
+		for _, want := range wantImages {
+			if _, ok := gotSet[want]; !ok {
+				t.Fatalf("extractImagesFromManifests() missing env-var image %q in %v", want, got)
+			}
 		}
 	})
 }
