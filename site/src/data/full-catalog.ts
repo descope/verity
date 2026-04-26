@@ -639,7 +639,6 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "boring-registry", source: "integer" },
       { name: "chart-testing", source: "integer" },
       { name: "harbor-cli", source: "integer" },
-      { name: "helm-4", source: "integer" },
       { name: "dagger", source: "integer" },
       { name: "goreleaser", source: "integer" },
       { name: "git-sync", source: "integer" },
