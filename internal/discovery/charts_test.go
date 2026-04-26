@@ -198,7 +198,8 @@ func TestSplitRef(t *testing.T) {
 }
 
 func TestExtractImagesFromManifests(t *testing.T) {
-	yaml := []byte(`
+	t.Run("deduplicates image fields across manifests", func(t *testing.T) {
+		yaml := []byte(`
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -226,24 +227,51 @@ spec:
         image: quay.io/prometheus/prometheus:v3.2.1
 `)
 
-	got, err := extractImagesFromManifests(yaml)
-	if err != nil {
-		t.Fatalf("extractImagesFromManifests() error = %v", err)
-	}
-
-	// Should have 3 unique images (deduplication of the repeated prometheus ref)
-	if len(got) != 3 {
-		t.Errorf("extractImagesFromManifests() returned %d images, want 3: %v", len(got), got)
-	}
-
-	wantImages := map[string]bool{
-		"quay.io/prometheus/prometheus:v3.2.1":        true,
-		"ghcr.io/jimmidyson/configmap-reload:v0.14.0": true,
-		"quay.io/prometheus/alertmanager:v0.28.1":     true,
-	}
-	for _, img := range got {
-		if !wantImages[img] {
-			t.Errorf("unexpected image: %q", img)
+		got, err := extractImagesFromManifests(yaml)
+		if err != nil {
+			t.Fatalf("extractImagesFromManifests() error = %v", err)
 		}
-	}
+
+		if len(got) != 3 {
+			t.Errorf("extractImagesFromManifests() returned %d images, want 3: %v", len(got), got)
+		}
+
+		wantImages := map[string]bool{
+			"quay.io/prometheus/prometheus:v3.2.1":        true,
+			"ghcr.io/jimmidyson/configmap-reload:v0.14.0": true,
+			"quay.io/prometheus/alertmanager:v0.28.1":     true,
+		}
+		for _, img := range got {
+			if !wantImages[img] {
+				t.Errorf("unexpected image: %q", img)
+			}
+		}
+	})
+
+	t.Run("keeps existing image key discovery", func(t *testing.T) {
+		yaml := []byte(`
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tiny
+spec:
+  template:
+    spec:
+      containers:
+      - name: tiny
+        image: ghcr.io/verity-org/tiny:v1.2.3
+`)
+
+		got, err := extractImagesFromManifests(yaml)
+		if err != nil {
+			t.Fatalf("extractImagesFromManifests() error = %v", err)
+		}
+
+		if len(got) != 1 {
+			t.Fatalf("extractImagesFromManifests() returned %d images, want 1: %v", len(got), got)
+		}
+		if got[0] != "ghcr.io/verity-org/tiny:v1.2.3" {
+			t.Fatalf("extractImagesFromManifests() = %v, want ghcr.io/verity-org/tiny:v1.2.3", got)
+		}
+	})
 }
