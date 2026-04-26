@@ -1,38 +1,34 @@
 package doctor
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/verity-org/verity/internal/config"
 )
 
-func TestRepoPath(t *testing.T) {
-	cases := []struct {
-		ref  string
-		want string
-	}{
-		{"quay.io/prometheus/prometheus:v3.11.2", "prometheus/prometheus"},
-		{"ghcr.io/dexidp/dex:v2.45.1", "dexidp/dex"},
-		{"reg.kyverno.io/kyverno/kyverno-cli:v1.17.2", "kyverno/kyverno-cli"},
-		{"opensearchproject/opensearch:3.6.0", "opensearchproject/opensearch"},
-		{"nats:2.12.6-alpine", "nats"},
-		{"docker.io/library/nginx:1.29.5", "library/nginx"},
-		{"quay.io/cilium/cilium:v1.19.3@sha256:abc", "cilium/cilium"},
-	}
-	for _, c := range cases {
-		got := repoPath(c.ref)
-		if got != c.want {
-			t.Errorf("repoPath(%q) = %q, want %q", c.ref, got, c.want)
-		}
+// fakeExtractor returns canned image lists keyed by chart name. Callers
+// supply the map; chart specs that aren't in the map render no images.
+func fakeExtractor(byChart map[string][]string) ChartImagesFunc {
+	return func(chart config.ChartSpec, _ map[string]config.Override) ([]string, error) {
+		return byChart[chart.Name], nil
 	}
 }
 
 func TestCheckOrphanReplacements_AllMatched(t *testing.T) {
-	// Every replacement matches at least one rendered image — no orphans.
+	charts := []config.ChartSpec{
+		{Name: "prometheus", Version: "29.2.1"},
+		{Name: "argo-cd", Version: "9.5.4"},
+	}
 	chartImages := map[string][]string{
-		"prometheus": {"quay.io/prometheus/pushgateway:v1.11.2", "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0"},
-		"argo-cd":    {"quay.io/argoproj/argocd:v3.3.8", "ghcr.io/dexidp/dex:v2.45.1"},
+		"prometheus": {
+			"quay.io/prometheus/pushgateway:v1.11.2",
+			"registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0",
+		},
+		"argo-cd": {"quay.io/argoproj/argocd:v3.3.8", "ghcr.io/dexidp/dex:v2.45.1"},
 	}
 	vc := &config.VerityConfig{
 		Replacements: map[string]config.Replacement{
@@ -42,14 +38,18 @@ func TestCheckOrphanReplacements_AllMatched(t *testing.T) {
 			"dexidp/dex":                            {Registry: "ghcr.io/verity-org", Image: "dex"},
 		},
 	}
-	issues := runOrphanCheckWithFakeRender(t, chartImages, vc)
+
+	issues, err := CheckOrphanReplacements(charts, vc, "verity.yaml", "Chart.yaml", fakeExtractor(chartImages))
+	if err != nil {
+		t.Fatalf("CheckOrphanReplacements err = %v", err)
+	}
 	if len(issues) != 0 {
 		t.Errorf("want 0 orphans, got %d: %+v", len(issues), issues)
 	}
 }
 
 func TestCheckOrphanReplacements_OneOrphan(t *testing.T) {
-	// jimmidyson/configmap-reload doesn't appear in any rendered image.
+	charts := []config.ChartSpec{{Name: "prometheus", Version: "29.2.1"}}
 	chartImages := map[string][]string{
 		"prometheus": {"quay.io/prometheus/pushgateway:v1.11.2"},
 	}
@@ -59,25 +59,34 @@ func TestCheckOrphanReplacements_OneOrphan(t *testing.T) {
 			"jimmidyson/configmap-reload": {Registry: "ghcr.io/verity-org", Image: "configmap-reload"},
 		},
 	}
-	issues := runOrphanCheckWithFakeRender(t, chartImages, vc)
+
+	issues, err := CheckOrphanReplacements(charts, vc, "verity.yaml", "Chart.yaml", fakeExtractor(chartImages))
+	if err != nil {
+		t.Fatalf("CheckOrphanReplacements err = %v", err)
+	}
 	if len(issues) != 1 {
 		t.Fatalf("want 1 orphan, got %d: %+v", len(issues), issues)
 	}
-	if !strings.Contains(issues[0].Message, "jimmidyson/configmap-reload") {
-		t.Errorf("orphan should reference jimmidyson/configmap-reload pattern, got: %s", issues[0].Message)
+	got := issues[0]
+	if got.Check != "orphan-replacements" {
+		t.Errorf("check = %q, want orphan-replacements", got.Check)
 	}
-	if issues[0].Check != "orphan-replacements" {
-		t.Errorf("check name = %q, want orphan-replacements", issues[0].Check)
+	if got.Severity != SeverityWarning {
+		t.Errorf("severity = %q, want warning", got.Severity)
 	}
-	if issues[0].Severity != SeverityWarning {
-		t.Errorf("severity = %q, want warning", issues[0].Severity)
+	if !strings.Contains(got.Message, "jimmidyson/configmap-reload") {
+		t.Errorf("message should reference orphan pattern: %s", got.Message)
+	}
+	if !strings.Contains(got.Message, "Chart.yaml") {
+		t.Errorf("message should reference chartsFilePath: %s", got.Message)
+	}
+	if !strings.Contains(got.Hint, "verity.yaml") {
+		t.Errorf("hint should reference verityConfigPath: %s", got.Hint)
 	}
 }
 
 func TestCheckOrphanReplacements_SubstringMatchesCount(t *testing.T) {
-	// Substring matches (Contains semantics) keep an entry alive — same
-	// rule chartgen.applyReplacements uses. e.g., "kyverno/kyverno"
-	// matches "kyverno/kyverno-cli" via Contains, so it's not an orphan.
+	charts := []config.ChartSpec{{Name: "kyverno", Version: "3.7.2"}}
 	chartImages := map[string][]string{
 		"kyverno": {"reg.kyverno.io/kyverno/kyverno-cli:v1.17.2"},
 	}
@@ -86,19 +95,78 @@ func TestCheckOrphanReplacements_SubstringMatchesCount(t *testing.T) {
 			"kyverno/kyverno": {Registry: "ghcr.io/verity-org", Image: "kyverno"},
 		},
 	}
-	issues := runOrphanCheckWithFakeRender(t, chartImages, vc)
+	issues, err := CheckOrphanReplacements(charts, vc, "verity.yaml", "Chart.yaml", fakeExtractor(chartImages))
+	if err != nil {
+		t.Fatalf("err = %v", err)
+	}
 	if len(issues) != 0 {
 		t.Errorf("substring match should keep replacement alive, got orphans: %+v", issues)
 	}
 }
 
 func TestCheckOrphanReplacements_NilConfig(t *testing.T) {
-	issues, err := CheckOrphanReplacements(nil, nil, "verity.yaml")
+	issues, err := CheckOrphanReplacements(nil, nil, "verity.yaml", "Chart.yaml", fakeExtractor(nil))
 	if err != nil {
 		t.Fatalf("nil vc should be a no-op, got err=%v", err)
 	}
 	if len(issues) != 0 {
 		t.Errorf("want 0 issues for nil vc, got %d", len(issues))
+	}
+}
+
+func TestCheckOrphanReplacements_ExtractorError(t *testing.T) {
+	charts := []config.ChartSpec{{Name: "broken", Version: "0.0.0"}}
+	vc := &config.VerityConfig{
+		Replacements: map[string]config.Replacement{"x": {Registry: "r", Image: "i"}},
+	}
+	wantErr := errors.New("boom")
+	failingExtractor := func(_ config.ChartSpec, _ map[string]config.Override) ([]string, error) {
+		return nil, wantErr
+	}
+	_, err := CheckOrphanReplacements(charts, vc, "verity.yaml", "Chart.yaml", failingExtractor)
+	if err == nil {
+		t.Fatal("expected error to surface from extractor")
+	}
+	if !errors.Is(err, wantErr) {
+		t.Errorf("error chain should include extractor error, got: %v", err)
+	}
+}
+
+func TestRun_MissingChartsFile(t *testing.T) {
+	tmp := t.TempDir()
+	_, err := Run(Config{
+		ChartsFile:   filepath.Join(tmp, "no-such.yaml"),
+		VerityConfig: filepath.Join(tmp, "no-such-verity.yaml"),
+	})
+	if err == nil {
+		t.Fatal("expected ErrChartsFileMissing for nonexistent file")
+	}
+	if !errors.Is(err, ErrChartsFileMissing) {
+		t.Errorf("error should wrap ErrChartsFileMissing, got: %v", err)
+	}
+}
+
+func TestRun_NeverNilSlice(t *testing.T) {
+	// JSON callers expect an array, not null. Verify the empty-result
+	// path returns a non-nil slice even though it's empty.
+	tmp := t.TempDir()
+	chartsPath := filepath.Join(tmp, "Chart.yaml")
+	verityPath := filepath.Join(tmp, "verity.yaml")
+	if err := os.WriteFile(chartsPath, []byte("apiVersion: v2\nname: test\nversion: 0.0.0\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(verityPath, []byte("replacements: {}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	issues, err := Run(Config{ChartsFile: chartsPath, VerityConfig: verityPath})
+	if err != nil {
+		t.Fatalf("Run err = %v", err)
+	}
+	if issues == nil {
+		t.Error("Run should return non-nil empty slice, got nil")
+	}
+	if len(issues) != 0 {
+		t.Errorf("want 0 issues for empty config, got %d", len(issues))
 	}
 }
 
@@ -110,12 +178,14 @@ func TestFormatText_Empty(t *testing.T) {
 
 func TestFormatText_Counts(t *testing.T) {
 	issues := []Issue{
-		{Check: "x", Severity: SeverityError, Message: "boom"},
+		{Check: "x", Severity: SeverityError, Message: "boom", Path: "a.yaml", Hint: "fix it"},
 		{Check: "x", Severity: SeverityWarning, Message: "tsk"},
 	}
 	out := FormatText(issues)
-	if !strings.Contains(out, "1 errors, 1 warnings") {
-		t.Errorf("FormatText should include error+warning counts, got %q", out)
+	for _, want := range []string{"1 errors, 1 warnings", "boom", "tsk", "fix it", "a.yaml"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("FormatText missing %q in output: %q", want, out)
+		}
 	}
 }
 
@@ -129,41 +199,4 @@ func TestHasErrors(t *testing.T) {
 	if !HasErrors([]Issue{{Severity: SeverityWarning}, {Severity: SeverityError}}) {
 		t.Error("at least one error should make HasErrors true")
 	}
-}
-
-// runOrphanCheckWithFakeRender bypasses helm by computing matches the same
-// way CheckOrphanReplacements does, but with caller-supplied image lists.
-// Keeps the package's logic exercised without standing up helm + network.
-func runOrphanCheckWithFakeRender(t *testing.T, chartImages map[string][]string, vc *config.VerityConfig) []Issue {
-	t.Helper()
-	matched := make(map[string]bool, len(vc.Replacements))
-	for p := range vc.Replacements {
-		matched[p] = false
-	}
-	for _, refs := range chartImages {
-		for _, ref := range refs {
-			name := repoPath(ref)
-			for pattern := range vc.Replacements {
-				if name == pattern || strings.Contains(name, pattern) {
-					matched[pattern] = true
-				}
-			}
-		}
-	}
-	var issues []Issue
-	for pattern, ok := range matched {
-		if ok {
-			continue
-		}
-		repl := vc.Replacements[pattern]
-		issues = append(issues, Issue{
-			Check:    "orphan-replacements",
-			Severity: SeverityWarning,
-			Path:     "verity.yaml",
-			Message: "replacements: entry \"" + pattern + "\" (→ " + repl.Registry + "/" + repl.Image +
-				") matches no image rendered by any chart in Chart.yaml",
-			Hint: "remove the entry from verity.yaml, or confirm whether the original chart removed/renamed the image",
-		})
-	}
-	return issues
 }

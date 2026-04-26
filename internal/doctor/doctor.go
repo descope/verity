@@ -1,24 +1,23 @@
-// Package doctor lints Verity's configuration cross-references — Chart.yaml,
-// verity.yaml, copa-config.yaml, and the images/ Integer rebuilds — to catch
-// silent failure modes (orphan replacements, charts with no patched
-// mappings, dangling Integer rebuilds, etc.) before they reach production.
-//
-// Each check is a small function that returns Issues. Run aggregates and
-// formats them. Today the package ships a single check
-// (CheckOrphanReplacements); future PRs add more.
+// Package doctor lints Verity's configuration cross-references for known
+// silent-failure patterns. Today it ships one check
+// (CheckOrphanReplacements); the package is structured so additional checks
+// can be added incrementally as separate Check* functions.
 package doctor
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 
 	"github.com/verity-org/verity/internal/config"
 	"github.com/verity-org/verity/internal/discovery"
+	"github.com/verity-org/verity/internal/imageref"
 )
 
 // Severity classifies a doctor finding. error fails the run; warning is
-// informational.
+// informational unless --fail-on-warning is set by the caller.
 type Severity string
 
 const (
@@ -35,21 +34,38 @@ type Issue struct {
 	Hint     string   `json:"hint,omitempty"`
 }
 
-// Config controls a doctor run. Paths default to the repo-root file names
-// when empty.
+// Config controls a doctor run. Empty paths default to the repo-root file
+// names; a missing file is an error rather than a silent no-op (otherwise a
+// typoed --charts-file would report every replacement as orphan).
 type Config struct {
 	ChartsFile   string
 	VerityConfig string
 }
 
+// ErrChartsFileMissing is returned by Run when the configured charts file
+// does not exist. Callers can errors.Is-check it to distinguish "config
+// gone" from a check that produced findings.
+var ErrChartsFileMissing = errors.New("charts file does not exist")
+
+// ChartImagesFunc renders a chart and returns the image references it
+// emits. Production code passes discovery.ExtractChartImages; tests pass a
+// stub so CheckOrphanReplacements can be exercised without helm + network.
+type ChartImagesFunc func(chart config.ChartSpec, overrides map[string]config.Override) ([]string, error)
+
 // Run executes all checks and returns the aggregated findings sorted by
-// (check, severity, message) for stable output.
+// (check, severity, message) for stable output. The returned slice is never
+// nil — Run returns []Issue{} when no findings are produced so JSON
+// callers see an array, not null.
 func Run(cfg Config) ([]Issue, error) {
 	if cfg.ChartsFile == "" {
 		cfg.ChartsFile = "Chart.yaml"
 	}
 	if cfg.VerityConfig == "" {
 		cfg.VerityConfig = "verity.yaml"
+	}
+
+	if _, err := os.Stat(cfg.ChartsFile); errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("%w: %s", ErrChartsFileMissing, cfg.ChartsFile)
 	}
 
 	charts, err := discovery.LoadChartsFile(cfg.ChartsFile)
@@ -62,9 +78,9 @@ func Run(cfg Config) ([]Issue, error) {
 		return nil, fmt.Errorf("load verity config %s: %w", cfg.VerityConfig, err)
 	}
 
-	var issues []Issue
+	issues := make([]Issue, 0)
 
-	orphans, err := CheckOrphanReplacements(charts, vc, cfg.VerityConfig)
+	orphans, err := CheckOrphanReplacements(charts, vc, cfg.VerityConfig, cfg.ChartsFile, discovery.ExtractChartImages)
 	if err != nil {
 		return nil, fmt.Errorf("orphan-replacements check: %w", err)
 	}
@@ -79,47 +95,60 @@ func Run(cfg Config) ([]Issue, error) {
 		}
 		return issues[i].Message < issues[j].Message
 	})
-
 	return issues, nil
 }
 
 // CheckOrphanReplacements finds entries in vc.Replacements that match no
 // image rendered by any chart in charts. An orphan is a stale config entry
-// — once it was wiring a real chart image to an Integer rebuild, but the
-// chart upgraded or the image moved and the entry was never cleaned up.
+// — once it wired a real chart image to an Integer rebuild, but the chart
+// upgraded or the image moved and the entry was never cleaned up.
 //
-// This check shells out to `helm template` (via discovery.ExtractChartImages)
-// once per chart, so it requires helm in PATH and network access to chart
-// repositories. In CI the existing chart-gen workflow already exercises that
-// path; running doctor in the same job is cheap.
-func CheckOrphanReplacements(charts []config.ChartSpec, vc *config.VerityConfig, verityConfigPath string) ([]Issue, error) {
+// The chartImages parameter abstracts the helm-shelling step so production
+// code passes discovery.ExtractChartImages while tests pass a stub. This
+// lets the same function be exercised by fast unit tests without requiring
+// helm + network.
+//
+// Match semantics intentionally mirror chartgen.applyReplacements (Contains
+// after RepoPath) so this check reasons about images the same way the
+// runtime matcher does. Note: chartgen also sorts patterns longest-first
+// for first-match selection, which can mean a shorter pattern technically
+// matches an image but a longer one is selected at runtime. For the orphan
+// check, "matches anywhere" is the right semantic — the pattern still has
+// a downstream consumer if any image's name contains it, even if a more
+// specific pattern claims that image first at runtime.
+func CheckOrphanReplacements(
+	charts []config.ChartSpec,
+	vc *config.VerityConfig,
+	verityConfigPath, chartsFilePath string,
+	chartImages ChartImagesFunc,
+) ([]Issue, error) {
 	if vc == nil || len(vc.Replacements) == 0 {
 		return nil, nil
 	}
 
-	matchedPatterns := make(map[string]bool, len(vc.Replacements))
+	matched := make(map[string]bool, len(vc.Replacements))
 	for pattern := range vc.Replacements {
-		matchedPatterns[pattern] = false
+		matched[pattern] = false
 	}
 
 	for _, chart := range charts {
-		refs, err := discovery.ExtractChartImages(chart, vc.Overrides)
+		refs, err := chartImages(chart, vc.Overrides)
 		if err != nil {
 			return nil, fmt.Errorf("extract images for chart %s@%s: %w", chart.Name, chart.Version, err)
 		}
 		for _, ref := range refs {
-			name := repoPath(ref)
+			name := imageref.RepoPath(ref)
 			for pattern := range vc.Replacements {
 				if name == pattern || strings.Contains(name, pattern) {
-					matchedPatterns[pattern] = true
+					matched[pattern] = true
 				}
 			}
 		}
 	}
 
-	var issues []Issue
-	for pattern, matched := range matchedPatterns {
-		if matched {
+	issues := make([]Issue, 0, len(matched))
+	for pattern, ok := range matched {
+		if ok {
 			continue
 		}
 		repl := vc.Replacements[pattern]
@@ -127,34 +156,11 @@ func CheckOrphanReplacements(charts []config.ChartSpec, vc *config.VerityConfig,
 			Check:    "orphan-replacements",
 			Severity: SeverityWarning,
 			Path:     verityConfigPath,
-			Message:  fmt.Sprintf("replacements: entry %q (→ %s/%s) matches no image rendered by any chart in Chart.yaml", pattern, repl.Registry, repl.Image),
-			Hint:     "remove the entry from verity.yaml, or confirm whether the original chart removed/renamed the image",
+			Message:  fmt.Sprintf("replacements: entry %q (→ %s/%s) matches no image rendered by any chart in %s", pattern, repl.Registry, repl.Image, chartsFilePath),
+			Hint:     fmt.Sprintf("remove the entry from %s, or confirm whether the original chart removed/renamed the image", verityConfigPath),
 		})
 	}
 	return issues, nil
-}
-
-// repoPath strips the registry host (if it has a dot/colon, signaling a
-// hostname rather than a Docker Hub library namespace) and any tag/digest,
-// leaving just the path used for replacements: matching. Mirrors the
-// matcher in internal/chartgen so doctor reasons about images the same way
-// chart-gen does.
-func repoPath(ref string) string {
-	if idx := strings.Index(ref, "@"); idx != -1 {
-		ref = ref[:idx]
-	}
-	lastSlash := strings.LastIndex(ref, "/")
-	if lastColon := strings.LastIndex(ref, ":"); lastColon > lastSlash {
-		ref = ref[:lastColon]
-	}
-	parts := strings.Split(ref, "/")
-	if len(parts) >= 2 {
-		first := parts[0]
-		if strings.ContainsAny(first, ".:") || first == "localhost" {
-			return strings.Join(parts[1:], "/")
-		}
-	}
-	return ref
 }
 
 // FormatText renders issues as a human-readable report. Empty input yields
@@ -164,6 +170,7 @@ func FormatText(issues []Issue) string {
 		return "verity doctor: all checks passed.\n"
 	}
 	var b strings.Builder
+	errs, warns := 0, 0
 	for _, iss := range issues {
 		fmt.Fprintf(&b, "[%s] %s: %s\n", iss.Severity, iss.Check, iss.Message)
 		if iss.Path != "" {
@@ -172,10 +179,6 @@ func FormatText(issues []Issue) string {
 		if iss.Hint != "" {
 			fmt.Fprintf(&b, "  hint: %s\n", iss.Hint)
 		}
-	}
-	errs := 0
-	warns := 0
-	for _, iss := range issues {
 		switch iss.Severity {
 		case SeverityError:
 			errs++
