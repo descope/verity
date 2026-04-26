@@ -361,4 +361,55 @@ spec:
 			}
 		}
 	})
+
+	t.Run("ignores URL, path, and version-like false positives", func(t *testing.T) {
+		yaml := []byte(`
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: false-positives
+spec:
+  template:
+    spec:
+      containers:
+      - name: operator
+        image: ghcr.io/verity-org/operator:v0.1.0
+        args:
+        - --default-image=https://example.com/foo:bar
+        env:
+        - name: FAKE_URL_IMAGE
+          value: https://example.com/foo:bar
+        - name: FAKE_PATH_IMAGE
+          value: /some/path:1.2.3
+        - name: FAKE_VERSION_IMAGE
+          value: 1.2.3-beta
+        - name: FAKE_BINARY_IMAGE
+          value: kubectl-1.34.3
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: false-positive-config
+data:
+  ROOK_CSI_FAKE_URL_IMAGE: https://example.com/foo:bar
+  ROOK_CSI_FAKE_PATH_IMAGE: /some/path:1.2.3
+  ROOK_CSI_FAKE_VERSION_IMAGE: 1.2.3-beta
+  ROOK_CSI_FAKE_BINARY_IMAGE: kubectl-1.34.3
+`)
+
+		got, err := extractImagesFromManifests(yaml)
+		if err != nil {
+			t.Fatalf("extractImagesFromManifests() error = %v", err)
+		}
+
+		want := []string{"ghcr.io/verity-org/operator:v0.1.0"}
+		if len(got) != len(want) {
+			t.Fatalf("extractImagesFromManifests() returned %d images, want %d: %v", len(got), len(want), got)
+		}
+		for i, image := range want {
+			if got[i] != image {
+				t.Fatalf("extractImagesFromManifests()[%d] = %q, want %q (all images: %v)", i, got[i], image, got)
+			}
+		}
+	})
 }
