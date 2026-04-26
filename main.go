@@ -22,6 +22,7 @@ func main() {
 			cmd.PreflightCommand,
 			cmd.ChartGenCommand,
 			cmd.PatchCommand,
+			cmd.DoctorCommand,
 		},
 		Version: "2.0.0",
 	}

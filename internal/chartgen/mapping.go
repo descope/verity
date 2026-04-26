@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/verity-org/verity/internal/imageref"
 )
 
 // ImageMapping represents the mapping from an original image to its patched replacement.
@@ -83,25 +85,12 @@ func isExcluded(name, imageRef string, excludeNames map[string]struct{}) bool {
 	return false
 }
 
+// repoPath returns the registry-stripped, tag/digest-stripped portion of
+// an image ref. Thin wrapper over imageref.RepoPath so chartgen, doctor,
+// and any future consumer share one implementation — divergence here would
+// silently mask the very class of failures doctor exists to surface.
 func repoPath(ref string) string {
-	if idx := strings.Index(ref, "@"); idx != -1 {
-		ref = ref[:idx]
-	}
-
-	lastSlash := strings.LastIndex(ref, "/")
-	if lastColon := strings.LastIndex(ref, ":"); lastColon > lastSlash {
-		ref = ref[:lastColon]
-	}
-
-	parts := strings.Split(ref, "/")
-	if len(parts) >= 2 {
-		first := parts[0]
-		if strings.ContainsAny(first, ".:") || first == "localhost" {
-			return strings.Join(parts[1:], "/")
-		}
-	}
-
-	return ref
+	return imageref.RepoPath(ref)
 }
 
 func nameBasename(ref string) string {
@@ -119,17 +108,9 @@ func nameBasename(ref string) string {
 }
 
 // splitRef splits an image reference into its name and tag components.
-// Digest suffixes (@sha256:...) are stripped before extracting the tag.
+// Thin wrapper over imageref.SplitRef.
 func splitRef(ref string) (name, tag string) {
-	// Strip digest — we want the tag, not the digest hash.
-	if idx := strings.Index(ref, "@"); idx != -1 {
-		ref = ref[:idx]
-	}
-	lastSlash := strings.LastIndex(ref, "/")
-	if lastColon := strings.LastIndex(ref, ":"); lastColon > lastSlash {
-		return ref[:lastColon], ref[lastColon+1:]
-	}
-	return ref, ""
+	return imageref.SplitRef(ref)
 }
 
 // runCommand executes a CLI command with a timeout and returns stdout.
