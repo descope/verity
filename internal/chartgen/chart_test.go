@@ -173,6 +173,51 @@ func TestBuildWrapperChartValues(t *testing.T) {
 	}
 }
 
+func TestBuildWrapperChartValues_ChartImageOverrideSingleSource(t *testing.T) {
+	original := config.ChartSpec{Name: "strimzi-kafka-operator", Version: "0.51.0", Repository: "oci://repo/charts"}
+	vc := &config.VerityConfig{
+		ChartImageOverrides: map[string][]config.ChartImageOverride{
+			"strimzi-kafka-operator": {
+				{
+					Source: "STRIMZI_DEFAULT_KAFKA_EXPORTER_IMAGE",
+					Path:   "kafka.image",
+				},
+			},
+		},
+	}
+
+	overrides, err := buildChartImageOverrides(original.Name, []ImageMapping{{
+		Source:      "STRIMZI_DEFAULT_KAFKA_EXPORTER_IMAGE",
+		PatchedRepo: "ghcr.io/verity-org/kafka",
+		PatchedTag:  "patched-tag",
+	}}, vc)
+	if err != nil {
+		t.Fatalf("buildChartImageOverrides() error = %v", err)
+	}
+
+	chart, err := BuildWrapperChart(original, overrides)
+	if err != nil {
+		t.Fatalf("BuildWrapperChart() error = %v", err)
+	}
+
+	var values map[string]any
+	if err := yaml.Unmarshal(chart.ValuesYAML, &values); err != nil {
+		t.Fatalf("yaml.Unmarshal(ValuesYAML) error = %v", err)
+	}
+
+	root, ok := values["strimzi-kafka-operator"].(map[string]any)
+	if !ok {
+		t.Fatalf("chart root missing or invalid: %#v", values["strimzi-kafka-operator"])
+	}
+	kafka, ok := root["kafka"].(map[string]any)
+	if !ok {
+		t.Fatalf("kafka node missing or invalid: %#v", root["kafka"])
+	}
+	if kafka["image"] != "ghcr.io/verity-org/kafka:patched-tag" {
+		t.Fatalf("kafka.image = %#v, want patched image string", kafka["image"])
+	}
+}
+
 func TestBuildWrapperChartEmptyOverrides(t *testing.T) {
 	original := config.ChartSpec{Name: "prometheus", Version: "28.9.1", Repository: "oci://repo/charts"}
 
