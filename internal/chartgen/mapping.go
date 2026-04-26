@@ -17,6 +17,7 @@ import (
 type ImageMapping struct {
 	OriginalRepo string `json:"originalRepo"`
 	OriginalTag  string `json:"originalTag"`
+	Source       string `json:"source,omitempty"`
 	PatchedRepo  string `json:"patchedRepo"`
 	PatchedTag   string `json:"patchedTag"`
 }
