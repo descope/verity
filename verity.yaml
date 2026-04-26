@@ -47,6 +47,13 @@ chartValues:
   tempo-distributed:
     memcached.enabled: false
 
+  # jenkins 5.9.18 otherwise renders an unpatched bats helm-test pod and a
+  # default inbound agent image. Keep the wrapper focused on the controller and
+  # the existing kiwigrid sidecar image.
+  jenkins:
+    controller.testEnabled: false
+    agent.enabled: false
+
 # Image replacements for chart-gen.
 # Maps upstream image path patterns to Verity Integer (Wolfi) images.
 # When chart-gen discovers a chart image matching the key, it generates
@@ -115,6 +122,10 @@ replacements:
   "argoproj/argocd":
     registry: "ghcr.io/verity-org"
     image: "argocd"
+  "argoproj/argo-rollouts":
+    registry: "ghcr.io/verity-org"
+    image: "argo-rollouts"
+    tag: "1"
   "dexidp/dex":
     registry: "ghcr.io/verity-org"
     image: "dex"
@@ -189,6 +200,12 @@ replacements:
     registry: "ghcr.io/verity-org"
     image: "minio-operator"
     tag: "7.1.1"
+
+  # jenkins 5.9.18.
+  "jenkins/jenkins":
+    registry: "ghcr.io/verity-org"
+    image: "jenkins"
+    tag: "2.555.1"
 
 # Images the orchestrator should skip entirely, regardless of source
 # (standalone copa-config.yaml entry OR chart-discovered). Reserve this
