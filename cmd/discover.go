@@ -185,7 +185,7 @@ func filterUnpatchable(images []discovery.DiscoveredImage, unpatchable map[strin
 	filtered := images[:0]
 	for _, img := range images {
 		if _, skip := unpatchable[img.Name]; skip {
-			fmt.Fprintf(os.Stderr, "Skipping unpatchable image %q (verity.yaml unpatchableImages)\n", img.Source)
+			fmt.Fprintf(os.Stderr, "Skipping unpatchable image %q from source %q (verity.yaml unpatchableImages)\n", img.Name, img.Source)
 			continue
 		}
 		filtered = append(filtered, img)
