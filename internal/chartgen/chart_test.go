@@ -9,6 +9,8 @@ import (
 	"github.com/verity-org/verity/internal/config"
 )
 
+const testPromRepo = "ghcr.io/verity-org/prom"
+
 func TestBuildWrapperChart(t *testing.T) {
 	original := config.ChartSpec{
 		Name:       "prometheus",
@@ -81,7 +83,7 @@ func TestBuildWrapperChartValues(t *testing.T) {
 			chartValues: nil,
 			overrides: []ValueOverride{{
 				Path:       "image",
-				Repository: "ghcr.io/verity-org/prom",
+				Repository: testPromRepo,
 				Tag:        "v3",
 			}},
 			assert: func(t *testing.T, values map[string]any) {
@@ -93,7 +95,7 @@ func TestBuildWrapperChartValues(t *testing.T) {
 				if !ok {
 					t.Fatalf("prometheus.image missing or invalid: %#v", prom["image"])
 				}
-				if image["repository"] != "ghcr.io/verity-org/prom" || image["tag"] != "v3" {
+				if image["repository"] != testPromRepo || image["tag"] != "v3" {
 					t.Fatalf("prometheus.image = %#v, want repository/tag override", image)
 				}
 			},
@@ -128,7 +130,7 @@ func TestBuildWrapperChartValues(t *testing.T) {
 			name:        "multiple overrides",
 			chartValues: nil,
 			overrides: []ValueOverride{
-				{Path: "image", Repository: "ghcr.io/verity-org/prom", Tag: "v3"},
+				{Path: "image", Repository: testPromRepo, Tag: "v3"},
 				{Path: "server.image", Repository: "ghcr.io/verity-org/prometheus", Tag: "v3.2.1"},
 			},
 			assert: func(t *testing.T, values map[string]any) {
@@ -148,7 +150,7 @@ func TestBuildWrapperChartValues(t *testing.T) {
 				if !ok {
 					t.Fatal("server.image missing")
 				}
-				if img["repository"] != "ghcr.io/verity-org/prom" || img["tag"] != "v3" {
+				if img["repository"] != testPromRepo || img["tag"] != "v3" {
 					t.Fatalf("prometheus.image = %#v, want override", img)
 				}
 				if serverImg["repository"] != "ghcr.io/verity-org/prometheus" || serverImg["tag"] != "v3.2.1" {
@@ -164,7 +166,7 @@ func TestBuildWrapperChartValues(t *testing.T) {
 			},
 			overrides: []ValueOverride{{
 				Path:       "image",
-				Repository: "ghcr.io/verity-org/prom",
+				Repository: testPromRepo,
 				Tag:        "v3",
 			}},
 			assert: func(t *testing.T, values map[string]any) {
@@ -184,7 +186,7 @@ func TestBuildWrapperChartValues(t *testing.T) {
 				if !ok {
 					t.Fatal("image missing")
 				}
-				if image["repository"] != "ghcr.io/verity-org/prom" || image["tag"] != "v3" {
+				if image["repository"] != testPromRepo || image["tag"] != "v3" {
 					t.Fatalf("prometheus.image = %#v, want override", image)
 				}
 			},
@@ -353,13 +355,13 @@ func TestBuildValuesTree(t *testing.T) {
 			name: "single path",
 			overrides: []ValueOverride{{
 				Path:       "image",
-				Repository: "ghcr.io/verity-org/prom",
+				Repository: testPromRepo,
 				Tag:        "v3",
 			}},
 			want: map[string]any{
 				"prometheus": map[string]any{
 					"image": map[string]any{
-						"repository": "ghcr.io/verity-org/prom",
+						"repository": testPromRepo,
 						"tag":        "v3",
 					},
 				},

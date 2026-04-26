@@ -24,20 +24,19 @@ type CopaConfig struct {
 // the rebuild stub at images/<name>.yaml and let --exclude-names handle
 // the chart-discovery skip.
 type VerityConfig struct {
-	Overrides           map[string]Override             `yaml:"overrides,omitempty"`
-	ChartValues         map[string]map[string]any       `yaml:"chartValues,omitempty"`
+	Overrides map[string]Override `yaml:"overrides,omitempty"`
+
+	// ChartValues injects per-chart scalar values into both helm template
+	// extraction and generated wrapper-chart values.yaml. Keys are
+	// dot-delimited Helm values paths (e.g. "grafana.enabled",
+	// "loki.useTestSchema"). Values must be scalar YAML types that Helm's
+	// --set / --set-string can represent (string, bool, int, float).
+	ChartValues map[string]map[string]any `yaml:"chartValues,omitempty"`
+
 	Replacements        map[string]Replacement          `yaml:"replacements,omitempty"`
 	ChartImageOverrides map[string][]ChartImageOverride `yaml:"chartImageOverrides,omitempty"`
 	UnpatchableImages   []string                        `yaml:"unpatchableImages,omitempty"`
 }
-
-// ChartValues injects per-chart scalar values into both helm template
-// extraction and generated wrapper-chart values.yaml.
-//
-// Keys are dot-delimited Helm values paths (for example
-// "grafana.enabled" or "testFramework.enabled"). Values must be scalar YAML
-// types that Helm's --set / --set-string can represent (string, bool, int,
-// float).
 
 // ChartImageOverride maps an operator-discovered image source to a wrapper
 // chart values path override.
