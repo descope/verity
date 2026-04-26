@@ -29,10 +29,13 @@ pipeline:
     with:
       packages: ./internal/cmd
       output: cert-manager-openshift-routes
+      # Symbol paths match the upstream Makefile (make/00_mod.mk:24):
+      #   go_manager_ldflags := -X $(repo_name)/pkg/internal/version.AppVersion=$(VERSION) \
+      #                         -X $(repo_name)/pkg/internal/version.GitCommit=$(GITCOMMIT)
       ldflags: |
         -s -w
-        -X github.com/cert-manager/openshift-routes/internal/cmd.version=v${{package.version}}
-        -X github.com/cert-manager/openshift-routes/internal/cmd.commit=9394c9e176032351f96120f23a6f2e94a1a34e0a
+        -X github.com/cert-manager/openshift-routes/pkg/internal/version.AppVersion=v${{package.version}}
+        -X github.com/cert-manager/openshift-routes/pkg/internal/version.GitCommit=9394c9e176032351f96120f23a6f2e94a1a34e0a
 
 test:
   pipeline:

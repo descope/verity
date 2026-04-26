@@ -90,7 +90,7 @@ _is_go_rebuild_failure() {
   #   - "no Go binaries detected ..."  → non-standard binary path (cockroach)
   #   - "no binaries were successfully rebuilt" → missing source repo per binary (mongodb tools)
   #   - "copa_discover_build.sh ... did not complete successfully" → go build crash (prom-config-reloader)
-  #   - 'exec "sh": executable file not found' → distroless image with no shell
+  #   - 'exec: "sh": executable file not found' → distroless image with no shell
   grep -qE 'go package upgrade operation failed|no go\.mod files detected|no Go binaries detected|no binaries were successfully rebuilt|copa_discover_build\.sh.*did not complete successfully|exec: "sh": executable file not found' "$PATCH_LOG"
 }
 

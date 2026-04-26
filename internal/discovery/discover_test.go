@@ -435,7 +435,7 @@ func TestDiscover_StandaloneOnly(t *testing.T) {
 		},
 	}
 
-	got, err := Discover(cfg, "", nil, nil)
+	got, err := Discover(cfg, "", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Discover() error = %v", err)
 	}
@@ -464,7 +464,7 @@ func TestDiscover_TargetRegistryOverride(t *testing.T) {
 		},
 	}
 
-	got, err := Discover(cfg, "ghcr.io/override-org", nil, nil)
+	got, err := Discover(cfg, "ghcr.io/override-org", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Discover() error = %v", err)
 	}
@@ -495,7 +495,7 @@ func TestDiscover_Deduplication(t *testing.T) {
 		},
 	}
 
-	got, err := Discover(cfg, "", nil, nil)
+	got, err := Discover(cfg, "", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Discover() error = %v", err)
 	}
@@ -527,7 +527,7 @@ func TestDiscover_ChartErrorContinues(t *testing.T) {
 		},
 	}
 
-	got, err := Discover(cfg, "", nil, nil)
+	got, err := Discover(cfg, "", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Discover() error = %v (should be nil even with chart failures)", err)
 	}
@@ -557,7 +557,7 @@ func TestDiscover_InvalidImageWarningContinues(t *testing.T) {
 		},
 	}
 
-	got, err := Discover(cfg, "", nil, nil)
+	got, err := Discover(cfg, "", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Discover() error = %v (should be nil even with image failures)", err)
 	}
@@ -613,7 +613,7 @@ YAML
 	// Exclude "prometheus" and "rabbitmq" — both should be filtered from chart images.
 	exclude := map[string]struct{}{"prometheus": {}, "rabbitmq": {}}
 
-	got, err := Discover(cfg, "", nil, exclude)
+	got, err := Discover(cfg, "", nil, exclude, nil)
 	if err != nil {
 		t.Fatalf("Discover() error = %v", err)
 	}
@@ -652,7 +652,7 @@ func TestDiscover_ExcludeNamesNil(t *testing.T) {
 		},
 	}
 
-	got, err := Discover(cfg, "", nil, nil)
+	got, err := Discover(cfg, "", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Discover() error = %v", err)
 	}
@@ -714,6 +714,18 @@ func TestIsExcluded(t *testing.T) {
 		},
 	}
 
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			exc := exclude
+			if tc.name == "nil exclude set" {
+				exc = nil
+			}
+			if got := isExcluded(&tc.img, exc); got != tc.want {
+				t.Errorf("isExcluded(%+v) = %v, want %v", tc.img, got, tc.want)
+			}
+		})
+	}
+
 	// Slash-to-hyphen flatten match: chart-discovered name "kyverno/background-controller"
 	// must match a Wolfi rebuild stub named "kyverno-background-controller". Without this
 	// normalization neither exact-match nor basename ("background-controller") would match.
@@ -736,16 +748,86 @@ func TestIsExcluded(t *testing.T) {
 			t.Errorf("isExcluded(%+v) = true, want false", img)
 		}
 	})
+}
+
+// Regression test for the review feedback that unpatchable entries from
+// verity.yaml were being merged into excludeNames and emitting the
+// "excluded via --exclude-names" log line, mis-attributing the source.
+// Discover() now takes unpatchable as a separate parameter and applies it
+// to BOTH standalone and chart-discovered images with a distinct skip path.
+func TestDiscover_UnpatchableStandalone(t *testing.T) {
+	cfg := &config.CopaConfig{
+		Target: config.TargetSpec{Registry: "ghcr.io/verity-org"},
+		Images: []config.ImageSpec{
+			{
+				Name:  "cert-manager/cert-manager-openshift-routes",
+				Image: "ghcr.io/cert-manager/cert-manager-openshift-routes",
+				Tags:  config.TagStrategy{Strategy: "list", List: []string{"v0.9.0"}},
+			},
+			{
+				Name:  testNginxName,
+				Image: "mirror.gcr.io/library/nginx",
+				Tags:  config.TagStrategy{Strategy: "list", List: []string{"1.25.3"}},
+			},
+		},
+	}
+
+	unpatchable := map[string]struct{}{
+		"cert-manager/cert-manager-openshift-routes": {},
+	}
+
+	got, err := Discover(cfg, "", nil, nil, unpatchable)
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	if len(got) != 1 || got[0].Name != testNginxName {
+		t.Errorf("Discover() returned %v, want only [{nginx}]; unpatchable standalone leaked through", got)
+	}
+}
+
+// isUnpatchable must NOT do basename or slash-flatten fallback — those are
+// reserved for the Wolfi-rebuild excludeNames path, which has different
+// semantics. A standalone "library/nginx" listed as "library/nginx" must not
+// be matched by an unpatchable entry "nginx".
+func TestIsUnpatchable_ExactMatchOnly(t *testing.T) {
+	tests := []struct {
+		name        string
+		imgName     string
+		unpatchable map[string]struct{}
+		want        bool
+	}{
+		{
+			name:        "exact match",
+			imgName:     "kyverno/cleanup-controller",
+			unpatchable: map[string]struct{}{"kyverno/cleanup-controller": {}},
+			want:        true,
+		},
+		{
+			name:        "basename does NOT match (unlike isExcluded)",
+			imgName:     "library/nginx",
+			unpatchable: map[string]struct{}{"nginx": {}},
+			want:        false,
+		},
+		{
+			name:        "slash-flatten does NOT match (unlike isExcluded)",
+			imgName:     "kyverno/cleanup-controller",
+			unpatchable: map[string]struct{}{"kyverno-cleanup-controller": {}},
+			want:        false,
+		},
+		{
+			name:        "nil set",
+			imgName:     "kyverno/cleanup-controller",
+			unpatchable: nil,
+			want:        false,
+		},
+	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			exc := exclude
-			if tc.name == "nil exclude set" {
-				exc = nil
-			}
-			got := isExcluded(&tc.img, exc)
-			if got != tc.want {
-				t.Errorf("isExcluded(%+v) = %v, want %v", tc.img, got, tc.want)
+			img := DiscoveredImage{Name: tc.imgName}
+			if got := isUnpatchable(&img, tc.unpatchable); got != tc.want {
+				t.Errorf("isUnpatchable(%q, %v) = %v, want %v", tc.imgName, tc.unpatchable, got, tc.want)
 			}
 		})
 	}

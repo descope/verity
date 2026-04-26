@@ -25,9 +25,23 @@ type DiscoveredImage struct {
 // Discover enumerates all image+tag combos from the config.
 // If targetRegistry is non-empty it overrides the config-level registry.
 // overrides substitutes tag variants for chart-sourced images (from verity.yaml).
-// excludeNames, when non-nil, causes chart-discovered images whose derived name
-// matches a key in the set to be skipped (used to avoid conflicts with Integer images).
-func Discover(cfg *config.CopaConfig, targetRegistry string, overrides map[string]config.Override, excludeNames map[string]struct{}) ([]DiscoveredImage, error) {
+//
+// Two independent skip sets, each with its own attribution in stderr logs:
+//
+//   - excludeNames: chart-only filter, used by the orchestrator to avoid
+//     re-patching chart images that already have an Integer/Wolfi rebuild
+//     stub at images/<name>.yaml. Logged as "excluded via --exclude-names".
+//
+//   - unpatchable: applies to BOTH standalone and chart-discovered images.
+//     Sourced from verity.yaml's unpatchableImages list — images we
+//     deliberately skip because they have no replacement we can patch
+//     (distroless without a rebuild, deprecated registry references, etc.).
+//     Logged as "in verity.yaml unpatchableImages" so operators can tell
+//     the two attribution paths apart.
+//
+// unpatchable is checked first; an image listed in both sets is skipped
+// with the unpatchable log line.
+func Discover(cfg *config.CopaConfig, targetRegistry string, overrides map[string]config.Override, excludeNames, unpatchable map[string]struct{}) ([]DiscoveredImage, error) {
 	registry := targetRegistry
 	if registry == "" {
 		registry = cfg.Target.Registry
@@ -43,6 +57,10 @@ func Discover(cfg *config.CopaConfig, targetRegistry string, overrides map[strin
 			continue
 		}
 		for _, img := range imgs {
+			if isUnpatchable(&img, unpatchable) {
+				fmt.Fprintf(os.Stderr, "Skipping standalone image %q: name %q in verity.yaml unpatchableImages\n", img.Source, img.Name)
+				continue
+			}
 			key := img.Name + "|" + img.Source
 			if _, exists := seen[key]; !exists {
 				seen[key] = struct{}{}
@@ -58,6 +76,10 @@ func Discover(cfg *config.CopaConfig, targetRegistry string, overrides map[strin
 			continue
 		}
 		for _, img := range imgs {
+			if isUnpatchable(&img, unpatchable) {
+				fmt.Fprintf(os.Stderr, "Skipping chart image %q: name %q in verity.yaml unpatchableImages\n", img.Source, img.Name)
+				continue
+			}
 			if isExcluded(&img, excludeNames) {
 				fmt.Fprintf(os.Stderr, "Skipping chart image %q: name %q excluded via --exclude-names\n", img.Source, img.Name)
 				continue
@@ -71,6 +93,18 @@ func Discover(cfg *config.CopaConfig, targetRegistry string, overrides map[strin
 	}
 
 	return results, nil
+}
+
+// isUnpatchable reports whether img.Name is an exact match for an entry in the
+// unpatchable set. Unlike isExcluded, this is exact-match only — no basename
+// or slash-flatten fallbacks — so verity.yaml entries express intent
+// unambiguously.
+func isUnpatchable(img *DiscoveredImage, unpatchable map[string]struct{}) bool {
+	if len(unpatchable) == 0 {
+		return false
+	}
+	_, ok := unpatchable[img.Name]
+	return ok
 }
 
 // isExcluded checks whether a chart-discovered image should be skipped.
