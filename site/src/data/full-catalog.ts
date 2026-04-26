@@ -219,7 +219,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "quay.io/strimzi/kafka",
       },
       { name: "nats", source: "integer" },
-      { name: "nats-server", source: "integer" },
       { name: "kafka", source: "integer" },
       {
         name: "library/zookeeper",
