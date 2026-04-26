@@ -120,7 +120,7 @@ func enforceStrict(strict bool, total, skipped int, chartsFile string) error {
 func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) (ChartResult, bool, error) {
 	fmt.Fprintf(os.Stderr, "info: processing chart %s@%s\n", chart.Name, chart.Version)
 
-	imageRefs, err := discovery.ExtractChartImages(chart, vc.Overrides)
+	imageRefs, err := discovery.ExtractChartImagesWithValues(chart, vc.Overrides, vc.ChartValues[chart.Name])
 	if err != nil {
 		return ChartResult{}, false, fmt.Errorf("extract images for chart %s: %w", chart.Name, err)
 	}
@@ -156,7 +156,7 @@ func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) 
 	}
 	valueOverrides = append(valueOverrides, chartImageOverrides...)
 
-	wrapper, err := BuildWrapperChart(chart, valueOverrides)
+	wrapper, err := BuildWrapperChart(chart, vc.ChartValues[chart.Name], valueOverrides)
 	if err != nil {
 		return ChartResult{}, false, fmt.Errorf("build wrapper chart for %s: %w", chart.Name, err)
 	}

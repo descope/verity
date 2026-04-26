@@ -2,8 +2,10 @@ package discovery
 
 import (
 	"errors"
+	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/verity-org/verity/internal/config"
@@ -93,7 +95,10 @@ func TestHelmTemplateArgs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := helmTemplateArgs(tc.chart)
+			got, err := helmTemplateArgs(tc.chart, nil)
+			if err != nil {
+				t.Fatalf("helmTemplateArgs() error = %v", err)
+			}
 			if len(got) != len(tc.want) {
 				t.Fatalf("helmTemplateArgs() = %v, want %v", got, tc.want)
 			}
@@ -412,4 +417,136 @@ data:
 			}
 		}
 	})
+}
+
+func TestHelmSetArgs(t *testing.T) {
+	cases := []struct {
+		name        string
+		chartValues map[string]any
+		want        []string
+		wantErr     error
+	}{
+		{
+			name:        "nil values yields nil args",
+			chartValues: nil,
+			want:        nil,
+		},
+		{
+			name: "string scalar uses --set-string with no escaping",
+			chartValues: map[string]any{
+				"name": "verity",
+			},
+			want: []string{"--set-string", "name=verity"},
+		},
+		{
+			name: "string scalar escapes commas, equals, and backslashes",
+			chartValues: map[string]any{
+				"name": `a,b=c\d`,
+			},
+			want: []string{"--set-string", `name=a\,b\=c\\d`},
+		},
+		{
+			name: "bool scalar uses --set",
+			chartValues: map[string]any{
+				"enabled": false,
+			},
+			want: []string{"--set", "enabled=false"},
+		},
+		{
+			name: "int scalar uses --set",
+			chartValues: map[string]any{
+				"replicas": 3,
+			},
+			want: []string{"--set", "replicas=3"},
+		},
+		{
+			name: "int64 scalar uses --set",
+			chartValues: map[string]any{
+				"replicas": int64(7),
+			},
+			want: []string{"--set", "replicas=7"},
+		},
+		{
+			name: "float64 scalar uses --set",
+			chartValues: map[string]any{
+				"resources.cpu": 1.5,
+			},
+			want: []string{"--set", "resources.cpu=1.5"},
+		},
+		{
+			name: "float64 NaN rejected",
+			chartValues: map[string]any{
+				"x": math.NaN(),
+			},
+			wantErr: ErrChartValueUnsupportedFloat,
+		},
+		{
+			name: "float64 +Inf rejected",
+			chartValues: map[string]any{
+				"x": math.Inf(1),
+			},
+			wantErr: ErrChartValueUnsupportedFloat,
+		},
+		{
+			name: "float32 NaN rejected (cubic review parity with float64)",
+			chartValues: map[string]any{
+				"x": float32(math.NaN()),
+			},
+			wantErr: ErrChartValueUnsupportedFloat,
+		},
+		{
+			name: "float32 -Inf rejected",
+			chartValues: map[string]any{
+				"x": float32(math.Inf(-1)),
+			},
+			wantErr: ErrChartValueUnsupportedFloat,
+		},
+		{
+			name: "nil value rejected",
+			chartValues: map[string]any{
+				"x": nil,
+			},
+			wantErr: ErrChartValueNil,
+		},
+		{
+			name: "map value rejected",
+			chartValues: map[string]any{
+				"x": map[string]any{"y": 1},
+			},
+			wantErr: ErrChartValueUnsupportedType,
+		},
+		{
+			name: "deterministic key ordering",
+			chartValues: map[string]any{
+				"b": "two",
+				"a": "one",
+				"c": "three",
+			},
+			want: []string{
+				"--set-string", "a=one",
+				"--set-string", "b=two",
+				"--set-string", "c=three",
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := helmSetArgs(tc.chartValues)
+			if tc.wantErr != nil {
+				if err == nil {
+					t.Fatalf("helmSetArgs() error = nil, want %v", tc.wantErr)
+				}
+				if !errors.Is(err, tc.wantErr) {
+					t.Errorf("helmSetArgs() error = %v, want chain to include %v", err, tc.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("helmSetArgs() unexpected error = %v", err)
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("helmSetArgs() = %v, want %v", got, tc.want)
+			}
+		})
+	}
 }

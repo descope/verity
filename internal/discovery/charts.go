@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os/exec"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,24 +19,58 @@ import (
 	"github.com/verity-org/verity/internal/config"
 )
 
-// Sentinel errors for chart spec validation.
+// Sentinel errors for chart spec validation and chart-value coercion.
 var (
 	ErrInvalidChartName    = errors.New("chart name must not start with '-'")
 	ErrInvalidChartVersion = errors.New("chart version must not start with '-'")
 	ErrInvalidChartRepo    = errors.New("chart repository must start with oci://, https://, or http://")
-	imageTagPattern        = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
-	imageDigestPattern     = regexp.MustCompile(`^sha256:[a-f0-9]{64}$`)
-	imageNamePattern       = regexp.MustCompile(`^[A-Za-z0-9._:-]+(?:/[A-Za-z0-9._-]+)+$`)
+
+	// ErrChartValueUnsupportedFloat is wrapped when a chartValues entry
+	// resolves to NaN or +/-Inf, which cannot be represented as a Helm
+	// --set value.
+	ErrChartValueUnsupportedFloat = errors.New("unsupported non-finite float in chart value")
+
+	// ErrChartValueNil is wrapped when a chartValues entry resolves to
+	// the YAML null literal — Helm's --set has no scalar representation
+	// for nil, so the user must either drop the key or pass an empty
+	// string.
+	ErrChartValueNil = errors.New("chart value is nil")
+
+	// ErrChartValueUnsupportedType is wrapped when a chartValues entry
+	// is a complex type (slice/map/struct) instead of one of the scalar
+	// types Helm's --set / --set-string accept.
+	ErrChartValueUnsupportedType = errors.New("chart value type is unsupported (use scalar string/bool/number)")
+
+	imageTagPattern    = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
+	imageDigestPattern = regexp.MustCompile(`^sha256:[a-f0-9]{64}$`)
+	imageNamePattern   = regexp.MustCompile(`^[A-Za-z0-9._:-]+(?:/[A-Za-z0-9._-]+)+$`)
 )
+
+// helmSetFlag is the helm CLI flag for non-string scalar values.
+const helmSetFlag = "--set"
+
+// helmSetStringFlag is the helm CLI flag for string values, avoiding the
+// type coercion that --set applies (e.g. "false" parsed as bool).
+const helmSetStringFlag = "--set-string"
 
 // ExtractChartImages runs helm template for a chart and returns all unique image references found.
 // Overrides are applied to substitute tag variants (e.g., distroless-libc → debian).
 func ExtractChartImages(chart config.ChartSpec, overrides map[string]config.Override) ([]string, error) {
+	return ExtractChartImagesWithValues(chart, overrides, nil)
+}
+
+// ExtractChartImagesWithValues runs helm template for a chart using optional
+// scalar value overrides and returns all unique image references found.
+// Overrides are applied to substitute tag variants (e.g., distroless-libc → debian).
+func ExtractChartImagesWithValues(chart config.ChartSpec, overrides map[string]config.Override, chartValues map[string]any) ([]string, error) {
 	if err := ValidateChartSpec(chart); err != nil {
 		return nil, err
 	}
 
-	args := helmTemplateArgs(chart)
+	args, err := helmTemplateArgs(chart, chartValues)
+	if err != nil {
+		return nil, fmt.Errorf("build helm template args for %s: %w", chart.Name, err)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "helm", args...)
@@ -60,20 +96,92 @@ func ExtractChartImages(chart config.ChartSpec, overrides map[string]config.Over
 }
 
 // helmTemplateArgs builds the helm template argument list for a chart spec.
-func helmTemplateArgs(chart config.ChartSpec) []string {
+
+func helmTemplateArgs(chart config.ChartSpec, chartValues map[string]any) ([]string, error) {
+	args := make([]string, 0, 7+2*len(chartValues))
 	if strings.HasPrefix(chart.Repository, "oci://") {
 		// OCI registry: helm template <name> <oci-repo>/<name> --version <ver>
-		return []string{
+		args = append(args,
 			"template", chart.Name,
-			chart.Repository + "/" + chart.Name,
+			chart.Repository+"/"+chart.Name,
 			"--version", chart.Version,
-		}
+		)
+	} else {
+		// HTTP repository: helm template <name> <name> --repo <url> --version <ver>
+		args = append(args,
+			"template", chart.Name, chart.Name,
+			"--repo", chart.Repository,
+			"--version", chart.Version,
+		)
 	}
-	// HTTP repository: helm template <name> <name> --repo <url> --version <ver>
-	return []string{
-		"template", chart.Name, chart.Name,
-		"--repo", chart.Repository,
-		"--version", chart.Version,
+
+	setArgs, err := helmSetArgs(chartValues)
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, setArgs...)
+	return args, nil
+}
+
+func helmSetArgs(chartValues map[string]any) ([]string, error) {
+	if len(chartValues) == 0 {
+		return nil, nil
+	}
+
+	keys := make([]string, 0, len(chartValues))
+	for key := range chartValues {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	args := make([]string, 0, len(keys)*2)
+	for _, key := range keys {
+		flag, encoded, err := helmSetPair(key, chartValues[key])
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, flag, key+"="+encoded)
+	}
+	return args, nil
+}
+
+// escapeHelmSetValue escapes characters that Helm's --set / --set-string
+// strvals parser treats as structural separators. Specifically: backslash
+// (so it doesn't confuse later replacements), comma (separates list items),
+// and equals (separates key from value at the top level).
+func escapeHelmSetValue(v string) string {
+	v = strings.ReplaceAll(v, `\`, `\\`)
+	v = strings.ReplaceAll(v, ",", `\,`)
+	v = strings.ReplaceAll(v, "=", `\=`)
+	return v
+}
+
+func helmSetPair(path string, value any) (flag, encoded string, err error) {
+	switch v := value.(type) {
+	case string:
+		return helmSetStringFlag, escapeHelmSetValue(v), nil
+	case bool:
+		return helmSetFlag, strconv.FormatBool(v), nil
+	case int:
+		return helmSetFlag, strconv.Itoa(v), nil
+	case int8, int16, int32, int64,
+		uint, uint8, uint16, uint32, uint64:
+		return helmSetFlag, fmt.Sprintf("%v", v), nil
+	case float32:
+		f := float64(v)
+		if math.IsNaN(f) || math.IsInf(f, 0) {
+			return "", "", fmt.Errorf("%w: %q=%v", ErrChartValueUnsupportedFloat, path, v)
+		}
+		return helmSetFlag, strconv.FormatFloat(f, 'f', -1, 32), nil
+	case float64:
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return "", "", fmt.Errorf("%w: %q=%v", ErrChartValueUnsupportedFloat, path, v)
+		}
+		return helmSetFlag, strconv.FormatFloat(v, 'f', -1, 64), nil
+	case nil:
+		return "", "", fmt.Errorf("%w: %q", ErrChartValueNil, path)
+	default:
+		return "", "", fmt.Errorf("%w: %q has type %T", ErrChartValueUnsupportedType, path, value)
 	}
 }
 

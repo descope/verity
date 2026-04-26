@@ -12,6 +12,41 @@ overrides:
     to: "debian"
     valuePath: "image"  # explicit hint for chart-gen value path resolution
 
+# Per-chart values injected both during helm template image discovery and into
+# generated wrapper-chart values.yaml defaults.
+chartValues:
+  # grafana chart 10.5.15 otherwise renders a bats test pod. Disable it so the
+  # wrapper only needs to route the primary Grafana workload image.
+  grafana:
+    testFramework.enabled: false
+
+  # loki 7.0.0 requires explicit test schema + bucket names to render, and its
+  # default gateway/caches add unpatchable auxiliary images. Keep a minimal
+  # runtime: Loki + already-Copa-backed kiwigrid sidecar.
+  loki:
+    loki.storage.bucketNames.admin: admin
+    loki.storage.bucketNames.chunks: chunks
+    loki.storage.bucketNames.ruler: ruler
+    loki.useTestSchema: true
+    test.enabled: false
+    lokiCanary.enabled: false
+    gateway.enabled: false
+    chunksCache.enabled: false
+    resultsCache.enabled: false
+
+  # mimir-distributed 6.0.6 can render as a single-image runtime if we turn off
+  # optional bundled infra components (MinIO, Kafka, nginx gateway, rollout-operator).
+  mimir-distributed:
+    gateway.enabled: false
+    kafka.enabled: false
+    minio.enabled: false
+    rollout_operator.enabled: false
+
+  # tempo-distributed 1.61.3 defaults to a separate Memcached statefulset; the
+  # minimal CI-friendly wrapper just runs the Tempo microservices themselves.
+  tempo-distributed:
+    memcached.enabled: false
+
 # Image replacements for chart-gen.
 # Maps upstream image path patterns to Verity Integer (Wolfi) images.
 # When chart-gen discovers a chart image matching the key, it generates
@@ -21,9 +56,32 @@ replacements:
   "kube-state-metrics/kube-state-metrics":
     registry: "ghcr.io/verity-org"
     image: "kube-state-metrics"
+    tag: "2.18.0"
   "prometheus/pushgateway":
     registry: "ghcr.io/verity-org"
     image: "pushgateway"
+
+  # Observability wave 2. The prometheus chart was dropped from this PR
+  # (kube-prometheus-stack rendered images for jkroepke/kube-webhook-certgen
+  # and prometheus-operator/prometheus-operator without Verity coverage), so
+  # we add no replacements for prometheus/prometheus or prometheus/alertmanager
+  # here — the existing prometheus chart's wrapper falls through to crane.
+  "grafana/grafana":
+    registry: "ghcr.io/verity-org"
+    image: "grafana"
+    tag: "12.3"
+  "grafana/loki":
+    registry: "ghcr.io/verity-org"
+    image: "loki"
+    tag: "3.6"
+  "grafana/mimir":
+    registry: "ghcr.io/verity-org"
+    image: "mimir"
+    tag: "3.0"
+  "grafana/tempo":
+    registry: "ghcr.io/verity-org"
+    image: "tempo"
+    tag: "2"
 
   # kyverno chart (3.7.2). Chart renders images under
   # `reg.kyverno.io/kyverno/*` (Kyverno's pull-through mirror); repoPath
