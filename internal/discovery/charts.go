@@ -132,9 +132,11 @@ func walkNode(node any, seen map[string]struct{}, result *[]string) {
 		if args, ok := v["args"].([]any); ok {
 			collectArgImages(args, seen, result)
 		}
-		if kind, _ := v["kind"].(string); kind == "ConfigMap" {
-			if data, ok := v["data"].(map[string]any); ok {
-				collectConfigMapImages(data, seen, result)
+		if rawKind, ok := v["kind"]; ok {
+			if kind, ok := rawKind.(string); ok && kind == "ConfigMap" {
+				if data, ok := v["data"].(map[string]any); ok {
+					collectConfigMapImages(data, seen, result)
+				}
 			}
 		}
 		for _, val := range v {
@@ -154,9 +156,21 @@ func collectEnvImages(env []any, seen map[string]struct{}, result *[]string) {
 			continue
 		}
 
-		name, _ := entry["name"].(string)
-		value, _ := entry["value"].(string)
-		if !isImageEnvName(name) {
+		rawName, ok := entry["name"]
+		if !ok {
+			continue
+		}
+		name, ok := rawName.(string)
+		if !ok || !isImageEnvName(name) {
+			continue
+		}
+
+		rawValue, ok := entry["value"]
+		if !ok {
+			continue
+		}
+		value, ok := rawValue.(string)
+		if !ok {
 			continue
 		}
 
@@ -186,7 +200,7 @@ func collectArgImages(args []any, seen map[string]struct{}, result *[]string) {
 			continue
 		}
 
-		for _, piece := range strings.Fields(arg) {
+		for piece := range strings.FieldsSeq(arg) {
 			candidate := piece
 			if idx := strings.LastIndex(candidate, "="); idx >= 0 {
 				candidate = candidate[idx+1:]
@@ -214,7 +228,7 @@ func isImageEnvName(name string) bool {
 
 func extractImageValues(value string) []string {
 	var images []string
-	for _, line := range strings.Split(value, "\n") {
+	for line := range strings.SplitSeq(value, "\n") {
 		candidate := strings.TrimSpace(line)
 		if candidate == "" {
 			continue
