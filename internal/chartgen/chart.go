@@ -148,6 +148,10 @@ func buildValuesTree(chartName string, overrides []ValueOverride) map[string]any
 			}
 
 			if i == len(parts)-1 {
+				if override.Value != "" {
+					current[part] = override.Value
+					break
+				}
 				current[part] = map[string]any{
 					"repository": override.Repository,
 					"tag":        override.Tag,

@@ -143,6 +143,12 @@ func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) 
 		return ChartResult{}, false, fmt.Errorf("resolve value paths for %s: %w", chart.Name, err)
 	}
 
+	chartImageOverrides, err := buildChartImageOverrides(chart.Name, allMappings, vc)
+	if err != nil {
+		return ChartResult{}, false, fmt.Errorf("build chart image overrides for %s: %w", chart.Name, err)
+	}
+	valueOverrides = append(valueOverrides, chartImageOverrides...)
+
 	wrapper, err := BuildWrapperChart(chart, valueOverrides)
 	if err != nil {
 		return ChartResult{}, false, fmt.Errorf("build wrapper chart for %s: %w", chart.Name, err)
@@ -258,4 +264,46 @@ func applyReplacements(imageRefs []string, vc *config.VerityConfig, excludeNames
 	}
 
 	return remaining, replacements
+}
+
+func buildChartImageOverrides(chartName string, mappings []ImageMapping, vc *config.VerityConfig) ([]ValueOverride, error) {
+	if vc == nil {
+		return nil, nil
+	}
+
+	chartOverrides := vc.ChartImageOverrides[chartName]
+	if len(chartOverrides) == 0 {
+		return nil, nil
+	}
+
+	result := make([]ValueOverride, 0, len(chartOverrides))
+	for _, mapping := range mappings {
+		for _, override := range chartOverrides {
+			if mapping.Source != override.Source {
+				continue
+			}
+
+			overrideType := override.Type
+			if overrideType == "" {
+				overrideType = "single"
+			}
+			if overrideType != "single" {
+				return nil, fmt.Errorf("unsupported chartImageOverrides type %q for source %q", override.Type, override.Source)
+			}
+
+			result = append(result, ValueOverride{
+				Path:  override.Path,
+				Value: patchedImageRef(mapping),
+			})
+		}
+	}
+
+	return result, nil
+}
+
+func patchedImageRef(mapping ImageMapping) string {
+	if mapping.PatchedTag == "" {
+		return mapping.PatchedRepo
+	}
+	return mapping.PatchedRepo + ":" + mapping.PatchedTag
 }
