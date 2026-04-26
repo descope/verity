@@ -209,7 +209,7 @@ func TestIsExcluded(t *testing.T) {
 			if tc.name == "nil exclude set" {
 				exc = nil
 			}
-			got := isExcluded(tc.imgName, tc.imageRef, exc)
+			got := isExcluded(tc.imgName, exc)
 			if got != tc.want {
 				t.Errorf("isExcluded(%q, %q) = %v, want %v", tc.imgName, tc.imageRef, got, tc.want)
 			}

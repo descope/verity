@@ -197,7 +197,7 @@ func splitOverridePath(path string) []string {
 		current.Reset()
 	}
 
-	for i := 0; i < len(path); i++ {
+	for i := range len(path) {
 		ch := path[i]
 		if inBracket {
 			if quote != 0 {
