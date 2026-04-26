@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.69.3"
   },
-  "ReportID": "019d817b-5d93-7d40-b4ed-735ee8f05f18",
-  "CreatedAt": "2026-04-12T11:37:18.995869687Z",
+  "ReportID": "019dca8f-c948-710b-b229-20976dacb0a8",
+  "CreatedAt": "2026-04-26T16:11:54.056069976Z",
   "ArtifactID": "sha256:d50bbb42eb72563a68bf96774e83b6a937f8397c8c508463a2bf433817d0dc73",
   "ArtifactName": "ghcr.io/verity-org/cache:prometheus-operator-prometheus-config-reloader-v0.90.0",
   "ArtifactType": "container_image",
@@ -1842,6 +1842,69 @@
             "DiffID": "sha256:e9188f2b17ade67d521db29ad4d466bb92bae0c8e6215dcf0df67f47b9e8c465"
           },
           "AnalyzedBy": "gobinary"
+        }
+      ],
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2026-40179",
+          "VendorIDs": [
+            "GHSA-vffh-x6r8-xx99"
+          ],
+          "PkgID": "github.com/prometheus/prometheus@v0.310.0",
+          "PkgName": "github.com/prometheus/prometheus",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/github.com/prometheus/prometheus@v0.310.0",
+            "UID": "a3061baab692c876"
+          },
+          "InstalledVersion": "v0.310.0",
+          "FixedVersion": "0.311.2-0.20260410083055-07c6232d159b",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:3540f39d5e40def8ba068e096209cd7645ce31836073ae53a9ef3ecb44a61ca5",
+            "DiffID": "sha256:e9188f2b17ade67d521db29ad4d466bb92bae0c8e6215dcf0df67f47b9e8c465"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-40179",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Go",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
+          },
+          "Fingerprint": "sha256:38067ccb68a0c77527f7f160f5013a5d973d7c3e5e8ce2ec4cb20dfd478be3a2",
+          "Title": "Prometheus has Stored XSS via metric names and label values in Prometheus web UI tooltips and metrics explorer",
+          "Description": "Prometheus is an open-source monitoring system and time series database. Versions 3.0 through 3.5.1 and 3.6.0 through 3.11.1 have stored cross-site scripting vulnerabilities in multiple components of the Prometheus web UI where metric names and label values are injected into innerHTML without escaping. In both the Mantine UI and old React UI, chart tooltips on the Graph page render metric names containing HTML/JavaScript without sanitization. In the old React UI, the Metric Explorer fuzzy search results use dangerouslySetInnerHTML without escaping, and heatmap cell tooltips interpolate le label values without sanitization. With Prometheus v3.x defaulting to UTF-8 metric and label name validation, characters like \u003c, \u003e, and \" are now valid in metric names and labels. An attacker who can inject metrics via a compromised scrape target, remote write, or OTLP receiver endpoint can execute arbitrary JavaScript in the browser of any Prometheus user who views the metric in the Graph UI, potentially enabling configuration exfiltration, data deletion, or Prometheus shutdown depending on enabled flags. This issue has been fixed in versions 3.5.2 and 3.11.2. If developers are unable to immediately update, the following workarounds are recommended: ensure that the remote write receiver (--web.enable-remote-write-receiver) and the OTLP receiver (--web.enable-otlp-receiver) are not exposed to untrusted sources; verify that all scrape targets are trusted and not under attacker control; avoid enabling admin or mutating API endpoints (e.g., --web.enable-admin-api or --web.enable-lifecycle) in environments where untrusted data may be ingested; and refrain from clicking untrusted links, particularly those containing functions such as label_replace, as they may generate poisoned label names and values.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-79"
+          ],
+          "VendorSeverity": {
+            "bitnami": 2,
+            "ghsa": 2,
+            "nvd": 2
+          },
+          "CVSS": {
+            "bitnami": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:N/VI:N/VA:N/SC:L/SI:L/SA:N",
+              "V40Score": 5.3
+            },
+            "ghsa": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:N/VI:N/VA:N/SC:L/SI:L/SA:N",
+              "V40Score": 5.3
+            },
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+              "V3Score": 6.1
+            }
+          },
+          "References": [
+            "https://github.com/prometheus/prometheus",
+            "https://github.com/prometheus/prometheus/commit/07c6232d159bfb474a077788be184d87adcfac3c",
+            "https://github.com/prometheus/prometheus/pull/18506",
+            "https://github.com/prometheus/prometheus/security/advisories/GHSA-vffh-x6r8-xx99",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-40179"
+          ],
+          "PublishedDate": "2026-04-15T23:16:09.87Z",
+          "LastModifiedDate": "2026-04-22T20:04:15.1Z"
         }
       ]
     }
