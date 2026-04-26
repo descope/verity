@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: strimzi-cluster-operator
+spec:
+  template:
+    spec:
+      containers:
+        - name: strimzi-cluster-operator
+          image: quay.io/strimzi/operator:0.51.0
+          env:
+            - name: STRIMZI_DEFAULT_KAFKA_EXPORTER_IMAGE
+              value: quay.io/strimzi/kafka:0.51.0-kafka-4.2.0
+            - name: STRIMZI_DEFAULT_CRUISE_CONTROL_IMAGE
+              value: quay.io/strimzi/kafka:0.51.0-kafka-4.2.0
+            - name: STRIMZI_KAFKA_IMAGES
+              value: |
+                4.1.0=quay.io/strimzi/kafka:0.51.0-kafka-4.1.0
+                4.1.1=quay.io/strimzi/kafka:0.51.0-kafka-4.1.1
+                4.2.0=quay.io/strimzi/kafka:0.51.0-kafka-4.2.0
+            - name: STRIMZI_DEFAULT_TOPIC_OPERATOR_IMAGE
+              value: quay.io/strimzi/operator:0.51.0
+            - name: STRIMZI_DEFAULT_USER_OPERATOR_IMAGE
+              value: quay.io/strimzi/operator:0.51.0
+            - name: STRIMZI_DEFAULT_KAFKA_INIT_IMAGE
+              value: quay.io/strimzi/operator:0.51.0
+            - name: STRIMZI_DEFAULT_KAFKA_BRIDGE_IMAGE
+              value: quay.io/strimzi/kafka-bridge:0.33.1
+            - name: STRIMZI_DEFAULT_KANIKO_EXECUTOR_IMAGE
+              value: quay.io/strimzi/kaniko-executor:0.51.0
+            - name: STRIMZI_DEFAULT_BUILDAH_IMAGE
+              value: quay.io/strimzi/buildah:0.51.0
+            - name: STRIMZI_DEFAULT_MAVEN_BUILDER
+              value: quay.io/strimzi/maven-builder:0.51.0
