@@ -125,6 +125,14 @@ func walkNode(node any, seen map[string]struct{}, result *[]string) {
 		if env, ok := v["env"].([]any); ok {
 			collectEnvImages(env, seen, result)
 		}
+		if args, ok := v["args"].([]any); ok {
+			collectArgImages(args, seen, result)
+		}
+		if kind, _ := v["kind"].(string); kind == "ConfigMap" {
+			if data, ok := v["data"].(map[string]any); ok {
+				collectConfigMapImages(data, seen, result)
+			}
+		}
 		for _, val := range v {
 			walkNode(val, seen, result)
 		}
@@ -144,11 +152,45 @@ func collectEnvImages(env []any, seen map[string]struct{}, result *[]string) {
 
 		name, _ := entry["name"].(string)
 		value, _ := entry["value"].(string)
-		if !isImageEnvName(name) || !looksLikeImageRef(value) {
+		if !isImageEnvName(name) {
 			continue
 		}
 
-		addImage(value, seen, result)
+		for _, image := range extractImageValues(value) {
+			addImage(image, seen, result)
+		}
+	}
+}
+
+func collectConfigMapImages(data map[string]any, seen map[string]struct{}, result *[]string) {
+	for key, raw := range data {
+		value, ok := raw.(string)
+		if !ok || !isImageEnvName(key) {
+			continue
+		}
+
+		for _, image := range extractImageValues(value) {
+			addImage(image, seen, result)
+		}
+	}
+}
+
+func collectArgImages(args []any, seen map[string]struct{}, result *[]string) {
+	for _, item := range args {
+		arg, ok := item.(string)
+		if !ok {
+			continue
+		}
+
+		for _, piece := range strings.Fields(arg) {
+			candidate := piece
+			if idx := strings.LastIndex(candidate, "="); idx >= 0 {
+				candidate = candidate[idx+1:]
+			}
+			for _, image := range extractImageValues(candidate) {
+				addImage(image, seen, result)
+			}
+		}
 	}
 }
 
@@ -166,8 +208,25 @@ func isImageEnvName(name string) bool {
 	return strings.Contains(upper, "_IMAGE") || upper == "STRIMZI_DEFAULT_MAVEN_BUILDER"
 }
 
+func extractImageValues(value string) []string {
+	var images []string
+	for _, line := range strings.Split(value, "\n") {
+		candidate := strings.TrimSpace(line)
+		if candidate == "" {
+			continue
+		}
+		if idx := strings.Index(candidate, "="); idx >= 0 {
+			candidate = strings.TrimSpace(candidate[idx+1:])
+		}
+		if looksLikeImageRef(candidate) {
+			images = append(images, candidate)
+		}
+	}
+	return images
+}
+
 func looksLikeImageRef(value string) bool {
-	if strings.Contains(value, " ") {
+	if strings.TrimSpace(value) == "" || strings.ContainsAny(value, " \t\r\n") {
 		return false
 	}
 
