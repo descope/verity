@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -21,6 +22,9 @@ var (
 	ErrInvalidChartName    = errors.New("chart name must not start with '-'")
 	ErrInvalidChartVersion = errors.New("chart version must not start with '-'")
 	ErrInvalidChartRepo    = errors.New("chart repository must start with oci://, https://, or http://")
+	imageTagPattern        = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
+	imageDigestPattern     = regexp.MustCompile(`^sha256:[a-f0-9]{64}$`)
+	imageNamePattern       = regexp.MustCompile(`^[A-Za-z0-9._:-]+(?:/[A-Za-z0-9._-]+)+$`)
 )
 
 // ExtractChartImages runs helm template for a chart and returns all unique image references found.
@@ -229,9 +233,37 @@ func looksLikeImageRef(value string) bool {
 	if strings.TrimSpace(value) == "" || strings.ContainsAny(value, " \t\r\n") {
 		return false
 	}
+	if strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://") {
+		return false
+	}
 
-	name, tag := splitRef(value)
-	return name != "" && strings.Contains(name, "/") && tag != ""
+	base := value
+	if at := strings.Index(base, "@"); at >= 0 {
+		digest := base[at+1:]
+		if !imageDigestPattern.MatchString(digest) {
+			return false
+		}
+		base = base[:at]
+	}
+
+	lastColon := strings.LastIndex(base, ":")
+	if lastColon < 0 {
+		return false
+	}
+
+	name := base[:lastColon]
+	tag := base[lastColon+1:]
+	if !imageTagPattern.MatchString(tag) {
+		return false
+	}
+	if strings.HasPrefix(name, "/") || !strings.Contains(name, "/") {
+		return false
+	}
+	if !imageNamePattern.MatchString(name) {
+		return false
+	}
+
+	return true
 }
 
 // applyOverride substitutes a tag variant in an image reference using the overrides map.
