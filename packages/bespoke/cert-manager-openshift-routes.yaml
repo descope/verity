@@ -1,0 +1,43 @@
+package:
+  name: cert-manager-openshift-routes
+  version: "0.9.0"
+  epoch: 0
+  description: cert-manager OpenShift route certificate controller
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/cert-manager/openshift-routes
+      tag: v${{package.version}}
+      expected-commit: 9394c9e176032351f96120f23a6f2e94a1a34e0a
+
+  - uses: go/build
+    with:
+      packages: ./internal/cmd
+      output: cert-manager-openshift-routes
+      # Symbol paths match the upstream Makefile (make/00_mod.mk:24):
+      #   go_manager_ldflags := -X $(repo_name)/pkg/internal/version.AppVersion=$(VERSION) \
+      #                         -X $(repo_name)/pkg/internal/version.GitCommit=$(GITCOMMIT)
+      ldflags: |
+        -s -w
+        -X github.com/cert-manager/openshift-routes/pkg/internal/version.AppVersion=v${{package.version}}
+        -X github.com/cert-manager/openshift-routes/pkg/internal/version.GitCommit=9394c9e176032351f96120f23a6f2e94a1a34e0a
+
+test:
+  pipeline:
+    - runs: |
+        cert-manager-openshift-routes --help

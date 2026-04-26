@@ -27,8 +27,10 @@ replacements:
 
   # kyverno chart (3.7.2). Chart renders images under
   # `reg.kyverno.io/kyverno/*` (Kyverno's pull-through mirror); repoPath
-  # strips the host so keys match `kyverno/<name>`. kyvernopre runs the
-  # same kyverno binary and maps to the same Integer image.
+  # strips the host so keys match `kyverno/<name>`. The cleanup-controller,
+  # readiness-checker, and kyvernopre binaries each ship as their own
+  # subpackage of the upstream Wolfi `kyverno-1.17` recipe (kyvernopre's
+  # subpackage is named `kyverno-init-container-1.17`).
   "kyverno/kyverno":
     registry: "ghcr.io/verity-org"
     image: "kyverno"
@@ -38,6 +40,15 @@ replacements:
   "kyverno/reports-controller":
     registry: "ghcr.io/verity-org"
     image: "kyverno-reports-controller"
+  "kyverno/cleanup-controller":
+    registry: "ghcr.io/verity-org"
+    image: "kyverno-cleanup-controller"
+  "kyverno/readiness-checker":
+    registry: "ghcr.io/verity-org"
+    image: "kyverno-readiness-checker"
+  "kyverno/kyvernopre":
+    registry: "ghcr.io/verity-org"
+    image: "kyverno-kyvernopre"
   "kyverno/kyverno-cli":
     registry: "ghcr.io/verity-org"
     image: "kyverno-cli"
@@ -69,3 +80,17 @@ replacements:
   "zalando/postgres-operator":
     registry: "ghcr.io/verity-org"
     image: "postgres-operator"
+
+# Images the orchestrator should skip entirely, regardless of source
+# (standalone copa-config.yaml entry OR chart-discovered). Reserve this
+# list for images that have NO Wolfi/Integer rebuild AND no replacement
+# we control. Distroless images for which a rebuild exists are handled
+# automatically via the images/*.yaml exclude path.
+# Format: post-repoPath name (registry stripped, no tag).
+unpatchableImages:
+  # argo-cd values.yaml hard-codes
+  # repository: ecr-public.aws.com/docker/library/redis (a non-standard
+  # ECR Public alias). We migrated the rest of the pipeline to valkey in
+  # #227 but argo-cd still references redis upstream. Skipping the patch
+  # is correct — chart-gen handles wrapper-chart routing separately.
+  - "docker/library/redis"

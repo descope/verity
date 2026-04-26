@@ -16,7 +16,11 @@ set -euo pipefail
 #                  resolution; the replace directive is dropped once
 #                  upstream copa PR #1546 merges). The retry branch below
 #                  handles the residual case where the Go rebuild still
-#                  fails, falling back to OS-only patches.
+#                  fails, falling back to OS-only patches. The retry also
+#                  triggers when the patch log shows a Go-rebuild failure
+#                  even if GO_VCS_URL was not set (e.g. cockroachdb's
+#                  /cockroach/cockroach binary is at a non-standard path
+#                  copa's discovery doesn't walk).
 
 : "${PLATFORM:?PLATFORM is required}"
 : "${SOURCE:?SOURCE is required}"
@@ -79,17 +83,35 @@ fi
 PATCH_EXIT=${PIPESTATUS[0]}
 set -e
 
+_is_go_rebuild_failure() {
+  # Pattern set covers every "go package upgrade operation failed" terminal
+  # state copa surfaces today:
+  #   - "no go.mod files detected ..." → distroless probe (kyverno, cert-mgr)
+  #   - "no Go binaries detected ..."  → non-standard binary path (cockroach)
+  #   - "no binaries were successfully rebuilt" → missing source repo per binary (mongodb tools)
+  #   - "copa_discover_build.sh ... did not complete successfully" → go build crash (prom-config-reloader)
+  #   - 'exec: "sh": executable file not found' → distroless image with no shell
+  grep -qE 'go package upgrade operation failed|no go\.mod files detected|no Go binaries detected|no binaries were successfully rebuilt|copa_discover_build\.sh.*did not complete successfully|exec: "sh": executable file not found' "$PATCH_LOG"
+}
+
 if [ "$PATCH_EXIT" -ne 0 ]; then
   if grep -q 'no package updates found' "$PATCH_LOG"; then
     echo "No package updates found — image is already clean"
-  elif [ -n "${GO_VCS_URL:-}" ]; then
-    # The retry branch only triggers when GO_VCS_URL is set because that
-    # flag marks catalog entries with a rebuildable Go binary — i.e., the
-    # images most likely to fail on the Go-rebuild code path. When the
-    # initial --pkg-types os,library attempt fails on such an image, we
-    # retry with --pkg-types os to drop language managers entirely: OS
-    # CVEs still get patched; Go/library CVEs remain unfixed for this run.
-    echo "::warning::Patch failed for Go-rebuild image, retrying with OS-only patches"
+  elif [ -n "${GO_VCS_URL:-}" ] || _is_go_rebuild_failure; then
+    # Retry triggers in two cases:
+    #   1. GO_VCS_URL was set (catalog entry expects a rebuildable Go binary).
+    #   2. The patch log shows a Go-rebuild failure pattern even without
+    #      GO_VCS_URL (e.g. cockroach's non-standard binary path, mongo-tools
+    #      stripped without buildinfo, prom-config-reloader's discover-build
+    #      script crashing on a real go build error).
+    # In both cases we retry with --pkg-types os to drop language managers
+    # entirely: OS CVEs still get patched; Go/library CVEs remain unfixed
+    # for this run and surface in the next preflight scan.
+    if [ -n "${GO_VCS_URL:-}" ]; then
+      echo "::warning::Patch failed for Go-rebuild image, retrying with OS-only patches"
+    else
+      echo "::warning::Patch hit a Go-rebuild failure (no GO_VCS_URL set); retrying with OS-only patches"
+    fi
     RETRY_ARGS=(
       --image "$SOURCE"
       --tag "$PLATFORM_TAG"

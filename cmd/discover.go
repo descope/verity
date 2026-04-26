@@ -91,10 +91,19 @@ var DiscoverCommand = &cli.Command{
 		} else {
 			maps.Copy(overrides, vc.Overrides)
 		}
-		// Parse --exclude-names into a set for chart image filtering.
+		// Two independent skip sets passed to Discover with distinct log
+		// attribution (see internal/discovery.Discover docstring):
+		//   excludeNames → Wolfi-rebuild dedup (chart-only)
+		//   unpatchable  → verity.yaml signal (chart + standalone)
 		excludeNames := parseNameSet(cmd.String("exclude-names"))
+		unpatchable := make(map[string]struct{}, len(vc.UnpatchableImages))
+		for _, n := range vc.UnpatchableImages {
+			if n = strings.TrimSpace(n); n != "" {
+				unpatchable[n] = struct{}{}
+			}
+		}
 
-		images, err := discovery.Discover(cfg, cmd.String("target-registry"), overrides, excludeNames)
+		images, err := discovery.Discover(cfg, cmd.String("target-registry"), overrides, excludeNames, unpatchable)
 		if err != nil {
 			return fmt.Errorf("failed to discover images: %w", err)
 		}
