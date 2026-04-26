@@ -98,12 +98,14 @@ _metrics/
 | `image.source_tag` | string | No | Source tag being patched (e.g., "1.25-alpine") |
 | `image.target_ref` | string | No | Target reference for patched image |
 | `image.manifest_digest` | string | Yes | sha256 digest of the manifest; null if scan failed |
+| `scan.before` | object | Yes | Null when conclusion is "failure" (metrics-on-failure path) |
 | `scan.before.vuln_count` | integer | No | Total vulnerabilities before patching |
 | `scan.before.by_severity.CRITICAL` | integer | No | Critical severity count before |
 | `scan.before.by_severity.HIGH` | integer | No | High severity count before |
 | `scan.before.by_severity.MEDIUM` | integer | No | Medium severity count before |
 | `scan.before.by_severity.LOW` | integer | No | Low severity count before |
 | `scan.before.by_severity.UNKNOWN` | integer | No | Unknown severity count before |
+| `scan.after` | object | Yes | Null when conclusion is "failure" (no post-scan happened) |
 | `scan.after.vuln_count` | integer | No | Total vulnerabilities after patching |
 | `scan.after.by_severity.CRITICAL` | integer | No | Critical severity count after |
 | `scan.after.by_severity.HIGH` | integer | No | High severity count after |

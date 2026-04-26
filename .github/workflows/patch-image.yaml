@@ -832,3 +832,93 @@ jobs:
           path: ${{ steps.metrics-json.outputs.filename }}
           retention-days: 1
           if-no-files-found: error
+
+  # ── Job 4: Metrics on Failure ─────────────────────────────────────
+  # When the patch matrix fails, finalize is skipped — but we still want
+  # a durable metrics record for trend analysis. Emits a minimal JSON
+  # capturing the failure with whatever per-platform breadcrumbs the
+  # matrix produced before failing, so failed runs land in _metrics.
+  metrics-on-failure:
+    name: "Metrics on Failure: ${{ inputs.image-name }}"
+    needs: [scan, patch]
+    if: ${{ !cancelled() && needs.scan.outputs.needs-patch == 'true' && needs.patch.result == 'failure' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
+        with:
+          egress-policy: audit
+
+      - name: Download per-platform metrics (best-effort)
+        id: download-pl
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: _pl-*-${{ needs.scan.outputs.safe-name }}-${{ needs.scan.outputs.source-tag }}
+          path: ${{ runner.temp }}/pl-meta
+          merge-multiple: true
+
+      - name: Resolve workflow start timestamp
+        id: started
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          STARTED_AT=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq '.run_started_at' 2>/dev/null || echo "")
+          echo "value=${STARTED_AT}" >> "$GITHUB_OUTPUT"
+
+      - name: Build minimal failure metrics JSON
+        id: metrics-json
+        env:
+          SAFE_NAME: ${{ needs.scan.outputs.safe-name }}
+          SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
+        run: |
+          set -euo pipefail
+          OUT="metrics-${SAFE_NAME}-${SOURCE_TAG}.json"
+          AMD64="$(jq -c '. // null' "${RUNNER_TEMP}/pl-meta/platform-amd64.json" 2>/dev/null || echo 'null')"
+          ARM64="$(jq -c '. // null' "${RUNNER_TEMP}/pl-meta/platform-arm64.json" 2>/dev/null || echo 'null')"
+          jq -n \
+            --arg run_id "${{ github.run_id }}" \
+            --arg run_attempt "${{ github.run_attempt }}" \
+            --arg started_at "${{ steps.started.outputs.value }}" \
+            --arg ended_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg image_name "${{ inputs.image-name }}" \
+            --arg source_tag "${SOURCE_TAG}" \
+            --argjson amd64 "$AMD64" \
+            --argjson arm64 "$ARM64" \
+            '{
+              schema_version: "v1",
+              run: {
+                id: ($run_id | tonumber),
+                attempt: ($run_attempt | tonumber),
+                started_at: $started_at,
+                ended_at: $ended_at,
+                conclusion: "failure"
+              },
+              image: {
+                name: $image_name,
+                source_tag: $source_tag,
+                target_ref: null,
+                manifest_digest: null
+              },
+              scan: { before: null, after: null },
+              platforms: { amd64: $amd64, arm64: $arm64 },
+              supply_chain: {
+                rekor_url: null,
+                attestation_id: null,
+                sbom_digest: null,
+                attestation_bundle_path: null
+              }
+            }' > "$OUT"
+          cat "$OUT"
+          echo "filename=$OUT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload metrics artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        env:
+          ACTIONS_ARTIFACT_UPLOAD_CONCURRENCY: 5
+        with:
+          name: metrics-${{ needs.scan.outputs.safe-name }}-${{ needs.scan.outputs.source-tag }}
+          path: ${{ steps.metrics-json.outputs.filename }}
+          retention-days: 1
+          if-no-files-found: error
