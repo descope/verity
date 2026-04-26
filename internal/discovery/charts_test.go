@@ -2,10 +2,23 @@ package discovery
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/verity-org/verity/internal/config"
 )
+
+func readDiscoveryFixture(t *testing.T, name string) []byte {
+	t.Helper()
+
+	path := filepath.Join("testdata", name)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("os.ReadFile(%q) error = %v", path, err)
+	}
+	return data
+}
 
 func TestApplyOverride(t *testing.T) {
 	overrides := map[string]config.Override{
@@ -198,7 +211,8 @@ func TestSplitRef(t *testing.T) {
 }
 
 func TestExtractImagesFromManifests(t *testing.T) {
-	yaml := []byte(`
+	t.Run("deduplicates image fields across manifests", func(t *testing.T) {
+		yaml := []byte(`
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -226,24 +240,176 @@ spec:
         image: quay.io/prometheus/prometheus:v3.2.1
 `)
 
-	got, err := extractImagesFromManifests(yaml)
-	if err != nil {
-		t.Fatalf("extractImagesFromManifests() error = %v", err)
-	}
-
-	// Should have 3 unique images (deduplication of the repeated prometheus ref)
-	if len(got) != 3 {
-		t.Errorf("extractImagesFromManifests() returned %d images, want 3: %v", len(got), got)
-	}
-
-	wantImages := map[string]bool{
-		"quay.io/prometheus/prometheus:v3.2.1":        true,
-		"ghcr.io/jimmidyson/configmap-reload:v0.14.0": true,
-		"quay.io/prometheus/alertmanager:v0.28.1":     true,
-	}
-	for _, img := range got {
-		if !wantImages[img] {
-			t.Errorf("unexpected image: %q", img)
+		got, err := extractImagesFromManifests(yaml)
+		if err != nil {
+			t.Fatalf("extractImagesFromManifests() error = %v", err)
 		}
-	}
+
+		if len(got) != 3 {
+			t.Errorf("extractImagesFromManifests() returned %d images, want 3: %v", len(got), got)
+		}
+
+		wantImages := map[string]bool{
+			"quay.io/prometheus/prometheus:v3.2.1":        true,
+			"ghcr.io/jimmidyson/configmap-reload:v0.14.0": true,
+			"quay.io/prometheus/alertmanager:v0.28.1":     true,
+		}
+		for _, img := range got {
+			if !wantImages[img] {
+				t.Errorf("unexpected image: %q", img)
+			}
+		}
+	})
+
+	t.Run("keeps existing image key discovery", func(t *testing.T) {
+		yaml := []byte(`
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tiny
+spec:
+  template:
+    spec:
+      containers:
+      - name: tiny
+        image: ghcr.io/verity-org/tiny:v1.2.3
+`)
+
+		got, err := extractImagesFromManifests(yaml)
+		if err != nil {
+			t.Fatalf("extractImagesFromManifests() error = %v", err)
+		}
+
+		if len(got) != 1 {
+			t.Fatalf("extractImagesFromManifests() returned %d images, want 1: %v", len(got), got)
+		}
+		if got[0] != "ghcr.io/verity-org/tiny:v1.2.3" {
+			t.Fatalf("extractImagesFromManifests() = %v, want ghcr.io/verity-org/tiny:v1.2.3", got)
+		}
+	})
+
+	t.Run("discovers env var images from operator deployments", func(t *testing.T) {
+		got, err := extractImagesFromManifests(readDiscoveryFixture(t, "strimzi-kafka-operator-env.yaml"))
+		if err != nil {
+			t.Fatalf("extractImagesFromManifests() error = %v", err)
+		}
+
+		wantImages := []string{
+			"quay.io/strimzi/kafka:0.51.0-kafka-4.2.0",
+			"quay.io/strimzi/kafka-bridge:0.33.1",
+			"quay.io/strimzi/kaniko-executor:0.51.0",
+			"quay.io/strimzi/buildah:0.51.0",
+			"quay.io/strimzi/maven-builder:0.51.0",
+		}
+
+		gotSet := make(map[string]struct{}, len(got))
+		for _, image := range got {
+			gotSet[image] = struct{}{}
+		}
+
+		for _, want := range wantImages {
+			if _, ok := gotSet[want]; !ok {
+				t.Fatalf("extractImagesFromManifests() missing env-var image %q in %v", want, got)
+			}
+		}
+	})
+
+	t.Run("discovers configmap image values from operator charts", func(t *testing.T) {
+		got, err := extractImagesFromManifests(readDiscoveryFixture(t, "rook-ceph-operator-configmap.yaml"))
+		if err != nil {
+			t.Fatalf("extractImagesFromManifests() error = %v", err)
+		}
+
+		wantImages := []string{
+			"quay.io/cephcsi/cephcsi:v3.16.2",
+			"registry.k8s.io/sig-storage/csi-provisioner:v6.1.1",
+			"registry.k8s.io/sig-storage/csi-attacher:v4.11.0",
+			"quay.io/csiaddons/k8s-sidecar:v0.14.0",
+		}
+
+		gotSet := make(map[string]struct{}, len(got))
+		for _, image := range got {
+			gotSet[image] = struct{}{}
+		}
+
+		for _, want := range wantImages {
+			if _, ok := gotSet[want]; !ok {
+				t.Fatalf("extractImagesFromManifests() missing ConfigMap image %q in %v", want, got)
+			}
+		}
+	})
+
+	t.Run("splits multiline image maps into distinct refs", func(t *testing.T) {
+		got, err := extractImagesFromManifests(readDiscoveryFixture(t, "strimzi-kafka-operator-env.yaml"))
+		if err != nil {
+			t.Fatalf("extractImagesFromManifests() error = %v", err)
+		}
+
+		wantImages := []string{
+			"quay.io/strimzi/kafka:0.51.0-kafka-4.1.0",
+			"quay.io/strimzi/kafka:0.51.0-kafka-4.2.0",
+		}
+
+		gotSet := make(map[string]struct{}, len(got))
+		for _, image := range got {
+			gotSet[image] = struct{}{}
+		}
+
+		for _, want := range wantImages {
+			if _, ok := gotSet[want]; !ok {
+				t.Fatalf("extractImagesFromManifests() missing multiline image %q in %v", want, got)
+			}
+		}
+	})
+
+	t.Run("ignores URL, path, and version-like false positives", func(t *testing.T) {
+		yaml := []byte(`
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: false-positives
+spec:
+  template:
+    spec:
+      containers:
+      - name: operator
+        image: ghcr.io/verity-org/operator:v0.1.0
+        args:
+        - --default-image=https://example.com/foo:bar
+        env:
+        - name: FAKE_URL_IMAGE
+          value: https://example.com/foo:bar
+        - name: FAKE_PATH_IMAGE
+          value: /some/path:1.2.3
+        - name: FAKE_VERSION_IMAGE
+          value: 1.2.3-beta
+        - name: FAKE_BINARY_IMAGE
+          value: kubectl-1.34.3
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: false-positive-config
+data:
+  ROOK_CSI_FAKE_URL_IMAGE: https://example.com/foo:bar
+  ROOK_CSI_FAKE_PATH_IMAGE: /some/path:1.2.3
+  ROOK_CSI_FAKE_VERSION_IMAGE: 1.2.3-beta
+  ROOK_CSI_FAKE_BINARY_IMAGE: kubectl-1.34.3
+`)
+
+		got, err := extractImagesFromManifests(yaml)
+		if err != nil {
+			t.Fatalf("extractImagesFromManifests() error = %v", err)
+		}
+
+		want := []string{"ghcr.io/verity-org/operator:v0.1.0"}
+		if len(got) != len(want) {
+			t.Fatalf("extractImagesFromManifests() returned %d images, want %d: %v", len(got), len(want), got)
+		}
+		for i, image := range want {
+			if got[i] != image {
+				t.Fatalf("extractImagesFromManifests()[%d] = %q, want %q (all images: %v)", i, got[i], image, got)
+			}
+		}
+	})
 }

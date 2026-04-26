@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -21,6 +22,9 @@ var (
 	ErrInvalidChartName    = errors.New("chart name must not start with '-'")
 	ErrInvalidChartVersion = errors.New("chart version must not start with '-'")
 	ErrInvalidChartRepo    = errors.New("chart repository must start with oci://, https://, or http://")
+	imageTagPattern        = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
+	imageDigestPattern     = regexp.MustCompile(`^sha256:[a-f0-9]{64}$`)
+	imageNamePattern       = regexp.MustCompile(`^[A-Za-z0-9._:-]+(?:/[A-Za-z0-9._-]+)+$`)
 )
 
 // ExtractChartImages runs helm template for a chart and returns all unique image references found.
@@ -119,9 +123,19 @@ func walkNode(node any, seen map[string]struct{}, result *[]string) {
 	case map[string]any:
 		if img, ok := v["image"]; ok {
 			if imgStr, ok := img.(string); ok && imgStr != "" {
-				if _, exists := seen[imgStr]; !exists {
-					seen[imgStr] = struct{}{}
-					*result = append(*result, imgStr)
+				addImage(imgStr, seen, result)
+			}
+		}
+		if env, ok := v["env"].([]any); ok {
+			collectEnvImages(env, seen, result)
+		}
+		if args, ok := v["args"].([]any); ok {
+			collectArgImages(args, seen, result)
+		}
+		if rawKind, ok := v["kind"]; ok {
+			if kind, ok := rawKind.(string); ok && kind == "ConfigMap" {
+				if data, ok := v["data"].(map[string]any); ok {
+					collectConfigMapImages(data, seen, result)
 				}
 			}
 		}
@@ -133,6 +147,137 @@ func walkNode(node any, seen map[string]struct{}, result *[]string) {
 			walkNode(item, seen, result)
 		}
 	}
+}
+
+func collectEnvImages(env []any, seen map[string]struct{}, result *[]string) {
+	for _, item := range env {
+		entry, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		rawName, ok := entry["name"]
+		if !ok {
+			continue
+		}
+		name, ok := rawName.(string)
+		if !ok || !isImageEnvName(name) {
+			continue
+		}
+
+		rawValue, ok := entry["value"]
+		if !ok {
+			continue
+		}
+		value, ok := rawValue.(string)
+		if !ok {
+			continue
+		}
+
+		for _, image := range extractImageValues(value) {
+			addImage(image, seen, result)
+		}
+	}
+}
+
+func collectConfigMapImages(data map[string]any, seen map[string]struct{}, result *[]string) {
+	for key, raw := range data {
+		value, ok := raw.(string)
+		if !ok || !isImageEnvName(key) {
+			continue
+		}
+
+		for _, image := range extractImageValues(value) {
+			addImage(image, seen, result)
+		}
+	}
+}
+
+func collectArgImages(args []any, seen map[string]struct{}, result *[]string) {
+	for _, item := range args {
+		arg, ok := item.(string)
+		if !ok {
+			continue
+		}
+
+		for piece := range strings.FieldsSeq(arg) {
+			candidate := piece
+			if idx := strings.LastIndex(candidate, "="); idx >= 0 {
+				candidate = candidate[idx+1:]
+			}
+			for _, image := range extractImageValues(candidate) {
+				addImage(image, seen, result)
+			}
+		}
+	}
+}
+
+func addImage(image string, seen map[string]struct{}, result *[]string) {
+	if _, exists := seen[image]; exists {
+		return
+	}
+
+	seen[image] = struct{}{}
+	*result = append(*result, image)
+}
+
+func isImageEnvName(name string) bool {
+	upper := strings.ToUpper(name)
+	return strings.Contains(upper, "_IMAGE") || upper == "STRIMZI_DEFAULT_MAVEN_BUILDER"
+}
+
+func extractImageValues(value string) []string {
+	var images []string
+	for line := range strings.SplitSeq(value, "\n") {
+		candidate := strings.TrimSpace(line)
+		if candidate == "" {
+			continue
+		}
+		if idx := strings.Index(candidate, "="); idx >= 0 {
+			candidate = strings.TrimSpace(candidate[idx+1:])
+		}
+		if looksLikeImageRef(candidate) {
+			images = append(images, candidate)
+		}
+	}
+	return images
+}
+
+func looksLikeImageRef(value string) bool {
+	if strings.TrimSpace(value) == "" || strings.ContainsAny(value, " \t\r\n") {
+		return false
+	}
+	if strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://") {
+		return false
+	}
+
+	base := value
+	if at := strings.Index(base, "@"); at >= 0 {
+		digest := base[at+1:]
+		if !imageDigestPattern.MatchString(digest) {
+			return false
+		}
+		base = base[:at]
+	}
+
+	lastColon := strings.LastIndex(base, ":")
+	if lastColon < 0 {
+		return false
+	}
+
+	name := base[:lastColon]
+	tag := base[lastColon+1:]
+	if !imageTagPattern.MatchString(tag) {
+		return false
+	}
+	if strings.HasPrefix(name, "/") || !strings.Contains(name, "/") {
+		return false
+	}
+	if !imageNamePattern.MatchString(name) {
+		return false
+	}
+
+	return true
 }
 
 // applyOverride substitutes a tag variant in an image reference using the overrides map.
