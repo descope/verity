@@ -119,11 +119,11 @@ func walkNode(node any, seen map[string]struct{}, result *[]string) {
 	case map[string]any:
 		if img, ok := v["image"]; ok {
 			if imgStr, ok := img.(string); ok && imgStr != "" {
-				if _, exists := seen[imgStr]; !exists {
-					seen[imgStr] = struct{}{}
-					*result = append(*result, imgStr)
-				}
+				addImage(imgStr, seen, result)
 			}
+		}
+		if env, ok := v["env"].([]any); ok {
+			collectEnvImages(env, seen, result)
 		}
 		for _, val := range v {
 			walkNode(val, seen, result)
@@ -133,6 +133,46 @@ func walkNode(node any, seen map[string]struct{}, result *[]string) {
 			walkNode(item, seen, result)
 		}
 	}
+}
+
+func collectEnvImages(env []any, seen map[string]struct{}, result *[]string) {
+	for _, item := range env {
+		entry, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		name, _ := entry["name"].(string)
+		value, _ := entry["value"].(string)
+		if !isImageEnvName(name) || !looksLikeImageRef(value) {
+			continue
+		}
+
+		addImage(value, seen, result)
+	}
+}
+
+func addImage(image string, seen map[string]struct{}, result *[]string) {
+	if _, exists := seen[image]; exists {
+		return
+	}
+
+	seen[image] = struct{}{}
+	*result = append(*result, image)
+}
+
+func isImageEnvName(name string) bool {
+	upper := strings.ToUpper(name)
+	return strings.Contains(upper, "_IMAGE") || upper == "STRIMZI_DEFAULT_MAVEN_BUILDER"
+}
+
+func looksLikeImageRef(value string) bool {
+	if strings.Contains(value, " ") {
+		return false
+	}
+
+	name, tag := splitRef(value)
+	return name != "" && strings.Contains(name, "/") && tag != ""
 }
 
 // applyOverride substitutes a tag variant in an image reference using the overrides map.
