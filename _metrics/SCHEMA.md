@@ -13,12 +13,14 @@ _metrics/
 └── runs/
     └── YYYY-MM-DD/
         └── <run-id>-attempt-<run-attempt>/
-            └── <image-safe-name>.json
+            └── <safe-name>-<source-tag>.json
 ```
 
 - `<run-id>` = GitHub Actions workflow run ID of the patch-image run
 - `<run-attempt>` = the run-attempt counter (1, 2, … on retries)
-- `<image-safe-name>` = image name with `/`, `:`, and ` ` replaced by `-` (matches the `tr '/: ' '---'` transform in the `scan` job's `parse` step)
+- `<safe-name>` = image name with `/`, `:`, and ` ` replaced by `-` (matches the `tr '/: ' '---'` transform in the `scan` job's `parse` step)
+- `<source-tag>` = the upstream tag being patched (e.g. `1.29.5`)
+- The producer in `patch-image.yaml` uploads `metrics-<safe-name>-<source-tag>` artifacts; `metrics-finalize.yaml` strips the `metrics-` prefix and archives the resulting filename verbatim (so the on-disk file is `<safe-name>-<source-tag>.json`)
 - Aggregation chooses LATEST attempt per run-id when multiple exist
 
 ## JSON Schema (per-image, per-run)

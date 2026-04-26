@@ -66,22 +66,21 @@ jobs:
         env:
           RUN_ID: ${{ github.event.workflow_run.id }}
           RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          RUN_CREATED_AT: ${{ github.event.workflow_run.created_at }}
         run: |
           set -euo pipefail
-          DATE=$(date -u +%Y-%m-%d)
+          DATE=$(date -u -d "${RUN_CREATED_AT}" +%Y-%m-%d)
           TARGET_DIR="_metrics/runs/${DATE}/${RUN_ID}-attempt-${RUN_ATTEMPT}"
 
-          # Stash artifacts outside the working tree before branch switch
           STASH=$(mktemp -d)
           cp ./downloaded-metrics/metrics-*.json "$STASH/"
 
           for attempt in 1 2 3 4 5; do
             echo "::group::Attempt ${attempt}"
 
-            # Try to fetch existing _metrics branch; if missing, create orphan
             if git fetch origin _metrics:_metrics 2>/dev/null; then
               git switch _metrics
-              git pull --rebase origin _metrics 2>/dev/null || true
+              git reset --hard origin/_metrics
             else
               echo "::notice::_metrics branch missing — initializing as orphan"
               git switch --orphan _metrics

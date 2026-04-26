@@ -1,7 +1,12 @@
 # Orchestrator Fan-Out → Fan-In: 2026 GitHub Actions Best Practices
 
-Research compiled for the Verity `orchestrator.yaml` finalize job. ~90 parallel
-`patch-image` matrix children → 1 `finalize` aggregator → orphan `_metrics` branch.
+Research compiled during PR #262 monitoring rollout. The shipped
+implementation is **not** an in-graph `finalize` job on `orchestrator.yaml` —
+the existing orchestrator stays fire-and-forget. Instead, a separate
+`metrics-finalize.yaml` listens via `workflow_run` to each `patch-image`
+completion and fans-in artifacts to the orphan `_metrics` branch. This doc
+captures the patterns evaluated during that decision (matrix `outputs:`
+collisions, artifact-based fan-in alternatives, concurrency semantics).
 
 All evidence backed by GitHub permalinks. Skip beginner content; production-only.
 
