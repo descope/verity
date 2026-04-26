@@ -103,7 +103,7 @@ var DiscoverCommand = &cli.Command{
 			}
 		}
 
-		images, err := discovery.Discover(cfg, cmd.String("target-registry"), overrides, excludeNames, unpatchable)
+		images, err := discovery.DiscoverWithChartValues(cfg, cmd.String("target-registry"), overrides, vc.ChartValues, excludeNames, unpatchable)
 		if err != nil {
 			return fmt.Errorf("failed to discover images: %w", err)
 		}

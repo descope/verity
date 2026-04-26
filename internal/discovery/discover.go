@@ -42,6 +42,21 @@ type DiscoveredImage struct {
 // unpatchable is checked first; an image listed in both sets is skipped
 // with the unpatchable log line.
 func Discover(cfg *config.CopaConfig, targetRegistry string, overrides map[string]config.Override, excludeNames, unpatchable map[string]struct{}) ([]DiscoveredImage, error) {
+	return DiscoverWithChartValues(cfg, targetRegistry, overrides, nil, excludeNames, unpatchable)
+}
+
+// DiscoverWithChartValues is Discover with per-chart Helm values applied
+// during chart-image extraction. chartValues maps chart names to their
+// scalar value overrides (matching VerityConfig.ChartValues). Same logging
+// + skip-attribution semantics as Discover; pass nil for chartValues to
+// preserve original behavior.
+func DiscoverWithChartValues(
+	cfg *config.CopaConfig,
+	targetRegistry string,
+	overrides map[string]config.Override,
+	chartValues map[string]map[string]any,
+	excludeNames, unpatchable map[string]struct{},
+) ([]DiscoveredImage, error) {
 	registry := targetRegistry
 	if registry == "" {
 		registry = cfg.Target.Registry
@@ -70,7 +85,7 @@ func Discover(cfg *config.CopaConfig, targetRegistry string, overrides map[strin
 	}
 
 	for _, chartSpec := range cfg.Charts {
-		imgs, err := discoverChartImages(chartSpec, overrides, registry)
+		imgs, err := discoverChartImages(chartSpec, overrides, chartValues[chartSpec.Name], registry)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: failed to discover images from chart %q: %v\n", chartSpec.Name, err)
 			continue
@@ -235,8 +250,8 @@ func discoverStandaloneImage(spec *config.ImageSpec, registry string) ([]Discove
 	return result, nil
 }
 
-func discoverChartImages(chart config.ChartSpec, overrides map[string]config.Override, registry string) ([]DiscoveredImage, error) {
-	images, err := ExtractChartImages(chart, overrides)
+func discoverChartImages(chart config.ChartSpec, overrides map[string]config.Override, chartValues map[string]any, registry string) ([]DiscoveredImage, error) {
+	images, err := ExtractChartImagesWithValues(chart, overrides, chartValues)
 	if err != nil {
 		return nil, err
 	}

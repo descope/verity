@@ -48,8 +48,10 @@ type Config struct {
 var ErrChartsFileMissing = errors.New("charts file does not exist")
 
 // ChartImagesFunc renders a chart and returns the image references it
-// emits. Production code passes discovery.ExtractChartImages; tests pass a
-// stub so CheckOrphanReplacements can be exercised without helm + network.
+// emits. Production code wraps discovery.ExtractChartImagesWithValues so
+// per-chart verity.yaml chartValues are applied during render (matching
+// what verity discover and chart-gen see); tests pass a stub so
+// CheckOrphanReplacements can be exercised without helm + network.
 type ChartImagesFunc func(chart config.ChartSpec, overrides map[string]config.Override) ([]string, error)
 
 // Run executes all checks and returns the aggregated findings sorted by
@@ -110,9 +112,10 @@ func Run(cfg Config) ([]Issue, error) {
 // upgraded or the image moved and the entry was never cleaned up.
 //
 // The chartImages parameter abstracts the helm-shelling step so production
-// code passes discovery.ExtractChartImages while tests pass a stub. This
-// lets the same function be exercised by fast unit tests without requiring
-// helm + network.
+// code wraps discovery.ExtractChartImagesWithValues (with verity.yaml's
+// per-chart chartValues applied) while tests pass a stub. This lets the
+// same function be exercised by fast unit tests without requiring helm +
+// network.
 //
 // Match semantics intentionally mirror chartgen.applyReplacements (Contains
 // after RepoPath) so this check reasons about images the same way the
