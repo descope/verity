@@ -71,6 +71,17 @@ images:
 
   # MongoDB Community Server is only published with UBI-suffixed tags
   # (no plain semver variants exist). Use -ubi9 for current RHEL UBI 9 base.
+  #
+  # Note on goVcsUrl: deliberately NOT set. The bundled Go CLI tools
+  # (mongostat, mongodump, ...) live in github.com/mongodb/mongo-tools, a
+  # separate repo whose tags are 100.x.x — independent of the server image
+  # tag (8.x.x-ubi9). discoverStandaloneImage always appends "@<imageTag>"
+  # to a non-empty goVcsUrl, so any value here would produce an invalid VCS
+  # ref like "mongo-tools@8.2.5-ubi9" and break copa's first patch attempt.
+  # Without goVcsUrl, the first attempt fails with copa's "no binaries were
+  # successfully rebuilt" message; patch-image.sh's broadened retry trigger
+  # then re-runs with --pkg-types os, which still patches OS-level CVEs in
+  # the UBI 9 base. Adding fixed-VCS-ref support is tracked separately.
   - name: "mongodb/mongodb-community-server"
     image: "quay.io/mongodb/mongodb-community-server"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -79,6 +90,8 @@ images:
       pattern: '^\d+\.\d+\.\d+-ubi9$'
       maxTags: 3
 
+  # cockroach binary lives at /cockroach/cockroach (non-standard path).
+  # Stripped with -trimpath, so buildinfo doesn't carry a VCS URL.
   - name: "cockroachdb/cockroach"
     image: "mirror.gcr.io/cockroachdb/cockroach"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -86,6 +99,8 @@ images:
       strategy: "pattern"
       pattern: '^v\d+\.\d+\.\d+$'
       maxTags: 3
+    goVcsUrl: "https://github.com/cockroachdb/cockroach"
+    goVcsTagPrefix: ""
 
   - name: "library/elasticsearch"
     image: "mirror.gcr.io/library/elasticsearch"
@@ -304,6 +319,9 @@ images:
       pattern: '^v\d+\.\d+\.\d+-distroless$'
       maxTags: 3
 
+  # prometheus-config-reloader is built from the prometheus-operator monorepo
+  # under cmd/prometheus-config-reloader. The image tag tracks the operator
+  # release tag (v0.x.y), so the v-prefix maps directly to the upstream git tag.
   - name: "prometheus-operator/prometheus-config-reloader"
     image: "quay.io/prometheus-operator/prometheus-config-reloader"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -311,6 +329,8 @@ images:
       strategy: "pattern"
       pattern: '^v\d+\.\d+\.\d+$'
       maxTags: 3
+    goVcsUrl: "https://github.com/prometheus-operator/prometheus-operator"
+    goVcsTagPrefix: ""
 
   - name: "prometheuscommunity/elasticsearch-exporter"
     image: "quay.io/prometheuscommunity/elasticsearch-exporter"
@@ -436,14 +456,6 @@ images:
   # ============================================================================
   #  CERT MANAGEMENT
   # ============================================================================
-
-  - name: "cert-manager/cert-manager-openshift-routes"
-    image: "ghcr.io/cert-manager/cert-manager-openshift-routes"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
 
   # ============================================================================
   #  DATA / ML
