@@ -114,20 +114,21 @@ func TestCheckOrphanReplacements_NilConfig(t *testing.T) {
 	}
 }
 
+var errBoom = errors.New("boom")
+
 func TestCheckOrphanReplacements_ExtractorError(t *testing.T) {
 	charts := []config.ChartSpec{{Name: "broken", Version: "0.0.0"}}
 	vc := &config.VerityConfig{
 		Replacements: map[string]config.Replacement{"x": {Registry: "r", Image: "i"}},
 	}
-	wantErr := errors.New("boom")
 	failingExtractor := func(_ config.ChartSpec, _ map[string]config.Override) ([]string, error) {
-		return nil, wantErr
+		return nil, errBoom
 	}
 	_, err := CheckOrphanReplacements(charts, vc, "verity.yaml", "Chart.yaml", failingExtractor)
 	if err == nil {
 		t.Fatal("expected error to surface from extractor")
 	}
-	if !errors.Is(err, wantErr) {
+	if !errors.Is(err, errBoom) {
 		t.Errorf("error chain should include extractor error, got: %v", err)
 	}
 }

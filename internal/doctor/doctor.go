@@ -78,12 +78,15 @@ func Run(cfg Config) ([]Issue, error) {
 		return nil, fmt.Errorf("load verity config %s: %w", cfg.VerityConfig, err)
 	}
 
-	issues := make([]Issue, 0)
-
 	orphans, err := CheckOrphanReplacements(charts, vc, cfg.VerityConfig, cfg.ChartsFile, discovery.ExtractChartImages)
 	if err != nil {
 		return nil, fmt.Errorf("orphan-replacements check: %w", err)
 	}
+
+	// Pre-allocated to len(orphans) so the slice header is non-nil even
+	// when there are zero issues; downstream JSON output then renders as
+	// [] instead of null.
+	issues := make([]Issue, 0, len(orphans))
 	issues = append(issues, orphans...)
 
 	sort.Slice(issues, func(i, j int) bool {
