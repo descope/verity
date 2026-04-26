@@ -2,11 +2,13 @@
 
 **Live board**: https://ui.honeycomb.io/omer-c6/environments/verity-prod/board/89dYstv3emD
 
-The board is auto-created against the `verity-ci` dataset (env: `verity-prod`)
-with 7 query panels covering all Phase 1 SLOs. Created via the Honeycomb
-Boards/Queries API. The ingest key has `boards: true` + `columns: true` (which
-also covers query creation) — `Run Queries` (executing queries via API) is
-enterprise-only, but *creating and saving* queries is not.
+The board is a one-time hand-provisioned artifact against the `verity-ci`
+dataset (env: `verity-prod`) with 7 query panels covering all Phase 1 SLOs.
+It was created during PR #262 development by POSTing the JSON payloads
+embedded in the "Re-creating from scratch" section below to Honeycomb's
+Boards/Queries API. The ingest key needs `boards: true` + `columns: true`
+(creating and saving queries) — `Run Queries` (executing queries via API)
+is enterprise-only, but query *creation* is not.
 
 ## Panels
 
@@ -31,8 +33,8 @@ Emitted by `.github/workflows/patch-image.yaml` via `otel-cli`:
 
 | Span name | Attributes |
 |---|---|
-| `patch-image.matrix` | `image`, `platform`, `cve_before`, `package_list_sha256`, `rekor_url`, `copa_exit`, `copa_duration_seconds`, `staging_digest` |
-| `patch-image.finalize` | `image`, `manifest_digest`, `post_scan_vuln_count`, `attestation_id`, `attestation_bundle_path` |
+| `patch-image.matrix` | `image`, `platform`, `cve_before`, `package_list_sha256`, `copa_exit`, `copa_duration_seconds`, `staging_digest` |
+| `patch-image.finalize` | `image`, `manifest_digest`, `post_scan_vuln_count`, `rekor_url`, `attestation_id`, `attestation_bundle_path` |
 
 Resource attributes on every span: `service.name=verity-ci`, `deployment.environment=verity-prod`.
 
@@ -48,4 +50,89 @@ The 3-step API flow:
 2. `POST /1/query_annotations/{dataset}` with `{query_id, name, description}` → returns `annotation_id`
 3. `POST /1/boards` with `panels: [{type:"query", query_panel:{query_id, query_annotation_id, query_style}}]`
 
-See PR #262 commit history for the JSON payloads of each query.
+### Query payloads (paste into `POST /1/queries/verity-ci`)
+
+**Patch Duration p50/p95** (graph)
+
+```json
+{
+  "calculations": [
+    {"op": "HEATMAP", "column": "copa_duration_seconds"},
+    {"op": "P50",     "column": "copa_duration_seconds"},
+    {"op": "P95",     "column": "copa_duration_seconds"}
+  ],
+  "filters": [{"column": "name", "op": "=", "value": "patch-image.matrix"}],
+  "time_range": 604800
+}
+```
+
+**CVEs Before Patch** (graph)
+
+```json
+{
+  "calculations": [{"op": "SUM", "column": "cve_before"}],
+  "filters": [{"column": "name", "op": "=", "value": "patch-image.matrix"}],
+  "time_range": 604800
+}
+```
+
+**CVEs After Patch** (graph)
+
+```json
+{
+  "calculations": [{"op": "SUM", "column": "post_scan_vuln_count"}],
+  "filters": [{"column": "name", "op": "=", "value": "patch-image.finalize"}],
+  "time_range": 604800
+}
+```
+
+**Slowest Images** (table)
+
+```json
+{
+  "calculations": [{"op": "AVG", "column": "copa_duration_seconds"}],
+  "filters": [{"column": "name", "op": "=", "value": "patch-image.matrix"}],
+  "breakdowns": ["image"],
+  "orders": [{"op": "AVG", "column": "copa_duration_seconds", "order": "descending"}],
+  "limit": 10,
+  "time_range": 604800
+}
+```
+
+**Failures by Image** (combo)
+
+```json
+{
+  "calculations": [{"op": "COUNT"}],
+  "filters": [
+    {"column": "name", "op": "=", "value": "patch-image.matrix"},
+    {"column": "copa_exit", "op": "!=", "value": 0}
+  ],
+  "breakdowns": ["image"],
+  "time_range": 604800
+}
+```
+
+**Patches by Platform** (combo)
+
+```json
+{
+  "calculations": [{"op": "COUNT"}],
+  "filters": [{"column": "name", "op": "=", "value": "patch-image.matrix"}],
+  "breakdowns": ["platform"],
+  "time_range": 604800
+}
+```
+
+**Residual CVEs by Image** (table)
+
+```json
+{
+  "calculations": [{"op": "AVG", "column": "post_scan_vuln_count"}],
+  "filters": [{"column": "name", "op": "=", "value": "patch-image.finalize"}],
+  "breakdowns": ["image"],
+  "orders": [{"op": "AVG", "column": "post_scan_vuln_count", "order": "descending"}],
+  "limit": 25,
+  "time_range": 604800
+}
+```

@@ -183,7 +183,7 @@ a scheduled cron that fans-in JMH results and commits to a `benchmarks` orphan b
 ```yaml
 - uses: actions/checkout@v6
   with:
-    persist-credentials: true   # MANDATORY — checkout strips creds by default
+    # persist-credentials defaults to true; omit unless overriding
     fetch-depth: 0              # Need history if branch already exists
 
 # ... do work, generate output to /tmp/output ...

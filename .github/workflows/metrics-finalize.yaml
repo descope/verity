@@ -31,7 +31,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+      - name: Probe artifact existence
+        id: probe
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          COUNT=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/artifacts" \
+            --jq '[.artifacts[] | select(.name | startswith("metrics-"))] | length')
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
       - name: Download metrics artifacts
+        if: steps.probe.outputs.count != '0'
         id: download
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -40,10 +51,10 @@ jobs:
           pattern: metrics-*
           merge-multiple: true
           path: ./downloaded-metrics
-        continue-on-error: true # patch-image runs that skipped patching emit no metrics — that's fine
 
       - name: Check for metrics
         id: check
+        if: steps.probe.outputs.count != '0'
         run: |
           shopt -s nullglob
           files=( ./downloaded-metrics/metrics-*.json )
@@ -88,6 +99,7 @@ jobs:
             git add _metrics/
             if git diff --cached --quiet; then
               echo "::notice::No changes to commit"
+              echo "::endgroup::"
               break
             fi
 
@@ -96,11 +108,13 @@ jobs:
 
             if git push origin _metrics; then
               echo "::notice::Pushed on attempt ${attempt}"
+              echo "::endgroup::"
               break
             fi
 
             if [ "$attempt" -eq 5 ]; then
               echo "::error::Failed to push metrics after 5 attempts"
+              echo "::endgroup::"
               exit 1
             fi
 
@@ -108,7 +122,6 @@ jobs:
             echo "::warning::Push failed, retrying in ${sleep_time}s"
             sleep "$sleep_time"
 
-            # Reset to default branch for next iteration's fresh fetch
             git switch -
             echo "::endgroup::"
           done

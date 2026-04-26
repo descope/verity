@@ -18,7 +18,7 @@ _metrics/
 
 - `<run-id>` = GitHub Actions workflow run ID of the patch-image run
 - `<run-attempt>` = the run-attempt counter (1, 2, … on retries)
-- `<image-safe-name>` = image name with `/` and `:` replaced by `_` (matches `SiteImage.id` convention in `site/src/lib/catalog.ts`)
+- `<image-safe-name>` = image name with `/`, `:`, and ` ` replaced by `-` (matches the `tr '/: ' '---'` transform in the `scan` job's `parse` step)
 - Aggregation chooses LATEST attempt per run-id when multiple exist
 
 ## JSON Schema (per-image, per-run)
@@ -63,11 +63,13 @@ _metrics/
   },
   "platforms": {
     "amd64": {
+      "arch": "amd64",
       "copa_duration_seconds": "<int | null>",
       "copa_exit_code": "<int | null>",
       "staging_digest": "<sha256:... | null>"
     },
     "arm64": {
+      "arch": "arm64",
       "copa_duration_seconds": "<int | null>",
       "copa_exit_code": "<int | null>",
       "staging_digest": "<sha256:... | null>"
@@ -89,7 +91,7 @@ _metrics/
 | `schema_version` | string | No | Schema version, currently "v1" |
 | `run.id` | integer | No | GitHub Actions workflow run ID |
 | `run.attempt` | integer | No | Run attempt number (1, 2, ...) |
-| `run.started_at` | string (ISO-8601) | No | Workflow start timestamp |
+| `run.started_at` | string (ISO-8601) | Yes | Workflow start timestamp; empty string when the GitHub API lookup failed |
 | `run.ended_at` | string (ISO-8601) | No | Workflow end timestamp |
 | `run.conclusion` | string | No | One of: success, failure, cancelled, skipped |
 | `image.name` | string | No | Full image name (e.g., "nginx") |
@@ -109,10 +111,12 @@ _metrics/
 | `scan.after.by_severity.LOW` | integer | No | Low severity count after |
 | `scan.after.by_severity.UNKNOWN` | integer | No | Unknown severity count after |
 | `platforms.amd64` | object | Yes | Null when amd64 filtered via platforms input |
+| `platforms.amd64.arch` | string | No | Always `"amd64"` when the object is non-null |
 | `platforms.amd64.copa_duration_seconds` | integer | Yes | Duration of Copa patching; null if skipped/failed |
 | `platforms.amd64.copa_exit_code` | integer | Yes | Copa exit code; null if skipped |
 | `platforms.amd64.staging_digest` | string | Yes | Staging image digest; null if build failed |
 | `platforms.arm64` | object | Yes | Null when arm64 filtered via platforms input |
+| `platforms.arm64.arch` | string | No | Always `"arm64"` when the object is non-null |
 | `platforms.arm64.copa_duration_seconds` | integer | Yes | Duration of Copa patching; null if skipped/failed |
 | `platforms.arm64.copa_exit_code` | integer | Yes | Copa exit code; null if skipped |
 | `platforms.arm64.staging_digest` | string | Yes | Staging image digest; null if build failed |

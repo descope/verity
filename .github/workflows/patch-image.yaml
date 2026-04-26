@@ -72,8 +72,9 @@ permissions:
   attestations: write   # actions/attest
 
 env:
-  HONEYCOMB_API_KEY: ${{ secrets.HONEYCOMB_API_KEY }}
   OTEL_CLI_VERSION: "0.4.5"
+  OTEL_CLI_SHA256_LINUX_AMD64: "2f192fadfb2107a92ae617ca93fd7c0b532fa618a5ebc3917e641c6a9fbaeb45"
+  OTEL_CLI_SHA256_LINUX_ARM64: "f8f27f1289850983f86beaf62968ab65e3491207291d0cdb68247826cc21e695"
 
 jobs:
   # ── Job 1: Scan ────────────────────────────────────────────────────
@@ -366,7 +367,7 @@ jobs:
           if-no-files-found: error
 
       - name: Cache otel-cli
-        if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && env.HONEYCOMB_API_KEY != '' && steps.platform-check.outputs.enabled == 'true' }}
+        if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && steps.platform-check.outputs.enabled == 'true' }}
         id: cache-otel
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -374,7 +375,7 @@ jobs:
           key: otel-cli-v${{ env.OTEL_CLI_VERSION }}-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install otel-cli
-        if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && env.HONEYCOMB_API_KEY != '' && steps.platform-check.outputs.enabled == 'true' && steps.cache-otel.outputs.cache-hit != 'true' }}
+        if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && steps.platform-check.outputs.enabled == 'true' && steps.cache-otel.outputs.cache-hit != 'true' }}
         run: |
           set -euo pipefail
           mkdir -p ~/.local/bin
@@ -384,12 +385,21 @@ jobs:
             x86_64) ARCH=amd64 ;;
             aarch64) ARCH=arm64 ;;
           esac
-          curl -fsSL "https://github.com/equinix-labs/otel-cli/releases/download/v${OTEL_CLI_VERSION}/otel-cli_${OTEL_CLI_VERSION}_${OS}_${ARCH}.tar.gz" | tar -xz -C ~/.local/bin otel-cli
+          case "${OS}_${ARCH}" in
+            linux_amd64) EXPECTED_SHA="${OTEL_CLI_SHA256_LINUX_AMD64}" ;;
+            linux_arm64) EXPECTED_SHA="${OTEL_CLI_SHA256_LINUX_ARM64}" ;;
+            *) echo "::error::Unsupported runner: ${OS}_${ARCH}"; exit 1 ;;
+          esac
+          TARBALL=$(mktemp --suffix=.tar.gz)
+          curl -fsSL "https://github.com/equinix-labs/otel-cli/releases/download/v${OTEL_CLI_VERSION}/otel-cli_${OTEL_CLI_VERSION}_${OS}_${ARCH}.tar.gz" -o "$TARBALL"
+          echo "${EXPECTED_SHA}  ${TARBALL}" | sha256sum -c -
+          tar -xzf "$TARBALL" -C ~/.local/bin otel-cli
+          rm -f "$TARBALL"
           chmod +x ~/.local/bin/otel-cli
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Emit Honeycomb span (per-platform patch)
-        if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && env.HONEYCOMB_API_KEY != '' && steps.platform-check.outputs.enabled == 'true' }}
+        if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && steps.platform-check.outputs.enabled == 'true' }}
         env:
           HONEYCOMB_API_KEY: ${{ secrets.HONEYCOMB_API_KEY }}
           OTEL_EXPORTER_OTLP_ENDPOINT: https://api.honeycomb.io
@@ -580,7 +590,7 @@ jobs:
           push-to-registry: true
 
       - name: Cache otel-cli
-        if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && env.HONEYCOMB_API_KEY != '' }}
+        if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' }}
         id: cache-otel-finalize
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -588,7 +598,7 @@ jobs:
           key: otel-cli-v${{ env.OTEL_CLI_VERSION }}-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install otel-cli
-        if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && env.HONEYCOMB_API_KEY != '' && steps.cache-otel-finalize.outputs.cache-hit != 'true' }}
+        if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && steps.cache-otel-finalize.outputs.cache-hit != 'true' }}
         run: |
           set -euo pipefail
           mkdir -p ~/.local/bin
@@ -598,12 +608,21 @@ jobs:
             x86_64) ARCH=amd64 ;;
             aarch64) ARCH=arm64 ;;
           esac
-          curl -fsSL "https://github.com/equinix-labs/otel-cli/releases/download/v${OTEL_CLI_VERSION}/otel-cli_${OTEL_CLI_VERSION}_${OS}_${ARCH}.tar.gz" | tar -xz -C ~/.local/bin otel-cli
+          case "${OS}_${ARCH}" in
+            linux_amd64) EXPECTED_SHA="${OTEL_CLI_SHA256_LINUX_AMD64}" ;;
+            linux_arm64) EXPECTED_SHA="${OTEL_CLI_SHA256_LINUX_ARM64}" ;;
+            *) echo "::error::Unsupported runner: ${OS}_${ARCH}"; exit 1 ;;
+          esac
+          TARBALL=$(mktemp --suffix=.tar.gz)
+          curl -fsSL "https://github.com/equinix-labs/otel-cli/releases/download/v${OTEL_CLI_VERSION}/otel-cli_${OTEL_CLI_VERSION}_${OS}_${ARCH}.tar.gz" -o "$TARBALL"
+          echo "${EXPECTED_SHA}  ${TARBALL}" | sha256sum -c -
+          tar -xzf "$TARBALL" -C ~/.local/bin otel-cli
+          rm -f "$TARBALL"
           chmod +x ~/.local/bin/otel-cli
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Emit Honeycomb span (per-image finalize)
-        if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && env.HONEYCOMB_API_KEY != '' }}
+        if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' }}
         env:
           HONEYCOMB_API_KEY: ${{ secrets.HONEYCOMB_API_KEY }}
           OTEL_EXPORTER_OTLP_ENDPOINT: https://api.honeycomb.io
@@ -812,4 +831,4 @@ jobs:
           name: metrics-${{ needs.scan.outputs.safe-name }}-${{ needs.scan.outputs.source-tag }}
           path: ${{ steps.metrics-json.outputs.filename }}
           retention-days: 1
-          if-no-files-found: warn
+          if-no-files-found: error
