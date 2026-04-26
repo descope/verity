@@ -26,7 +26,21 @@ type CopaConfig struct {
 type VerityConfig struct {
 	Overrides         map[string]Override    `yaml:"overrides,omitempty"`
 	Replacements      map[string]Replacement `yaml:"replacements,omitempty"`
+	ChartImageOverrides map[string][]ChartImageOverride `yaml:"chartImageOverrides,omitempty"`
 	UnpatchableImages []string               `yaml:"unpatchableImages,omitempty"`
+}
+
+// ChartImageOverride maps an operator-discovered image source to a wrapper
+// chart values path override.
+type ChartImageOverride struct {
+	// Source is either an env-var name like STRIMZI_DEFAULT_KAFKA_EXPORTER_IMAGE
+	// or a ConfigMap data key like ROOK_CSI_CEPH_IMAGE.
+	Source string `yaml:"source"`
+	// Type is "single" (default) or "csv" (multi-line version=image rows).
+	Type string `yaml:"type,omitempty"`
+	// Path is the wrapper-chart values.yaml path to override.
+	// For csv rows, use {version} as a substitution placeholder.
+	Path string `yaml:"path"`
 }
 
 // Replacement maps a chart-discovered image to a Verity Integer (Wolfi) image.
