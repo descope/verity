@@ -24,10 +24,10 @@ type CopaConfig struct {
 // the rebuild stub at images/<name>.yaml and let --exclude-names handle
 // the chart-discovery skip.
 type VerityConfig struct {
-	Overrides         map[string]Override    `yaml:"overrides,omitempty"`
-	Replacements      map[string]Replacement `yaml:"replacements,omitempty"`
+	Overrides           map[string]Override             `yaml:"overrides,omitempty"`
+	Replacements        map[string]Replacement          `yaml:"replacements,omitempty"`
 	ChartImageOverrides map[string][]ChartImageOverride `yaml:"chartImageOverrides,omitempty"`
-	UnpatchableImages []string               `yaml:"unpatchableImages,omitempty"`
+	UnpatchableImages   []string                        `yaml:"unpatchableImages,omitempty"`
 }
 
 // ChartImageOverride maps an operator-discovered image source to a wrapper
