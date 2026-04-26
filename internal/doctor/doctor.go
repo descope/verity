@@ -78,7 +78,10 @@ func Run(cfg Config) ([]Issue, error) {
 		return nil, fmt.Errorf("load verity config %s: %w", cfg.VerityConfig, err)
 	}
 
-	orphans, err := CheckOrphanReplacements(charts, vc, cfg.VerityConfig, cfg.ChartsFile, discovery.ExtractChartImages)
+	chartImages := func(chart config.ChartSpec, overrides map[string]config.Override) ([]string, error) {
+		return discovery.ExtractChartImagesWithValues(chart, overrides, vc.ChartValues[chart.Name])
+	}
+	orphans, err := CheckOrphanReplacements(charts, vc, cfg.VerityConfig, cfg.ChartsFile, chartImages)
 	if err != nil {
 		return nil, fmt.Errorf("orphan-replacements check: %w", err)
 	}
