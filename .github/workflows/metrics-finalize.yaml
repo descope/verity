@@ -1,0 +1,126 @@
+name: Metrics Finalize
+
+on:
+  workflow_run:
+    workflows: ["Patch Image"]
+    types: [completed]
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: metrics-finalize-${{ github.event.workflow_run.id }}
+  cancel-in-progress: false
+
+jobs:
+  commit-metrics:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout default branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        # No fetch-depth needed; we'll fetch _metrics separately
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Probe artifact existence
+        id: probe
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          COUNT=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/artifacts" \
+            --jq '[.artifacts[] | select(.name | startswith("metrics-"))] | length')
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Download metrics artifacts
+        if: steps.probe.outputs.count != '0'
+        id: download
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: metrics-*
+          merge-multiple: true
+          path: ./downloaded-metrics
+
+      - name: Check for metrics
+        id: check
+        if: steps.probe.outputs.count != '0'
+        run: |
+          shopt -s nullglob
+          files=( ./downloaded-metrics/metrics-*.json )
+          echo "count=${#files[@]}" >> "$GITHUB_OUTPUT"
+          ls -la ./downloaded-metrics/ 2>/dev/null || true
+
+      - name: Commit metrics to _metrics branch
+        if: steps.check.outputs.count != '0'
+        env:
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          RUN_CREATED_AT: ${{ github.event.workflow_run.created_at }}
+        run: |
+          set -euo pipefail
+          DATE=$(date -u -d "${RUN_CREATED_AT}" +%Y-%m-%d)
+          TARGET_DIR="_metrics/runs/${DATE}/${RUN_ID}-attempt-${RUN_ATTEMPT}"
+
+          STASH=$(mktemp -d)
+          cp ./downloaded-metrics/metrics-*.json "$STASH/"
+
+          for attempt in 1 2 3 4 5; do
+            echo "::group::Attempt ${attempt}"
+
+            if git fetch origin _metrics:_metrics 2>/dev/null; then
+              git switch _metrics
+              git reset --hard origin/_metrics
+            else
+              echo "::notice::_metrics branch missing — initializing as orphan"
+              git switch --orphan _metrics
+              git rm -rf . 2>/dev/null || true
+            fi
+
+            mkdir -p "$TARGET_DIR"
+            for f in "$STASH"/metrics-*.json; do
+              [ -e "$f" ] || continue
+              base=$(basename "$f" .json)
+              image="${base#metrics-}"
+              cp "$f" "$TARGET_DIR/${image}.json"
+            done
+
+            git add _metrics/
+            if git diff --cached --quiet; then
+              echo "::notice::No changes to commit"
+              echo "::endgroup::"
+              break
+            fi
+
+            COUNT=$(find "$TARGET_DIR" -maxdepth 1 -type f -name '*.json' | wc -l)
+            git commit -m "metrics: run ${RUN_ID} attempt ${RUN_ATTEMPT}" -m "${COUNT} image(s)"
+
+            if git push origin _metrics; then
+              echo "::notice::Pushed on attempt ${attempt}"
+              echo "::endgroup::"
+              break
+            fi
+
+            if [ "$attempt" -eq 5 ]; then
+              echo "::error::Failed to push metrics after 5 attempts"
+              echo "::endgroup::"
+              exit 1
+            fi
+
+            sleep_time=$((RANDOM % 10 + 1))
+            echo "::warning::Push failed, retrying in ${sleep_time}s"
+            sleep "$sleep_time"
+
+            git switch -
+            echo "::endgroup::"
+          done

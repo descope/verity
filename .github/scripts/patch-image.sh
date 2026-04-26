@@ -23,6 +23,25 @@ set -euo pipefail
 : "${IMAGE_NAME:?IMAGE_NAME is required}"
 : "${STAGING_REGISTRY:?STAGING_REGISTRY is required}"
 
+# Capture start time for duration metric. Trap on EXIT emits GitHub Actions
+# step outputs (exit-code, duration-seconds, staging-digest) on every code
+# path — success, PATCH_EXIT failure, and RETRY_EXIT failure.
+START_SECONDS=$SECONDS
+EMITTED_DIGEST=""
+emit_outputs() {
+  local exit_code=$?
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    {
+      echo "exit-code=${exit_code}"
+      echo "duration-seconds=$((SECONDS - START_SECONDS))"
+      if [[ "$exit_code" -eq 0 && -n "$EMITTED_DIGEST" ]]; then
+        echo "staging-digest=${EMITTED_DIGEST}"
+      fi
+    } >> "$GITHUB_OUTPUT"
+  fi
+}
+trap emit_outputs EXIT
+
 PLATFORM_ARCH=$(echo "$PLATFORM" | cut -d/ -f2)
 
 SOURCE_TAG=$(echo "$SOURCE" | cut -d: -f2)
@@ -104,5 +123,8 @@ rm -f "$PATCH_LOG"
 # the multi-platform manifest regardless of whether patches were applied.
 crane digest "$PLATFORM_TAG" > /dev/null 2>&1 \
   || crane copy --platform "$PLATFORM" "$SOURCE" "$PLATFORM_TAG"
+
+# Resolve final staging digest for GHA step output (consumed by trap).
+EMITTED_DIGEST=$(crane digest "$PLATFORM_TAG" 2>/dev/null || echo "")
 
 echo "Patched platform-specific image: $PLATFORM_TAG"
