@@ -714,6 +714,29 @@ func TestIsExcluded(t *testing.T) {
 		},
 	}
 
+	// Slash-to-hyphen flatten match: chart-discovered name "kyverno/background-controller"
+	// must match a Wolfi rebuild stub named "kyverno-background-controller". Without this
+	// normalization neither exact-match nor basename ("background-controller") would match.
+	t.Run("slash-to-hyphen flatten match", func(t *testing.T) {
+		exc := map[string]struct{}{"kyverno-background-controller": {}}
+		img := DiscoveredImage{
+			Name:   "kyverno/background-controller",
+			Source: "reg.kyverno.io/kyverno/background-controller:v1.17.2",
+		}
+		if !isExcluded(&img, exc) {
+			t.Errorf("isExcluded(%+v) = false, want true (flatten should match)", img)
+		}
+	})
+
+	// Slash-to-hyphen flatten must NOT match if neither variant is present.
+	t.Run("flatten miss does not match", func(t *testing.T) {
+		exc := map[string]struct{}{"unrelated": {}}
+		img := DiscoveredImage{Name: "kyverno/background-controller"}
+		if isExcluded(&img, exc) {
+			t.Errorf("isExcluded(%+v) = true, want false", img)
+		}
+	})
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			exc := exclude

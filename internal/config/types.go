@@ -12,9 +12,19 @@ type CopaConfig struct {
 
 // VerityConfig represents verity.yaml — verity-specific settings that belong
 // neither in Copa's copa-config.yaml nor in the standard Helm Chart.yaml.
+//
+// UnpatchableImages lists image names that should be skipped by the
+// orchestrator regardless of source (standalone copa-config.yaml entry or
+// chart-discovered). Names use the post-repoPath shape — registry stripped,
+// no tag — e.g. "kyverno/cleanup-controller" or
+// "cert-manager/cert-manager-openshift-routes". Use this for distroless
+// images without a Wolfi rebuild yet, or for images whose upstream chart
+// still references a registry/tag we no longer publish (e.g. argo-cd's
+// hard-coded redis reference after the redis→valkey migration in #227).
 type VerityConfig struct {
-	Overrides    map[string]Override    `yaml:"overrides,omitempty"`
-	Replacements map[string]Replacement `yaml:"replacements,omitempty"`
+	Overrides         map[string]Override    `yaml:"overrides,omitempty"`
+	Replacements      map[string]Replacement `yaml:"replacements,omitempty"`
+	UnpatchableImages []string               `yaml:"unpatchableImages,omitempty"`
 }
 
 // Replacement maps a chart-discovered image to a Verity Integer (Wolfi) image.

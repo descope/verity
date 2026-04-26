@@ -71,6 +71,12 @@ images:
 
   # MongoDB Community Server is only published with UBI-suffixed tags
   # (no plain semver variants exist). Use -ubi9 for current RHEL UBI 9 base.
+  # The bundled Go CLI tools (mongostat, mongodump, ...) are stripped with
+  # -trimpath so copa cannot recover their VCS URL from buildinfo; pin it
+  # explicitly. mongo-tools is a separate repo from mongo (server is C++).
+  # Tools tags use a 100.x stream independent of the server image tag, so we
+  # cannot derive a tag from the image tag — leave goVcsTagPrefix unset and
+  # let copa's resolver fall back to the latest 100.x release.
   - name: "mongodb/mongodb-community-server"
     image: "quay.io/mongodb/mongodb-community-server"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -78,7 +84,10 @@ images:
       strategy: "pattern"
       pattern: '^\d+\.\d+\.\d+-ubi9$'
       maxTags: 3
+    goVcsUrl: "https://github.com/mongodb/mongo-tools"
 
+  # cockroach binary lives at /cockroach/cockroach (non-standard path).
+  # Stripped with -trimpath, so buildinfo doesn't carry a VCS URL.
   - name: "cockroachdb/cockroach"
     image: "mirror.gcr.io/cockroachdb/cockroach"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -86,6 +95,8 @@ images:
       strategy: "pattern"
       pattern: '^v\d+\.\d+\.\d+$'
       maxTags: 3
+    goVcsUrl: "https://github.com/cockroachdb/cockroach"
+    goVcsTagPrefix: ""
 
   - name: "library/elasticsearch"
     image: "mirror.gcr.io/library/elasticsearch"
@@ -304,6 +315,9 @@ images:
       pattern: '^v\d+\.\d+\.\d+-distroless$'
       maxTags: 3
 
+  # prometheus-config-reloader is built from the prometheus-operator monorepo
+  # under cmd/prometheus-config-reloader. The image tag tracks the operator
+  # release tag (v0.x.y), so the v-prefix maps directly to the upstream git tag.
   - name: "prometheus-operator/prometheus-config-reloader"
     image: "quay.io/prometheus-operator/prometheus-config-reloader"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -311,6 +325,8 @@ images:
       strategy: "pattern"
       pattern: '^v\d+\.\d+\.\d+$'
       maxTags: 3
+    goVcsUrl: "https://github.com/prometheus-operator/prometheus-operator"
+    goVcsTagPrefix: ""
 
   - name: "prometheuscommunity/elasticsearch-exporter"
     image: "quay.io/prometheuscommunity/elasticsearch-exporter"

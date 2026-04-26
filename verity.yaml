@@ -69,3 +69,34 @@ replacements:
   "zalando/postgres-operator":
     registry: "ghcr.io/verity-org"
     image: "postgres-operator"
+
+# Images the orchestrator should skip entirely, regardless of source
+# (standalone copa-config.yaml entry OR chart-discovered). Use a key here
+# when:
+#   1. The image is truly distroless (no shell, no package manager) and we
+#      do not have a Wolfi/Integer rebuild yet, so copa cannot patch it.
+#   2. The upstream chart still references an image we deliberately removed
+#      from our registry (e.g. argo-cd's hard-coded redis reference after
+#      the redis→valkey migration in #227).
+# Format: post-repoPath name (registry stripped, no tag).
+unpatchableImages:
+  # ── Distroless images, no Wolfi rebuild yet ──────────────────────────
+  # kyverno chart 3.7.2 ships these as gcr.io/distroless/static.
+  # background-controller and reports-controller are NOT listed because
+  # images/kyverno-background-controller.yaml and images/kyverno-reports-
+  # controller.yaml already cover them via the Wolfi exclude path. Add
+  # images/<name>.yaml stubs and drop entries here to enable patching.
+  - "kyverno/cleanup-controller"
+  - "kyverno/kyvernopre"
+  - "kyverno/readiness-checker"
+
+  # Standalone copa-config.yaml entry; distroless, no Wolfi rebuild yet.
+  - "cert-manager/cert-manager-openshift-routes"
+
+  # ── Removed-from-registry references ─────────────────────────────────
+  # argo-cd values.yaml hard-codes
+  # repository: ecr-public.aws.com/docker/library/redis (a non-standard
+  # ECR Public alias). We migrated to valkey in #227 and never published
+  # this redis tag, so patching attempts always fail at the trivy
+  # "image not found" step.
+  - "docker/library/redis"

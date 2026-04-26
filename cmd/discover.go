@@ -91,10 +91,33 @@ var DiscoverCommand = &cli.Command{
 		} else {
 			maps.Copy(overrides, vc.Overrides)
 		}
-		// Parse --exclude-names into a set for chart image filtering.
+		// excludeNames covers Wolfi-rebuild dedup (chart-discovered images
+		// only — see Discover docstring). UnpatchableImages from verity.yaml
+		// is a stronger signal ("this image cannot be patched, regardless
+		// of source") and is also merged in here so chart-discovered
+		// occurrences emit the "Skipping chart image" log line. Standalone
+		// occurrences are filtered by the post-filter below since
+		// excludeNames intentionally does not apply to standalone images.
 		excludeNames := parseNameSet(cmd.String("exclude-names"))
+		unpatchable := make(map[string]struct{}, len(vc.UnpatchableImages))
+		for _, n := range vc.UnpatchableImages {
+			if n = strings.TrimSpace(n); n != "" {
+				unpatchable[n] = struct{}{}
+			}
+		}
+		if len(unpatchable) > 0 {
+			if excludeNames == nil {
+				excludeNames = make(map[string]struct{})
+			}
+			for n := range unpatchable {
+				excludeNames[n] = struct{}{}
+			}
+		}
 
 		images, err := discovery.Discover(cfg, cmd.String("target-registry"), overrides, excludeNames)
+		if err == nil && len(unpatchable) > 0 {
+			images = filterUnpatchable(images, unpatchable)
+		}
 		if err != nil {
 			return fmt.Errorf("failed to discover images: %w", err)
 		}
@@ -147,6 +170,27 @@ func parseNameSet(csv string) map[string]struct{} {
 		}
 	}
 	return set
+}
+
+// filterUnpatchable drops images whose Name appears in the unpatchable set,
+// regardless of source. Necessary because discovery.Discover only consults
+// excludeNames for chart-sourced images by design (Wolfi-rebuild dedup
+// semantic), and verity.yaml's UnpatchableImages must apply to standalone
+// entries too (e.g. cert-manager/cert-manager-openshift-routes lives in
+// copa-config.yaml but is distroless and has no Wolfi rebuild yet).
+func filterUnpatchable(images []discovery.DiscoveredImage, unpatchable map[string]struct{}) []discovery.DiscoveredImage {
+	if len(unpatchable) == 0 {
+		return images
+	}
+	filtered := images[:0]
+	for _, img := range images {
+		if _, skip := unpatchable[img.Name]; skip {
+			fmt.Fprintf(os.Stderr, "Skipping unpatchable image %q (verity.yaml unpatchableImages)\n", img.Source)
+			continue
+		}
+		filtered = append(filtered, img)
+	}
+	return filtered
 }
 
 // filterCopaImagesByName filters images to only those whose Name matches one

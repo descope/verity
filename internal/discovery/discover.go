@@ -74,6 +74,19 @@ func Discover(cfg *config.CopaConfig, targetRegistry string, overrides map[strin
 }
 
 // isExcluded checks whether a chart-discovered image should be skipped.
+//
+// Three name shapes are tried, in order:
+//  1. exact match — img.Name as-is (e.g. "kyverno/background-controller")
+//  2. basename — last path component (e.g. "background-controller")
+//  3. slash-to-hyphen flatten — full path with "/" → "-"
+//     (e.g. "kyverno-background-controller")
+//
+// The third shape exists because verity's Wolfi/Integer rebuild stubs are
+// filenames like images/kyverno-background-controller.yaml, which the
+// orchestrator passes to --exclude-names with hyphens. Without this
+// normalization, chart-discovered names like "kyverno/background-controller"
+// silently bypass the exclusion and re-enter the patch pipeline even when a
+// Wolfi rebuild already exists for that image.
 func isExcluded(img *DiscoveredImage, excludeNames map[string]struct{}) bool {
 	if len(excludeNames) == 0 {
 		return false
@@ -84,6 +97,11 @@ func isExcluded(img *DiscoveredImage, excludeNames map[string]struct{}) bool {
 	baseName := nameBasename(img.Name)
 	if baseName != img.Name {
 		if _, ok := excludeNames[baseName]; ok {
+			return true
+		}
+	}
+	if flat := strings.ReplaceAll(img.Name, "/", "-"); flat != img.Name {
+		if _, ok := excludeNames[flat]; ok {
 			return true
 		}
 	}
