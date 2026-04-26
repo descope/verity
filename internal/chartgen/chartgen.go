@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -18,6 +19,8 @@ import (
 // mappings (i.e., chart-gen would otherwise have silently skipped it). The
 // usual root cause is a missing replacements: entry in verity.yaml.
 var ErrStrictModeUnmappedCharts = errors.New("strict mode: charts produced no patched image mappings")
+
+var chartImageOverrideVersionPattern = regexp.MustCompile(`v?\d+\.\d+\.\d+`)
 
 type Config struct {
 	ChartsFile     string
@@ -287,12 +290,22 @@ func buildChartImageOverrides(chartName string, mappings []ImageMapping, vc *con
 			if overrideType == "" {
 				overrideType = "single"
 			}
-			if overrideType != "single" {
+
+			path := override.Path
+			switch overrideType {
+			case "single":
+			case "csv":
+				version, ok := chartImageOverrideVersion(mapping)
+				if !ok {
+					return nil, fmt.Errorf("derive version for chartImageOverrides source %q", override.Source)
+				}
+				path = strings.ReplaceAll(path, "{version}", version)
+			default:
 				return nil, fmt.Errorf("unsupported chartImageOverrides type %q for source %q", override.Type, override.Source)
 			}
 
 			result = append(result, ValueOverride{
-				Path:  override.Path,
+				Path:  path,
 				Value: patchedImageRef(mapping),
 			})
 		}
@@ -306,4 +319,15 @@ func patchedImageRef(mapping ImageMapping) string {
 		return mapping.PatchedRepo
 	}
 	return mapping.PatchedRepo + ":" + mapping.PatchedTag
+}
+
+func chartImageOverrideVersion(mapping ImageMapping) (string, bool) {
+	haystacks := []string{mapping.OriginalTag, mapping.OriginalRepo + ":" + mapping.OriginalTag}
+	for _, haystack := range haystacks {
+		matches := chartImageOverrideVersionPattern.FindAllString(haystack, -1)
+		if len(matches) > 0 {
+			return matches[len(matches)-1], true
+		}
+	}
+	return "", false
 }
