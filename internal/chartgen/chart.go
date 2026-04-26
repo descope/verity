@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -24,7 +25,7 @@ type WrapperChart struct {
 
 // BuildWrapperChart creates a wrapper Helm chart that depends on the original
 // chart and overrides image values with patched references.
-func BuildWrapperChart(original config.ChartSpec, overrides []ValueOverride) (*WrapperChart, error) {
+func BuildWrapperChart(original config.ChartSpec, chartValues map[string]any, overrides []ValueOverride) (*WrapperChart, error) {
 	if original.Name == "" {
 		return nil, ErrEmptyChartName
 	}
@@ -58,7 +59,7 @@ func BuildWrapperChart(original config.ChartSpec, overrides []ValueOverride) (*W
 		return nil, fmt.Errorf("marshal Chart.yaml: %w", err)
 	}
 
-	valuesTree := buildValuesTree(original.Name, overrides)
+	valuesTree := buildValuesTree(original.Name, chartValues, overrides)
 	valuesYAML, err := yaml.Marshal(valuesTree)
 	if err != nil {
 		return nil, fmt.Errorf("marshal values.yaml: %w", err)
@@ -129,8 +130,8 @@ func PushChart(tgzPath, registry string) error {
 
 // buildValuesTree converts flat dotted-path overrides to a nested map scoped
 // under the chart name (Helm dependency override convention).
-func buildValuesTree(chartName string, overrides []ValueOverride) map[string]any {
-	if len(overrides) == 0 {
+func buildValuesTree(chartName string, chartValues map[string]any, overrides []ValueOverride) map[string]any {
+	if len(chartValues) == 0 && len(overrides) == 0 {
 		return map[string]any{}
 	}
 
@@ -138,45 +139,58 @@ func buildValuesTree(chartName string, overrides []ValueOverride) map[string]any
 	chartRoot := make(map[string]any)
 	root[chartName] = chartRoot
 
+	keys := make([]string, 0, len(chartValues))
+	for key := range chartValues {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		setScalarValue(chartRoot, key, chartValues[key])
+	}
+
 	for _, override := range overrides {
-		parts := splitOverridePath(override.Path)
-		current := chartRoot
-
-		for i, part := range parts {
-			if part == "" {
-				continue
-			}
-
-			if i == len(parts)-1 {
-				if override.Value != "" {
-					current[part] = override.Value
-					break
-				}
-				current[part] = map[string]any{
-					"repository": override.Repository,
-					"tag":        override.Tag,
-				}
-				break
-			}
-
-			next, ok := current[part]
-			if !ok {
-				nextMap := make(map[string]any)
-				current[part] = nextMap
-				current = nextMap
-				continue
-			}
-
-			nextMap, ok := next.(map[string]any)
-			if !ok {
-				nextMap = make(map[string]any)
-				current[part] = nextMap
-			}
-			current = nextMap
+		if override.Value != "" {
+			setScalarValue(chartRoot, override.Path, override.Value)
+			continue
 		}
+		setScalarValue(chartRoot, override.Path, map[string]any{
+			"repository": override.Repository,
+			"tag":        override.Tag,
+		})
 	}
 
 	return root
+}
+
+func setScalarValue(root map[string]any, path string, value any) {
+	parts := splitOverridePath(path)
+	current := root
+
+	for i, part := range parts {
+		if part == "" {
+			continue
+		}
+
+		if i == len(parts)-1 {
+			current[part] = value
+			return
+		}
+
+		next, ok := current[part]
+		if !ok {
+			nextMap := make(map[string]any)
+			current[part] = nextMap
+			current = nextMap
+			continue
+		}
+
+		nextMap, ok := next.(map[string]any)
+		if !ok {
+			nextMap = make(map[string]any)
+			current[part] = nextMap
+		}
+		current = nextMap
+	}
 }
 
 func splitOverridePath(path string) []string {

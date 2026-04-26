@@ -16,7 +16,7 @@ func TestBuildWrapperChart(t *testing.T) {
 		Repository: "oci://ghcr.io/prometheus-community/charts",
 	}
 
-	chart, err := BuildWrapperChart(original, nil)
+	chart, err := BuildWrapperChart(original, nil, nil)
 	if err != nil {
 		t.Fatalf("BuildWrapperChart() error = %v", err)
 	}
@@ -71,12 +71,14 @@ func TestBuildWrapperChart(t *testing.T) {
 
 func TestBuildWrapperChartValues(t *testing.T) {
 	tests := []struct {
-		name      string
-		overrides []ValueOverride
-		assert    func(t *testing.T, values map[string]any)
+		name        string
+		chartValues map[string]any
+		overrides   []ValueOverride
+		assert      func(t *testing.T, values map[string]any)
 	}{
 		{
-			name: "single image override",
+			name:        "single image override",
+			chartValues: nil,
 			overrides: []ValueOverride{{
 				Path:       "image",
 				Repository: "ghcr.io/verity-org/prom",
@@ -97,7 +99,8 @@ func TestBuildWrapperChartValues(t *testing.T) {
 			},
 		},
 		{
-			name: "nested path",
+			name:        "nested path",
+			chartValues: nil,
 			overrides: []ValueOverride{{
 				Path:       "server.image",
 				Repository: "ghcr.io/verity-org/prometheus",
@@ -122,7 +125,8 @@ func TestBuildWrapperChartValues(t *testing.T) {
 			},
 		},
 		{
-			name: "multiple overrides",
+			name:        "multiple overrides",
+			chartValues: nil,
 			overrides: []ValueOverride{
 				{Path: "image", Repository: "ghcr.io/verity-org/prom", Tag: "v3"},
 				{Path: "server.image", Repository: "ghcr.io/verity-org/prometheus", Tag: "v3.2.1"},
@@ -152,13 +156,46 @@ func TestBuildWrapperChartValues(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "chart values merged before image overrides",
+			chartValues: map[string]any{
+				"testFramework.enabled": false,
+				"grafana.enabled":       false,
+			},
+			overrides: []ValueOverride{{
+				Path:       "image",
+				Repository: "ghcr.io/verity-org/prom",
+				Tag:        "v3",
+			}},
+			assert: func(t *testing.T, values map[string]any) {
+				prom, ok := values["prometheus"].(map[string]any)
+				if !ok {
+					t.Fatal("prometheus root missing")
+				}
+				testFramework, ok := prom["testFramework"].(map[string]any)
+				if !ok || !reflect.DeepEqual(testFramework["enabled"], false) {
+					t.Fatalf("testFramework.enabled = %#v, want false", prom["testFramework"])
+				}
+				grafana, ok := prom["grafana"].(map[string]any)
+				if !ok || !reflect.DeepEqual(grafana["enabled"], false) {
+					t.Fatalf("grafana.enabled = %#v, want false", prom["grafana"])
+				}
+				image, ok := prom["image"].(map[string]any)
+				if !ok {
+					t.Fatal("image missing")
+				}
+				if image["repository"] != "ghcr.io/verity-org/prom" || image["tag"] != "v3" {
+					t.Fatalf("prometheus.image = %#v, want override", image)
+				}
+			},
+		},
 	}
 
 	original := config.ChartSpec{Name: "prometheus", Version: "28.9.1", Repository: "oci://repo/charts"}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			chart, err := BuildWrapperChart(original, tt.overrides)
+			chart, err := BuildWrapperChart(original, tt.chartValues, tt.overrides)
 			if err != nil {
 				t.Fatalf("BuildWrapperChart() error = %v", err)
 			}
@@ -195,7 +232,7 @@ func TestBuildWrapperChartValues_ChartImageOverrideSingleSource(t *testing.T) {
 		t.Fatalf("buildChartImageOverrides() error = %v", err)
 	}
 
-	chart, err := BuildWrapperChart(original, overrides)
+	chart, err := BuildWrapperChart(original, nil, overrides)
 	if err != nil {
 		t.Fatalf("BuildWrapperChart() error = %v", err)
 	}
@@ -252,7 +289,7 @@ func TestBuildWrapperChartValues_ChartImageOverrideCSV(t *testing.T) {
 		t.Fatalf("buildChartImageOverrides() error = %v", err)
 	}
 
-	chart, err := BuildWrapperChart(original, overrides)
+	chart, err := BuildWrapperChart(original, nil, overrides)
 	if err != nil {
 		t.Fatalf("BuildWrapperChart() error = %v", err)
 	}
@@ -285,7 +322,7 @@ func TestBuildWrapperChartValues_ChartImageOverrideCSV(t *testing.T) {
 func TestBuildWrapperChartEmptyOverrides(t *testing.T) {
 	original := config.ChartSpec{Name: "prometheus", Version: "28.9.1", Repository: "oci://repo/charts"}
 
-	chart, err := BuildWrapperChart(original, []ValueOverride{})
+	chart, err := BuildWrapperChart(original, nil, []ValueOverride{})
 	if err != nil {
 		t.Fatalf("BuildWrapperChart() error = %v", err)
 	}
@@ -300,7 +337,7 @@ func TestBuildWrapperChartEmptyOverrides(t *testing.T) {
 }
 
 func TestBuildWrapperChartEmptyName(t *testing.T) {
-	_, err := BuildWrapperChart(config.ChartSpec{Version: "1.0.0", Repository: "oci://repo/charts"}, nil)
+	_, err := BuildWrapperChart(config.ChartSpec{Version: "1.0.0", Repository: "oci://repo/charts"}, nil, nil)
 	if err == nil {
 		t.Fatal("BuildWrapperChart() error = nil, want non-nil")
 	}
@@ -369,7 +406,7 @@ func TestBuildValuesTree(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := buildValuesTree("prometheus", tt.overrides)
+			got := buildValuesTree("prometheus", nil, tt.overrides)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Fatalf("buildValuesTree() = %#v, want %#v", got, tt.want)
 			}
