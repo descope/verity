@@ -247,6 +247,29 @@ replacements:
     image: "crossplane"
     tag: "2"
 
+  # Wave 7 charts (object storage, registries, security, metrics).
+  # minio 5.4.0 → minio server; rebuild publishes "RELEASE" floating tag.
+  # The chart's `minio/mc` (CLI) image has a different path and falls through.
+  "minio/minio":
+    registry: "ghcr.io/verity-org"
+    image: "minio"
+    tag: "RELEASE"
+  # chartmuseum 3.10.4 → chartmuseum v0.16.x; single image.
+  "helm/chartmuseum":
+    registry: "ghcr.io/verity-org"
+    image: "chartmuseum"
+    tag: "0"
+  # trivy-operator 0.32.1 → trivy-operator v0.30.x; single image.
+  "aquasec/trivy-operator":
+    registry: "ghcr.io/verity-org"
+    image: "trivy-operator"
+    tag: "0"
+  # victoria-metrics-single 0.35.0 → victoria-metrics v1.140.x; single image.
+  "victoriametrics/victoria-metrics":
+    registry: "ghcr.io/verity-org"
+    image: "victoriametrics"
+    tag: "1"
+
 # Images the orchestrator should skip entirely, regardless of source
 # (standalone copa-config.yaml entry OR chart-discovered). Reserve this
 # list for images that have NO Wolfi/Integer rebuild AND no replacement
