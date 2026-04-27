@@ -220,6 +220,20 @@ replacements:
     image: "grafana-alloy"
     tag: "1"
 
+  # Wave 5 charts (secrets, AI/ML).
+  # openbao 0.27.2 → openbao v2.5.x; chart's hashicorp/vault-k8s injector
+  # falls through to crane (no rebuild for vault-k8s).
+  "openbao/openbao":
+    registry: "ghcr.io/verity-org"
+    image: "openbao"
+    tag: "2"
+  # apache-airflow 1.21.0 → airflow v3.2.x; bitnamilegacy/postgresql,
+  # statsd-exporter, and root-level redis fall through to crane.
+  "apache/airflow":
+    registry: "ghcr.io/verity-org"
+    image: "airflow"
+    tag: "3"
+
 # Images the orchestrator should skip entirely, regardless of source
 # (standalone copa-config.yaml entry OR chart-discovered). Reserve this
 # list for images that have NO Wolfi/Integer rebuild AND no replacement
