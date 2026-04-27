@@ -287,6 +287,51 @@ replacements:
     image: "atlantis"
     tag: "0"
 
+  # Wave 9 charts (auxiliary-binary self-maps for prefix-collision safety).
+  # These charts emit a primary image plus auxiliary images that share a
+  # prefix with the primary key. Without the self-map entries, chart-gen's
+  # strings.Contains matcher would route auxiliary images to the primary
+  # rebuild (which lacks the auxiliary binary). Longest-pattern-first sort
+  # guarantees the more-specific self-map wins.
+
+  # vault 0.32.0 → hashicorp/vault server binary on Wolfi rebuild.
+  # The vault-k8s auth injector is a separate binary; self-map keeps the
+  # chart's docker.io/hashicorp/vault-k8s reference unchanged.
+  "hashicorp/vault-k8s":
+    registry: "docker.io"
+    image: "hashicorp/vault-k8s"
+  "hashicorp/vault":
+    registry: "ghcr.io/verity-org"
+    image: "vault"
+    tag: "1"
+
+  # falco 8.0.2 → falco daemon (/usr/bin/falco) on Wolfi rebuild.
+  # falcoctl and falco-driver-loader are separate binaries; self-map them.
+  "falcosecurity/falcoctl":
+    registry: "docker.io"
+    image: "falcosecurity/falcoctl"
+  "falcosecurity/falco-driver-loader":
+    registry: "docker.io"
+    image: "falcosecurity/falco-driver-loader"
+  "falcosecurity/falco":
+    registry: "ghcr.io/verity-org"
+    image: "falco"
+    tag: "0"
+
+  # nats 2.12.6 → nats-server (root-level docker.io/nats path) on Wolfi
+  # rebuild. nats-box (CLI) and nats-server-config-reloader are separate
+  # binaries under the natsio/ namespace; self-map them.
+  "natsio/nats-server-config-reloader":
+    registry: "docker.io"
+    image: "natsio/nats-server-config-reloader"
+  "natsio/nats-box":
+    registry: "docker.io"
+    image: "natsio/nats-box"
+  "nats":
+    registry: "ghcr.io/verity-org"
+    image: "nats"
+    tag: "2"
+
 # Images the orchestrator should skip entirely, regardless of source
 # (standalone copa-config.yaml entry OR chart-discovered). Reserve this
 # list for images that have NO Wolfi/Integer rebuild AND no replacement
