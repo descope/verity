@@ -375,6 +375,43 @@ replacements:
     image: "blackbox-exporter"
     tag: "0.28.0"
 
+  # Wave 11 charts (networking + observability + auth).
+  # cilium 1.19.3 → cilium/cilium agent on Wolfi rebuild (1.19 major.minor).
+  # cilium/cilium-envoy is a fork of envoy with Cilium-specific binaries — NOT
+  # interchangeable with our envoy rebuild; self-map keeps it as upstream.
+  # cilium/operator-generic doesn't share path prefix with cilium/cilium so
+  # falls through to crane naturally.
+  "cilium/cilium-envoy":
+    registry: "quay.io"
+    image: "cilium/cilium-envoy"
+  "cilium/cilium":
+    registry: "ghcr.io/verity-org"
+    image: "cilium"
+    tag: "1.19"
+  # oauth2-proxy 10.4.3 (app v7.15.2) → exact tag match.
+  "oauth2-proxy/oauth2-proxy":
+    registry: "ghcr.io/verity-org"
+    image: "oauth2-proxy"
+    tag: "7.15.2"
+  # influxdb2 2.1.2 (app 2.7.4) → influxdb v2.7 rebuild track.
+  # Image is `docker.io/influxdb` (root-level, no namespace).
+  "influxdb":
+    registry: "ghcr.io/verity-org"
+    image: "influxdb"
+    tag: "2.7"
+  # prometheus-nginx-exporter 1.21.1 (app 1.5.1) → exact tag match.
+  "nginx/nginx-prometheus-exporter":
+    registry: "ghcr.io/verity-org"
+    image: "nginx-prometheus-exporter"
+    tag: "1.5.1"
+  # fluent-bit 0.56.0 (app 4.2.3) → fluent-bit v4.2 rebuild track.
+  # Newer charts deploy v5.x but rebuild is still at v4.2; this older chart
+  # version aligns with the rebuild track.
+  "fluent/fluent-bit":
+    registry: "ghcr.io/verity-org"
+    image: "fluent-bit"
+    tag: "4.2"
+
 # Images the orchestrator should skip entirely, regardless of source
 # (standalone copa-config.yaml entry OR chart-discovered). Reserve this
 # list for images that have NO Wolfi/Integer rebuild AND no replacement
