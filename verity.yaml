@@ -47,6 +47,11 @@ chartValues:
   tempo-distributed:
     memcached.enabled: false
 
+  # aws-load-balancer-controller requires a clusterName to render templates.
+  # The wrapper chart consumers MUST override this to their actual cluster name.
+  aws-load-balancer-controller:
+    clusterName: verity-placeholder
+
   # jenkins 5.9.18 otherwise renders an unpatched bats helm-test pod and a
   # default inbound agent image. Keep the wrapper focused on the controller and
   # the existing kiwigrid sidecar image.
@@ -344,6 +349,31 @@ replacements:
     registry: "ghcr.io/verity-org"
     image: "envoy"
     tag: "1.35"
+
+  # Wave 10 charts (single-image controllers + CSI driver + exporter).
+  # aws-load-balancer-controller chart 1.17.1 (app v2.17.1) → controller binary
+  # on Wolfi rebuild (v2 major track). Older chart line maintained for v2 users.
+  "eks/aws-load-balancer-controller":
+    registry: "ghcr.io/verity-org"
+    image: "aws-load-balancer-controller"
+    tag: "2"
+  # cert-manager-csi-driver v0.14.0 (app v0.14.0) → exact tag match.
+  # csi-node-driver-registrar and livenessprobe are different binaries under
+  # quay.io/jetstack and have no rebuilds; they fall through to crane.
+  "jetstack/cert-manager-csi-driver":
+    registry: "ghcr.io/verity-org"
+    image: "cert-manager-csi-driver"
+    tag: "0.14"
+  # descheduler 0.35.1 (app 0.35.1) → exact tag match; single image.
+  "descheduler/descheduler":
+    registry: "ghcr.io/verity-org"
+    image: "descheduler"
+    tag: "0.35"
+  # prometheus-blackbox-exporter 11.9.1 (app v0.28.0) → single image.
+  "prometheus/blackbox-exporter":
+    registry: "ghcr.io/verity-org"
+    image: "blackbox-exporter"
+    tag: "0.28.0"
 
 # Images the orchestrator should skip entirely, regardless of source
 # (standalone copa-config.yaml entry OR chart-discovered). Reserve this
