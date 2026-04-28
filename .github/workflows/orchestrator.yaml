@@ -241,7 +241,10 @@ jobs:
     name: Dispatch Patches
     needs: discover
     runs-on: ubuntu-24.04
-    if: needs.discover.outputs.count != '0'
+    # GHA propagates skipped state from transitive `needs:` ancestors into
+    # this job's implicit success() check; `detect` is push-only so workflow_dispatch
+    # runs need always()+!failure()+!cancelled() to escape the skip. See PR #203 (#256).
+    if: always() && !failure() && !cancelled() && needs.discover.outputs.count != '0'
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
