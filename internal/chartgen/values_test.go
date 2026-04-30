@@ -900,18 +900,24 @@ func TestExtractTarballSkipsSymlinks(t *testing.T) {
 func TestSubchartKeyFromArchive(t *testing.T) {
 	cases := []struct {
 		archive string
+		version string
 		want    string
 	}{
-		{"alertmanager-1.13.0.tgz", "alertmanager"},
-		{"kube-state-metrics-5.18.1.tgz", "kube-state-metrics"},
-		{"some/path/prometheus-29.2.1.tgz", "prometheus"},
-		{"plain.tgz", "plain"},
-		{"name-without-version.tgz", "name-without-version"},
+		{"alertmanager-1.13.0.tgz", "1.13.0", "alertmanager"},
+		{"kube-state-metrics-5.18.1.tgz", "5.18.1", "kube-state-metrics"},
+		{"some/path/prometheus-29.2.1.tgz", "29.2.1", "prometheus"},
+		{"plain.tgz", "", "plain"},
+		{"name-without-version.tgz", "", "name-without-version"},
+		{"redis-1.2.3-alpha.1.tgz", "1.2.3-alpha.1", "redis"},
+		{"argo-cd-9.5.4-rc1.tgz", "9.5.4-rc1", "argo-cd"},
+		{"messaging-0.5.0.tgz", "0.5.0", "messaging"},
+		{"chart-1.0.0+build.42.tgz", "1.0.0+build.42", "chart"},
+		{"semver-fallback-9.0.tgz", "", "semver-fallback"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.archive, func(t *testing.T) {
-			if got := subchartKeyFromArchive(tc.archive); got != tc.want {
-				t.Fatalf("subchartKeyFromArchive(%q) = %q, want %q", tc.archive, got, tc.want)
+			if got := subchartKeyFromArchive(tc.archive, tc.version); got != tc.want {
+				t.Fatalf("subchartKeyFromArchive(%q, %q) = %q, want %q", tc.archive, tc.version, got, tc.want)
 			}
 		})
 	}

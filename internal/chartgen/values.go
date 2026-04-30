@@ -251,8 +251,13 @@ func collectParentSubcharts(parentChartDir string, subchartValues map[string][]b
 	return collectSubchartValues(filepath.Join(parentChartDir, "charts"), subchartValues)
 }
 
-func subchartKeyFromArchive(archive string) string {
+func subchartKeyFromArchive(archive, version string) string {
 	base := strings.TrimSuffix(filepath.Base(archive), ".tgz")
+	if version != "" {
+		if stripped, ok := strings.CutSuffix(base, "-"+version); ok {
+			return stripped
+		}
+	}
 	idx := strings.LastIndex(base, "-")
 	if idx > 0 && idx < len(base)-1 {
 		first := base[idx+1]
@@ -289,7 +294,7 @@ func collectSubchartValues(chartsDir string, subchartValues map[string][]byte) e
 		return err
 	}
 	for _, archive := range archives {
-		valuesYAML, _, err := extractValuesFromTarball(archive)
+		valuesYAML, _, version, err := readChartArchive(archive)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "warning: skipping unreadable subchart archive %s: %v\n", filepath.Base(archive), err)
 			continue
@@ -297,7 +302,7 @@ func collectSubchartValues(chartsDir string, subchartValues map[string][]byte) e
 		if len(valuesYAML) == 0 {
 			continue
 		}
-		subchartValues[subchartKeyFromArchive(archive)] = valuesYAML
+		subchartValues[subchartKeyFromArchive(archive, version)] = valuesYAML
 	}
 
 	entries, err := os.ReadDir(chartsDir)
@@ -378,20 +383,45 @@ func extractTarball(tgzPath, destDir string) (string, error) {
 // extractValuesFromTarball reads a Helm chart tarball and returns the chart
 // name together with the raw values.yaml bytes when present.
 func extractValuesFromTarball(tgzPath string) (valuesYAML []byte, chartName string, err error) {
+	valuesYAML, chartName, _, err = readChartArchive(tgzPath)
+	return valuesYAML, chartName, err
+}
+
+func readChartArchive(tgzPath string) (valuesYAML []byte, chartName, version string, err error) {
+	var chartYAML []byte
 	chartName, err = visitTarballEntries(tgzPath, func(_ *tar.Header, name string, tarReader io.Reader) error {
 		parts := strings.Split(name, "/")
-		if len(parts) == 2 && parts[1] == "values.yaml" {
-			valuesYAML, err = io.ReadAll(tarReader)
-			if err != nil {
-				return fmt.Errorf("read values.yaml from %s: %w", filepath.Base(tgzPath), err)
+		if len(parts) != 2 {
+			return nil
+		}
+		switch parts[1] {
+		case "values.yaml":
+			data, readErr := io.ReadAll(tarReader)
+			if readErr != nil {
+				return fmt.Errorf("read values.yaml from %s: %w", filepath.Base(tgzPath), readErr)
 			}
+			valuesYAML = data
+		case "Chart.yaml":
+			data, readErr := io.ReadAll(tarReader)
+			if readErr != nil {
+				return fmt.Errorf("read Chart.yaml from %s: %w", filepath.Base(tgzPath), readErr)
+			}
+			chartYAML = data
 		}
 		return nil
 	})
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
-	return valuesYAML, chartName, nil
+	if len(chartYAML) > 0 {
+		var doc struct {
+			Version string `yaml:"version"`
+		}
+		if unmarshalErr := yaml.Unmarshal(chartYAML, &doc); unmarshalErr == nil {
+			version = doc.Version
+		}
+	}
+	return valuesYAML, chartName, version, nil
 }
 
 func visitTarballEntries(tgzPath string, visit func(header *tar.Header, name string, tarReader io.Reader) error) (string, error) {
