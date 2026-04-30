@@ -42,7 +42,7 @@ func ResolveValuePaths(valuesYAML []byte, mappings []ImageMapping, overrides map
 func ResolveValuePathsWithSubcharts(valuesYAML []byte, subchartValues map[string][]byte, mappings []ImageMapping, overrides map[string]config.Override) ([]ValueOverride, error) {
 	pairs, err := collectValuePairs(valuesYAML, "")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("collect parent chart values: %w", err)
 	}
 
 	subchartNames := make([]string, 0, len(subchartValues))
@@ -53,7 +53,7 @@ func ResolveValuePathsWithSubcharts(valuesYAML []byte, subchartValues map[string
 	for _, name := range subchartNames {
 		subchartPairs, err := collectValuePairs(subchartValues[name], name)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("collect subchart values for %q: %w", name, err)
 		}
 		pairs = append(pairs, subchartPairs...)
 	}

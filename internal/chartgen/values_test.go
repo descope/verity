@@ -1033,3 +1033,31 @@ func TestResolveValuePathsClearRegistryOnRegistryOnlyPath(t *testing.T) {
 		t.Fatalf("ResolveValuePaths() = %#v, want %#v", got, want)
 	}
 }
+
+func TestResolveValuePathsWithSubchartsErrorIdentifiesFailingSubchart(t *testing.T) {
+	parent := []byte(`image:
+  repository: nginx
+  tag: "1.0"
+`)
+	subcharts := map[string][]byte{
+		"alertmanager": []byte("not: : valid: yaml: ::"),
+	}
+	_, err := ResolveValuePathsWithSubcharts(parent, subcharts, nil, nil)
+	if err == nil {
+		t.Fatal("ResolveValuePathsWithSubcharts() error = nil, want non-nil")
+	}
+	if !strings.Contains(err.Error(), "alertmanager") {
+		t.Fatalf("error %q must mention failing subchart name 'alertmanager'", err.Error())
+	}
+}
+
+func TestResolveValuePathsWithSubchartsErrorIdentifiesParent(t *testing.T) {
+	parent := []byte("not: : valid: yaml: ::")
+	_, err := ResolveValuePathsWithSubcharts(parent, nil, nil, nil)
+	if err == nil {
+		t.Fatal("ResolveValuePathsWithSubcharts() error = nil, want non-nil")
+	}
+	if !strings.Contains(err.Error(), "parent chart") {
+		t.Fatalf("error %q must mention 'parent chart' context", err.Error())
+	}
+}
