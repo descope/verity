@@ -98,3 +98,49 @@ searches in sandbox. Only your printed summary enters context.
 |`ctx stats`|Call the `stats` MCP tool and display the full output verbatim|
 |`ctx doctor`|Call the `doctor` MCP tool, run the returned shell command, display as checklist|
 |`ctx upgrade`|Call the `upgrade` MCP tool, run the returned shell command, display as checklist|
+
+# Research and investigation documents — DO NOT COMMIT
+
+`docs/research/` holds exploratory investigation artifacts written by agents
+(or the operator) during diagnosis: root-cause analyses, vendor-doc walks,
+hypothesis lists, dump inspections, log post-mortems, etc. These files are
+**NOT** canonical project documentation and **MUST NEVER** be staged,
+committed, or included in pull requests by agents.
+
+The directory is gitignored to enforce this mechanically. Already-tracked
+files in this directory are grandfathered; the rule applies prospectively
+to all new research material.
+
+## Rules
+
+- Agents MAY freely write into `docs/research/` for their own and the
+  operator's reference during a task.
+- Agents MUST NOT `git add` any file under `docs/research/`.
+- Agents MUST NOT cite or link to research-doc paths in commit messages,
+  PR bodies, or any other artifact that ships to `main`.
+- Agents MUST NOT include research docs as part of an evidence packet that
+  ships outside the local working tree. (Local evidence packets that stay
+  gitignored are fine.)
+
+## If a research finding needs to land in tracked history
+
+Distill it into one of:
+
+- An issue or PR comment (preferred for one-off context that explains
+  decisions or links investigation to outcome).
+- A formal SCR under `docs/scrs/` (for proposed change decisions and
+  policy choices).
+- A canonical doc under `docs/architecture/`, `docs/features/`,
+  `docs/product/`, or similar (for steady-state truth that future
+  contributors will need).
+
+The research doc itself stays untracked.
+
+## Why
+
+Research docs are intentionally rough: half-formed hypotheses, dead
+investigation branches, and verbatim copies of upstream documentation are
+useful at investigation time but become noise in repository history. A
+distilled summary in the right canonical place is more useful to future
+agents and humans than a 400-line research dump committed alongside a
+five-line config fix.
