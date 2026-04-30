@@ -35,11 +35,35 @@ type repoTagPair struct {
 }
 
 func ResolveValuePaths(valuesYAML []byte, mappings []ImageMapping, overrides map[string]config.Override) ([]ValueOverride, error) {
-	values := make(map[string]any)
-	if err := yaml.Unmarshal(valuesYAML, &values); err != nil {
-		return nil, fmt.Errorf("unmarshal values YAML: %w", err)
+	return ResolveValuePathsWithSubcharts(valuesYAML, nil, mappings, overrides)
+}
+
+func ResolveValuePathsWithSubcharts(valuesYAML []byte, subchartValues map[string][]byte, mappings []ImageMapping, overrides map[string]config.Override) ([]ValueOverride, error) {
+	pairs, err := collectValuePairs(valuesYAML, "")
+	if err != nil {
+		return nil, err
 	}
 
+	subchartNames := make([]string, 0, len(subchartValues))
+	for name := range subchartValues {
+		subchartNames = append(subchartNames, name)
+	}
+	sort.Strings(subchartNames)
+	for _, name := range subchartNames {
+		subchartPairs, err := collectValuePairs(subchartValues[name], name)
+		if err != nil {
+			return nil, err
+		}
+		pairs = append(pairs, subchartPairs...)
+	}
+	sort.Slice(pairs, func(i, j int) bool {
+		return pairs[i].Path < pairs[j].Path
+	})
+
+	return resolveValuePathPairs(pairs, mappings, overrides), nil
+}
+
+func resolveValuePathPairs(pairs []repoTagPair, mappings []ImageMapping, overrides map[string]config.Override) []ValueOverride {
 	result := make([]ValueOverride, 0, len(mappings))
 	matched := make([]bool, len(mappings))
 
@@ -69,12 +93,6 @@ func ResolveValuePaths(valuesYAML []byte, mappings []ImageMapping, overrides map
 		}
 	}
 
-	var pairs []repoTagPair
-	walkValues("", values, &pairs)
-	sort.Slice(pairs, func(i, j int) bool {
-		return pairs[i].Path < pairs[j].Path
-	})
-
 	for _, pair := range pairs {
 		if !pair.HasTag {
 			continue
@@ -96,7 +114,20 @@ func ResolveValuePaths(valuesYAML []byte, mappings []ImageMapping, overrides map
 		}
 	}
 
-	return result, nil
+	return result
+}
+
+func collectValuePairs(valuesYAML []byte, prefix string) ([]repoTagPair, error) {
+	values := make(map[string]any)
+	if len(valuesYAML) > 0 {
+		if err := yaml.Unmarshal(valuesYAML, &values); err != nil {
+			return nil, fmt.Errorf("unmarshal values YAML: %w", err)
+		}
+	}
+
+	pairs := make([]repoTagPair, 0)
+	walkValues(prefix, values, &pairs)
+	return pairs, nil
 }
 
 func GetChartValues(chart config.ChartSpec) ([]byte, error) {
@@ -154,23 +185,26 @@ func GetSubchartValues(chart config.ChartSpec) (map[string][]byte, error) {
 		return nil, fmt.Errorf("helm dependency build for %s: %w", chart.Name, err)
 	}
 
-	chartsDir := filepath.Join(tmpDir, "charts")
 	subchartValues := make(map[string][]byte)
+	chartsDir := filepath.Join(tmpDir, "charts")
+	parentExtractDir := filepath.Join(tmpDir, "parent-chart")
 
 	archives, err := enumerateSubchartArchives(chartsDir)
 	if err != nil {
 		return nil, err
 	}
 	for _, archive := range archives {
-		valuesYAML, chartName, err := extractValuesFromTarball(archive)
+		chartName, err := extractTarball(archive, parentExtractDir)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: skipping unreadable subchart archive %s: %v\n", filepath.Base(archive), err)
+			fmt.Fprintf(os.Stderr, "warning: skipping unreadable parent chart archive %s: %v\n", filepath.Base(archive), err)
 			continue
 		}
-		if chartName == "" || len(valuesYAML) == 0 {
+		if chartName == "" {
 			continue
 		}
-		subchartValues[chartName] = valuesYAML
+		if err := collectSubchartValues(filepath.Join(parentExtractDir, chartName, "charts"), subchartValues); err != nil {
+			return nil, err
+		}
 	}
 
 	entries, err := os.ReadDir(chartsDir)
@@ -184,17 +218,9 @@ func GetSubchartValues(chart config.ChartSpec) (map[string][]byte, error) {
 		if !entry.IsDir() {
 			continue
 		}
-
-		valuesPath := filepath.Join(chartsDir, entry.Name(), "values.yaml")
-		valuesYAML, err := os.ReadFile(valuesPath)
-		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			fmt.Fprintf(os.Stderr, "warning: skipping unreadable subchart values %s: %v\n", valuesPath, err)
-			continue
+		if err := collectSubchartValues(filepath.Join(chartsDir, entry.Name(), "charts"), subchartValues); err != nil {
+			return nil, err
 		}
-		subchartValues[entry.Name()] = valuesYAML
 	}
 
 	return subchartValues, nil
@@ -218,6 +244,111 @@ func enumerateSubchartArchives(chartsDir string) ([]string, error) {
 	}
 	sort.Strings(archives)
 	return archives, nil
+}
+
+func collectSubchartValues(chartsDir string, subchartValues map[string][]byte) error {
+	archives, err := enumerateSubchartArchives(chartsDir)
+	if err != nil {
+		return err
+	}
+	for _, archive := range archives {
+		valuesYAML, chartName, err := extractValuesFromTarball(archive)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: skipping unreadable subchart archive %s: %v\n", filepath.Base(archive), err)
+			continue
+		}
+		if chartName == "" || len(valuesYAML) == 0 {
+			continue
+		}
+		subchartValues[chartName] = valuesYAML
+	}
+
+	entries, err := os.ReadDir(chartsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read charts directory: %w", err)
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		valuesPath := filepath.Join(chartsDir, entry.Name(), "values.yaml")
+		valuesYAML, err := os.ReadFile(valuesPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			fmt.Fprintf(os.Stderr, "warning: skipping unreadable subchart values %s: %v\n", valuesPath, err)
+			continue
+		}
+		subchartValues[entry.Name()] = valuesYAML
+	}
+
+	return nil
+}
+
+func extractTarball(tgzPath, destDir string) (string, error) {
+	file, err := os.Open(tgzPath)
+	if err != nil {
+		return "", fmt.Errorf("open tarball %s: %w", filepath.Base(tgzPath), err)
+	}
+	defer file.Close()
+
+	gzReader, err := gzip.NewReader(file)
+	if err != nil {
+		return "", fmt.Errorf("open gzip stream for %s: %w", filepath.Base(tgzPath), err)
+	}
+	defer gzReader.Close()
+
+	tarReader := tar.NewReader(gzReader)
+	chartName := ""
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			return chartName, nil
+		}
+		if err != nil {
+			return "", fmt.Errorf("read tarball %s: %w", filepath.Base(tgzPath), err)
+		}
+
+		name := strings.TrimPrefix(header.Name, "./")
+		if name == "" {
+			continue
+		}
+		parts := strings.Split(name, "/")
+		if len(parts) == 0 || parts[0] == "" {
+			continue
+		}
+		if chartName == "" {
+			chartName = parts[0]
+		}
+
+		targetPath := filepath.Join(destDir, filepath.FromSlash(name))
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(targetPath, 0o755); err != nil {
+				return "", fmt.Errorf("create directory %s: %w", targetPath, err)
+			}
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+				return "", fmt.Errorf("create parent directory for %s: %w", targetPath, err)
+			}
+			fileMode := os.FileMode(header.Mode)
+			if fileMode == 0 {
+				fileMode = 0o644
+			}
+			content, err := io.ReadAll(tarReader)
+			if err != nil {
+				return "", fmt.Errorf("read file %s from %s: %w", name, filepath.Base(tgzPath), err)
+			}
+			if err := os.WriteFile(targetPath, content, fileMode); err != nil {
+				return "", fmt.Errorf("write extracted file %s: %w", targetPath, err)
+			}
+		}
+	}
 }
 
 // extractValuesFromTarball reads a Helm chart tarball and returns the chart

@@ -3,12 +3,17 @@ package chartgen
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"os/exec"
 	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"gopkg.in/yaml.v3"
 
@@ -336,6 +341,46 @@ func TestEnumerateSubchartArchives(t *testing.T) {
 	sort.Strings(want)
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("enumerateSubchartArchives() = %#v, want %#v", got, want)
+	}
+}
+
+func TestGetSubchartValues(t *testing.T) {
+	if _, err := exec.LookPath("helm"); err != nil {
+		t.Skip("helm not found in PATH")
+	}
+
+	parentDir := filepath.Join(t.TempDir(), "parent")
+	mustWriteFile(t, filepath.Join(parentDir, "Chart.yaml"), "apiVersion: v2\nname: parent\nversion: 1.0.0\n")
+	mustWriteFile(t, filepath.Join(parentDir, "values.yaml"), "replicaCount: 1\n")
+	mustWriteFile(t, filepath.Join(parentDir, "charts", "alertmanager", "Chart.yaml"), "apiVersion: v2\nname: alertmanager\nversion: 0.1.0\n")
+	mustWriteFile(t, filepath.Join(parentDir, "charts", "alertmanager", "values.yaml"), "image:\n  repository: quay.io/prometheus/alertmanager\n  tag: v0.28.1\n")
+	repoDir := t.TempDir()
+	if _, err := runCommand(context.Background(), 2*time.Minute, "helm", "package", parentDir, "--destination", repoDir); err != nil {
+		t.Fatalf("helm package error = %v", err)
+	}
+
+	server := httptest.NewServer(http.FileServer(http.Dir(repoDir)))
+	defer server.Close()
+
+	if _, err := runCommand(context.Background(), 2*time.Minute, "helm", "repo", "index", repoDir, "--url", server.URL); err != nil {
+		t.Fatalf("helm repo index error = %v", err)
+	}
+
+	got, err := GetSubchartValues(config.ChartSpec{
+		Name:       "parent",
+		Version:    "1.0.0",
+		Repository: server.URL,
+	})
+	if err != nil {
+		t.Fatalf("GetSubchartValues() error = %v", err)
+	}
+
+	values, ok := got["alertmanager"]
+	if !ok {
+		t.Fatalf("GetSubchartValues() missing alertmanager entry: %#v", got)
+	}
+	if !strings.Contains(string(values), "quay.io/prometheus/alertmanager") {
+		t.Fatalf("GetSubchartValues() values = %q, want alertmanager repo", string(values))
 	}
 }
 
@@ -721,4 +766,14 @@ func writeTestChartTarballInDir(t *testing.T, dir, chartName string, files map[s
 	}
 
 	return path
+}
+
+func mustWriteFile(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("os.MkdirAll() error = %v", err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
 }
