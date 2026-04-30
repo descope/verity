@@ -74,6 +74,13 @@ func resolveValuePathPairs(pairs []repoTagPair, mappings []ImageMapping, overrid
 	}
 	sort.Strings(overrideKeys)
 
+	pathHasRegistry := make(map[string]bool, len(pairs))
+	for _, p := range pairs {
+		if p.HasRegistry {
+			pathHasRegistry[p.Path] = true
+		}
+	}
+
 	for i, m := range mappings {
 		for _, key := range overrideKeys {
 			override := overrides[key]
@@ -81,12 +88,11 @@ func resolveValuePathPairs(pairs []repoTagPair, mappings []ImageMapping, overrid
 				continue
 			}
 			if matchesRepo(m.OriginalRepo, key) {
-				clearRegistry := valuePathHasRegistry(values, override.ValuePath)
 				result = append(result, ValueOverride{
 					Path:          override.ValuePath,
 					Repository:    m.PatchedRepo,
 					Tag:           m.PatchedTag,
-					ClearRegistry: clearRegistry,
+					ClearRegistry: pathHasRegistry[override.ValuePath],
 				})
 				matched[i] = true
 				break
@@ -441,32 +447,4 @@ func matchesRepo(imageRepo, candidate string) bool {
 		return true
 	}
 	return false
-}
-
-func valuePathHasRegistry(values map[string]any, path string) bool {
-	parts := splitOverridePath(path)
-	if len(parts) == 0 {
-		return false
-	}
-
-	var current any = values
-	for _, part := range parts {
-		node, ok := current.(map[string]any)
-		if !ok {
-			return false
-		}
-
-		current, ok = node[part]
-		if !ok {
-			return false
-		}
-	}
-
-	node, ok := current.(map[string]any)
-	if !ok {
-		return false
-	}
-
-	registry, ok := node["registry"].(string)
-	return ok && registry != ""
 }
