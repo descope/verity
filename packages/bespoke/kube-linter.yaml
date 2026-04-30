@@ -1,0 +1,48 @@
+package:
+  name: kube-linter
+  version: "0.8.3"
+  epoch: 0
+  description: "Static analysis tool for Kubernetes YAML files and Helm charts"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/stackrox/kube-linter
+      tag: v${{package.version}}
+      expected-commit: 10ae003038c81855aca8489df5e35da150f4dc2e
+
+  - uses: go/build
+    with:
+      packages: ./cmd/kube-linter
+      output: kube-linter
+      ldflags: |
+        -X golang.stackrox.io/kube-linter/internal/version.version=${{package.version}}
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: stackrox/kube-linter
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        kube-linter version
+        kube-linter --help

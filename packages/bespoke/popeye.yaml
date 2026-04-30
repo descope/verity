@@ -1,0 +1,51 @@
+package:
+  name: popeye
+  version: "0.22.1"
+  epoch: 0
+  description: "Kubernetes cluster resource sanitizer"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/derailed/popeye
+      tag: v${{package.version}}
+      expected-commit: 35b554961dcdabfa7aba6bd070673c6c24c70884
+
+  - uses: go/build
+    with:
+      packages: .
+      output: popeye
+      ldflags: |
+        -w
+        -X github.com/derailed/popeye/cmd.version=${{package.version}}
+        -X github.com/derailed/popeye/cmd.commit=$(git rev-parse HEAD)
+        -X github.com/derailed/popeye/cmd.date=$(date -u -d@${SOURCE_DATE_EPOCH} +%FT%TZ)
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: derailed/popeye
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        popeye version
+        popeye --help

@@ -1,0 +1,50 @@
+package:
+  name: kube-score
+  version: "1.20.0"
+  epoch: 0
+  description: "Kubernetes object analysis with reliability and security recommendations"
+  copyright:
+    - license: MIT
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/zegl/kube-score
+      tag: v${{package.version}}
+      expected-commit: 81371e9f53b633bec69423fc298295bd71bd869a
+
+  - uses: go/build
+    with:
+      packages: ./cmd/kube-score
+      output: kube-score
+      ldflags: |
+        -X main.version=${{package.version}}
+        -X main.commit=$(git rev-parse HEAD)
+        -X main.date=$(date -u -d@${SOURCE_DATE_EPOCH} +%FT%TZ)
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: zegl/kube-score
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        kube-score version
+        kube-score --help

@@ -1,0 +1,57 @@
+package:
+  name: kubectx
+  version: "0.11.0"
+  epoch: 0
+  description: "Faster way to switch between kubectl contexts and namespaces"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/ahmetb/kubectx
+      tag: v${{package.version}}
+      expected-commit: 7605ca50c42eab0937bd3d4de825e0bcd120ba1f
+
+  - uses: go/build
+    with:
+      packages: ./cmd/kubectx
+      output: kubectx
+      ldflags: |
+        -X main.version=${{package.version}}
+        -X main.gitCommit=$(git rev-parse HEAD)
+
+  - uses: go/build
+    with:
+      packages: ./cmd/kubens
+      output: kubens
+      ldflags: |
+        -X main.version=${{package.version}}
+        -X main.gitCommit=$(git rev-parse HEAD)
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: ahmetb/kubectx
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        kubectx --help
+        kubens --help
