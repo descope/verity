@@ -127,7 +127,18 @@ func walkValues(prefix string, node map[string]any, pairs *[]repoTagPair) {
 		repo, hasRepo := child["repository"].(string)
 		if hasRepo && repo != "" {
 			_, hasTag := child["tag"]
-			*pairs = append(*pairs, repoTagPair{Path: path, Repo: repo, HasTag: hasTag})
+			registry, hasRegistry := child["registry"].(string)
+			if registry == "" {
+				hasRegistry = false
+			}
+
+			*pairs = append(*pairs, repoTagPair{
+				Path:        path,
+				Repo:        repo,
+				HasTag:      hasTag,
+				Registry:    registry,
+				HasRegistry: hasRegistry,
+			})
 		}
 
 		walkValues(path, child, pairs)
