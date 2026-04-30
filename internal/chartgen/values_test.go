@@ -130,6 +130,28 @@ metrics:
 			}},
 		},
 		{
+			name: "explicit value path clears registry on 3-field shape",
+			valuesYML: `image:
+  registry: ghcr.io
+  repository: zalando/postgres-operator
+  tag: v1.15.1
+`,
+			mappings: []ImageMapping{{
+				OriginalRepo: "zalando/postgres-operator",
+				PatchedRepo:  "ghcr.io/verity-org/zalando/postgres-operator",
+				PatchedTag:   "v1.15.1",
+			}},
+			overrides: map[string]config.Override{
+				"zalando/postgres-operator": {ValuePath: "image"},
+			},
+			want: []ValueOverride{{
+				Path:          "image",
+				Repository:    "ghcr.io/verity-org/zalando/postgres-operator",
+				Tag:           "v1.15.1",
+				ClearRegistry: true,
+			}},
+		},
+		{
 			name: "override key suffix matching",
 			valuesYML: `vector:
   repository: docker.io/timberio/vector
