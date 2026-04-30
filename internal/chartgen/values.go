@@ -120,6 +120,106 @@ func GetChartValues(chart config.ChartSpec) ([]byte, error) {
 	return []byte(out), nil
 }
 
+// GetSubchartValues fetches the parent chart dependencies and returns each
+// subchart values.yaml keyed by subchart name.
+func GetSubchartValues(chart config.ChartSpec) (map[string][]byte, error) {
+	if err := discovery.ValidateChartSpec(chart); err != nil {
+		return nil, fmt.Errorf("validate chart spec: %w", err)
+	}
+
+	tmpDir, err := os.MkdirTemp("", "verity-chartgen-subcharts-")
+	if err != nil {
+		return nil, fmt.Errorf("create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	chartYAML, err := yaml.Marshal(map[string]any{
+		"apiVersion": "v2",
+		"name":       "verity-subchart-values",
+		"version":    "0.0.0",
+		"dependencies": []map[string]string{{
+			"name":       chart.Name,
+			"version":    chart.Version,
+			"repository": chart.Repository,
+		}},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshal temp Chart.yaml: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "Chart.yaml"), chartYAML, 0o644); err != nil {
+		return nil, fmt.Errorf("write temp Chart.yaml: %w", err)
+	}
+
+	if _, err := runCommand(context.Background(), 5*time.Minute, "helm", "dependency", "build", tmpDir); err != nil {
+		return nil, fmt.Errorf("helm dependency build for %s: %w", chart.Name, err)
+	}
+
+	chartsDir := filepath.Join(tmpDir, "charts")
+	subchartValues := make(map[string][]byte)
+
+	archives, err := enumerateSubchartArchives(chartsDir)
+	if err != nil {
+		return nil, err
+	}
+	for _, archive := range archives {
+		valuesYAML, chartName, err := extractValuesFromTarball(archive)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: skipping unreadable subchart archive %s: %v\n", filepath.Base(archive), err)
+			continue
+		}
+		if chartName == "" || len(valuesYAML) == 0 {
+			continue
+		}
+		subchartValues[chartName] = valuesYAML
+	}
+
+	entries, err := os.ReadDir(chartsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return subchartValues, nil
+		}
+		return nil, fmt.Errorf("read charts directory: %w", err)
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		valuesPath := filepath.Join(chartsDir, entry.Name(), "values.yaml")
+		valuesYAML, err := os.ReadFile(valuesPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			fmt.Fprintf(os.Stderr, "warning: skipping unreadable subchart values %s: %v\n", valuesPath, err)
+			continue
+		}
+		subchartValues[entry.Name()] = valuesYAML
+	}
+
+	return subchartValues, nil
+}
+
+func enumerateSubchartArchives(chartsDir string) ([]string, error) {
+	entries, err := os.ReadDir(chartsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("read charts directory: %w", err)
+	}
+
+	archives := make([]string, 0)
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".tgz" {
+			continue
+		}
+		archives = append(archives, filepath.Join(chartsDir, entry.Name()))
+	}
+	sort.Strings(archives)
+	return archives, nil
+}
+
 // extractValuesFromTarball reads a Helm chart tarball and returns the chart
 // name together with the raw values.yaml bytes when present.
 func extractValuesFromTarball(tgzPath string) (valuesYAML []byte, chartName string, err error) {
