@@ -1,10 +1,12 @@
-# Example: Simple Go CLI tool - crane
-# Source: https://github.com/wolfi-dev/os/blob/main/crane.yaml
+# Bespoke build of crane (go-containerregistry CLI).
+# Wolfi reference: https://github.com/wolfi-dev/os/blob/main/crane.yaml
+# Why bespoke: distroless upstream can't be Copa-patched; this rebuild keeps
+# the binary on a current Go toolchain ahead of Wolfi's apk advisory cadence.
 
 package:
   name: crane
-  version: "0.21.3"
-  epoch: 0
+  version: "0.21.5"
+  epoch: 1
   description: Tool for interacting with remote images and registries.
   copyright:
     - license: Apache-2.0
@@ -26,10 +28,12 @@ pipeline:
     with:
       repository: https://github.com/google/go-containerregistry
       tag: v${{package.version}}
-      expected-commit: 3888fb8f87385a95591ba2fa08acc97a72058f2e
+      expected-commit: 5b80281da727dae218e1697ab8529b631b9efa64
 
   - uses: go/build
     with:
       packages: ./cmd/crane
       ldflags: -buildid= -X github.com/google/go-containerregistry/cmd/crane/cmd.Version=${{package.version}} -X github.com/google/go-containerregistry/pkg/v1/remote/transport.Version=${{package.version}}
       output: crane
+
+  - uses: strip

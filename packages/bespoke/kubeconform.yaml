@@ -1,0 +1,47 @@
+package:
+  name: kubeconform
+  version: "0.7.0"
+  epoch: 0
+  description: "Fast Kubernetes manifests validator with Custom Resource support"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/yannh/kubeconform
+      tag: v${{package.version}}
+      expected-commit: e65429b1e5990dd019ebb7b5642dcd22a3e9cd13
+
+  - uses: go/build
+    with:
+      packages: ./cmd/kubeconform
+      output: kubeconform
+      ldflags: |
+        -X main.version=v${{package.version}}
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: yannh/kubeconform
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        kubeconform -v
+        kubeconform -h
