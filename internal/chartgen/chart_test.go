@@ -348,11 +348,32 @@ func TestBuildWrapperChartEmptyName(t *testing.T) {
 func TestBuildValuesTree(t *testing.T) {
 	tests := []struct {
 		name      string
+		chartName string
 		overrides []ValueOverride
 		want      map[string]any
 	}{
 		{
-			name: "single path",
+			name:      "clears upstream registry field",
+			chartName: "postgres-operator",
+			overrides: []ValueOverride{{
+				Path:          "image",
+				Repository:    "ghcr.io/verity-org/zalando/postgres-operator",
+				Tag:           "v1.15.1",
+				ClearRegistry: true,
+			}},
+			want: map[string]any{
+				"postgres-operator": map[string]any{
+					"image": map[string]any{
+						"registry":   "",
+						"repository": "ghcr.io/verity-org/zalando/postgres-operator",
+						"tag":        "v1.15.1",
+					},
+				},
+			},
+		},
+		{
+			name:      "single path",
+			chartName: "prometheus",
 			overrides: []ValueOverride{{
 				Path:       "image",
 				Repository: testPromRepo,
@@ -368,7 +389,8 @@ func TestBuildValuesTree(t *testing.T) {
 			},
 		},
 		{
-			name: "nested path",
+			name:      "nested path",
+			chartName: "prometheus",
 			overrides: []ValueOverride{{
 				Path:       "a.b.image",
 				Repository: "repo/nested",
@@ -388,7 +410,8 @@ func TestBuildValuesTree(t *testing.T) {
 			},
 		},
 		{
-			name: "multiple merge",
+			name:      "multiple merge",
+			chartName: "prometheus",
 			overrides: []ValueOverride{
 				{Path: "server.image", Repository: "repo/server", Tag: "sv"},
 				{Path: "alertmanager.image", Repository: "repo/am", Tag: "am"},
@@ -408,7 +431,7 @@ func TestBuildValuesTree(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := buildValuesTree("prometheus", nil, tt.overrides)
+			got := buildValuesTree(tt.chartName, nil, tt.overrides)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Fatalf("buildValuesTree() = %#v, want %#v", got, tt.want)
 			}

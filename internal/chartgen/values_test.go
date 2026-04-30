@@ -32,9 +32,10 @@ func TestResolveValuePaths(t *testing.T) {
 				},
 			},
 			want: []ValueOverride{{
-				Path:       "image",
-				Repository: "ghcr.io/verity-org/prometheus/prometheus",
-				Tag:        "v3.2.1",
+				Path:          "image",
+				Repository:    "ghcr.io/verity-org/prometheus/prometheus",
+				Tag:           "v3.2.1",
+				ClearRegistry: false,
 			}},
 		},
 		{
@@ -50,9 +51,10 @@ func TestResolveValuePaths(t *testing.T) {
 				PatchedTag:   "1.25",
 			}},
 			want: []ValueOverride{{
-				Path:       "server.image",
-				Repository: "ghcr.io/verity-org/library/nginx",
-				Tag:        "1.25",
+				Path:          "server.image",
+				Repository:    "ghcr.io/verity-org/library/nginx",
+				Tag:           "1.25",
+				ClearRegistry: false,
 			}},
 		},
 		{
@@ -93,14 +95,16 @@ metrics:
 			},
 			want: []ValueOverride{
 				{
-					Path:       "controller.image",
-					Repository: "ghcr.io/verity-org/library/nginx",
-					Tag:        "1.25",
+					Path:          "controller.image",
+					Repository:    "ghcr.io/verity-org/library/nginx",
+					Tag:           "1.25",
+					ClearRegistry: false,
 				},
 				{
-					Path:       "metrics.image",
-					Repository: "ghcr.io/verity-org/valkey/valkey",
-					Tag:        "7.2",
+					Path:          "metrics.image",
+					Repository:    "ghcr.io/verity-org/valkey/valkey",
+					Tag:           "7.2",
+					ClearRegistry: false,
 				},
 			},
 		},
@@ -119,9 +123,32 @@ metrics:
 				"nginx": {ValuePath: "custom.image"},
 			},
 			want: []ValueOverride{{
-				Path:       "custom.image",
-				Repository: "ghcr.io/verity-org/library/nginx",
-				Tag:        "1.25",
+				Path:          "custom.image",
+				Repository:    "ghcr.io/verity-org/library/nginx",
+				Tag:           "1.25",
+				ClearRegistry: false,
+			}},
+		},
+		{
+			name: "explicit value path clears registry on 3-field shape",
+			valuesYML: `image:
+  registry: ghcr.io
+  repository: zalando/postgres-operator
+  tag: v1.15.1
+`,
+			mappings: []ImageMapping{{
+				OriginalRepo: "zalando/postgres-operator",
+				PatchedRepo:  "ghcr.io/verity-org/zalando/postgres-operator",
+				PatchedTag:   "v1.15.1",
+			}},
+			overrides: map[string]config.Override{
+				"zalando/postgres-operator": {ValuePath: "image"},
+			},
+			want: []ValueOverride{{
+				Path:          "image",
+				Repository:    "ghcr.io/verity-org/zalando/postgres-operator",
+				Tag:           "v1.15.1",
+				ClearRegistry: true,
 			}},
 		},
 		{
@@ -139,9 +166,29 @@ metrics:
 				"timberio/vector": {ValuePath: "custom.vectorImage"},
 			},
 			want: []ValueOverride{{
-				Path:       "custom.vectorImage",
-				Repository: "ghcr.io/verity-org/timberio/vector",
-				Tag:        "0.40",
+				Path:          "custom.vectorImage",
+				Repository:    "ghcr.io/verity-org/timberio/vector",
+				Tag:           "0.40",
+				ClearRegistry: false,
+			}},
+		},
+		{
+			name: "3-field registry split override",
+			valuesYML: `image:
+  registry: ghcr.io
+  repository: zalando/postgres-operator
+  tag: v1.15.1
+`,
+			mappings: []ImageMapping{{
+				OriginalRepo: "zalando/postgres-operator",
+				PatchedRepo:  "ghcr.io/verity-org/zalando/postgres-operator",
+				PatchedTag:   "v1.15.1",
+			}},
+			want: []ValueOverride{{
+				Path:          "image",
+				Repository:    "ghcr.io/verity-org/zalando/postgres-operator",
+				Tag:           "v1.15.1",
+				ClearRegistry: true,
 			}},
 		},
 	}
@@ -191,7 +238,7 @@ func TestWalkValues(t *testing.T) {
   repository: nginx
   tag: "1.25"
 `,
-			want: []repoTagPair{{Path: "image", Repo: "nginx", HasTag: true}},
+			want: []repoTagPair{{Path: "image", Repo: "nginx", HasTag: true, Registry: "", HasRegistry: false}},
 		},
 		{
 			name: "deep",
@@ -201,7 +248,7 @@ func TestWalkValues(t *testing.T) {
       repository: r
       tag: t
 `,
-			want: []repoTagPair{{Path: "a.b.image", Repo: "r", HasTag: true}},
+			want: []repoTagPair{{Path: "a.b.image", Repo: "r", HasTag: true, Registry: "", HasRegistry: false}},
 		},
 		{
 			name: "multiple pairs",
@@ -214,8 +261,8 @@ server:
     tag: "7.2"
 `,
 			want: []repoTagPair{
-				{Path: "image", Repo: "nginx", HasTag: true},
-				{Path: "server.image", Repo: "valkey", HasTag: true},
+				{Path: "image", Repo: "nginx", HasTag: true, Registry: "", HasRegistry: false},
+				{Path: "server.image", Repo: "valkey", HasTag: true, Registry: "", HasRegistry: false},
 			},
 		},
 		{
@@ -231,7 +278,60 @@ server:
 			yamlIn: `image:
   repository: nginx
 `,
-			want: []repoTagPair{{Path: "image", Repo: "nginx", HasTag: false}},
+			want: []repoTagPair{{Path: "image", Repo: "nginx", HasTag: false, Registry: "", HasRegistry: false}},
+		},
+		{
+			name: "registry-repository-tag triple",
+			yamlIn: `image:
+  registry: "ghcr.io"
+  repository: "zalando/postgres-operator"
+  tag: "v1.15.1"
+`,
+			want: []repoTagPair{{
+				Path:        "image",
+				Repo:        "zalando/postgres-operator",
+				HasTag:      true,
+				Registry:    "ghcr.io",
+				HasRegistry: true,
+			}},
+		},
+		{
+			name: "registry without repository",
+			yamlIn: `image:
+  registry: "ghcr.io"
+  tag: "v1"
+`,
+			want: []repoTagPair{},
+		},
+		{
+			name: "registry non-string ignored",
+			yamlIn: `image:
+  registry: 123
+  repository: "foo"
+  tag: "v1"
+`,
+			want: []repoTagPair{{
+				Path:        "image",
+				Repo:        "foo",
+				HasTag:      true,
+				Registry:    "",
+				HasRegistry: false,
+			}},
+		},
+		{
+			name: "registry empty string ignored",
+			yamlIn: `image:
+  registry: ""
+  repository: "foo"
+  tag: "v1"
+`,
+			want: []repoTagPair{{
+				Path:        "image",
+				Repo:        "foo",
+				HasTag:      true,
+				Registry:    "",
+				HasRegistry: false,
+			}},
 		},
 	}
 
@@ -252,6 +352,12 @@ server:
 				if got[i].Repo != got[j].Repo {
 					return got[i].Repo < got[j].Repo
 				}
+				if got[i].Registry != got[j].Registry {
+					return got[i].Registry < got[j].Registry
+				}
+				if got[i].HasRegistry != got[j].HasRegistry {
+					return !got[i].HasRegistry && got[j].HasRegistry
+				}
 				if got[i].HasTag == got[j].HasTag {
 					return false
 				}
@@ -263,6 +369,12 @@ server:
 				}
 				if tt.want[i].Repo != tt.want[j].Repo {
 					return tt.want[i].Repo < tt.want[j].Repo
+				}
+				if tt.want[i].Registry != tt.want[j].Registry {
+					return tt.want[i].Registry < tt.want[j].Registry
+				}
+				if tt.want[i].HasRegistry != tt.want[j].HasRegistry {
+					return !tt.want[i].HasRegistry && tt.want[j].HasRegistry
 				}
 				if tt.want[i].HasTag == tt.want[j].HasTag {
 					return false

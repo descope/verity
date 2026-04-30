@@ -14,16 +14,19 @@ import (
 )
 
 type ValueOverride struct {
-	Path       string `json:"path"`
-	Repository string `json:"repository"`
-	Tag        string `json:"tag"`
-	Value      string `json:"value,omitempty"`
+	Path          string `json:"path"`
+	Repository    string `json:"repository"`
+	Tag           string `json:"tag"`
+	Value         string `json:"value,omitempty"`
+	ClearRegistry bool   `json:"clearRegistry,omitempty"`
 }
 
 type repoTagPair struct {
-	Path   string
-	Repo   string
-	HasTag bool
+	Path        string
+	Repo        string
+	HasTag      bool
+	Registry    string
+	HasRegistry bool
 }
 
 func ResolveValuePaths(valuesYAML []byte, mappings []ImageMapping, overrides map[string]config.Override) ([]ValueOverride, error) {
@@ -48,10 +51,12 @@ func ResolveValuePaths(valuesYAML []byte, mappings []ImageMapping, overrides map
 				continue
 			}
 			if matchesRepo(m.OriginalRepo, key) {
+				clearRegistry := valuePathHasRegistry(values, override.ValuePath)
 				result = append(result, ValueOverride{
-					Path:       override.ValuePath,
-					Repository: m.PatchedRepo,
-					Tag:        m.PatchedTag,
+					Path:          override.ValuePath,
+					Repository:    m.PatchedRepo,
+					Tag:           m.PatchedTag,
+					ClearRegistry: clearRegistry,
 				})
 				matched[i] = true
 				break
@@ -75,9 +80,10 @@ func ResolveValuePaths(valuesYAML []byte, mappings []ImageMapping, overrides map
 			}
 			if matchesRepo(pair.Repo, m.OriginalRepo) {
 				result = append(result, ValueOverride{
-					Path:       pair.Path,
-					Repository: m.PatchedRepo,
-					Tag:        m.PatchedTag,
+					Path:          pair.Path,
+					Repository:    m.PatchedRepo,
+					Tag:           m.PatchedTag,
+					ClearRegistry: pair.HasRegistry,
 				})
 				matched[i] = true
 				break
@@ -124,7 +130,18 @@ func walkValues(prefix string, node map[string]any, pairs *[]repoTagPair) {
 		repo, hasRepo := child["repository"].(string)
 		if hasRepo && repo != "" {
 			_, hasTag := child["tag"]
-			*pairs = append(*pairs, repoTagPair{Path: path, Repo: repo, HasTag: hasTag})
+			registry, hasRegistry := child["registry"].(string)
+			if registry == "" {
+				hasRegistry = false
+			}
+
+			*pairs = append(*pairs, repoTagPair{
+				Path:        path,
+				Repo:        repo,
+				HasTag:      hasTag,
+				Registry:    registry,
+				HasRegistry: hasRegistry,
+			})
 		}
 
 		walkValues(path, child, pairs)
@@ -142,4 +159,32 @@ func matchesRepo(imageRepo, candidate string) bool {
 		return true
 	}
 	return false
+}
+
+func valuePathHasRegistry(values map[string]any, path string) bool {
+	parts := splitOverridePath(path)
+	if len(parts) == 0 {
+		return false
+	}
+
+	var current any = values
+	for _, part := range parts {
+		node, ok := current.(map[string]any)
+		if !ok {
+			return false
+		}
+
+		current, ok = node[part]
+		if !ok {
+			return false
+		}
+	}
+
+	node, ok := current.(map[string]any)
+	if !ok {
+		return false
+	}
+
+	registry, ok := node["registry"].(string)
+	return ok && registry != ""
 }
