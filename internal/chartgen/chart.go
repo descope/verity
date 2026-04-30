@@ -153,10 +153,16 @@ func buildValuesTree(chartName string, chartValues map[string]any, overrides []V
 			setScalarValue(chartRoot, override.Path, override.Value)
 			continue
 		}
-		setScalarValue(chartRoot, override.Path, map[string]any{
+
+		leaf := map[string]any{
 			"repository": override.Repository,
 			"tag":        override.Tag,
-		})
+		}
+		if override.ClearRegistry {
+			leaf["registry"] = ""
+		}
+
+		setScalarValue(chartRoot, override.Path, leaf)
 	}
 
 	return root

@@ -78,9 +78,10 @@ func ResolveValuePaths(valuesYAML []byte, mappings []ImageMapping, overrides map
 			}
 			if matchesRepo(pair.Repo, m.OriginalRepo) {
 				result = append(result, ValueOverride{
-					Path:       pair.Path,
-					Repository: m.PatchedRepo,
-					Tag:        m.PatchedTag,
+					Path:          pair.Path,
+					Repository:    m.PatchedRepo,
+					Tag:           m.PatchedTag,
+					ClearRegistry: pair.HasRegistry,
 				})
 				matched[i] = true
 				break
