@@ -145,7 +145,13 @@ func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) 
 		return ChartResult{}, false, fmt.Errorf("get chart values for %s: %w", chart.Name, err)
 	}
 
-	valueOverrides, err := ResolveValuePaths(valuesYAML, allMappings, vc.Overrides)
+	subchartValues, err := GetSubchartValues(chart)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not load subchart values for %s@%s: %v\n", chart.Name, chart.Version, err)
+		subchartValues = nil
+	}
+
+	valueOverrides, err := ResolveValuePathsWithSubcharts(valuesYAML, subchartValues, allMappings, vc.Overrides)
 	if err != nil {
 		return ChartResult{}, false, fmt.Errorf("resolve value paths for %s: %w", chart.Name, err)
 	}
