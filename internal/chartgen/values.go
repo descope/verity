@@ -245,10 +245,22 @@ func collectNestedSubchartValues(chartsDir, parentExtractDir string, subchartVal
 }
 
 func collectParentSubcharts(parentChartDir string, subchartValues map[string][]byte) error {
-	if filepath.Base(parentChartDir) == "" {
+	if parentChartDir == "" {
 		return nil
 	}
 	return collectSubchartValues(filepath.Join(parentChartDir, "charts"), subchartValues)
+}
+
+func subchartKeyFromArchive(archive string) string {
+	base := strings.TrimSuffix(filepath.Base(archive), ".tgz")
+	idx := strings.LastIndex(base, "-")
+	if idx > 0 && idx < len(base)-1 {
+		first := base[idx+1]
+		if first >= '0' && first <= '9' {
+			return base[:idx]
+		}
+	}
+	return base
 }
 
 func enumerateSubchartArchives(chartsDir string) ([]string, error) {
@@ -277,15 +289,15 @@ func collectSubchartValues(chartsDir string, subchartValues map[string][]byte) e
 		return err
 	}
 	for _, archive := range archives {
-		valuesYAML, chartName, err := extractValuesFromTarball(archive)
+		valuesYAML, _, err := extractValuesFromTarball(archive)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "warning: skipping unreadable subchart archive %s: %v\n", filepath.Base(archive), err)
 			continue
 		}
-		if chartName == "" || len(valuesYAML) == 0 {
+		if len(valuesYAML) == 0 {
 			continue
 		}
-		subchartValues[chartName] = valuesYAML
+		subchartValues[subchartKeyFromArchive(archive)] = valuesYAML
 	}
 
 	entries, err := os.ReadDir(chartsDir)
@@ -315,9 +327,31 @@ func collectSubchartValues(chartsDir string, subchartValues map[string][]byte) e
 	return nil
 }
 
+var ErrUnsafeTarballEntry = errors.New("unsafe tarball entry path")
+
+func safeExtractPath(destDir, name string) (string, error) {
+	cleaned := filepath.Clean(filepath.FromSlash(name))
+	if cleaned == "." || cleaned == ".." || filepath.IsAbs(cleaned) || strings.HasPrefix(cleaned, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("%w: %q", ErrUnsafeTarballEntry, name)
+	}
+	target := filepath.Join(destDir, cleaned)
+	rel, err := filepath.Rel(destDir, target)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("%w: %q escapes %q", ErrUnsafeTarballEntry, name, destDir)
+	}
+	return target, nil
+}
+
 func extractTarball(tgzPath, destDir string) (string, error) {
 	return visitTarballEntries(tgzPath, func(header *tar.Header, name string, tarReader io.Reader) error {
-		targetPath := filepath.Join(destDir, filepath.FromSlash(name))
+		switch header.Typeflag {
+		case tar.TypeSymlink, tar.TypeLink:
+			return nil
+		}
+		targetPath, err := safeExtractPath(destDir, name)
+		if err != nil {
+			return err
+		}
 		switch header.Typeflag {
 		case tar.TypeDir:
 			return os.MkdirAll(targetPath, 0o755)
@@ -416,19 +450,24 @@ func walkValues(prefix string, node map[string]any, pairs *[]repoTagPair) {
 		}
 
 		repo, hasRepo := child["repository"].(string)
-		if hasRepo && repo != "" {
-			_, hasTag := child["tag"]
-			registry, hasRegistry := child["registry"].(string)
-			if registry == "" {
-				hasRegistry = false
-			}
+		registry, registrySibling := child["registry"].(string)
+		hasRegistry := registrySibling && registry != ""
 
+		switch {
+		case hasRepo && repo != "":
+			_, hasTag := child["tag"]
 			*pairs = append(*pairs, repoTagPair{
 				Path:        path,
 				Repo:        repo,
 				HasTag:      hasTag,
 				Registry:    registry,
 				HasRegistry: hasRegistry,
+			})
+		case hasRegistry:
+			*pairs = append(*pairs, repoTagPair{
+				Path:        path,
+				Registry:    registry,
+				HasRegistry: true,
 			})
 		}
 

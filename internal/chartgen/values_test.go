@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -604,12 +605,16 @@ server:
 			}},
 		},
 		{
-			name: "registry without repository",
+			name: "registry without repository emits registry-only pair",
 			yamlIn: `image:
   registry: "ghcr.io"
   tag: "v1"
 `,
-			want: []repoTagPair{},
+			want: []repoTagPair{{
+				Path:        "image",
+				Registry:    "ghcr.io",
+				HasRegistry: true,
+			}},
 		},
 		{
 			name: "registry non-string ignored",
@@ -775,5 +780,168 @@ func mustWriteFile(t *testing.T, path, content string) {
 	}
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+}
+
+func writeRawTarball(t *testing.T, entries []*tar.Header, contents []string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "raw.tgz")
+	file, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("os.Create() error = %v", err)
+	}
+	gz := gzip.NewWriter(file)
+	tw := tar.NewWriter(gz)
+	for i, h := range entries {
+		if h.Typeflag == tar.TypeReg && h.Size == 0 {
+			h.Size = int64(len(contents[i]))
+		}
+		if err := tw.WriteHeader(h); err != nil {
+			t.Fatalf("WriteHeader() error = %v", err)
+		}
+		if h.Typeflag == tar.TypeReg {
+			if _, err := tw.Write([]byte(contents[i])); err != nil {
+				t.Fatalf("tw.Write() error = %v", err)
+			}
+		}
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatalf("tw.Close() error = %v", err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatalf("gz.Close() error = %v", err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatalf("file.Close() error = %v", err)
+	}
+	return path
+}
+
+func TestSafeExtractPathRejectsTraversal(t *testing.T) {
+	dest := t.TempDir()
+	cases := []string{
+		"../escape.txt",
+		"../../etc/passwd",
+		"foo/../../escape",
+		"/absolute/path",
+		"./..",
+		"..",
+	}
+	for _, name := range cases {
+		t.Run(name, func(t *testing.T) {
+			if _, err := safeExtractPath(dest, name); err == nil {
+				t.Fatalf("safeExtractPath(%q) error = nil, want non-nil", name)
+			}
+		})
+	}
+}
+
+func TestSafeExtractPathAcceptsCleanPaths(t *testing.T) {
+	dest := t.TempDir()
+	cases := []string{
+		"foo.txt",
+		"a/b/c.yaml",
+		"chart/values.yaml",
+	}
+	for _, name := range cases {
+		t.Run(name, func(t *testing.T) {
+			got, err := safeExtractPath(dest, name)
+			if err != nil {
+				t.Fatalf("safeExtractPath(%q) error = %v", name, err)
+			}
+			if !strings.HasPrefix(got, dest) {
+				t.Fatalf("safeExtractPath(%q) = %q, want prefix %q", name, got, dest)
+			}
+		})
+	}
+}
+
+func TestExtractTarballRejectsPathTraversal(t *testing.T) {
+	tgz := writeRawTarball(t,
+		[]*tar.Header{
+			{Name: "good/", Typeflag: tar.TypeDir, Mode: 0o755},
+			{Name: "../escape.txt", Typeflag: tar.TypeReg, Mode: 0o644},
+		},
+		[]string{"", "owned"},
+	)
+	dest := t.TempDir()
+	if _, err := extractTarball(tgz, dest); !errors.Is(err, ErrUnsafeTarballEntry) {
+		t.Fatalf("extractTarball() error = %v, want ErrUnsafeTarballEntry", err)
+	}
+	if _, err := os.Stat(filepath.Join(filepath.Dir(dest), "escape.txt")); err == nil {
+		t.Fatalf("escape file was created outside dest")
+	}
+}
+
+func TestExtractTarballSkipsSymlinks(t *testing.T) {
+	tgz := writeRawTarball(t,
+		[]*tar.Header{
+			{Name: "good/", Typeflag: tar.TypeDir, Mode: 0o755},
+			{Name: "good/link", Typeflag: tar.TypeSymlink, Linkname: "/etc/passwd"},
+			{Name: "good/hardlink", Typeflag: tar.TypeLink, Linkname: "/etc/passwd"},
+			{Name: "good/regular.txt", Typeflag: tar.TypeReg, Mode: 0o644},
+		},
+		[]string{"", "", "", "ok"},
+	)
+	dest := t.TempDir()
+	if _, err := extractTarball(tgz, dest); err != nil {
+		t.Fatalf("extractTarball() error = %v", err)
+	}
+	for _, link := range []string{"good/link", "good/hardlink"} {
+		if _, err := os.Lstat(filepath.Join(dest, link)); err == nil {
+			t.Fatalf("symlink/hardlink %q should have been skipped", link)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dest, "good", "regular.txt")); err != nil {
+		t.Fatalf("regular file missing: %v", err)
+	}
+}
+
+func TestSubchartKeyFromArchive(t *testing.T) {
+	cases := []struct {
+		archive string
+		want    string
+	}{
+		{"alertmanager-1.13.0.tgz", "alertmanager"},
+		{"kube-state-metrics-5.18.1.tgz", "kube-state-metrics"},
+		{"some/path/prometheus-29.2.1.tgz", "prometheus"},
+		{"plain.tgz", "plain"},
+		{"name-without-version.tgz", "name-without-version"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.archive, func(t *testing.T) {
+			if got := subchartKeyFromArchive(tc.archive); got != tc.want {
+				t.Fatalf("subchartKeyFromArchive(%q) = %q, want %q", tc.archive, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestResolveValuePathsClearRegistryOnRegistryOnlyPath(t *testing.T) {
+	yml := `image:
+  registry: "ghcr.io"
+  tag: "v1"
+`
+	mappings := []ImageMapping{{
+		OriginalRepo: "zalando/postgres-operator",
+		PatchedRepo:  "ghcr.io/verity-org/zalando/postgres-operator",
+		PatchedTag:   "v1",
+	}}
+	overrides := map[string]config.Override{
+		"zalando/postgres-operator": {ValuePath: "image"},
+	}
+
+	got, err := ResolveValuePaths([]byte(yml), mappings, overrides)
+	if err != nil {
+		t.Fatalf("ResolveValuePaths() error = %v", err)
+	}
+	want := []ValueOverride{{
+		Path:          "image",
+		Repository:    "ghcr.io/verity-org/zalando/postgres-operator",
+		Tag:           "v1",
+		ClearRegistry: true,
+	}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("ResolveValuePaths() = %#v, want %#v", got, want)
 	}
 }
