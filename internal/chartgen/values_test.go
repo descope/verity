@@ -311,6 +311,34 @@ func TestExtractValuesFromTarball(t *testing.T) {
 	}
 }
 
+func TestEnumerateSubchartArchives(t *testing.T) {
+	chartsDir := t.TempDir()
+	alpha := writeTestChartTarballInDir(t, chartsDir, "alpha", map[string]string{
+		"Chart.yaml": "name: alpha\nversion: 0.1.0\n",
+	})
+	beta := writeTestChartTarballInDir(t, chartsDir, "beta", map[string]string{
+		"Chart.yaml": "name: beta\nversion: 0.2.0\n",
+	})
+	if err := os.WriteFile(filepath.Join(chartsDir, "notes.txt"), []byte("ignore"), 0o644); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+	if err := os.Mkdir(filepath.Join(chartsDir, "gamma"), 0o755); err != nil {
+		t.Fatalf("os.Mkdir() error = %v", err)
+	}
+
+	got, err := enumerateSubchartArchives(chartsDir)
+	if err != nil {
+		t.Fatalf("enumerateSubchartArchives() error = %v", err)
+	}
+
+	want := []string{alpha, beta}
+	sort.Strings(got)
+	sort.Strings(want)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("enumerateSubchartArchives() = %#v, want %#v", got, want)
+	}
+}
+
 func TestWalkValues(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -501,7 +529,13 @@ func TestMatchesRepo(t *testing.T) {
 func writeTestChartTarball(t *testing.T, chartName string, files map[string]string) string {
 	t.Helper()
 
-	path := filepath.Join(t.TempDir(), chartName+".tgz")
+	return writeTestChartTarballInDir(t, t.TempDir(), chartName, files)
+}
+
+func writeTestChartTarballInDir(t *testing.T, dir, chartName string, files map[string]string) string {
+	t.Helper()
+
+	path := filepath.Join(dir, chartName+".tgz")
 	file, err := os.Create(path)
 	if err != nil {
 		t.Fatalf("os.Create() error = %v", err)
