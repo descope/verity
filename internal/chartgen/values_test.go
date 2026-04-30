@@ -207,33 +207,140 @@ metrics:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ResolveValuePaths([]byte(tt.valuesYML), tt.mappings, tt.overrides)
-			if err != nil {
-				t.Fatalf("ResolveValuePaths() error = %v", err)
-			}
+			runResolveValuePathsCase(t, tt.valuesYML, tt.mappings, tt.overrides, tt.want)
+		})
+	}
+}
 
-			sort.Slice(got, func(i, j int) bool {
-				if got[i].Path != got[j].Path {
-					return got[i].Path < got[j].Path
-				}
-				if got[i].Repository != got[j].Repository {
-					return got[i].Repository < got[j].Repository
-				}
-				return got[i].Tag < got[j].Tag
-			})
-			sort.Slice(tt.want, func(i, j int) bool {
-				if tt.want[i].Path != tt.want[j].Path {
-					return tt.want[i].Path < tt.want[j].Path
-				}
-				if tt.want[i].Repository != tt.want[j].Repository {
-					return tt.want[i].Repository < tt.want[j].Repository
-				}
-				return tt.want[i].Tag < tt.want[j].Tag
-			})
+// resolveValuePathsCase is the shared shape for ResolveValuePaths table
+// entries. Carved out so coverage for the kyverno `defaultRegistry`
+// sibling can live in a sibling test function without re-emitting the
+// whole sort + DeepEqual harness.
+type resolveValuePathsCase struct {
+	name      string
+	valuesYML string
+	mappings  []ImageMapping
+	overrides map[string]config.Override
+	want      []ValueOverride
+}
 
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Fatalf("ResolveValuePaths() = %#v, want %#v", got, tt.want)
+func runResolveValuePathsCase(t *testing.T, valuesYML string, mappings []ImageMapping, overrides map[string]config.Override, want []ValueOverride) {
+	t.Helper()
+	got, err := ResolveValuePaths([]byte(valuesYML), mappings, overrides)
+	if err != nil {
+		t.Fatalf("ResolveValuePaths() error = %v", err)
+	}
+
+	sortFn := func(s []ValueOverride) {
+		sort.Slice(s, func(i, j int) bool {
+			if s[i].Path != s[j].Path {
+				return s[i].Path < s[j].Path
 			}
+			if s[i].Repository != s[j].Repository {
+				return s[i].Repository < s[j].Repository
+			}
+			return s[i].Tag < s[j].Tag
+		})
+	}
+	sortFn(got)
+	sortFn(want)
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("ResolveValuePaths() = %#v, want %#v", got, want)
+	}
+}
+
+// TestResolveValuePaths_DefaultRegistry covers the kyverno-shaped
+// `defaultRegistry` sibling that PR #295's `ClearRegistry` plumbing
+// originally missed (issue #254). Split out from TestResolveValuePaths
+// so the parent stays under the maintidx threshold.
+func TestResolveValuePaths_DefaultRegistry(t *testing.T) {
+	tests := []resolveValuePathsCase{
+		{
+			// kyverno 3.7.x admission-controller shape — `registry` is
+			// null, the host lives under `defaultRegistry`. The override
+			// must set ClearDefaultRegistry so the wrapper renders
+			// `defaultRegistry: ""`, otherwise the chart prepends
+			// `reg.kyverno.io/` to our already-FQDN repository.
+			name: "kyverno defaultRegistry sibling override",
+			valuesYML: `admissionController:
+  container:
+    image:
+      registry: ~
+      defaultRegistry: "reg.kyverno.io"
+      repository: "kyverno/kyverno"
+      tag: ~
+`,
+			mappings: []ImageMapping{{
+				OriginalRepo: "kyverno/kyverno",
+				PatchedRepo:  "ghcr.io/verity-org/kyverno",
+				PatchedTag:   "1.17",
+			}},
+			want: []ValueOverride{{
+				Path:                 "admissionController.container.image",
+				Repository:           "ghcr.io/verity-org/kyverno",
+				Tag:                  "1.17",
+				ClearRegistry:        false,
+				ClearDefaultRegistry: true,
+			}},
+		},
+		{
+			// Hypothetical chart that uses BOTH sibling fields. We must
+			// neutralise both — the chart's registry-resolution logic
+			// usually goes `registry | default defaultRegistry`, so
+			// leaving either populated breaks our override.
+			name: "registry and defaultRegistry both clear",
+			valuesYML: `image:
+  registry: "ghcr.io"
+  defaultRegistry: "fallback.example.com"
+  repository: "foo/bar"
+  tag: "v1"
+`,
+			mappings: []ImageMapping{{
+				OriginalRepo: "foo/bar",
+				PatchedRepo:  "ghcr.io/verity-org/foo/bar",
+				PatchedTag:   "v1",
+			}},
+			want: []ValueOverride{{
+				Path:                 "image",
+				Repository:           "ghcr.io/verity-org/foo/bar",
+				Tag:                  "v1",
+				ClearRegistry:        true,
+				ClearDefaultRegistry: true,
+			}},
+		},
+		{
+			// Explicit-ValuePath override must also pick up
+			// defaultRegistry from the matching values path.
+			name: "explicit value path clears defaultRegistry",
+			valuesYML: `admissionController:
+  container:
+    image:
+      defaultRegistry: "reg.kyverno.io"
+      repository: "kyverno/kyverno"
+      tag: ~
+`,
+			mappings: []ImageMapping{{
+				OriginalRepo: "kyverno/kyverno",
+				PatchedRepo:  "ghcr.io/verity-org/kyverno",
+				PatchedTag:   "1.17",
+			}},
+			overrides: map[string]config.Override{
+				"kyverno/kyverno": {ValuePath: "admissionController.container.image"},
+			},
+			want: []ValueOverride{{
+				Path:                 "admissionController.container.image",
+				Repository:           "ghcr.io/verity-org/kyverno",
+				Tag:                  "1.17",
+				ClearRegistry:        false,
+				ClearDefaultRegistry: true,
+			}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runResolveValuePathsCase(t, tt.valuesYML, tt.mappings, tt.overrides, tt.want)
 		})
 	}
 }
@@ -654,6 +761,76 @@ server:
 				HasRegistry: false,
 			}},
 		},
+		{
+			// kyverno 3.7.x shape: per-component image map holds a
+			// hard-coded `defaultRegistry: reg.kyverno.io` plus a null
+			// `registry: ~`. walkValues must surface defaultRegistry as a
+			// neutralisation signal so the wrapper override clears it
+			// alongside repository/tag.
+			name: "defaultRegistry sibling kyverno shape",
+			yamlIn: `admissionController:
+  container:
+    image:
+      registry: ~
+      defaultRegistry: "reg.kyverno.io"
+      repository: "kyverno/kyverno"
+      tag: ~
+`,
+			want: []repoTagPair{{
+				Path:               "admissionController.container.image",
+				Repo:               "kyverno/kyverno",
+				HasTag:             true,
+				Registry:           "",
+				HasRegistry:        false,
+				DefaultRegistry:    "reg.kyverno.io",
+				HasDefaultRegistry: true,
+			}},
+		},
+		{
+			name: "defaultRegistry empty string ignored",
+			yamlIn: `image:
+  defaultRegistry: ""
+  repository: "foo"
+  tag: "v1"
+`,
+			want: []repoTagPair{{
+				Path:               "image",
+				Repo:               "foo",
+				HasTag:             true,
+				HasRegistry:        false,
+				HasDefaultRegistry: false,
+			}},
+		},
+		{
+			name: "registry and defaultRegistry both present",
+			yamlIn: `image:
+  registry: "ghcr.io"
+  defaultRegistry: "fallback.example.com"
+  repository: "foo/bar"
+  tag: "v1"
+`,
+			want: []repoTagPair{{
+				Path:               "image",
+				Repo:               "foo/bar",
+				HasTag:             true,
+				Registry:           "ghcr.io",
+				HasRegistry:        true,
+				DefaultRegistry:    "fallback.example.com",
+				HasDefaultRegistry: true,
+			}},
+		},
+		{
+			name: "defaultRegistry without repository emits registry-only pair",
+			yamlIn: `image:
+  defaultRegistry: "reg.kyverno.io"
+  tag: "v1"
+`,
+			want: []repoTagPair{{
+				Path:               "image",
+				DefaultRegistry:    "reg.kyverno.io",
+				HasDefaultRegistry: true,
+			}},
+		},
 	}
 
 	for _, tt := range tests {
@@ -666,42 +843,34 @@ server:
 			got := make([]repoTagPair, 0)
 			walkValues(tt.prefix, data, &got)
 
-			sort.Slice(got, func(i, j int) bool {
-				if got[i].Path != got[j].Path {
-					return got[i].Path < got[j].Path
-				}
-				if got[i].Repo != got[j].Repo {
-					return got[i].Repo < got[j].Repo
-				}
-				if got[i].Registry != got[j].Registry {
-					return got[i].Registry < got[j].Registry
-				}
-				if got[i].HasRegistry != got[j].HasRegistry {
-					return !got[i].HasRegistry && got[j].HasRegistry
-				}
-				if got[i].HasTag == got[j].HasTag {
-					return false
-				}
-				return !got[i].HasTag && got[j].HasTag
-			})
-			sort.Slice(tt.want, func(i, j int) bool {
-				if tt.want[i].Path != tt.want[j].Path {
-					return tt.want[i].Path < tt.want[j].Path
-				}
-				if tt.want[i].Repo != tt.want[j].Repo {
-					return tt.want[i].Repo < tt.want[j].Repo
-				}
-				if tt.want[i].Registry != tt.want[j].Registry {
-					return tt.want[i].Registry < tt.want[j].Registry
-				}
-				if tt.want[i].HasRegistry != tt.want[j].HasRegistry {
-					return !tt.want[i].HasRegistry && tt.want[j].HasRegistry
-				}
-				if tt.want[i].HasTag == tt.want[j].HasTag {
-					return false
-				}
-				return !tt.want[i].HasTag && tt.want[j].HasTag
-			})
+			sortPairs := func(pairs []repoTagPair) {
+				sort.Slice(pairs, func(i, j int) bool {
+					if pairs[i].Path != pairs[j].Path {
+						return pairs[i].Path < pairs[j].Path
+					}
+					if pairs[i].Repo != pairs[j].Repo {
+						return pairs[i].Repo < pairs[j].Repo
+					}
+					if pairs[i].Registry != pairs[j].Registry {
+						return pairs[i].Registry < pairs[j].Registry
+					}
+					if pairs[i].HasRegistry != pairs[j].HasRegistry {
+						return !pairs[i].HasRegistry && pairs[j].HasRegistry
+					}
+					if pairs[i].DefaultRegistry != pairs[j].DefaultRegistry {
+						return pairs[i].DefaultRegistry < pairs[j].DefaultRegistry
+					}
+					if pairs[i].HasDefaultRegistry != pairs[j].HasDefaultRegistry {
+						return !pairs[i].HasDefaultRegistry && pairs[j].HasDefaultRegistry
+					}
+					if pairs[i].HasTag == pairs[j].HasTag {
+						return false
+					}
+					return !pairs[i].HasTag && pairs[j].HasTag
+				})
+			}
+			sortPairs(got)
+			sortPairs(tt.want)
 
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Fatalf("walkValues() = %#v, want %#v", got, tt.want)

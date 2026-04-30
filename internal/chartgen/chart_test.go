@@ -372,6 +372,56 @@ func TestBuildValuesTree(t *testing.T) {
 			},
 		},
 		{
+			// kyverno 3.7.x — clears the chart's hard-coded
+			// `defaultRegistry: reg.kyverno.io` so the wrapper renders
+			// `ghcr.io/verity-org/<comp>:1.17` instead of
+			// `reg.kyverno.io/ghcr.io/verity-org/<comp>:1.17`.
+			name:      "clears upstream defaultRegistry field (kyverno)",
+			chartName: "kyverno",
+			overrides: []ValueOverride{{
+				Path:                 "admissionController.container.image",
+				Repository:           "ghcr.io/verity-org/kyverno",
+				Tag:                  "1.17",
+				ClearDefaultRegistry: true,
+			}},
+			want: map[string]any{
+				"kyverno": map[string]any{
+					"admissionController": map[string]any{
+						"container": map[string]any{
+							"image": map[string]any{
+								"defaultRegistry": "",
+								"repository":      "ghcr.io/verity-org/kyverno",
+								"tag":             "1.17",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			// Both flags fire when the upstream chart declares both
+			// sibling fields — neutralise everything we can see.
+			name:      "clears both registry and defaultRegistry",
+			chartName: "hybrid",
+			overrides: []ValueOverride{{
+				Path:                 "image",
+				Repository:           "ghcr.io/verity-org/foo/bar",
+				Tag:                  "v1",
+				ClearRegistry:        true,
+				ClearDefaultRegistry: true,
+			}},
+			want: map[string]any{
+				"hybrid": map[string]any{
+					"image": map[string]any{
+						"registry":        "",
+						"defaultRegistry": "",
+						"repository":      "ghcr.io/verity-org/foo/bar",
+						"tag":             "v1",
+					},
+				},
+			},
+		},
+		{
 			name:      "single path",
 			chartName: "prometheus",
 			overrides: []ValueOverride{{

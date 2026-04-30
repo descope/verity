@@ -161,6 +161,14 @@ func buildValuesTree(chartName string, chartValues map[string]any, overrides []V
 		if override.ClearRegistry {
 			leaf["registry"] = ""
 		}
+		// ClearDefaultRegistry is independent of ClearRegistry — a chart
+		// can use either or both sibling fields. kyverno 3.7.x is the
+		// canonical case for `defaultRegistry`; postgres-operator and
+		// most other 3-field charts use `registry`. See ValueOverride
+		// docs for the full rationale.
+		if override.ClearDefaultRegistry {
+			leaf["defaultRegistry"] = ""
+		}
 
 		setScalarValue(chartRoot, override.Path, leaf)
 	}

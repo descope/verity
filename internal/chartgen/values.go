@@ -20,19 +20,36 @@ import (
 )
 
 type ValueOverride struct {
-	Path          string `json:"path"`
-	Repository    string `json:"repository"`
-	Tag           string `json:"tag"`
-	Value         string `json:"value,omitempty"`
-	ClearRegistry bool   `json:"clearRegistry,omitempty"`
+	Path       string `json:"path"`
+	Repository string `json:"repository"`
+	Tag        string `json:"tag"`
+	Value      string `json:"value,omitempty"`
+	// ClearRegistry tells the wrapper renderer to set
+	// `<path>.registry: ""` so that an upstream chart's `image.registry`
+	// hostname (e.g. `ghcr.io`, `quay.io`) doesn't get prepended to our
+	// already-FQDN repository override.
+	ClearRegistry bool `json:"clearRegistry,omitempty"`
+	// ClearDefaultRegistry tells the wrapper renderer to set
+	// `<path>.defaultRegistry: ""` for charts that template
+	// `{{ .Values.image.registry | default .Values.image.defaultRegistry }}/...`
+	// (kyverno 3.7.x is the canonical example: per-component image maps
+	// hold a hard-coded `defaultRegistry: reg.kyverno.io` that the
+	// chart concatenates to whatever override repository we set, which
+	// breaks pulls when our repository is already fully qualified). The
+	// flag fires in addition to ClearRegistry, not in place of it — a
+	// chart can use either or both sibling fields, and we neutralize
+	// only the ones it actually declares.
+	ClearDefaultRegistry bool `json:"clearDefaultRegistry,omitempty"`
 }
 
 type repoTagPair struct {
-	Path        string
-	Repo        string
-	HasTag      bool
-	Registry    string
-	HasRegistry bool
+	Path               string
+	Repo               string
+	HasTag             bool
+	Registry           string
+	HasRegistry        bool
+	DefaultRegistry    string
+	HasDefaultRegistry bool
 }
 
 func ResolveValuePaths(valuesYAML []byte, mappings []ImageMapping, overrides map[string]config.Override) ([]ValueOverride, error) {
@@ -75,9 +92,13 @@ func resolveValuePathPairs(pairs []repoTagPair, mappings []ImageMapping, overrid
 	sort.Strings(overrideKeys)
 
 	pathHasRegistry := make(map[string]bool, len(pairs))
+	pathHasDefaultRegistry := make(map[string]bool, len(pairs))
 	for _, p := range pairs {
 		if p.HasRegistry {
 			pathHasRegistry[p.Path] = true
+		}
+		if p.HasDefaultRegistry {
+			pathHasDefaultRegistry[p.Path] = true
 		}
 	}
 
@@ -89,10 +110,11 @@ func resolveValuePathPairs(pairs []repoTagPair, mappings []ImageMapping, overrid
 			}
 			if matchesRepo(m.OriginalRepo, key) {
 				result = append(result, ValueOverride{
-					Path:          override.ValuePath,
-					Repository:    m.PatchedRepo,
-					Tag:           m.PatchedTag,
-					ClearRegistry: pathHasRegistry[override.ValuePath],
+					Path:                 override.ValuePath,
+					Repository:           m.PatchedRepo,
+					Tag:                  m.PatchedTag,
+					ClearRegistry:        pathHasRegistry[override.ValuePath],
+					ClearDefaultRegistry: pathHasDefaultRegistry[override.ValuePath],
 				})
 				matched[i] = true
 				break
@@ -110,10 +132,11 @@ func resolveValuePathPairs(pairs []repoTagPair, mappings []ImageMapping, overrid
 			}
 			if matchesRepo(pair.Repo, m.OriginalRepo) {
 				result = append(result, ValueOverride{
-					Path:          pair.Path,
-					Repository:    m.PatchedRepo,
-					Tag:           m.PatchedTag,
-					ClearRegistry: pair.HasRegistry,
+					Path:                 pair.Path,
+					Repository:           m.PatchedRepo,
+					Tag:                  m.PatchedTag,
+					ClearRegistry:        pair.HasRegistry,
+					ClearDefaultRegistry: pair.HasDefaultRegistry,
 				})
 				matched[i] = true
 				break
@@ -522,22 +545,49 @@ func walkValues(prefix string, node map[string]any, pairs *[]repoTagPair) {
 		repo, hasRepo := child["repository"].(string)
 		registry, registrySibling := child["registry"].(string)
 		hasRegistry := registrySibling && registry != ""
+		// defaultRegistry is the kyverno 3.7.x convention: each component's
+		// image map holds a hard-coded `defaultRegistry: reg.kyverno.io`
+		// that the chart concatenates to the override repository when
+		// `registry` is unset. Without an explicit signal, our wrapper would
+		// inherit that prefix and produce broken refs like
+		// `reg.kyverno.io/ghcr.io/verity-org/kyverno:1.17` (issue #254).
+		// Treat it as a parallel registry-sibling: detect it here, plumb
+		// it through ClearDefaultRegistry, and have buildValuesTree write
+		// `defaultRegistry: ""` into the override leaf.
+		defaultRegistry, defaultRegistrySibling := child["defaultRegistry"].(string)
+		hasDefaultRegistry := defaultRegistrySibling && defaultRegistry != ""
 
 		switch {
 		case hasRepo && repo != "":
 			_, hasTag := child["tag"]
 			*pairs = append(*pairs, repoTagPair{
-				Path:        path,
-				Repo:        repo,
-				HasTag:      hasTag,
-				Registry:    registry,
-				HasRegistry: hasRegistry,
+				Path:               path,
+				Repo:               repo,
+				HasTag:             hasTag,
+				Registry:           registry,
+				HasRegistry:        hasRegistry,
+				DefaultRegistry:    defaultRegistry,
+				HasDefaultRegistry: hasDefaultRegistry,
 			})
 		case hasRegistry:
 			*pairs = append(*pairs, repoTagPair{
-				Path:        path,
-				Registry:    registry,
-				HasRegistry: true,
+				Path:               path,
+				Registry:           registry,
+				HasRegistry:        true,
+				DefaultRegistry:    defaultRegistry,
+				HasDefaultRegistry: hasDefaultRegistry,
+			})
+		case hasDefaultRegistry:
+			// Charts that declare `defaultRegistry` without `registry` or
+			// `repository` at the same map (rare, but possible) still need
+			// neutralisation when an explicit `valuePath` override targets
+			// them. Emit a registry-only pair so the explicit-path branch
+			// in resolveValuePathPairs can pick it up via
+			// pathHasDefaultRegistry.
+			*pairs = append(*pairs, repoTagPair{
+				Path:               path,
+				DefaultRegistry:    defaultRegistry,
+				HasDefaultRegistry: true,
 			})
 		}
 

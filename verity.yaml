@@ -59,6 +59,21 @@ chartValues:
     controller.testEnabled: false
     agent.enabled: false
 
+  # kyverno 3.7.2: disable the post-upgrade `crds.migration` hook. It runs
+  # `kubectl` from `registry.k8s.io/kubectl:v1.34.3`. Verity rebuilds kubectl
+  # on the floating `1.34` minor track (`images/kubectl.yaml`) but does not
+  # publish this exact `v1.34.3` patch tag; the hook is also a no-op on a
+  # fresh `helm install` and would otherwise be the only non-`ghcr.io/verity-org/*`
+  # reference rendered into the wrapper — disabling it avoids both the
+  # unpatched-tag pull and an `AssertImageOrigin` allowlist exception. The
+  # `defaultRegistry: reg.kyverno.io` registry-prefix neutralisation that
+  # admission-controller / background / cleanup / reports / kyvernopre all
+  # need is now handled automatically by chart-gen's `ClearDefaultRegistry`
+  # plumbing (`internal/chartgen/values.go` walks `defaultRegistry` siblings
+  # alongside `registry`); see issue #254 for the original symptom.
+  kyverno:
+    crds.migration.enabled: false
+
 # Image replacements for chart-gen.
 # Maps upstream image path patterns to Verity Integer (Wolfi) images.
 # When chart-gen discovers a chart image matching the key, it generates
@@ -101,27 +116,45 @@ replacements:
   # readiness-checker, and kyvernopre binaries each ship as their own
   # subpackage of the upstream Wolfi `kyverno-1.17` recipe (kyvernopre's
   # subpackage is named `kyverno-init-container-1.17`).
+  #
+  # Tag `1.17` pins the floating-minor track published by images/kyverno*.yaml
+  # (`versions: "1.17": {}`). Without an explicit tag, chart-gen would carry
+  # the chart's appVersion `v1.17.2` through unchanged — but Verity does not
+  # publish `v1.17.2` (or any per-patch tag), only the floating `1.17` plus
+  # `vX.Y.Z-patched` historicals. That tag mismatch was one of two root
+  # causes of issue #254 (admission-controller stuck in ImagePullBackOff
+  # inside the 10-minute helm-install budget); the second was the chart's
+  # per-component `defaultRegistry: reg.kyverno.io` being concatenated with
+  # our already-FQDN repository overrides, now neutralised by chart-gen's
+  # `ClearDefaultRegistry` plumbing in `internal/chartgen/values.go`.
   "kyverno/kyverno":
     registry: "ghcr.io/verity-org"
     image: "kyverno"
+    tag: "1.17"
   "kyverno/background-controller":
     registry: "ghcr.io/verity-org"
     image: "kyverno-background-controller"
+    tag: "1.17"
   "kyverno/reports-controller":
     registry: "ghcr.io/verity-org"
     image: "kyverno-reports-controller"
+    tag: "1.17"
   "kyverno/cleanup-controller":
     registry: "ghcr.io/verity-org"
     image: "kyverno-cleanup-controller"
+    tag: "1.17"
   "kyverno/readiness-checker":
     registry: "ghcr.io/verity-org"
     image: "kyverno-readiness-checker"
+    tag: "1.17"
   "kyverno/kyvernopre":
     registry: "ghcr.io/verity-org"
     image: "kyverno-kyvernopre"
+    tag: "1.17"
   "kyverno/kyverno-cli":
     registry: "ghcr.io/verity-org"
     image: "kyverno-cli"
+    tag: "1.17"
 
   # argo-cd chart (9.5.4) → argocd controller; dex shared with dex chart.
   "argoproj/argocd":
