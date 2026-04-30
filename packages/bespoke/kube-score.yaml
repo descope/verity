@@ -17,7 +17,6 @@ environment:
       - go
   environment:
     CGO_ENABLED: "0"
-    GO111MODULE: "on"
 
 pipeline:
   - uses: git-checkout
@@ -32,8 +31,6 @@ pipeline:
       output: kube-score
       ldflags: |
         -X main.version=${{package.version}}
-        -X main.commit=$(git rev-parse HEAD)
-        -X main.date=$(date -u -d@${SOURCE_DATE_EPOCH} +%FT%TZ)
 
   - uses: strip
 
