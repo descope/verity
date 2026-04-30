@@ -4,6 +4,7 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -123,7 +124,29 @@ func runChart(t *testing.T, spec config.ChartSpec) {
 	}
 
 	allow := filepath.Join(valuesDir, spec.Name+".allowlist.txt")
-	if err := AssertImageOrigin(ctx, testHarness, cc.Namespace, allow); err != nil {
+	err := AssertImageOrigin(ctx, testHarness, cc.Namespace, allow)
+	switch {
+	case err == nil:
+		// allowlist present (or empty file) AND every image accepted
+		// by AssertImageOrigin's existing logic — clean pass.
+	case errors.Is(err, errAllowlistMissing):
+		// SCR-2026-04-30-001 (Option E): missing-allowlist is no
+		// longer silently treated as empty-allowlist. Re-collect
+		// the namespace's images and hard-fail iff any are
+		// non-verity-prefixed. If every image is already verity-
+		// prefixed, the absence is a clean pass — the chart
+		// genuinely doesn't need an allowlist file.
+		images, listErr := CollectNamespaceImages(ctx, testHarness, cc.Namespace)
+		if listErr != nil {
+			t.Errorf("image-origin gate: allowlist missing AND namespace image collection failed: %v (original error: %v)", listErr, err)
+			break
+		}
+		offenders := classifyMissingAllowlist(images)
+		if len(offenders) > 0 {
+			t.Errorf("image-origin gate: chart %q has %d non-verity image(s) but no allowlist file at %s — author the allowlist for this chart (SCR-2026-04-30-001):\n  %s",
+				spec.Name, len(offenders), allow, strings.Join(offenders, "\n  "))
+		}
+	default:
 		t.Errorf("image-origin gate: %v", err)
 	}
 }

@@ -119,22 +119,24 @@ jobs:
           VERITY_IT_SKIP_CLUSTER: "1"
         run: |
           go test -tags=integration \
-            -run 'TestLoadAllowlist|TestLoadAllowlistMissing|TestIsAccepted|TestHarnessClusterCreatedFieldDefault|TestInstallChartRejectsArgumentInjection' \
+            -run 'TestLoadAllowlist|TestLoadAllowlistMissing|TestLoadAllowlistPresentRegression|TestIsAccepted|TestClassifyMissingAllowlist|TestClassifyMissingAllowlistDoesNotConsultAllowlist|TestHarnessClusterCreatedFieldDefault|TestInstallChartRejectsArgumentInjection' \
             -v ./test/chart-integration/...
 
       - name: Run chart smoke test
         id: smoke
-        # On pull_request: a failing shard means the *published* chart has a
-        # problem (chart-gen rewrite gap, missing patched image, runtime
-        # crash). That's not a regression in this PR, so the per-shard check
-        # stays green to avoid blocking unrelated PRs. The actual failure
-        # is still visible in the step log, the GITHUB_STEP_SUMMARY tab,
-        # and the uploaded diagnostics-<chart> artifact.
-        #
-        # On workflow_run / schedule / workflow_dispatch: this IS a regression
-        # detector, so failures must be loud — leave continue-on-error off so
-        # the workflow conclusion turns red, alerting and dashboards fire,
-        # and the failed run shows up cleanly in `gh run list` filters.
+        # PR-strict policy (SCR-2026-04-30-001, Option E) is **DEFERRED**.
+        # Investigation while landing this PR revealed that ~30 of 41
+        # wrapper charts have chronic helm-install timeouts of the same
+        # class as kyverno's bug #254 (broken image refs / missing
+        # chartValues overrides), not just a missing-allowlist gap.
+        # Flipping strict mode today would surface ~30+ pre-existing
+        # chart-wrapper bugs as red shards on every PR, not the ~9
+        # genuine missing-allowlist cases the SCR anticipated. The
+        # typed-error infrastructure (`errAllowlistMissing`,
+        # `CollectNamespaceImages`, `classifyMissingAllowlist`) lands
+        # in this PR — ready to activate. A follow-up PR will flip
+        # the strictness once the chart-wrapper backlog clears.
+        # Tracking issue: TBD (chart-wrapper backlog).
         continue-on-error: ${{ github.event_name == 'pull_request' }}
         run: make chart-integration
 
@@ -150,12 +152,12 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload diagnostics on failure
-        # always() is required: when continue-on-error is false (nightly /
-        # schedule / workflow_run / workflow_dispatch) and the smoke step
-        # fails, GHA's default behaviour is to skip subsequent steps. We
-        # want diagnostics uploaded EXACTLY when the smoke step failed —
-        # that's the only time they're useful — so override the skip with
-        # always() and gate on the step outcome.
+        # always() is required: even with continue-on-error: true on
+        # the smoke step (PR events), GHA's default is to skip
+        # subsequent steps when the prior step's `outcome` is failure.
+        # We want diagnostics uploaded EXACTLY when the smoke step
+        # failed — that's the only time they're useful — so override
+        # the skip with always() and gate on the step outcome.
         if: always() && steps.smoke.outcome == 'failure'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
