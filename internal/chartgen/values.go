@@ -402,12 +402,13 @@ func extractTarballRegularEntry(tgzPath, destDir, targetPath, name string, heade
 	if err != nil {
 		return fmt.Errorf("open extracted file %s: %w", targetPath, err)
 	}
-	if _, err := io.Copy(out, tarReader); err != nil {
-		out.Close()
-		return fmt.Errorf("copy file %s from %s: %w", name, filepath.Base(tgzPath), err)
+	_, copyErr := io.Copy(out, tarReader)
+	closeErr := out.Close()
+	if copyErr != nil {
+		return fmt.Errorf("copy file %s from %s: %w", name, filepath.Base(tgzPath), copyErr)
 	}
-	if err := out.Close(); err != nil {
-		return fmt.Errorf("close extracted file %s: %w", targetPath, err)
+	if closeErr != nil {
+		return fmt.Errorf("close extracted file %s: %w", targetPath, closeErr)
 	}
 	return nil
 }
@@ -486,6 +487,10 @@ func visitTarballEntries(tgzPath string, visit func(header *tar.Header, name str
 		name := strings.TrimPrefix(header.Name, "./")
 		if name == "" {
 			continue
+		}
+
+		if !filepath.IsLocal(filepath.FromSlash(name)) {
+			return "", fmt.Errorf("%w: %q", ErrUnsafeTarballEntry, name)
 		}
 
 		parts := strings.Split(name, "/")
