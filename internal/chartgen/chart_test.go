@@ -352,6 +352,24 @@ func TestBuildValuesTree(t *testing.T) {
 		want      map[string]any
 	}{
 		{
+			name: "clears upstream registry field",
+			overrides: []ValueOverride{{
+				Path:          "image",
+				Repository:    "ghcr.io/verity-org/zalando/postgres-operator",
+				Tag:           "v1.15.1",
+				ClearRegistry: true,
+			}},
+			want: map[string]any{
+				"postgres-operator": map[string]any{
+					"image": map[string]any{
+						"registry":   "",
+						"repository": "ghcr.io/verity-org/zalando/postgres-operator",
+						"tag":        "v1.15.1",
+					},
+				},
+			},
+		},
+		{
 			name: "single path",
 			overrides: []ValueOverride{{
 				Path:       "image",
@@ -408,7 +426,12 @@ func TestBuildValuesTree(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := buildValuesTree("prometheus", nil, tt.overrides)
+			chartName := "prometheus"
+			if tt.name == "clears upstream registry field" {
+				chartName = "postgres-operator"
+			}
+
+			got := buildValuesTree(chartName, nil, tt.overrides)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Fatalf("buildValuesTree() = %#v, want %#v", got, tt.want)
 			}

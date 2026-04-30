@@ -14,16 +14,19 @@ import (
 )
 
 type ValueOverride struct {
-	Path       string `json:"path"`
-	Repository string `json:"repository"`
-	Tag        string `json:"tag"`
-	Value      string `json:"value,omitempty"`
+	Path          string `json:"path"`
+	Repository    string `json:"repository"`
+	Tag           string `json:"tag"`
+	Value         string `json:"value,omitempty"`
+	ClearRegistry bool   `json:"clearRegistry,omitempty"`
 }
 
 type repoTagPair struct {
-	Path   string
-	Repo   string
-	HasTag bool
+	Path        string
+	Repo        string
+	HasTag      bool
+	Registry    string
+	HasRegistry bool
 }
 
 func ResolveValuePaths(valuesYAML []byte, mappings []ImageMapping, overrides map[string]config.Override) ([]ValueOverride, error) {
