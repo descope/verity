@@ -6,22 +6,23 @@
 package:
   name: dive
   version: "0.13.1"
-  epoch: 14
+  epoch: 0
   description: A tool for exploring each layer in a docker image
   copyright:
     - license: MIT
-  resources:
-    cpu: "1"
-    memory: 2Gi
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
 
 environment:
   contents:
     packages:
       - busybox
       - ca-certificates-bundle
-      - go-1.25
+      - go
   environment:
     CGO_ENABLED: "0"
+    GO111MODULE: "on"
 
 pipeline:
   - uses: git-checkout
@@ -36,7 +37,6 @@ pipeline:
         golang.org/x/net@v0.38.0
         github.com/go-viper/mapstructure/v2@v2.4.0
         github.com/docker/cli@v29.2.0
-      replaces: google.golang.org/genproto=google.golang.org/genproto@v0.0.0-20240730163845-b1a4ccb954bf
 
   - uses: go/build
     with:
@@ -44,10 +44,6 @@ pipeline:
       output: dive
       ldflags: |
         -X main.version=v${{package.version}}
-        -X main.commit=$(git rev-parse HEAD)
-        -X main.buildTime=$(date -d@${SOURCE_DATE_EPOCH} +%F-%T)
-
-  - uses: strip
 
 update:
   enabled: true

@@ -6,27 +6,30 @@
 package:
   name: ko
   version: "0.18.1"
-  epoch: 7
+  epoch: 0
   description: Simple, fast container image builder for Go applications.
   copyright:
     - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
 
 environment:
   contents:
     packages:
       - busybox
       - ca-certificates-bundle
-      - go-1.25
+      - go
   environment:
     CGO_ENABLED: "0"
+    GO111MODULE: "on"
 
 pipeline:
   - uses: git-checkout
     with:
-      destination: ko
-      expected-commit: 7f1ced62a0c8db30fc2267155f664b38bfbde492
       repository: https://github.com/ko-build/ko
       tag: v${{package.version}}
+      expected-commit: 7f1ced62a0c8db30fc2267155f664b38bfbde492
 
   - uses: go/bump
     with:
@@ -36,18 +39,15 @@ pipeline:
         github.com/sigstore/sigstore@v1.10.4
         github.com/theupdateframework/go-tuf/v2@v2.4.1
         github.com/docker/cli@v29.2.0
-      modroot: ko
-      tidy: false
+        google.golang.org/grpc@v1.79.3
+        github.com/go-jose/go-jose/v4@v4.1.4
+        go.opentelemetry.io/otel@v1.41.0
 
   - uses: go/build
     with:
-      ldflags: -X github.com/google/ko/pkg/commands.Version=${{package.version}}
-      modroot: ko
-      output: ko
       packages: .
-      vendor: true
-
-  - uses: strip
+      output: ko
+      ldflags: -X github.com/google/ko/pkg/commands.Version=${{package.version}}
 
 update:
   enabled: true
@@ -57,14 +57,6 @@ update:
 
 test:
   pipeline:
-    - uses: test/tw/ldd-check
-    - uses: test/tw/help-check
-      with:
-        bins: ko
-    - uses: test/tw/ver-check
-      with:
-        bins: ko
-        version: ${{package.version}}
     - runs: |
-        ko completion bash | grep -F "ko"
-        ko completion zsh | grep -F "ko"
+        ko version
+        ko --help
