@@ -339,12 +339,162 @@ func TestEnumerateSubchartArchives(t *testing.T) {
 	}
 }
 
+func TestResolveValuePathsWithSubcharts(t *testing.T) {
+	tests := []struct {
+		name           string
+		parentValues   string
+		subchartValues map[string]string
+		mappings       []ImageMapping
+		overrides      map[string]config.Override
+		want           []ValueOverride
+	}{
+		{
+			name:         "prometheus subchart override",
+			parentValues: "server:\n  enabled: true\n",
+			subchartValues: map[string]string{
+				"alertmanager": `image:
+  repository: quay.io/prometheus/alertmanager
+  tag: v0.28.1
+`,
+				"kube-state-metrics": `image:
+  repository: registry.k8s.io/kube-state-metrics/kube-state-metrics
+  tag: v2.15.0
+`,
+			},
+			mappings: []ImageMapping{
+				{
+					OriginalRepo: "quay.io/prometheus/alertmanager",
+					PatchedRepo:  "ghcr.io/verity-org/prometheus/alertmanager",
+					PatchedTag:   "v0.28.1",
+				},
+				{
+					OriginalRepo: "registry.k8s.io/kube-state-metrics/kube-state-metrics",
+					PatchedRepo:  "ghcr.io/verity-org/kube-state-metrics/kube-state-metrics",
+					PatchedTag:   "v2.15.0",
+				},
+			},
+			want: []ValueOverride{
+				{
+					Path:       "alertmanager.image",
+					Repository: "ghcr.io/verity-org/prometheus/alertmanager",
+					Tag:        "v0.28.1",
+				},
+				{
+					Path:       "kube-state-metrics.image",
+					Repository: "ghcr.io/verity-org/kube-state-metrics/kube-state-metrics",
+					Tag:        "v2.15.0",
+				},
+			},
+		},
+		{
+			name: "parent + subchart combined",
+			parentValues: `image:
+  repository: nginx
+  tag: "1.25"
+`,
+			subchartValues: map[string]string{
+				"metrics": `image:
+  repository: valkey
+  tag: "7.2"
+`,
+			},
+			mappings: []ImageMapping{
+				{
+					OriginalRepo: "nginx",
+					PatchedRepo:  "ghcr.io/verity-org/library/nginx",
+					PatchedTag:   "1.25",
+				},
+				{
+					OriginalRepo: "valkey",
+					PatchedRepo:  "ghcr.io/verity-org/valkey/valkey",
+					PatchedTag:   "7.2",
+				},
+			},
+			want: []ValueOverride{
+				{
+					Path:       "image",
+					Repository: "ghcr.io/verity-org/library/nginx",
+					Tag:        "1.25",
+				},
+				{
+					Path:       "metrics.image",
+					Repository: "ghcr.io/verity-org/valkey/valkey",
+					Tag:        "7.2",
+				},
+			},
+		},
+		{
+			name:         "subchart without matching mapping",
+			parentValues: "replicaCount: 1\n",
+			subchartValues: map[string]string{
+				"pushgateway": `image:
+  repository: quay.io/prometheus/pushgateway
+  tag: v1.11.1
+`,
+			},
+			mappings: []ImageMapping{ {
+				OriginalRepo: "nginx",
+				PatchedRepo:  "ghcr.io/verity-org/library/nginx",
+				PatchedTag:   "1.25",
+			}},
+			want: []ValueOverride{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			subcharts := make(map[string][]byte, len(tt.subchartValues))
+			for name, values := range tt.subchartValues {
+				subcharts[name] = []byte(values)
+			}
+
+			got, err := ResolveValuePathsWithSubcharts([]byte(tt.parentValues), subcharts, tt.mappings, tt.overrides)
+			if err != nil {
+				t.Fatalf("ResolveValuePathsWithSubcharts() error = %v", err)
+			}
+
+			sort.Slice(got, func(i, j int) bool {
+				if got[i].Path != got[j].Path {
+					return got[i].Path < got[j].Path
+				}
+				if got[i].Repository != got[j].Repository {
+					return got[i].Repository < got[j].Repository
+				}
+				return got[i].Tag < got[j].Tag
+			})
+			sort.Slice(tt.want, func(i, j int) bool {
+				if tt.want[i].Path != tt.want[j].Path {
+					return tt.want[i].Path < tt.want[j].Path
+				}
+				if tt.want[i].Repository != tt.want[j].Repository {
+					return tt.want[i].Repository < tt.want[j].Repository
+				}
+				return tt.want[i].Tag < tt.want[j].Tag
+			})
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("ResolveValuePathsWithSubcharts() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestWalkValues(t *testing.T) {
 	tests := []struct {
 		name   string
+		prefix string
 		yamlIn string
 		want   []repoTagPair
 	}{
+		{
+			name:   "with prefix",
+			prefix: "foo",
+			yamlIn: `image:
+  repository: nginx
+  tag: "1"
+`,
+			want: []repoTagPair{{Path: "foo.image", Repo: "nginx", HasTag: true}},
+		},
 		{
 			name: "flat",
 			yamlIn: `image:
@@ -456,7 +606,7 @@ server:
 			}
 
 			got := make([]repoTagPair, 0)
-			walkValues("", data, &got)
+			walkValues(tt.prefix, data, &got)
 
 			sort.Slice(got, func(i, j int) bool {
 				if got[i].Path != got[j].Path {
