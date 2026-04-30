@@ -6,8 +6,8 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"os/exec"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -238,12 +238,12 @@ metrics:
 
 func TestExtractValuesFromTarball(t *testing.T) {
 	tests := []struct {
-		name        string
-		setup       func(t *testing.T) string
-		wantName    string
-		wantValues  string
-		wantErr     bool
-		wantEmpty   bool
+		name       string
+		setup      func(t *testing.T) string
+		wantName   string
+		wantValues string
+		wantErr    bool
+		wantEmpty  bool
 	}{
 		{
 			name: "valid tgz with values.yaml",
@@ -477,7 +477,7 @@ func TestResolveValuePathsWithSubcharts(t *testing.T) {
   tag: v1.11.1
 `,
 			},
-			mappings: []ImageMapping{ {
+			mappings: []ImageMapping{{
 				OriginalRepo: "nginx",
 				PatchedRepo:  "ghcr.io/verity-org/library/nginx",
 				PatchedTag:   "1.25",

@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -164,6 +165,25 @@ func GetSubchartValues(chart config.ChartSpec) (map[string][]byte, error) {
 	}
 	defer os.RemoveAll(tmpDir)
 
+	if err := writeSubchartDependencyChart(tmpDir, chart); err != nil {
+		return nil, err
+	}
+
+	if _, err := runCommand(context.Background(), 5*time.Minute, "helm", "dependency", "build", tmpDir); err != nil {
+		return nil, fmt.Errorf("helm dependency build for %s: %w", chart.Name, err)
+	}
+
+	subchartValues := make(map[string][]byte)
+	chartsDir := filepath.Join(tmpDir, "charts")
+	parentExtractDir := filepath.Join(tmpDir, "parent-chart")
+	if err := collectNestedSubchartValues(chartsDir, parentExtractDir, subchartValues); err != nil {
+		return nil, err
+	}
+
+	return subchartValues, nil
+}
+
+func writeSubchartDependencyChart(tmpDir string, chart config.ChartSpec) error {
 	chartYAML, err := yaml.Marshal(map[string]any{
 		"apiVersion": "v2",
 		"name":       "verity-subchart-values",
@@ -175,23 +195,18 @@ func GetSubchartValues(chart config.ChartSpec) (map[string][]byte, error) {
 		}},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("marshal temp Chart.yaml: %w", err)
+		return fmt.Errorf("marshal temp Chart.yaml: %w", err)
 	}
 	if err := os.WriteFile(filepath.Join(tmpDir, "Chart.yaml"), chartYAML, 0o644); err != nil {
-		return nil, fmt.Errorf("write temp Chart.yaml: %w", err)
+		return fmt.Errorf("write temp Chart.yaml: %w", err)
 	}
+	return nil
+}
 
-	if _, err := runCommand(context.Background(), 5*time.Minute, "helm", "dependency", "build", tmpDir); err != nil {
-		return nil, fmt.Errorf("helm dependency build for %s: %w", chart.Name, err)
-	}
-
-	subchartValues := make(map[string][]byte)
-	chartsDir := filepath.Join(tmpDir, "charts")
-	parentExtractDir := filepath.Join(tmpDir, "parent-chart")
-
+func collectNestedSubchartValues(chartsDir, parentExtractDir string, subchartValues map[string][]byte) error {
 	archives, err := enumerateSubchartArchives(chartsDir)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	for _, archive := range archives {
 		chartName, err := extractTarball(archive, parentExtractDir)
@@ -199,31 +214,35 @@ func GetSubchartValues(chart config.ChartSpec) (map[string][]byte, error) {
 			fmt.Fprintf(os.Stderr, "warning: skipping unreadable parent chart archive %s: %v\n", filepath.Base(archive), err)
 			continue
 		}
-		if chartName == "" {
-			continue
-		}
-		if err := collectSubchartValues(filepath.Join(parentExtractDir, chartName, "charts"), subchartValues); err != nil {
-			return nil, err
+		if err := collectParentSubcharts(filepath.Join(parentExtractDir, chartName), subchartValues); err != nil {
+			return err
 		}
 	}
 
 	entries, err := os.ReadDir(chartsDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return subchartValues, nil
+			return nil
 		}
-		return nil, fmt.Errorf("read charts directory: %w", err)
+		return fmt.Errorf("read charts directory: %w", err)
 	}
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}
-		if err := collectSubchartValues(filepath.Join(chartsDir, entry.Name(), "charts"), subchartValues); err != nil {
-			return nil, err
+		if err := collectParentSubcharts(filepath.Join(chartsDir, entry.Name()), subchartValues); err != nil {
+			return err
 		}
 	}
 
-	return subchartValues, nil
+	return nil
+}
+
+func collectParentSubcharts(parentChartDir string, subchartValues map[string][]byte) error {
+	if filepath.Base(parentChartDir) == "" {
+		return nil
+	}
+	return collectSubchartValues(filepath.Join(parentChartDir, "charts"), subchartValues)
 }
 
 func enumerateSubchartArchives(chartsDir string) ([]string, error) {
@@ -291,6 +310,51 @@ func collectSubchartValues(chartsDir string, subchartValues map[string][]byte) e
 }
 
 func extractTarball(tgzPath, destDir string) (string, error) {
+	return visitTarballEntries(tgzPath, func(header *tar.Header, name string, tarReader io.Reader) error {
+		targetPath := filepath.Join(destDir, filepath.FromSlash(name))
+		switch header.Typeflag {
+		case tar.TypeDir:
+			return os.MkdirAll(targetPath, 0o755)
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+				return fmt.Errorf("create parent directory for %s: %w", targetPath, err)
+			}
+			fileMode := os.FileMode(header.Mode)
+			if fileMode == 0 {
+				fileMode = 0o644
+			}
+			content, err := io.ReadAll(tarReader)
+			if err != nil {
+				return fmt.Errorf("read file %s from %s: %w", name, filepath.Base(tgzPath), err)
+			}
+			if err := os.WriteFile(targetPath, content, fileMode); err != nil {
+				return fmt.Errorf("write extracted file %s: %w", targetPath, err)
+			}
+		}
+		return nil
+	})
+}
+
+// extractValuesFromTarball reads a Helm chart tarball and returns the chart
+// name together with the raw values.yaml bytes when present.
+func extractValuesFromTarball(tgzPath string) (valuesYAML []byte, chartName string, err error) {
+	chartName, err = visitTarballEntries(tgzPath, func(_ *tar.Header, name string, tarReader io.Reader) error {
+		parts := strings.Split(name, "/")
+		if len(parts) == 2 && parts[1] == "values.yaml" {
+			valuesYAML, err = io.ReadAll(tarReader)
+			if err != nil {
+				return fmt.Errorf("read values.yaml from %s: %w", filepath.Base(tgzPath), err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, "", err
+	}
+	return valuesYAML, chartName, nil
+}
+
+func visitTarballEntries(tgzPath string, visit func(header *tar.Header, name string, tarReader io.Reader) error) (string, error) {
 	file, err := os.Open(tgzPath)
 	if err != nil {
 		return "", fmt.Errorf("open tarball %s: %w", filepath.Base(tgzPath), err)
@@ -307,7 +371,7 @@ func extractTarball(tgzPath, destDir string) (string, error) {
 	chartName := ""
 	for {
 		header, err := tarReader.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return chartName, nil
 		}
 		if err != nil {
@@ -318,68 +382,6 @@ func extractTarball(tgzPath, destDir string) (string, error) {
 		if name == "" {
 			continue
 		}
-		parts := strings.Split(name, "/")
-		if len(parts) == 0 || parts[0] == "" {
-			continue
-		}
-		if chartName == "" {
-			chartName = parts[0]
-		}
-
-		targetPath := filepath.Join(destDir, filepath.FromSlash(name))
-		switch header.Typeflag {
-		case tar.TypeDir:
-			if err := os.MkdirAll(targetPath, 0o755); err != nil {
-				return "", fmt.Errorf("create directory %s: %w", targetPath, err)
-			}
-		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
-				return "", fmt.Errorf("create parent directory for %s: %w", targetPath, err)
-			}
-			fileMode := os.FileMode(header.Mode)
-			if fileMode == 0 {
-				fileMode = 0o644
-			}
-			content, err := io.ReadAll(tarReader)
-			if err != nil {
-				return "", fmt.Errorf("read file %s from %s: %w", name, filepath.Base(tgzPath), err)
-			}
-			if err := os.WriteFile(targetPath, content, fileMode); err != nil {
-				return "", fmt.Errorf("write extracted file %s: %w", targetPath, err)
-			}
-		}
-	}
-}
-
-// extractValuesFromTarball reads a Helm chart tarball and returns the chart
-// name together with the raw values.yaml bytes when present.
-func extractValuesFromTarball(tgzPath string) (valuesYAML []byte, chartName string, err error) {
-	file, err := os.Open(tgzPath)
-	if err != nil {
-		return nil, "", fmt.Errorf("open tarball %s: %w", filepath.Base(tgzPath), err)
-	}
-	defer file.Close()
-
-	gzReader, err := gzip.NewReader(file)
-	if err != nil {
-		return nil, "", fmt.Errorf("open gzip stream for %s: %w", filepath.Base(tgzPath), err)
-	}
-	defer gzReader.Close()
-
-	tarReader := tar.NewReader(gzReader)
-	for {
-		header, err := tarReader.Next()
-		if err == io.EOF {
-			return valuesYAML, chartName, nil
-		}
-		if err != nil {
-			return nil, "", fmt.Errorf("read tarball %s: %w", filepath.Base(tgzPath), err)
-		}
-
-		name := strings.TrimPrefix(header.Name, "./")
-		if name == "" {
-			continue
-		}
 
 		parts := strings.Split(name, "/")
 		if len(parts) == 0 || parts[0] == "" {
@@ -389,11 +391,8 @@ func extractValuesFromTarball(tgzPath string) (valuesYAML []byte, chartName stri
 			chartName = parts[0]
 		}
 
-		if len(parts) == 2 && parts[1] == "values.yaml" {
-			valuesYAML, err = io.ReadAll(tarReader)
-			if err != nil {
-				return nil, "", fmt.Errorf("read values.yaml from %s: %w", filepath.Base(tgzPath), err)
-			}
+		if err := visit(header, name, tarReader); err != nil {
+			return "", err
 		}
 	}
 }
