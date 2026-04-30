@@ -1,8 +1,13 @@
 package chartgen
 
 import (
+	"archive/tar"
+	"compress/gzip"
+	"os"
+	"path/filepath"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -226,6 +231,86 @@ metrics:
 	}
 }
 
+func TestExtractValuesFromTarball(t *testing.T) {
+	tests := []struct {
+		name        string
+		setup       func(t *testing.T) string
+		wantName    string
+		wantValues  string
+		wantErr     bool
+		wantEmpty   bool
+	}{
+		{
+			name: "valid tgz with values.yaml",
+			setup: func(t *testing.T) string {
+				return writeTestChartTarball(t, "myalert", map[string]string{
+					"Chart.yaml":  "name: myalert\nversion: 0.1.0\n",
+					"values.yaml": "image:\n  repository: quay.io/foo\n  tag: \"1.0\"\n",
+				})
+			},
+			wantName:   "myalert",
+			wantValues: "repository: quay.io/foo",
+		},
+		{
+			name: "tgz without values.yaml",
+			setup: func(t *testing.T) string {
+				return writeTestChartTarball(t, "foo", map[string]string{
+					"Chart.yaml": "name: foo\nversion: 0.1.0\n",
+				})
+			},
+			wantName:  "foo",
+			wantEmpty: true,
+		},
+		{
+			name: "non-existent file",
+			setup: func(t *testing.T) string {
+				return filepath.Join(t.TempDir(), "missing.tgz")
+			},
+			wantErr: true,
+		},
+		{
+			name: "corrupt tarball",
+			setup: func(t *testing.T) string {
+				path := filepath.Join(t.TempDir(), "corrupt.tgz")
+				if err := os.WriteFile(path, []byte("not a tarball"), 0o644); err != nil {
+					t.Fatalf("os.WriteFile() error = %v", err)
+				}
+				return path
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := tt.setup(t)
+
+			gotValues, gotName, err := extractValuesFromTarball(path)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("extractValuesFromTarball() error = nil, want error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("extractValuesFromTarball() error = %v", err)
+			}
+			if gotName != tt.wantName {
+				t.Fatalf("extractValuesFromTarball() chartName = %q, want %q", gotName, tt.wantName)
+			}
+			if tt.wantEmpty {
+				if len(gotValues) != 0 {
+					t.Fatalf("extractValuesFromTarball() values = %q, want empty", string(gotValues))
+				}
+				return
+			}
+			if !strings.Contains(string(gotValues), tt.wantValues) {
+				t.Fatalf("extractValuesFromTarball() values = %q, want substring %q", string(gotValues), tt.wantValues)
+			}
+		})
+	}
+}
+
 func TestWalkValues(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -411,4 +496,45 @@ func TestMatchesRepo(t *testing.T) {
 			}
 		})
 	}
+}
+
+func writeTestChartTarball(t *testing.T, chartName string, files map[string]string) string {
+	t.Helper()
+
+	path := filepath.Join(t.TempDir(), chartName+".tgz")
+	file, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("os.Create() error = %v", err)
+	}
+
+	gz := gzip.NewWriter(file)
+
+	tw := tar.NewWriter(gz)
+
+	for name, content := range files {
+		data := []byte(content)
+		header := &tar.Header{
+			Name: filepath.ToSlash(filepath.Join(chartName, name)),
+			Mode: 0o644,
+			Size: int64(len(data)),
+		}
+		if err := tw.WriteHeader(header); err != nil {
+			t.Fatalf("tw.WriteHeader() error = %v", err)
+		}
+		if _, err := tw.Write(data); err != nil {
+			t.Fatalf("tw.Write() error = %v", err)
+		}
+	}
+
+	if err := tw.Close(); err != nil {
+		t.Fatalf("tw.Close() error = %v", err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatalf("gz.Close() error = %v", err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatalf("file.Close() error = %v", err)
+	}
+
+	return path
 }
