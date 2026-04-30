@@ -332,7 +332,10 @@ func collectSubchartValues(chartsDir string, subchartValues map[string][]byte) e
 	return nil
 }
 
-var ErrUnsafeTarballEntry = errors.New("unsafe tarball entry path")
+var (
+	ErrUnsafeTarballEntry = errors.New("unsafe tarball entry path")
+	ErrEmptyTarball       = errors.New("tarball contains no chart entries")
+)
 
 func safeExtractPath(destDir, name string) (string, error) {
 	cleaned := filepath.Clean(filepath.FromSlash(name))
@@ -357,27 +360,56 @@ func extractTarball(tgzPath, destDir string) (string, error) {
 		if err != nil {
 			return err
 		}
+		rel, err := filepath.Rel(destDir, targetPath)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return fmt.Errorf("%w: %q escapes %q", ErrUnsafeTarballEntry, name, destDir)
+		}
 		switch header.Typeflag {
 		case tar.TypeDir:
-			return os.MkdirAll(targetPath, 0o755)
+			return extractTarballDirEntry(destDir, targetPath, name)
 		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
-				return fmt.Errorf("create parent directory for %s: %w", targetPath, err)
-			}
-			fileMode := os.FileMode(header.Mode)
-			if fileMode == 0 {
-				fileMode = 0o644
-			}
-			content, err := io.ReadAll(tarReader)
-			if err != nil {
-				return fmt.Errorf("read file %s from %s: %w", name, filepath.Base(tgzPath), err)
-			}
-			if err := os.WriteFile(targetPath, content, fileMode); err != nil {
-				return fmt.Errorf("write extracted file %s: %w", targetPath, err)
-			}
+			return extractTarballRegularEntry(tgzPath, destDir, targetPath, name, header, tarReader)
 		}
 		return nil
 	})
+}
+
+func extractTarballDirEntry(destDir, targetPath, name string) error {
+	rel, err := filepath.Rel(destDir, targetPath)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("%w: %q escapes %q", ErrUnsafeTarballEntry, name, destDir)
+	}
+	return os.MkdirAll(targetPath, 0o755)
+}
+
+func extractTarballRegularEntry(tgzPath, destDir, targetPath, name string, header *tar.Header, tarReader io.Reader) error {
+	rel, err := filepath.Rel(destDir, targetPath)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("%w: %q escapes %q", ErrUnsafeTarballEntry, name, destDir)
+	}
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+		return fmt.Errorf("create parent directory for %s: %w", targetPath, err)
+	}
+	fileMode := os.FileMode(header.Mode) & 0o777
+	if fileMode == 0 {
+		fileMode = 0o644
+	}
+	rel, err = filepath.Rel(destDir, targetPath)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("%w: %q escapes %q", ErrUnsafeTarballEntry, name, destDir)
+	}
+	out, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, fileMode)
+	if err != nil {
+		return fmt.Errorf("open extracted file %s: %w", targetPath, err)
+	}
+	if _, err := io.Copy(out, tarReader); err != nil {
+		out.Close()
+		return fmt.Errorf("copy file %s from %s: %w", name, filepath.Base(tgzPath), err)
+	}
+	if err := out.Close(); err != nil {
+		return fmt.Errorf("close extracted file %s: %w", targetPath, err)
+	}
+	return nil
 }
 
 // extractValuesFromTarball reads a Helm chart tarball and returns the chart
@@ -442,6 +474,9 @@ func visitTarballEntries(tgzPath string, visit func(header *tar.Header, name str
 	for {
 		header, err := tarReader.Next()
 		if errors.Is(err, io.EOF) {
+			if chartName == "" {
+				return "", fmt.Errorf("%w: %s", ErrEmptyTarball, filepath.Base(tgzPath))
+			}
 			return chartName, nil
 		}
 		if err != nil {

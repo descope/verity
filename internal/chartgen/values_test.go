@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -282,6 +283,13 @@ func TestExtractValuesFromTarball(t *testing.T) {
 					t.Fatalf("os.WriteFile() error = %v", err)
 				}
 				return path
+			},
+			wantErr: true,
+		},
+		{
+			name: "empty tarball",
+			setup: func(t *testing.T) string {
+				return writeRawTarball(t, nil, nil)
 			},
 			wantErr: true,
 		},
@@ -894,6 +902,80 @@ func TestExtractTarballSkipsSymlinks(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dest, "good", "regular.txt")); err != nil {
 		t.Fatalf("regular file missing: %v", err)
+	}
+}
+
+func TestExtractTarballEmptyTarballReturnsError(t *testing.T) {
+	tgz := writeRawTarball(t, nil, nil)
+	dest := t.TempDir()
+
+	_, err := extractTarball(tgz, dest)
+	if err == nil {
+		t.Fatal("extractTarball() error = nil, want error")
+	}
+	if got, want := err.Error(), "contains no chart entries"; !strings.Contains(got, want) {
+		t.Fatalf("extractTarball() error = %q, want substring %q", got, want)
+	}
+}
+
+func TestExtractTarballMasksSpecialBitsAndAppliesUmask(t *testing.T) {
+	oldUmask := syscall.Umask(0o022)
+	defer syscall.Umask(oldUmask)
+
+	tgz := writeRawTarball(t,
+		[]*tar.Header{
+			{Name: "chart/", Typeflag: tar.TypeDir, Mode: 0o755},
+			{Name: "chart/values.yaml", Typeflag: tar.TypeReg, Mode: 0o7666},
+		},
+		[]string{"", "image: nginx\n"},
+	)
+	dest := t.TempDir()
+
+	chartName, err := extractTarball(tgz, dest)
+	if err != nil {
+		t.Fatalf("extractTarball() error = %v", err)
+	}
+	if chartName != "chart" {
+		t.Fatalf("extractTarball() chartName = %q, want %q", chartName, "chart")
+	}
+
+	info, err := os.Stat(filepath.Join(dest, "chart", "values.yaml"))
+	if err != nil {
+		t.Fatalf("os.Stat() error = %v", err)
+	}
+	if got, want := info.Mode().Perm(), os.FileMode(0o644); got != want {
+		t.Fatalf("extracted file mode = %#o, want %#o", got, want)
+	}
+	if info.Mode()&(os.ModeSetuid|os.ModeSetgid|os.ModeSticky) != 0 {
+		t.Fatalf("extracted file mode contains special bits: %v", info.Mode())
+	}
+}
+
+func TestExtractTarballStreamsLargeFiles(t *testing.T) {
+	largeContent := strings.Repeat("verity-stream-", (1<<20)/len("verity-stream-")+1)
+	tgz := writeRawTarball(t,
+		[]*tar.Header{
+			{Name: "chart/", Typeflag: tar.TypeDir, Mode: 0o755},
+			{Name: "chart/large.bin", Typeflag: tar.TypeReg, Mode: 0o644, Size: int64(len(largeContent))},
+		},
+		[]string{"", largeContent},
+	)
+	dest := t.TempDir()
+
+	chartName, err := extractTarball(tgz, dest)
+	if err != nil {
+		t.Fatalf("extractTarball() error = %v", err)
+	}
+	if chartName != "chart" {
+		t.Fatalf("extractTarball() chartName = %q, want %q", chartName, "chart")
+	}
+
+	got, err := os.ReadFile(filepath.Join(dest, "chart", "large.bin"))
+	if err != nil {
+		t.Fatalf("os.ReadFile() error = %v", err)
+	}
+	if string(got) != largeContent {
+		t.Fatalf("extracted file length = %d, want %d", len(got), len(largeContent))
 	}
 }
 
