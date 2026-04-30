@@ -1,8 +1,13 @@
 package chartgen
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -113,6 +118,53 @@ func GetChartValues(chart config.ChartSpec) ([]byte, error) {
 	}
 
 	return []byte(out), nil
+}
+
+// extractValuesFromTarball reads a Helm chart tarball and returns the chart
+// name together with the raw values.yaml bytes when present.
+func extractValuesFromTarball(tgzPath string) (valuesYAML []byte, chartName string, err error) {
+	file, err := os.Open(tgzPath)
+	if err != nil {
+		return nil, "", fmt.Errorf("open tarball %s: %w", filepath.Base(tgzPath), err)
+	}
+	defer file.Close()
+
+	gzReader, err := gzip.NewReader(file)
+	if err != nil {
+		return nil, "", fmt.Errorf("open gzip stream for %s: %w", filepath.Base(tgzPath), err)
+	}
+	defer gzReader.Close()
+
+	tarReader := tar.NewReader(gzReader)
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			return valuesYAML, chartName, nil
+		}
+		if err != nil {
+			return nil, "", fmt.Errorf("read tarball %s: %w", filepath.Base(tgzPath), err)
+		}
+
+		name := strings.TrimPrefix(header.Name, "./")
+		if name == "" {
+			continue
+		}
+
+		parts := strings.Split(name, "/")
+		if len(parts) == 0 || parts[0] == "" {
+			continue
+		}
+		if chartName == "" {
+			chartName = parts[0]
+		}
+
+		if len(parts) == 2 && parts[1] == "values.yaml" {
+			valuesYAML, err = io.ReadAll(tarReader)
+			if err != nil {
+				return nil, "", fmt.Errorf("read values.yaml from %s: %w", filepath.Base(tgzPath), err)
+			}
+		}
+	}
 }
 
 func walkValues(prefix string, node map[string]any, pairs *[]repoTagPair) {
