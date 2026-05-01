@@ -6,14 +6,26 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/urfave/cli/v3"
+	"gopkg.in/yaml.v3"
 
 	"github.com/verity-org/verity/internal/integer/apkindex"
 	intconfig "github.com/verity-org/verity/internal/integer/config"
 )
 
 var errIntegerValidationFailed = errors.New("validation failed")
+
+// bespokePkgFile is the minimal subset of a melange yaml needed to verify the
+// package name. Other fields (environment, pipeline, etc.) are intentionally
+// ignored — this lives in /cmd to avoid bringing melange's own schema into
+// the verity tree.
+type bespokePkgFile struct {
+	Package struct {
+		Name string `yaml:"name"`
+	} `yaml:"package"`
+}
 
 var integerValidateCmd = &cli.Command{
 	Name:  "validate",
@@ -29,6 +41,11 @@ var integerValidateCmd = &cli.Command{
 			Name:  "images-dir",
 			Usage: "Path to the images/ directory",
 			Value: "images",
+		},
+		&cli.StringFlag{
+			Name:  "bespoke-dir",
+			Usage: "Path to the packages/bespoke/ directory; bespoke melange yamls referenced from images/ are cross-checked here",
+			Value: filepath.Join("packages", "bespoke"),
 		},
 		&cli.StringFlag{
 			Name:  "apkindex-url",
@@ -47,6 +64,14 @@ var integerValidateCmd = &cli.Command{
 func runIntegerValidate(_ context.Context, cmd *cli.Command) error {
 	cfgPath := cmd.String("config")
 	imagesDir := cmd.String("images-dir")
+	bespokeDir := cmd.String("bespoke-dir")
+
+	// Stat bespokeDir once. When the directory is missing, validateBespokeRefs
+	// emits a single summary FAIL per affected def instead of N per-type
+	// ENOENTs (which previously also double-counted with reportOrphanBespoke's
+	// own summary). When the directory exists, the per-file behavior is
+	// unchanged.
+	bespokeDirExists := isExistingDir(bespokeDir)
 
 	var pkgs []apkindex.Package
 	if url := cmd.String("apkindex-url"); url != "" {
@@ -71,9 +96,12 @@ func runIntegerValidate(_ context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("reading images directory: %w", err)
 	}
 
+	// Track which bespoke files are referenced so we can flag orphans below.
+	referencedBespoke := map[string]string{} // bespoke filename → image yaml path
+
 	checked := 0
 	for _, entry := range entries {
-		if entry.IsDir() || filepath.Ext(entry.Name()) != ".yaml" {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != yamlExt {
 			continue
 		}
 
@@ -99,9 +127,27 @@ func runIntegerValidate(_ context.Context, cmd *cli.Command) error {
 			}
 		}
 
+		// Bespoke cross-checks: every type that declares melange.bespoke must
+		// reference a packages/bespoke/<file>.yaml whose package.name appears
+		// in the type's apko packages: list. Without this guard, a typo (or
+		// a forgotten image-yaml entry) silently produces an apk that apko
+		// can't resolve at publish time — exactly the failure mode of #297.
+		bespokeFails := validateBespokeRefs(def, defPath, bespokeDir, referencedBespoke, bespokeDirExists)
+		if bespokeFails > 0 {
+			failures += bespokeFails
+			continue
+		}
+
 		fmt.Fprintf(os.Stdout, "OK   %s (%d types, %d declared versions)\n",
 			defPath, len(def.Types), len(def.Versions))
 		checked++
+	}
+
+	// Detect orphan bespoke yamls: files in packages/bespoke/ that no image
+	// references. These are dead weight and usually indicate someone added a
+	// bespoke package but forgot to wire it into images/.
+	if orphanFailures := reportOrphanBespoke(bespokeDir, referencedBespoke, bespokeDirExists); orphanFailures > 0 {
+		failures += orphanFailures
 	}
 
 	if failures > 0 {
@@ -110,4 +156,125 @@ func runIntegerValidate(_ context.Context, cmd *cli.Command) error {
 
 	fmt.Fprintf(os.Stdout, "\nAll configs valid (%d images checked)\n", checked)
 	return nil
+}
+
+// validateBespokeRefs verifies, for every type in def that declares
+// melange.bespoke, that the referenced packages/bespoke/<file>.yaml exists
+// and that its package.name is one of the entries in the type's apko
+// packages: list. Each newly seen bespoke filename is recorded in referenced
+// so the caller can later detect orphans. Returns the number of failures
+// (and prints a FAIL line per failure to stderr).
+//
+// When dirExists is false, per-file reads are skipped and a single summary
+// FAIL is emitted per affected def. This avoids two pathologies in the
+// previous implementation: (1) N noisy "reading: open ...: no such file or
+// directory" FAILs per type when the dir is absent, and (2) double-counting
+// with reportOrphanBespoke's own summary failure.
+func validateBespokeRefs(def *intconfig.ImageDef, defPath, bespokeDir string, referenced map[string]string, dirExists bool) int {
+	failures := 0
+	bespokeRefs := 0
+	for typeName, tmpl := range def.Types {
+		if tmpl.Melange == nil || tmpl.Melange.Bespoke == "" {
+			continue
+		}
+		bespokeFile := tmpl.Melange.Bespoke
+		referenced[bespokeFile] = defPath
+		bespokeRefs++
+
+		// Defer the per-file reads to the post-loop summary when the
+		// entire bespoke directory is missing — see the function comment.
+		if !dirExists {
+			continue
+		}
+
+		bespokePath := filepath.Join(bespokeDir, bespokeFile)
+		pkgName, berr := readBespokePackageName(bespokePath)
+		if berr != nil {
+			fmt.Fprintf(os.Stderr, "FAIL %s type %q: bespoke %s: %v\n",
+				defPath, typeName, bespokeFile, berr)
+			failures++
+			continue
+		}
+		if pkgName == "" {
+			fmt.Fprintf(os.Stderr, "FAIL %s type %q: bespoke %s: missing package.name\n",
+				defPath, typeName, bespokeFile)
+			failures++
+			continue
+		}
+		if !slices.Contains(tmpl.Packages, pkgName) {
+			fmt.Fprintf(os.Stderr,
+				"FAIL %s type %q: bespoke package.name %q not in apko packages: %v "+
+					"(apko will fail with 'not in indexes' at publish time)\n",
+				defPath, typeName, pkgName, tmpl.Packages)
+			failures++
+			continue
+		}
+	}
+
+	if !dirExists && bespokeRefs > 0 {
+		fmt.Fprintf(os.Stderr,
+			"FAIL %s: bespoke-dir %s does not exist but %d type(s) reference bespoke files\n",
+			defPath, bespokeDir, bespokeRefs)
+		failures++
+	}
+
+	return failures
+}
+
+// isExistingDir returns true iff path is a non-empty string and refers to
+// an existing directory. Used to decide once, up front, whether the
+// bespoke-dir is present so callers can skip per-file reads when it isn't.
+func isExistingDir(path string) bool {
+	if path == "" {
+		return false
+	}
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
+}
+
+// readBespokePackageName parses a melange yaml and returns its package.name.
+// Returns ("", err) on read/parse failures, ("", nil) if the field is absent.
+func readBespokePackageName(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("reading: %w", err)
+	}
+	var f bespokePkgFile
+	if err := yaml.Unmarshal(data, &f); err != nil {
+		return "", fmt.Errorf("parsing: %w", err)
+	}
+	return f.Package.Name, nil
+}
+
+// reportOrphanBespoke lists the immediate entries in bespokeDir and prints
+// a FAIL line for every top-level *.yaml file that no image yaml references.
+// Returns the failure count.
+//
+// Skips entirely when bespokeDir does not exist (dirExists is false): the
+// "missing-but-referenced" case is already counted by validateBespokeRefs's
+// per-def summary, and an orphan check is meaningless against a missing dir.
+func reportOrphanBespoke(bespokeDir string, referenced map[string]string, dirExists bool) int {
+	if !dirExists {
+		return 0
+	}
+	entries, err := os.ReadDir(bespokeDir)
+	if err != nil {
+		// dirExists was true at startup, so a ReadDir error here is a
+		// race or a permissions issue — treat as a hard failure.
+		fmt.Fprintf(os.Stderr, "FAIL bespoke-dir %s: %v\n", bespokeDir, err)
+		return 1
+	}
+	failures := 0
+	for _, e := range entries {
+		if e.IsDir() || filepath.Ext(e.Name()) != yamlExt {
+			continue
+		}
+		if _, ok := referenced[e.Name()]; !ok {
+			fmt.Fprintf(os.Stderr,
+				"FAIL %s: orphan bespoke yaml — no image in images/ references it via melange.bespoke\n",
+				filepath.Join(bespokeDir, e.Name()))
+			failures++
+		}
+	}
+	return failures
 }
