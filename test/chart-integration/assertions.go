@@ -22,6 +22,16 @@ const (
 var (
 	errContainerRestarted = errors.New("container restarted during settle window")
 	errImageNotAccepted   = errors.New("container image not from ghcr.io/verity-org and not allowlisted")
+	// errAllowlistMissing is returned by loadAllowlist when the
+	// requested allowlist file does not exist on disk. Per
+	// SCR-2026-04-30-001 (Option E), missing-allowlist is a typed
+	// signal — not a silent empty allowlist — so the test driver
+	// can decide policy: hard-fail when any non-verity image is
+	// observed in the namespace, pass cleanly when every image is
+	// already verity-prefixed (the verityRegistryPrefix
+	// short-circuit in isAccepted suffices). Tests must consume
+	// this via errors.Is.
+	errAllowlistMissing = errors.New("allowlist file not found")
 )
 
 type podList struct {
@@ -94,6 +104,70 @@ func collectRestartFailures(pods *podList) []string {
 	return failures
 }
 
+// CollectNamespaceImages returns the deduplicated list of container
+// images observed in the given namespace (main + init containers
+// across all pods). It is exposed for the test driver's
+// missing-allowlist branch in main_test.go: after AssertImageOrigin
+// returns errAllowlistMissing, the driver re-collects images and
+// asks classifyMissingAllowlist whether the absence is acceptable.
+//
+// The function does NOT consult any allowlist — it is a pure
+// observation step. Policy lives in classifyMissingAllowlist.
+func CollectNamespaceImages(ctx context.Context, h *Harness, namespace string) ([]string, error) {
+	pods, err := getPods(ctx, h, namespace)
+	if err != nil {
+		return nil, err
+	}
+	seen := make(map[string]struct{})
+	var out []string
+	// Inner helper to avoid the per-pod slice allocation+copy that an
+	// `append(append([]T{}, a...), b...)` would incur.
+	add := func(statuses []containerStatus) {
+		for _, cs := range statuses {
+			if cs.Image == "" {
+				continue
+			}
+			if _, ok := seen[cs.Image]; ok {
+				continue
+			}
+			seen[cs.Image] = struct{}{}
+			out = append(out, cs.Image)
+		}
+	}
+	for _, p := range pods.Items {
+		add(p.Status.ContainerStatuses)
+		add(p.Status.InitContainerStatuses)
+	}
+	return out, nil
+}
+
+// classifyMissingAllowlist implements the SCR-001 missing-allowlist
+// policy: when an allowlist file is absent, hard-fail iff any
+// observed image is non-verity-prefixed. If every image is already
+// verity-prefixed the chart genuinely doesn't need an allowlist and
+// the absence is a clean pass.
+//
+// Returns the slice of offending (non-verity) images. An empty
+// return slice means "missing-allowlist is acceptable for this
+// namespace". A non-empty return slice means "the test driver must
+// hard-fail and name allowlistPath as the file the chart needs".
+//
+// This helper is unit-tested without a cluster; the driver in
+// main_test.go is responsible for fetching images via
+// CollectNamespaceImages and turning the slice into a t.Errorf
+// (we use Errorf, not Fatalf, so a single missing allowlist does
+// not abort the rest of the chart's checks).
+func classifyMissingAllowlist(images []string) []string {
+	var offenders []string
+	for _, img := range images {
+		if strings.HasPrefix(img, verityRegistryPrefix) {
+			continue
+		}
+		offenders = append(offenders, img)
+	}
+	return offenders
+}
+
 func AssertImageOrigin(ctx context.Context, h *Harness, namespace, allowlistPath string) error {
 	pods, err := getPods(ctx, h, namespace)
 	if err != nil {
@@ -147,7 +221,10 @@ func loadAllowlist(path string) ([]string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
+			// Wrap errAllowlistMissing so callers can branch via
+			// errors.Is while still seeing the requested path in
+			// the error message for diagnostics.
+			return nil, fmt.Errorf("%w: %s", errAllowlistMissing, path)
 		}
 		return nil, err
 	}
