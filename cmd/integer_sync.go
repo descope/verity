@@ -64,7 +64,7 @@ func runIntegerSync(_ context.Context, cmd *cli.Command) error {
 
 	totalNew, totalStale := 0, 0
 	for _, entry := range entries {
-		if entry.IsDir() || filepath.Ext(entry.Name()) != ".yaml" {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != yamlExt {
 			continue
 		}
 		n, s := integerProcessSyncEntry(entry, imagesDir, pkgs, apply)
