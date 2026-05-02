@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/moby/buildkit/util/progress/progressui"
@@ -24,6 +25,23 @@ var ErrEmptyTag = errors.New("patched tag is required")
 // ErrEmptyReport is returned when Config.Report is blank. Copa requires a
 // Trivy report to determine which packages to patch.
 var ErrEmptyReport = errors.New("trivy report path is required")
+
+// ErrInvalidPatchedTag is returned when Config.PatchedTag contains characters
+// the OCI distribution spec forbids in tag values — most notably `@`, which
+// is the digest separator. Copa concatenates the staging registry with this
+// tag to form the destination reference; smuggling an `@` past us produces
+// references like `ghcr.io/.../cache:cilium-…-v1.19.3@sha256-amd64` that
+// copa's reference parser then rejects as "invalid reference format". We
+// catch the bad value here so the failure mode is a verity-layer error with
+// a clear message instead of an obscure copa parse error mid-build.
+//
+// Per the OCI distribution spec, tag values match the regex
+// `[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}` — `@`, `:`, and whitespace are all
+// disallowed. We only check `@` here because that is the historically
+// observed bug source (`patch-image.sh` mis-parsing digest-pinned source
+// refs); a fuller regex check is intentionally deferred to copa to avoid
+// duplicating its tag-validation surface.
+var ErrInvalidPatchedTag = errors.New("patched tag must not contain '@' (the OCI digest separator)")
 
 // DefaultTimeout matches the upstream `copa patch` CLI default. Callers that
 // leave Config.Timeout as zero are upgraded to this value inside toOptions;
@@ -95,13 +113,18 @@ type Config struct {
 // Copa returns this sentinel when the source image is already fully patched.
 var ErrNoUpdatesFound = types.ErrNoUpdatesFound
 
-// Validate checks that the required fields are populated.
+// Validate checks that the required fields are populated and that PatchedTag
+// is well-formed enough to pass copa's reference parser. See
+// ErrInvalidPatchedTag for the rationale on the `@` check.
 func (c *Config) Validate() error {
 	if c.Image == "" {
 		return ErrEmptyImage
 	}
 	if c.PatchedTag == "" {
 		return ErrEmptyTag
+	}
+	if strings.Contains(c.PatchedTag, "@") {
+		return fmt.Errorf("%w: %q", ErrInvalidPatchedTag, c.PatchedTag)
 	}
 	if c.Report == "" {
 		return ErrEmptyReport

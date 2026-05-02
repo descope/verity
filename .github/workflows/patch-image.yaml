@@ -120,7 +120,14 @@ jobs:
         id: parse
         run: |
           SOURCE_REF="${{ inputs.source-ref }}"
-          SOURCE_TAG="${SOURCE_REF##*:}"
+          # Strip an optional `@<digest>` suffix before extracting the tag,
+          # otherwise digest-pinned refs like `…:v1.19.3@sha256:205b09…`
+          # would yield SOURCE_TAG="205b09…" (the hex digest after the LAST
+          # `:`). That mismatched the script-side tag built in
+          # `.github/scripts/patch-image.sh`, breaking the combine step's
+          # per-arch tag lookup. Keep this parser in sync with the script.
+          SOURCE_REF_NO_DIGEST="${SOURCE_REF%@*}"
+          SOURCE_TAG="${SOURCE_REF_NO_DIGEST##*:}"
           echo "source-tag=${SOURCE_TAG}" >> "$GITHUB_OUTPUT"
           echo "safe-name=$(echo '${{ inputs.image-name }}' | tr '/: ' '---')" >> "$GITHUB_OUTPUT"
 

@@ -54,6 +54,36 @@ func TestConfigValidate(t *testing.T) {
 			},
 			wantErr: ErrEmptyReport,
 		},
+		{
+			// Regression for the chronic Patch Image cache-ref bug:
+			// `patch-image.sh`'s old `cut -d: -f2` produced
+			// SOURCE_TAG="v1.19.3@sha256" for digest-pinned cilium refs
+			// like `quay.io/cilium/operator-generic:v1.19.3@sha256:205b09…`.
+			// That fed into `--tag …-v1.19.3@sha256-amd64`, which copa's
+			// reference parser then rejected as "invalid reference format".
+			// Validate must reject the `@`-tainted tag at the verity layer
+			// before it reaches copa.
+			name: "patched tag with @sha256 digest leak rejected",
+			cfg: Config{
+				Image:      "quay.io/cilium/operator-generic:v1.19.3@sha256:205b09abc",
+				PatchedTag: "cilium-operator-generic-v1.19.3@sha256-amd64",
+				Report:     "trivy.json",
+			},
+			wantErr: ErrInvalidPatchedTag,
+		},
+		{
+			// Tighter form of the same class: any `@` is forbidden, not
+			// only the literal `@sha256-` shape that bit nightly. Future
+			// callers that smuggle a digest into the tag get the same
+			// clear error.
+			name: "patched tag with bare @ rejected",
+			cfg: Config{
+				Image:      "alpine:3.18",
+				PatchedTag: "alpine-patched@something",
+				Report:     "trivy.json",
+			},
+			wantErr: ErrInvalidPatchedTag,
+		},
 	}
 
 	for _, tt := range tests {
@@ -185,6 +215,30 @@ func TestRunValidationFails(t *testing.T) {
 	err := Run(context.Background(), cfg)
 	if !errors.Is(err, ErrEmptyImage) {
 		t.Errorf("Run() = %v, want error wrapping ErrEmptyImage", err)
+	}
+}
+
+// TestRunRejectsDigestSmuggledTag is the end-to-end regression test for the
+// chronic Patch Image cache-ref bug — see the matching subtest in
+// TestConfigValidate for the upstream root-cause analysis. This test asserts
+// that Run() refuses a malformed PatchedTag *before* reaching copa, so the
+// failure surface is `ErrInvalidPatchedTag` (clear, actionable) instead of
+// copa's deep "failed to parse explicit reference … invalid reference
+// format" originating from inside its build pipeline.
+func TestRunRejectsDigestSmuggledTag(t *testing.T) {
+	t.Parallel()
+
+	// Verbatim string from the failing nightly run:
+	//   ghcr.io/verity-org/cache:cilium-operator-generic-v1.19.3@sha256-amd64
+	// The PatchedTag field is the part after the staging registry's `:`.
+	cfg := &Config{
+		Image:      "quay.io/cilium/operator-generic:v1.19.3@sha256:205b09abc",
+		PatchedTag: "cilium-operator-generic-v1.19.3@sha256-amd64",
+		Report:     "trivy.json",
+	}
+	err := Run(context.Background(), cfg)
+	if !errors.Is(err, ErrInvalidPatchedTag) {
+		t.Errorf("Run() = %v, want error wrapping ErrInvalidPatchedTag", err)
 	}
 }
 

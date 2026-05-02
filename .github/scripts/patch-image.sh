@@ -48,7 +48,22 @@ trap emit_outputs EXIT
 
 PLATFORM_ARCH=$(echo "$PLATFORM" | cut -d/ -f2)
 
-SOURCE_TAG=$(echo "$SOURCE" | cut -d: -f2)
+# Extract the tag portion of the source reference, tolerating both
+# tag-only ("repo:v1.2.3") and tag+digest ("repo:v1.2.3@sha256:abc...") forms.
+#
+# The previous `cut -d: -f2` was incorrect for digest-pinned references such
+# as `quay.io/cilium/operator-generic:v1.19.3@sha256:205b09...`: it returned
+# `v1.19.3@sha256` (the second `:`-separated field), which then leaked the
+# `@sha256` literal into PLATFORM_TAG below as
+# `…:cilium-operator-generic-v1.19.3@sha256-amd64`. Copa's reference parser
+# reads the `@` as the digest separator and rejects `sha256-amd64` as an
+# invalid digest, failing the patch with "invalid reference format".
+#
+# Strip the `@<digest>` suffix first (parameter expansion is a no-op when
+# absent), then take everything after the LAST `:` so registry-with-port
+# forms like `localhost:5000/foo:v1` still resolve to `v1`.
+SOURCE_NO_DIGEST="${SOURCE%@*}"
+SOURCE_TAG="${SOURCE_NO_DIGEST##*:}"
 
 # Sanitize image name: chart images contain registry paths with slashes (invalid in OCI tags)
 SAFE_IMAGE=$(echo "$IMAGE_NAME" | tr '/: ' '---')
