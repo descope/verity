@@ -102,8 +102,37 @@ func expandImage(def *config.ImageDef, imagesDir, registry string, pkgs []apkind
 	var results []DiscoveredImage
 
 	for _, v := range versions {
-		// Resolve full version from APKINDEX for semver tag expansion.
-		fullVersion := apkindex.ResolveFullVersion(pkgs, def.Upstream.Package, v)
+		// Resolve the version stem that render.Config will substitute for
+		// every "{{version}}" placeholder in the type template — apko
+		// `packages:` constraints AND any other string field that uses the
+		// placeholder (env vars, entrypoint, paths, …). For "1.21" / "22"
+		// streams that map directly to a Wolfi APK, renderVersion == v.
+		// For floating-major streams whose literal name doesn't exist in
+		// Wolfi (e.g. "kyverno-1" → only "kyverno-1.17" is published),
+		// renderVersion is the highest matching minor stem ("1.17") so
+		// apko's apk solver can satisfy the constraint.
+		//
+		// resolutionPattern picks the package template that drives apk
+		// solving. Most images put it in upstream.package (kyverno,
+		// cilium, crossplane, fluent-bit, prometheus, istio-*, …); a
+		// few (erlang, haproxy) keep upstream.package unversioned and
+		// template only the type's packages: list — for those,
+		// VersionedPackagePattern walks types[*].packages to find the
+		// actual constraint shape ("erlang-{{version}}") so alias
+		// resolution still fires. This is the fix for the chronic
+		// Integer Build Image failures across kyverno:1, cilium:1,
+		// crossplane:2, erlang:26/27/28, fluentd:1, prometheus:2.55,
+		// haproxy:3.x, …
+		resolutionPattern := def.VersionedPackagePattern()
+		if resolutionPattern == "" {
+			resolutionPattern = def.Upstream.Package
+		}
+		renderVersion := apkindex.ResolveAliasVersion(pkgs, resolutionPattern, v)
+
+		// Resolve full version from APKINDEX for semver tag expansion. Use
+		// the aliased stem so semver cascade tags ("1.17", "1.17.5") still
+		// expand correctly when the declared stream is a floating-major.
+		fullVersion := apkindex.ResolveFullVersion(pkgs, resolutionPattern, renderVersion)
 		tags := DeriveTags(v, latestVersion, fullVersion)
 
 		for typeName := range def.Types {
@@ -112,7 +141,7 @@ func expandImage(def *config.ImageDef, imagesDir, registry string, pkgs []apkind
 			}
 			tmpl := def.Types[typeName]
 
-			out, err := render.Config(&tmpl, v, basePath)
+			out, err := render.Config(&tmpl, renderVersion, basePath)
 			if err != nil {
 				return nil, fmt.Errorf("rendering config for %s:%s-%s: %w", def.Name, v, typeName, err)
 			}

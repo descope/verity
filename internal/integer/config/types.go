@@ -1,5 +1,12 @@
 package config
 
+import "strings"
+
+// versionPlaceholder is the literal string substituted with concrete version
+// values when rendering apko configs. Mirrors apkindex.versionPlaceholder so
+// the helper below can stay independent of the apkindex package.
+const versionPlaceholder = "{{version}}"
+
 // IntegerConfig is the global integer.yaml configuration.
 type IntegerConfig struct {
 	Target   TargetSpec   `yaml:"target"`
@@ -24,6 +31,48 @@ type ImageDef struct {
 	Upstream    Upstream                `yaml:"upstream"`
 	Types       map[string]TypeTemplate `yaml:"types"`
 	Versions    map[string]VersionMeta  `yaml:"versions,omitempty"`
+}
+
+// VersionedPackagePattern returns the package template that drives apk
+// solving for this image. Precedence:
+//
+//  1. Upstream.Package if it contains "{{version}}" — the natural
+//     resolution input for images like kyverno, cilium, crossplane (e.g.
+//     "kyverno-{{version}}").
+//  2. Otherwise, the first package across types[*].packages that
+//     contains "{{version}}" — used by images like erlang and haproxy
+//     that declare an unversioned upstream.package ("erlang") while
+//     templating the version in the type's packages: list (e.g.
+//     ["erlang-{{version}}"]). The apko constraint that needs alias
+//     resolution comes from the type's packages: list, not from
+//     upstream.package, so the helper looks there too.
+//  3. "" when neither has the placeholder — image is either purely
+//     unversioned (single "latest" build) or templates the version only
+//     in non-packages fields (e.g. nginx puts {{version}} in
+//     environment but has packages: ["nginx-mainline"]). No alias
+//     resolution applies in that case.
+//
+// Type-template iteration order is non-deterministic (map traversal),
+// but in practice all types of one image share the same versioned
+// pattern (verity convention: a type adds package suffixes, not
+// version-stem variants). When they diverge, the first one seen is
+// used; this is documented behavior and tests assert on the simpler
+// shape.
+func (d *ImageDef) VersionedPackagePattern() string {
+	if d == nil {
+		return ""
+	}
+	if strings.Contains(d.Upstream.Package, versionPlaceholder) {
+		return d.Upstream.Package
+	}
+	for _, tmpl := range d.Types {
+		for _, pkg := range tmpl.Packages {
+			if strings.Contains(pkg, versionPlaceholder) {
+				return pkg
+			}
+		}
+	}
+	return ""
 }
 
 // Upstream describes how to discover available versions from the Wolfi APKINDEX.

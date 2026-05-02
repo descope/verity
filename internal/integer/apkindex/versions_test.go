@@ -173,3 +173,120 @@ func TestResolveFullVersion(t *testing.T) {
 		})
 	}
 }
+
+// TestResolveAliasVersion guards the floating-major → APK alias path that
+// fixes the chronic Integer Build Image failures
+// (`failed to build image components: ... nothing provides "kyverno-1"`).
+//
+// Wolfi APKINDEX naming is uneven: some packages publish a per-major meta
+// (e.g. nodejs-22, go-1.24) but others only publish a specific minor
+// (kyverno-1.17, no kyverno-1; cilium-1.18, no cilium-1; …). When the image
+// config declares a floating-major stream like `versions: { "1": {} }`, the
+// renderer must alias "1" → highest-matching-minor so apko's apk solver can
+// satisfy the constraint at publish time.
+func TestResolveAliasVersion(t *testing.T) {
+	pkgs := []apkindex.Package{
+		// Floating-major case A: only minors exist, no meta-package.
+		// This is the exact shape of the kyverno bug reported in the
+		// failing run 25254581240.
+		{Name: "kyverno-1.17", Version: "1.17.5-r0"},
+		{Name: "kyverno-1.16", Version: "1.16.3-r0"},
+
+		// Floating-major case B: multiple minors under the same major,
+		// alias must pick the highest. Mirrors prometheus-2.55, fluent-bit-3.x.
+		{Name: "prometheus-2.54", Version: "2.54.1-r0"},
+		{Name: "prometheus-2.55", Version: "2.55.0-r0"},
+
+		// Working precedent: literal exists.
+		{Name: "nodejs-22", Version: "22.16.0-r0"},
+		{Name: "nodejs-22-dev", Version: "22.16.0-r0"}, // sub-pkg, must not alias
+
+		// Working precedent: dotted stream exists literally.
+		{Name: "go-1.24", Version: "1.24.3-r0"},
+
+		// Sub-packages that look like minors but aren't valid stems:
+		// renderer must NOT alias to "envoy-gateway".
+		{Name: "envoy-1.34", Version: "1.34.1-r0"},
+		{Name: "envoy-gateway", Version: "1.4.0-r0"},
+
+		// Unversioned package — alias must be a no-op.
+		{Name: "popeye", Version: "0.22.1-r0"},
+	}
+
+	tests := []struct {
+		name     string
+		pattern  string
+		stream   string
+		expected string
+	}{
+		{
+			name:     "floating-major aliases to highest minor (kyverno bug)",
+			pattern:  "kyverno-{{version}}",
+			stream:   "1",
+			expected: "1.17",
+		},
+		{
+			name:     "alias picks highest minor among multiple",
+			pattern:  "prometheus-{{version}}",
+			stream:   "2",
+			expected: "2.55",
+		},
+		{
+			name:     "literal stream matches without aliasing",
+			pattern:  "nodejs-{{version}}",
+			stream:   "22",
+			expected: "22",
+		},
+		{
+			name:     "literal dotted stream matches without aliasing",
+			pattern:  "go-{{version}}",
+			stream:   "1.24",
+			expected: "1.24",
+		},
+		{
+			name:     "specific minor matches literally even when major missing",
+			pattern:  "kyverno-{{version}}",
+			stream:   "1.17",
+			expected: "1.17",
+		},
+		{
+			name:     "unresolvable stream returned as-is",
+			pattern:  "kyverno-{{version}}",
+			stream:   "99",
+			expected: "99",
+		},
+		{
+			name:     "alias ignores sibling package suffixes",
+			pattern:  "envoy-{{version}}",
+			stream:   "1",
+			expected: "1.34", // must NOT alias to "gateway"
+		},
+		{
+			name:     "unversioned upstream pattern is a no-op",
+			pattern:  "popeye",
+			stream:   "0.22.1",
+			expected: "0.22.1",
+		},
+		{
+			name:     "empty stream returns empty",
+			pattern:  "kyverno-{{version}}",
+			stream:   "",
+			expected: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := apkindex.ResolveAliasVersion(pkgs, tt.pattern, tt.stream)
+			assert.Equal(t, tt.expected, got)
+		})
+	}
+}
+
+// TestResolveAliasVersion_NilPackages verifies that aliasing is a no-op
+// when the APKINDEX is unavailable (offline `verity integer discover`).
+// The pre-fix behaviour — substitute the declared stream verbatim — must
+// be preserved so generated apko configs stay deterministic offline.
+func TestResolveAliasVersion_NilPackages(t *testing.T) {
+	got := apkindex.ResolveAliasVersion(nil, "kyverno-{{version}}", "1")
+	assert.Equal(t, "1", got)
+}
