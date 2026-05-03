@@ -232,6 +232,121 @@ func TestIntegerValidateCommand_NoBespokeDir(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// TestIntegerValidateCommand_FloatingMajorWithMinorAlias guards the
+// happy path of the floating-major fix: when an image declares
+// `versions: { "1": {} }` and Wolfi publishes a more-specific minor
+// (e.g. "kyverno-1.17"), the renderer aliases declared "1" → "1.17" at
+// build time. validate must accept this configuration — the fix would
+// be useless if validate then rejected images that rely on it.
+func TestIntegerValidateCommand_FloatingMajorWithMinorAlias(t *testing.T) {
+	imagesDir, cfgPath := intSetupCmdImages(t)
+	intWriteFile(t, filepath.Join(imagesDir, "kyverno.yaml"), `
+name: kyverno
+description: "Kyverno"
+upstream:
+  package: "kyverno-{{version}}"
+types:
+  default:
+    base: wolfi-base
+    packages: ["kyverno-{{version}}"]
+    entrypoint: /usr/bin/kyverno
+versions:
+  "1": {}
+`)
+	// Wolfi state at the time of the bug: only kyverno-1.17 exists,
+	// no kyverno-1 meta-package. nodejs-22 keeps the existing fixture's
+	// `versions: "22"` declaration valid.
+	srv := intMakeAPKINDEXServer(t, "P:nodejs-22\nV:22.0.0\n\nP:kyverno-1.17\nV:1.17.5\n\n")
+
+	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
+	err := root.Run(context.Background(), []string{
+		"verity", "integer", "validate",
+		"--config", cfgPath,
+		"--images-dir", imagesDir,
+		"--apkindex-url", srv.URL,
+		"--cache-dir", t.TempDir(),
+	})
+	assert.NoError(t, err, "declared `1` with alias-able minor `1.17` must validate")
+}
+
+// TestIntegerValidateCommand_FloatingMajorUnresolvable is the regression
+// guard for the validate-time half of the fix. When an image declares
+// `versions: { "99": {} }` and Wolfi publishes neither "kyverno-99" nor
+// any "kyverno-99.X" minor, validate must FAIL at PR time with a clear
+// message — otherwise the configuration slips through and produces a
+// nightly Integer Build Image failure instead.
+func TestIntegerValidateCommand_FloatingMajorUnresolvable(t *testing.T) {
+	imagesDir, cfgPath := intSetupCmdImages(t)
+	intWriteFile(t, filepath.Join(imagesDir, "kyverno.yaml"), `
+name: kyverno
+description: "Kyverno"
+upstream:
+  package: "kyverno-{{version}}"
+types:
+  default:
+    base: wolfi-base
+    packages: ["kyverno-{{version}}"]
+    entrypoint: /usr/bin/kyverno
+versions:
+  "99": {}
+`)
+	srv := intMakeAPKINDEXServer(t, "P:nodejs-22\nV:22.0.0\n\nP:kyverno-1.17\nV:1.17.5\n\n")
+
+	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
+	err := root.Run(context.Background(), []string{
+		"verity", "integer", "validate",
+		"--config", cfgPath,
+		"--images-dir", imagesDir,
+		"--apkindex-url", srv.URL,
+		"--cache-dir", t.TempDir(),
+	})
+	require.Error(t, err, "declared `99` with no APKINDEX match must fail validate")
+	assert.ErrorIs(t, err, errIntegerValidationFailed)
+}
+
+// TestIntegerValidateCommand_FloatingMajorUnversionedUpstream is the
+// regression for the erlang/haproxy/nginx shape: upstream.package is
+// unversioned ("erlang") but type packages template the version
+// ("erlang-{{version}}"). Before the VersionedPackagePattern fix, the
+// per-version validate guard early-returned because upstream.package
+// had no `{{version}}` placeholder — letting `versions: { "99": {} }`
+// slip through silently and surface as a nightly Integer Build Image
+// failure (`nothing provides "erlang-99"`). With the fix, validate
+// uses the type's package pattern and correctly flags the unsatisfiable
+// declaration at PR time.
+func TestIntegerValidateCommand_FloatingMajorUnversionedUpstream(t *testing.T) {
+	imagesDir, cfgPath := intSetupCmdImages(t)
+	intWriteFile(t, filepath.Join(imagesDir, "erlang.yaml"), `
+name: erlang
+description: "Erlang/OTP"
+upstream:
+  package: erlang
+types:
+  default:
+    base: wolfi-base
+    packages: ["erlang-{{version}}"]
+    entrypoint: /usr/bin/erl
+versions:
+  "26": {}
+  "99": {}
+`)
+	// Wolfi has the meta "erlang" and a "erlang-26.3" minor, but no
+	// "erlang-26" or "erlang-99" anywhere. Declared "26" is satisfiable
+	// (alias resolves to 26.3); "99" is not (validate must flag).
+	srv := intMakeAPKINDEXServer(t, "P:nodejs-22\nV:22.0.0\n\nP:erlang\nV:27.0\n\nP:erlang-26.3\nV:26.3.0.0-r0\n\n")
+
+	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
+	err := root.Run(context.Background(), []string{
+		"verity", "integer", "validate",
+		"--config", cfgPath,
+		"--images-dir", imagesDir,
+		"--apkindex-url", srv.URL,
+		"--cache-dir", t.TempDir(),
+	})
+	require.Error(t, err, "declared `99` with type-template-only versioning must still fail validate")
+	assert.ErrorIs(t, err, errIntegerValidationFailed)
+}
+
 // TestIntegerValidateCommand_BespokeDirMissingButReferenced is a regression
 // guard for the double-counting bug flagged by copilot-pull-request-reviewer
 // on PR #301: when an image references a bespoke file but the entire bespoke

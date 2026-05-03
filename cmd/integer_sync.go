@@ -103,7 +103,7 @@ func integerProcessSyncEntry(entry os.DirEntry, imagesDir string, pkgs []apkinde
 		}
 	}
 	for v := range def.Versions {
-		if !discoveredSet[v] && v != "latest" {
+		if !discoveredSet[v] && v != latestSentinel {
 			staleVersions = append(staleVersions, v)
 		}
 	}

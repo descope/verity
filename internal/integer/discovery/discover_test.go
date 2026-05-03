@@ -550,3 +550,207 @@ versions:
 	// Gets semver cascade + latest ("2" is the highest version).
 	assert.Equal(t, []string{"2", "2.11", "2.11.2", "latest"}, imgs[0].Tags)
 }
+
+// TestDiscoverFromFiles_FloatingMajorAliasesToWolfiAPK is the regression
+// guard for the chronic Integer Build Image bug
+// (sample failing run: github.com/verity-org/verity/actions/runs/25254581240).
+//
+// Wolfi publishes "kyverno-1.17" but NOT a "kyverno-1" meta-package. Before
+// this fix, an image config like
+//
+//	upstream:  { package: "kyverno-{{version}}" }
+//	types.default.packages: ["kyverno-{{version}}"]
+//	versions: { "1": {} }
+//
+// rendered an apko config containing the literal package "kyverno-1", which
+// apko's apk solver could not satisfy at publish time
+// (`failed to build image components: ... nothing provides "kyverno-1"`).
+// 8-15 nightly dispatches failed this way every night, plus all the other
+// floating-major streams listed in the bug report (cilium:1, crossplane:2,
+// erlang:26/27/28, fluentd:1, prometheus:2.55, …).
+//
+// The renderer now aliases declared "1" → highest-matching-minor ("1.17")
+// when the literal "kyverno-1" name is absent from the APKINDEX, so the
+// rendered apko config contains "kyverno-1.17" — which apko CAN satisfy.
+//
+// The DiscoveredImage.Version stays "1" (so workflow dispatches by the
+// declared stream still produce gen/kyverno/1/default.apko.yaml at the
+// expected path); the rewrite happens via {{version}} substitution in
+// render.Config and therefore applies to every templated field in the type
+// — apko `packages:` constraints, env vars, entrypoint, paths, etc. The
+// `packages:` constraint is the user-visible signal this test asserts on.
+func TestDiscoverFromFiles_FloatingMajorAliasesToWolfiAPK(t *testing.T) {
+	const kyvernoYAML = `
+name: kyverno
+description: "Kyverno"
+upstream:
+  package: "kyverno-{{version}}"
+types:
+  default:
+    base: wolfi-base
+    packages: ["kyverno-{{version}}"]
+    entrypoint: /usr/bin/kyverno
+versions:
+  "1": {}
+`
+	imagesDir := setupImages(t, map[string]string{"kyverno.yaml": kyvernoYAML})
+	genDir := t.TempDir()
+
+	// Wolfi has only "kyverno-1.17" — no "kyverno-1" meta-package.
+	// This is exactly the production state that triggers the bug.
+	pkgs := []apkindex.Package{
+		{Name: "kyverno-1.16", Version: "1.16.3-r0"},
+		{Name: "kyverno-1.17", Version: "1.17.5-r0"},
+	}
+
+	imgs, err := discovery.DiscoverFromFiles(opts(imagesDir, genDir, pkgs))
+	require.NoError(t, err)
+
+	// Locate the declared "1" stream (auto-discovered "1.16", "1.17" stems
+	// also appear in imgs because they're real Wolfi APKs — this fix
+	// doesn't change auto-discovery behaviour, just floating-major rendering).
+	var img *discovery.DiscoveredImage
+	for i := range imgs {
+		if imgs[i].Version == "1" {
+			img = &imgs[i]
+			break
+		}
+	}
+	require.NotNil(t, img, "declared `1` stream missing from discovery output: %+v", imgs)
+
+	// Workflow path contract: dispatch keyed by declared stream. The
+	// integer-build-image.yaml workflow looks up
+	// gen/${IMAGE}/${VERSION}/${TYPE}.apko.yaml — that path must still
+	// be the declared "1" so dispatches don't break.
+	assert.Contains(t, img.File, filepath.Join("kyverno", "1", "default.apko.yaml"))
+
+	// Apko config contract: the rendered packages: list must reference a
+	// real Wolfi APK ("kyverno-1.17"), NOT the unsatisfiable "kyverno-1"
+	// that would surface as `nothing provides "kyverno-1"` at publish time.
+	data, err := os.ReadFile(img.File)
+	require.NoError(t, err)
+	rendered := string(data)
+	assert.Contains(t, rendered, "kyverno-1.17",
+		"alias should resolve declared `1` to the highest minor Wolfi publishes")
+	assert.NotContains(t, rendered, "- kyverno-1\n",
+		"unaliased literal `kyverno-1` would crash apko publish — guard against regression")
+
+	// Tag contract: tags still derive from the declared stream (so users
+	// pulling ghcr.io/.../kyverno:1 keep working). Semver cascade picks up
+	// the aliased full version ("1.17.5") for richer tags.
+	assert.Contains(t, img.Tags, "1")
+}
+
+// TestDiscoverFromFiles_UnresolvableFloatingMajor verifies the renderer
+// degrades gracefully when neither the literal name nor any minor exists
+// in the APKINDEX. The discover step does NOT fail (apkindex outages must
+// not bring down discovery); the rendered config will fail at apko publish
+// with a clear `nothing provides …` error, and `verity integer validate
+// --apkindex-url …` is the gate that catches this earlier at PR time.
+func TestDiscoverFromFiles_UnresolvableFloatingMajor(t *testing.T) {
+	const kyvernoYAML = `
+name: kyverno
+description: "Kyverno"
+upstream:
+  package: "kyverno-{{version}}"
+types:
+  default:
+    base: wolfi-base
+    packages: ["kyverno-{{version}}"]
+    entrypoint: /usr/bin/kyverno
+versions:
+  "99": {}
+`
+	imagesDir := setupImages(t, map[string]string{"kyverno.yaml": kyvernoYAML})
+	genDir := t.TempDir()
+
+	// Wolfi knows nothing about kyverno-99 or any kyverno-99.X minor.
+	pkgs := []apkindex.Package{
+		{Name: "kyverno-1.17", Version: "1.17.5-r0"},
+	}
+
+	imgs, err := discovery.DiscoverFromFiles(opts(imagesDir, genDir, pkgs))
+	require.NoError(t, err) // discovery must not fail; validate is the gate.
+
+	var img *discovery.DiscoveredImage
+	for i := range imgs {
+		if imgs[i].Version == "99" {
+			img = &imgs[i]
+			break
+		}
+	}
+	require.NotNil(t, img, "declared `99` stream missing from discovery output")
+
+	data, err := os.ReadFile(img.File)
+	require.NoError(t, err)
+	// Unresolvable streams render the literal — preserves today's behaviour
+	// for offline `verity integer discover` calls (Packages: nil) and lets
+	// `integer validate --apkindex-url` flag this case explicitly at PR time.
+	assert.Contains(t, string(data), "kyverno-99")
+}
+
+// TestDiscoverFromFiles_UnversionedUpstreamVersionedTypePackages is the
+// regression for the erlang/haproxy/nginx shape flagged by review:
+// `upstream.package` is unversioned ("erlang") but `types.<x>.packages`
+// templates the version ("erlang-{{version}}"). Before the
+// VersionedPackagePattern fix, `expandImage` passed `def.Upstream.Package`
+// (= "erlang") to `ResolveAliasVersion`, which early-returned because the
+// pattern had no `{{version}}` placeholder — leaving the rendered apko
+// constraint as `erlang-26`, which Wolfi cannot satisfy. Locks in the
+// behavior that alias resolution now uses the versioned pattern from the
+// type's packages: list when upstream.package lacks the placeholder.
+func TestDiscoverFromFiles_UnversionedUpstreamVersionedTypePackages(t *testing.T) {
+	const erlangYAML = `
+name: erlang
+description: "Erlang/OTP"
+upstream:
+  package: erlang
+types:
+  default:
+    base: wolfi-base
+    packages: ["erlang-{{version}}"]
+    entrypoint: /usr/bin/erl
+versions:
+  "26": {}
+`
+	imagesDir := setupImages(t, map[string]string{"erlang.yaml": erlangYAML})
+	genDir := t.TempDir()
+
+	// Wolfi has the meta-package "erlang" (so DiscoverVersions for the
+	// upstream lookup succeeds) AND specific minor packages
+	// "erlang-26.2" / "erlang-26.3" — but no "erlang-26" meta-package.
+	// This is the production state that makes the Integer Build Image
+	// runs for `erlang:26-default` fail with `nothing provides "erlang-26"`.
+	pkgs := []apkindex.Package{
+		{Name: "erlang", Version: "27.0-r0"}, // floating-latest
+		{Name: "erlang-26.2", Version: "26.2.5.16-r0"},
+		{Name: "erlang-26.3", Version: "26.3.0.0-r0"},
+	}
+
+	imgs, err := discovery.DiscoverFromFiles(opts(imagesDir, genDir, pkgs))
+	require.NoError(t, err)
+
+	var img *discovery.DiscoveredImage
+	for i := range imgs {
+		if imgs[i].Version == "26" {
+			img = &imgs[i]
+			break
+		}
+	}
+	require.NotNil(t, img, "declared `26` stream missing from discovery output: %+v", imgs)
+
+	// gen path keeps the declared stream so the workflow's
+	// gen/${IMAGE}/${VERSION}/${TYPE}.apko.yaml lookup still resolves.
+	assert.Contains(t, img.File, filepath.Join("erlang", "26", "default.apko.yaml"))
+
+	// Apko config contract: the rendered packages: list must reference
+	// the highest matching minor ("erlang-26.3"), NOT the unsatisfiable
+	// "erlang-26" that the bug would render.
+	data, err := os.ReadFile(img.File)
+	require.NoError(t, err)
+	rendered := string(data)
+	assert.Contains(t, rendered, "erlang-26.3",
+		"alias should resolve declared `26` to the highest minor Wolfi publishes (via type packages: pattern, since upstream.package is unversioned)")
+	assert.NotContains(t, rendered, "- erlang-26\n",
+		"unaliased literal `erlang-26` would crash apko publish — guard against regression")
+}

@@ -34,7 +34,7 @@ var integerBuildCmd = &cli.Command{
 			Name:    "version",
 			Aliases: []string{"V"},
 			Usage:   "Version (e.g., 22, 3.12, latest)",
-			Value:   "latest",
+			Value:   latestSentinel,
 		},
 		&cli.StringFlag{
 			Name:    "type",
@@ -79,7 +79,7 @@ var integerBuildCmd = &cli.Command{
 			return fmt.Errorf("type %q not defined for image %q: %w", typeName, imageName, errIntegerVariantNotFound)
 		}
 
-		if version == "latest" {
+		if version == latestSentinel {
 			version, err = integerResolveLatestVersion(def, cmd.String("apkindex-url"))
 			if err != nil {
 				return err

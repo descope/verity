@@ -184,3 +184,92 @@ func ResolveFullVersion(pkgs []Package, upstreamPattern, streamVersion string) s
 	}
 	return LookupFullVersion(pkgs, upstreamPattern)
 }
+
+// ResolveAliasVersion resolves the actual version stem to substitute into apko
+// package constraints when an image declares a floating-major version that
+// Wolfi does not publish as a meta-package.
+//
+// Wolfi APKINDEX naming convention is uneven:
+//
+//   - For some packages (go, nodejs, postgresql) Wolfi ships a virtual
+//     meta-package per minor: e.g. "go-1.24" exists alongside per-patch
+//     packages. Declared "1.24" stem resolves directly.
+//
+//   - For other packages (kyverno, cilium, crossplane, erlang, fluent-bit,
+//     prometheus, istio-*, …) Wolfi only ships a specific minor:
+//     "kyverno-1.17" exists, but "kyverno-1" does NOT. A declared stem of
+//     "1" produces an apko constraint "kyverno-1" that the apk solver
+//     cannot satisfy at publish time, manifesting as
+//     `nothing provides "kyverno-1"`.
+//
+// ResolveAliasVersion bridges the gap. For a versioned upstreamPattern
+// (containing "{{version}}") and a declared streamVersion:
+//
+//  1. If the literal "<prefix><streamVersion><suffix>" name exists in pkgs,
+//     return streamVersion unchanged — the simple case.
+//  2. Otherwise, search pkgs for the highest stem of the form
+//     "<streamVersion>.<rest>" matching the pattern, and return that fuller
+//     stem. E.g. pattern "kyverno-{{version}}", streamVersion "1", with
+//     pkgs containing "kyverno-1.17" returns "1.17".
+//  3. If neither matches, return streamVersion unchanged. The caller is
+//     responsible for surfacing this — `verity integer validate` flags it
+//     at PR time, and apko publish would otherwise fail at build time
+//     with `nothing provides "<pkg>-<streamVersion>"`.
+//
+// For unversioned patterns (no placeholder) ResolveAliasVersion returns
+// streamVersion unchanged: the upstream package name doesn't depend on a
+// version stem so there's nothing to alias.
+//
+// pkgs == nil disables aliasing (returns streamVersion unchanged) so that
+// offline `verity integer discover` calls still produce deterministic apko
+// configs, identical to today's behaviour.
+func ResolveAliasVersion(pkgs []Package, upstreamPattern, streamVersion string) string {
+	if streamVersion == "" || len(pkgs) == 0 {
+		return streamVersion
+	}
+	if !strings.Contains(upstreamPattern, versionPlaceholder) {
+		return streamVersion
+	}
+
+	// 1) Literal match — preferred path; covers normal "1.21"-style streams.
+	literal := strings.ReplaceAll(upstreamPattern, versionPlaceholder, streamVersion)
+	for _, pkg := range pkgs {
+		if pkg.Name == literal {
+			return streamVersion
+		}
+	}
+
+	// 2) Floating-major alias — search for "<streamVersion>.*" stems.
+	before, after, _ := strings.Cut(upstreamPattern, versionPlaceholder)
+	prefix := before
+	suffix := after
+	streamPrefix := streamVersion + "."
+
+	var best string
+	for _, pkg := range pkgs {
+		name := pkg.Name
+		if !strings.HasPrefix(name, prefix) {
+			continue
+		}
+		stem := strings.TrimPrefix(name, prefix)
+		if suffix != "" && !strings.HasSuffix(stem, suffix) {
+			continue
+		}
+		stem = strings.TrimSuffix(stem, suffix)
+		if !strings.HasPrefix(stem, streamPrefix) {
+			continue
+		}
+		if !isVersionStem(stem) {
+			continue
+		}
+		if best == "" || versionLess(best, stem) {
+			best = stem
+		}
+	}
+	if best != "" {
+		return best
+	}
+
+	// 3) Unresolvable — return as-is. Validate / apko publish will surface it.
+	return streamVersion
+}
