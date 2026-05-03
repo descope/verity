@@ -24,22 +24,52 @@ type ValueOverride struct {
 	Repository string `json:"repository"`
 	Tag        string `json:"tag"`
 	Value      string `json:"value,omitempty"`
-	// ClearRegistry tells the wrapper renderer to set
-	// `<path>.registry: ""` so that an upstream chart's `image.registry`
-	// hostname (e.g. `ghcr.io`, `quay.io`) doesn't get prepended to our
-	// already-FQDN repository override.
-	ClearRegistry bool `json:"clearRegistry,omitempty"`
-	// ClearDefaultRegistry tells the wrapper renderer to set
-	// `<path>.defaultRegistry: ""` for charts that template
-	// `{{ .Values.image.registry | default .Values.image.defaultRegistry }}/...`
-	// (kyverno 3.7.x is the canonical example: per-component image maps
-	// hold a hard-coded `defaultRegistry: reg.kyverno.io` that the
-	// chart concatenates to whatever override repository we set, which
-	// breaks pulls when our repository is already fully qualified). The
-	// flag fires in addition to ClearRegistry, not in place of it — a
-	// chart can use either or both sibling fields, and we neutralize
-	// only the ones it actually declares.
-	ClearDefaultRegistry bool `json:"clearDefaultRegistry,omitempty"`
+	// IsScalarOverride distinguishes a scalar-write override (the leaf
+	// node at `Path` becomes the literal string `Value`, even when
+	// `Value == ""`) from the legacy "if Value != \"\" then write" rule.
+	// Used by the global-registry neutralisation path (#308 wave 3) to
+	// emit `<scope>.global.imageRegistry: ""` and similar overrides that
+	// must be honoured even when the value is an empty string. Without
+	// this flag the empty-string scalar would silently disappear,
+	// leaving the upstream's `global.imageRegistry: docker.io` default
+	// in place and triggering the wave-3 double-registry render bug.
+	IsScalarOverride bool `json:"isScalarOverride,omitempty"`
+	// SetRegistry, when non-empty, instructs the wrapper renderer to
+	// write `<path>.registry: <SetRegistry>` and to render Repository
+	// with the registry hostname stripped. The chart's template
+	// `{{ <path>.registry }}/{{ <path>.repository }}` therefore composes
+	// to `ghcr.io/verity-org/<repo>:<tag>` whether the template
+	// short-circuits via `default` or concatenates directly:
+	//
+	//   {{ .Values.image.registry }}/{{ repository }}             → ghcr.io/verity-org/<repo>
+	//   {{ registry | default defaultRegistry }}/{{ repository }} → ghcr.io/verity-org/<repo> (registry fires)
+	//
+	// IMPORTANT scoping caveat: SetRegistry only writes the per-image
+	// registry sibling at `<path>.registry`. If the chart's template
+	// further defers to a `global.imageRegistry` (Bitnami) or
+	// `global.image.registry` (Grafana / tempo-distributed) AND that
+	// global field is non-empty upstream, Helm renders the global
+	// hostname in front of our stripped repository →
+	// `docker.io/verity-org/<repo>:<tag>`. `resolveValuePathPairs`
+	// therefore also emits `IsScalarOverride` entries for any
+	// global-registry sibling in the same scope (root or subchart),
+	// neutralising them to empty so the per-image SetRegistry wins.
+	// See `collectGlobalRegistryPaths` for the detection rule and the
+	// wave-3 regression coverage in TestComposeRegistryRendersValidImageRefs
+	// (`global.image.registry takes precedence over image.registry`).
+	//
+	// SetRegistry replaces the prior "ClearRegistry: bool" plumbing,
+	// which wrote `registry: ""` and consequently produced leading-slash
+	// renders (`/ghcr.io/...`) for any chart whose template did not
+	// `default` to a non-empty value (issue #308 wave 2). Empty string
+	// means "leave the registry sibling untouched" — same behaviour as
+	// the previous `ClearRegistry: false`.
+	SetRegistry string `json:"setRegistry,omitempty"`
+	// SetDefaultRegistry is the parallel knob for the `defaultRegistry`
+	// sibling (kyverno 3.7.x convention; postgres-operator/jenkins/etc.
+	// also adopted it). Same compose-correctly semantics as SetRegistry,
+	// applied to a different field.
+	SetDefaultRegistry string `json:"setDefaultRegistry,omitempty"`
 }
 
 type repoTagPair struct {
@@ -61,6 +91,10 @@ func ResolveValuePathsWithSubcharts(valuesYAML []byte, subchartValues map[string
 	if err != nil {
 		return nil, fmt.Errorf("collect parent chart values: %w", err)
 	}
+	globals, err := collectGlobalRegistryPaths(valuesYAML, "")
+	if err != nil {
+		return nil, fmt.Errorf("collect parent chart global registries: %w", err)
+	}
 
 	subchartNames := make([]string, 0, len(subchartValues))
 	for name := range subchartValues {
@@ -73,15 +107,21 @@ func ResolveValuePathsWithSubcharts(valuesYAML []byte, subchartValues map[string
 			return nil, fmt.Errorf("collect subchart values for %q: %w", name, err)
 		}
 		pairs = append(pairs, subchartPairs...)
+		subchartGlobals, err := collectGlobalRegistryPaths(subchartValues[name], name)
+		if err != nil {
+			return nil, fmt.Errorf("collect global registries for subchart %q: %w", name, err)
+		}
+		globals = append(globals, subchartGlobals...)
 	}
 	sort.Slice(pairs, func(i, j int) bool {
 		return pairs[i].Path < pairs[j].Path
 	})
+	sort.Strings(globals)
 
-	return resolveValuePathPairs(pairs, mappings, overrides), nil
+	return resolveValuePathPairs(pairs, globals, mappings, overrides), nil
 }
 
-func resolveValuePathPairs(pairs []repoTagPair, mappings []ImageMapping, overrides map[string]config.Override) []ValueOverride {
+func resolveValuePathPairs(pairs []repoTagPair, globalRegistryPaths []string, mappings []ImageMapping, overrides map[string]config.Override) []ValueOverride {
 	result := make([]ValueOverride, 0, len(mappings))
 	matched := make([]bool, len(mappings))
 
@@ -109,13 +149,13 @@ func resolveValuePathPairs(pairs []repoTagPair, mappings []ImageMapping, overrid
 				continue
 			}
 			if matchesRepo(m.OriginalRepo, key) {
-				result = append(result, ValueOverride{
-					Path:                 override.ValuePath,
-					Repository:           m.PatchedRepo,
-					Tag:                  m.PatchedTag,
-					ClearRegistry:        pathHasRegistry[override.ValuePath],
-					ClearDefaultRegistry: pathHasDefaultRegistry[override.ValuePath],
-				})
+				result = append(result, buildValueOverride(
+					override.ValuePath,
+					m.PatchedRepo,
+					m.PatchedTag,
+					pathHasRegistry[override.ValuePath],
+					pathHasDefaultRegistry[override.ValuePath],
+				))
 				matched[i] = true
 				break
 			}
@@ -131,20 +171,153 @@ func resolveValuePathPairs(pairs []repoTagPair, mappings []ImageMapping, overrid
 				continue
 			}
 			if matchesRepo(pair.Repo, m.OriginalRepo) {
-				result = append(result, ValueOverride{
-					Path:                 pair.Path,
-					Repository:           m.PatchedRepo,
-					Tag:                  m.PatchedTag,
-					ClearRegistry:        pair.HasRegistry,
-					ClearDefaultRegistry: pair.HasDefaultRegistry,
-				})
+				result = append(result, buildValueOverride(
+					pair.Path,
+					m.PatchedRepo,
+					m.PatchedTag,
+					pair.HasRegistry,
+					pair.HasDefaultRegistry,
+				))
 				matched[i] = true
 				break
 			}
 		}
 	}
 
+	return appendGlobalRegistryNeutralisations(result, globalRegistryPaths)
+}
+
+// appendGlobalRegistryNeutralisations appends an IsScalarOverride entry
+// for every global-registry path whose scope matches one of the
+// per-image overrides already in `result`. See #308 wave 3: without this
+// step a chart whose template defers to `global.imageRegistry` (Bitnami)
+// or `global.image.registry` (tempo-distributed, several Grafana
+// sub-charts) would render `<upstream-global>/verity-org/<repo>:<tag>`
+// because the global hostname takes precedence over our per-image
+// SetRegistry. Empty global → Bitnami's `if .global.imageRegistry` is
+// false (falls through to per-image) and tempo's `coalesce` skips it.
+func appendGlobalRegistryNeutralisations(result []ValueOverride, globalRegistryPaths []string) []ValueOverride {
+	scopesToNeutralise := globalNeutralisationScopes(result)
+	for _, globalPath := range globalRegistryPaths {
+		if !scopesToNeutralise[scopeOfPath(globalPath)] {
+			continue
+		}
+		result = append(result, ValueOverride{
+			Path:             globalPath,
+			IsScalarOverride: true,
+			Value:            "",
+		})
+	}
 	return result
+}
+
+// globalNeutralisationScopes returns the set of value-path scopes
+// (subchart prefix or "" for root) where at least one image-override
+// rewrote a per-image registry sibling, signalling that any sibling
+// `global.<...>Registry` field in that scope must be neutralised so the
+// chart's template doesn't prefer the upstream global over our rewrite.
+func globalNeutralisationScopes(overrides []ValueOverride) map[string]bool {
+	scopes := make(map[string]bool)
+	for _, o := range overrides {
+		if o.SetRegistry == "" && o.SetDefaultRegistry == "" {
+			continue
+		}
+		scopes[scopeOfPath(o.Path)] = true
+	}
+	return scopes
+}
+
+// scopeOfPath returns the leading subchart-name segment of a dotted
+// value path (e.g. `postgresql.image` → `postgresql`, `image` → "").
+// Both `global.imageRegistry` and `image` live at root scope (""), and
+// both `postgresql.global.imageRegistry` and `postgresql.image` live
+// under the `postgresql` subchart scope. The rule "first segment unless
+// it is a Helm-special key (`global`, `image`)" yields the right answer
+// for every path this function is called with — image-override paths
+// always start with either a subchart name or `image`/`<componentName>`,
+// never `global`. Test coverage in TestScopeOfPath documents the cases.
+func scopeOfPath(path string) string {
+	idx := strings.IndexByte(path, '.')
+	if idx <= 0 {
+		return ""
+	}
+	first := path[:idx]
+	if first == "global" || first == "image" {
+		return ""
+	}
+	return first
+}
+
+// buildValueOverride composes a ValueOverride that renders correctly across
+// all observed upstream chart template shapes. When the upstream chart
+// declares a `registry` and/or `defaultRegistry` sibling, the patched FQDN
+// repository is split into `<registry>/<path>` and the registry hostname is
+// emitted into those sibling fields. The wrapper leaf therefore expresses
+// the FQDN compositionally — `<registry>` + `<repository>` — rather than
+// concentrating the FQDN in `repository` and zeroing out the prefix (which
+// produced `/ghcr.io/...:tag` leading-slash renders for every chart whose
+// template was a plain `{{ registry }}/{{ repo }}` concatenation; see
+// issue #308 wave 2).
+//
+// When the patched repo has no detectable registry host, fall back to the
+// legacy "leave repo as-is" behaviour without setting the sibling — this is
+// only reachable for non-FQDN patched repos, which verity does not currently
+// produce, but keeping the fallback explicit avoids future surprises.
+func buildValueOverride(path, patchedRepo, patchedTag string, hasRegistry, hasDefaultRegistry bool) ValueOverride {
+	override := ValueOverride{
+		Path:       path,
+		Repository: patchedRepo,
+		Tag:        patchedTag,
+	}
+
+	if !hasRegistry && !hasDefaultRegistry {
+		return override
+	}
+
+	registry, repoPath, ok := splitRegistryHost(patchedRepo)
+	if !ok {
+		return override
+	}
+
+	override.Repository = repoPath
+	if hasRegistry {
+		override.SetRegistry = registry
+	}
+	if hasDefaultRegistry {
+		override.SetDefaultRegistry = registry
+	}
+	return override
+}
+
+// splitRegistryHost splits a fully-qualified image reference like
+// `ghcr.io/verity-org/grafana` into (`ghcr.io`, `verity-org/grafana`, true).
+// A path is considered to have a registry host when its first segment
+// contains either a `.` (DNS hostname), a `:` (port), or equals `localhost`
+// — these are the three cases Docker's reference parser treats as a
+// hostname. References without a detectable host (`library/nginx`,
+// `verity-org/grafana`) return ok=false so the caller can fall back to
+// the legacy behaviour.
+func splitRegistryHost(repo string) (registry, path string, ok bool) {
+	idx := strings.IndexByte(repo, '/')
+	if idx <= 0 {
+		return "", repo, false
+	}
+	first := repo[:idx]
+	if !isRegistryHost(first) {
+		return "", repo, false
+	}
+	return first, repo[idx+1:], true
+}
+
+// isRegistryHost mirrors the Docker reference-parser convention: the first
+// path segment is a registry host when it contains a `.`, contains a `:`
+// (port), or equals `localhost`. The bare-`localhost` case (no port) is the
+// one easily missed by the contains-`.`-or-`:` heuristic alone.
+func isRegistryHost(segment string) bool {
+	if segment == "localhost" {
+		return true
+	}
+	return strings.ContainsAny(segment, ".:")
 }
 
 func collectValuePairs(valuesYAML []byte, prefix string) ([]repoTagPair, error) {
@@ -158,6 +331,50 @@ func collectValuePairs(valuesYAML []byte, prefix string) ([]repoTagPair, error) 
 	pairs := make([]repoTagPair, 0)
 	walkValues(prefix, values, &pairs)
 	return pairs, nil
+}
+
+// collectGlobalRegistryPaths returns the dotted paths of every
+// global-registry sibling in `valuesYAML`. Two patterns are recognised:
+//
+//   - Bitnami: `global.imageRegistry` (scalar string under the `global` map).
+//   - Grafana / tempo-distributed / argo-rollouts: `global.image.registry`
+//     (scalar string under the `global.image` map).
+//
+// Both patterns may co-exist in a single chart. The prefix is prepended
+// to make subchart-scoped paths (`postgresql.global.imageRegistry` etc.).
+//
+// The function deliberately does NOT walk arbitrary other `global.<X>`
+// scalars — chart-gen should not attempt to neutralise unrecognised
+// global-scope fields. New patterns will surface as new test cases here
+// when a chart-integration nightly catches them.
+func collectGlobalRegistryPaths(valuesYAML []byte, prefix string) ([]string, error) {
+	values := make(map[string]any)
+	if len(valuesYAML) > 0 {
+		if err := yaml.Unmarshal(valuesYAML, &values); err != nil {
+			return nil, fmt.Errorf("unmarshal values YAML: %w", err)
+		}
+	}
+
+	globalNode, ok := values["global"].(map[string]any)
+	if !ok {
+		return nil, nil
+	}
+
+	scopePrefix := ""
+	if prefix != "" {
+		scopePrefix = prefix + "."
+	}
+
+	paths := make([]string, 0, 2)
+	if _, ok := globalNode["imageRegistry"].(string); ok {
+		paths = append(paths, scopePrefix+"global.imageRegistry")
+	}
+	if imgNode, ok := globalNode["image"].(map[string]any); ok {
+		if _, ok := imgNode["registry"].(string); ok {
+			paths = append(paths, scopePrefix+"global.image.registry")
+		}
+	}
+	return paths, nil
 }
 
 func GetChartValues(chart config.ChartSpec) ([]byte, error) {
@@ -543,8 +760,18 @@ func walkValues(prefix string, node map[string]any, pairs *[]repoTagPair) {
 		}
 
 		repo, hasRepo := child["repository"].(string)
-		registry, registrySibling := child["registry"].(string)
-		hasRegistry := registrySibling && registry != ""
+		// `hasRegistry` / `hasDefaultRegistry` mean "the upstream chart
+		// DECLARES this sibling as a string field" — we treat both
+		// `registry: docker.io` and `registry: ""` as a declaration.
+		// The empty-string declaration is the trickier case: if the chart
+		// templates `{{ .Values.image.registry }}/{{ repository }}` and we
+		// leave the wrapper leaf alone, the rendered ref becomes
+		// `"" + "/" + ghcr.io/...` — the same leading-slash bug this PR
+		// is fixing. We must still compose the registry into the sibling
+		// so the rendered ref is `ghcr.io/<verity-org>/<repo>`. The
+		// previous shape (`registry != ""`) silently skipped these
+		// charts; #312 review caught the gap.
+		registry, hasRegistry := child["registry"].(string)
 		// defaultRegistry is the kyverno 3.7.x convention: each component's
 		// image map holds a hard-coded `defaultRegistry: reg.kyverno.io`
 		// that the chart concatenates to the override repository when
@@ -552,10 +779,9 @@ func walkValues(prefix string, node map[string]any, pairs *[]repoTagPair) {
 		// inherit that prefix and produce broken refs like
 		// `reg.kyverno.io/ghcr.io/verity-org/kyverno:1.17` (issue #254).
 		// Treat it as a parallel registry-sibling: detect it here, plumb
-		// it through ClearDefaultRegistry, and have buildValuesTree write
-		// `defaultRegistry: ""` into the override leaf.
-		defaultRegistry, defaultRegistrySibling := child["defaultRegistry"].(string)
-		hasDefaultRegistry := defaultRegistrySibling && defaultRegistry != ""
+		// it through SetDefaultRegistry, and have buildValuesTree write
+		// `defaultRegistry: <ghcr.io>` into the override leaf.
+		defaultRegistry, hasDefaultRegistry := child["defaultRegistry"].(string)
 
 		switch {
 		case hasRepo && repo != "":

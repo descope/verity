@@ -44,10 +44,9 @@ func TestResolveValuePaths(t *testing.T) {
 				},
 			},
 			want: []ValueOverride{{
-				Path:          "image",
-				Repository:    "ghcr.io/verity-org/prometheus/prometheus",
-				Tag:           "v3.2.1",
-				ClearRegistry: false,
+				Path:       "image",
+				Repository: "ghcr.io/verity-org/prometheus/prometheus",
+				Tag:        "v3.2.1",
 			}},
 		},
 		{
@@ -63,10 +62,9 @@ func TestResolveValuePaths(t *testing.T) {
 				PatchedTag:   "1.25",
 			}},
 			want: []ValueOverride{{
-				Path:          "server.image",
-				Repository:    "ghcr.io/verity-org/library/nginx",
-				Tag:           "1.25",
-				ClearRegistry: false,
+				Path:       "server.image",
+				Repository: "ghcr.io/verity-org/library/nginx",
+				Tag:        "1.25",
 			}},
 		},
 		{
@@ -107,16 +105,14 @@ metrics:
 			},
 			want: []ValueOverride{
 				{
-					Path:          "controller.image",
-					Repository:    "ghcr.io/verity-org/library/nginx",
-					Tag:           "1.25",
-					ClearRegistry: false,
+					Path:       "controller.image",
+					Repository: "ghcr.io/verity-org/library/nginx",
+					Tag:        "1.25",
 				},
 				{
-					Path:          "metrics.image",
-					Repository:    "ghcr.io/verity-org/valkey/valkey",
-					Tag:           "7.2",
-					ClearRegistry: false,
+					Path:       "metrics.image",
+					Repository: "ghcr.io/verity-org/valkey/valkey",
+					Tag:        "7.2",
 				},
 			},
 		},
@@ -135,14 +131,20 @@ metrics:
 				"nginx": {ValuePath: "custom.image"},
 			},
 			want: []ValueOverride{{
-				Path:          "custom.image",
-				Repository:    "ghcr.io/verity-org/library/nginx",
-				Tag:           "1.25",
-				ClearRegistry: false,
+				Path:       "custom.image",
+				Repository: "ghcr.io/verity-org/library/nginx",
+				Tag:        "1.25",
 			}},
 		},
 		{
-			name: "explicit value path clears registry on 3-field shape",
+			// Compose-correctly behaviour for explicit-ValuePath override on
+			// a 3-field upstream (`registry`, `repository`, `tag`). The
+			// wrapper splits the patched FQDN into <registry>/<path> and
+			// emits the registry hostname into `registry`, so the chart's
+			// `{{ image.registry }}/{{ image.repository }}` template
+			// composes to `ghcr.io/verity-org/<repo>:<tag>` regardless of
+			// short-circuit semantics. See #308 wave 2.
+			name: "explicit value path composes registry on 3-field shape",
 			valuesYML: `image:
   registry: ghcr.io
   repository: zalando/postgres-operator
@@ -157,10 +159,10 @@ metrics:
 				"zalando/postgres-operator": {ValuePath: "image"},
 			},
 			want: []ValueOverride{{
-				Path:          "image",
-				Repository:    "ghcr.io/verity-org/zalando/postgres-operator",
-				Tag:           "v1.15.1",
-				ClearRegistry: true,
+				Path:        "image",
+				Repository:  "verity-org/zalando/postgres-operator",
+				Tag:         "v1.15.1",
+				SetRegistry: "ghcr.io",
 			}},
 		},
 		{
@@ -178,14 +180,16 @@ metrics:
 				"timberio/vector": {ValuePath: "custom.vectorImage"},
 			},
 			want: []ValueOverride{{
-				Path:          "custom.vectorImage",
-				Repository:    "ghcr.io/verity-org/timberio/vector",
-				Tag:           "0.40",
-				ClearRegistry: false,
+				Path:       "custom.vectorImage",
+				Repository: "ghcr.io/verity-org/timberio/vector",
+				Tag:        "0.40",
 			}},
 		},
 		{
-			name: "3-field registry split override",
+			// Compose-correctly behaviour for the implicit-match path on a
+			// 3-field upstream — same semantics as the explicit-ValuePath
+			// case above, walked via the values-tree pair-matching branch.
+			name: "3-field registry split override composes registry",
 			valuesYML: `image:
   registry: ghcr.io
   repository: zalando/postgres-operator
@@ -197,10 +201,10 @@ metrics:
 				PatchedTag:   "v1.15.1",
 			}},
 			want: []ValueOverride{{
-				Path:          "image",
-				Repository:    "ghcr.io/verity-org/zalando/postgres-operator",
-				Tag:           "v1.15.1",
-				ClearRegistry: true,
+				Path:        "image",
+				Repository:  "verity-org/zalando/postgres-operator",
+				Tag:         "v1.15.1",
+				SetRegistry: "ghcr.io",
 			}},
 		},
 	}
@@ -251,17 +255,19 @@ func runResolveValuePathsCase(t *testing.T, valuesYML string, mappings []ImageMa
 }
 
 // TestResolveValuePaths_DefaultRegistry covers the kyverno-shaped
-// `defaultRegistry` sibling that PR #295's `ClearRegistry` plumbing
-// originally missed (issue #254). Split out from TestResolveValuePaths
-// so the parent stays under the maintidx threshold.
+// `defaultRegistry` sibling. After issue #308 wave 2 the wrapper composes
+// the FQDN as `<defaultRegistry>` + `<repository>` rather than zeroing the
+// sibling, so the chart's `{{ defaultRegistry }}/{{ repository }}` template
+// produces a valid reference whether or not it short-circuits via `default`.
 func TestResolveValuePaths_DefaultRegistry(t *testing.T) {
 	tests := []resolveValuePathsCase{
 		{
 			// kyverno 3.7.x admission-controller shape — `registry` is
-			// null, the host lives under `defaultRegistry`. The override
-			// must set ClearDefaultRegistry so the wrapper renders
-			// `defaultRegistry: ""`, otherwise the chart prepends
-			// `reg.kyverno.io/` to our already-FQDN repository.
+			// null, the host lives under `defaultRegistry`. The wrapper
+			// emits `defaultRegistry: ghcr.io` + `repository: verity-org/kyverno`
+			// so kyverno's `default (default .image.defaultRegistry .globalRegistry) .image.registry`
+			// resolves to `ghcr.io` and the rendered ref is
+			// `ghcr.io/verity-org/kyverno:1.17` (no leading slash).
 			name: "kyverno defaultRegistry sibling override",
 			valuesYML: `admissionController:
   container:
@@ -277,19 +283,17 @@ func TestResolveValuePaths_DefaultRegistry(t *testing.T) {
 				PatchedTag:   "1.17",
 			}},
 			want: []ValueOverride{{
-				Path:                 "admissionController.container.image",
-				Repository:           "ghcr.io/verity-org/kyverno",
-				Tag:                  "1.17",
-				ClearRegistry:        false,
-				ClearDefaultRegistry: true,
+				Path:               "admissionController.container.image",
+				Repository:         "verity-org/kyverno",
+				Tag:                "1.17",
+				SetDefaultRegistry: "ghcr.io",
 			}},
 		},
 		{
-			// Hypothetical chart that uses BOTH sibling fields. We must
-			// neutralise both — the chart's registry-resolution logic
-			// usually goes `registry | default defaultRegistry`, so
-			// leaving either populated breaks our override.
-			name: "registry and defaultRegistry both clear",
+			// Chart that uses BOTH sibling fields. Both get the registry
+			// hostname so any of `registry`, `defaultRegistry`, or
+			// `registry | default defaultRegistry` resolves to `ghcr.io`.
+			name: "registry and defaultRegistry both compose",
 			valuesYML: `image:
   registry: "ghcr.io"
   defaultRegistry: "fallback.example.com"
@@ -302,17 +306,17 @@ func TestResolveValuePaths_DefaultRegistry(t *testing.T) {
 				PatchedTag:   "v1",
 			}},
 			want: []ValueOverride{{
-				Path:                 "image",
-				Repository:           "ghcr.io/verity-org/foo/bar",
-				Tag:                  "v1",
-				ClearRegistry:        true,
-				ClearDefaultRegistry: true,
+				Path:               "image",
+				Repository:         "verity-org/foo/bar",
+				Tag:                "v1",
+				SetRegistry:        "ghcr.io",
+				SetDefaultRegistry: "ghcr.io",
 			}},
 		},
 		{
 			// Explicit-ValuePath override must also pick up
 			// defaultRegistry from the matching values path.
-			name: "explicit value path clears defaultRegistry",
+			name: "explicit value path composes defaultRegistry",
 			valuesYML: `admissionController:
   container:
     image:
@@ -329,11 +333,10 @@ func TestResolveValuePaths_DefaultRegistry(t *testing.T) {
 				"kyverno/kyverno": {ValuePath: "admissionController.container.image"},
 			},
 			want: []ValueOverride{{
-				Path:                 "admissionController.container.image",
-				Repository:           "ghcr.io/verity-org/kyverno",
-				Tag:                  "1.17",
-				ClearRegistry:        false,
-				ClearDefaultRegistry: true,
+				Path:               "admissionController.container.image",
+				Repository:         "verity-org/kyverno",
+				Tag:                "1.17",
+				SetDefaultRegistry: "ghcr.io",
 			}},
 		},
 	}
@@ -640,6 +643,304 @@ func TestResolveValuePathsWithSubcharts(t *testing.T) {
 	}
 }
 
+// TestResolveValuePathsWithSubcharts_WaveThreeNeutralisation drives the
+// subchart-prefixed code path with wave-3 fixtures (#308 A.4). Each
+// fixture mirrors a production chart whose subchart declares a global
+// registry sibling (`global.imageRegistry` for Bitnami's postgresql in
+// airflow; `global.image.registry` for Grafana sub-charts). The expected
+// overrides include BOTH the per-image rewrite (with subchart-prefixed
+// `Path`) AND the IsScalarOverride entry that neutralises the subchart's
+// global to empty so the per-image SetRegistry wins at template time.
+//
+// This is the test that Copilot's #312 round 3 thread 1 specifically
+// asked for — without it, a regression in subchart-path handling (the
+// neutralisation accidentally applying to root scope, or the global
+// registry path losing its subchart prefix) would still pass.
+func TestResolveValuePathsWithSubcharts_WaveThreeNeutralisation(t *testing.T) {
+	tests := []struct {
+		name           string
+		parentValues   string
+		subchartValues map[string]string
+		mappings       []ImageMapping
+		want           []ValueOverride
+	}{
+		{
+			// airflow → postgresql (Bitnami sub-chart). Real fixture
+			// reduced to the minimum that exercises the bug shape:
+			// subchart's `global.imageRegistry: ""` exists upstream
+			// (Bitnami pattern) and the subchart's `image` declares a
+			// per-image registry. Production wrapper output proves
+			// chart-gen wires both rewrites under the `postgresql.`
+			// prefix.
+			name:         "airflow postgresql Bitnami sub-chart with global.imageRegistry",
+			parentValues: "postgresql:\n  enabled: true\n",
+			subchartValues: map[string]string{
+				"postgresql": `global:
+  imageRegistry: ""
+image:
+  registry: docker.io
+  repository: bitnamilegacy/postgresql
+  tag: 16.1.0-debian-11-r15
+`,
+			},
+			mappings: []ImageMapping{{
+				OriginalRepo: "bitnamilegacy/postgresql",
+				PatchedRepo:  "ghcr.io/verity-org/bitnamilegacy/postgresql",
+				PatchedTag:   "16.1.0-debian-11-r15",
+			}},
+			want: []ValueOverride{
+				{
+					Path:        "postgresql.image",
+					Repository:  "verity-org/bitnamilegacy/postgresql",
+					Tag:         "16.1.0-debian-11-r15",
+					SetRegistry: "ghcr.io",
+				},
+				{
+					Path:             "postgresql.global.imageRegistry",
+					IsScalarOverride: true,
+				},
+			},
+		},
+		{
+			// Tempo-distributed shape variant lifted into a sub-chart.
+			// Verifies that `global.image.registry` (under a `global.image`
+			// map, not a top-level scalar) is detected and prefixed
+			// correctly when found in a subchart's values.yaml.
+			name:         "tempo-shaped sub-chart with global.image.registry",
+			parentValues: "telemetry:\n  enabled: true\n",
+			subchartValues: map[string]string{
+				"telemetry": `global:
+  image:
+    registry: docker.io
+image:
+  registry: docker.io
+  repository: grafana/tempo
+  tag: "2.4"
+`,
+			},
+			mappings: []ImageMapping{{
+				OriginalRepo: "grafana/tempo",
+				PatchedRepo:  "ghcr.io/verity-org/tempo",
+				PatchedTag:   "2.4",
+			}},
+			want: []ValueOverride{
+				{
+					Path:        "telemetry.image",
+					Repository:  "verity-org/tempo",
+					Tag:         "2.4",
+					SetRegistry: "ghcr.io",
+				},
+				{
+					Path:             "telemetry.global.image.registry",
+					IsScalarOverride: true,
+				},
+			},
+		},
+		{
+			// Subchart with a global declared but NO per-image rewrite
+			// happening (no mapping match): neutralisation must NOT fire.
+			// This is the conservative-scope guarantee — chart-gen only
+			// touches a subchart's global when it also rewrote one of
+			// that subchart's per-image registries.
+			name:         "subchart global without matching mapping is left alone",
+			parentValues: "postgresql:\n  enabled: false\n",
+			subchartValues: map[string]string{
+				"postgresql": `global:
+  imageRegistry: docker.io
+image:
+  registry: docker.io
+  repository: bitnamilegacy/postgresql
+  tag: 16.1.0-debian-11-r15
+`,
+			},
+			// No mapping for postgresql — verity isn't rebuilding this image.
+			mappings: []ImageMapping{},
+			want:     []ValueOverride{},
+		},
+		{
+			// Two subcharts; only ONE has a rewrite. The other subchart's
+			// global must NOT be neutralised — scoping isolates by
+			// subchart prefix.
+			name:         "neutralisation scoped to the subchart that was rewritten",
+			parentValues: "postgresql:\n  enabled: true\nrabbitmq:\n  enabled: true\n",
+			subchartValues: map[string]string{
+				"postgresql": `global:
+  imageRegistry: docker.io
+image:
+  registry: docker.io
+  repository: bitnamilegacy/postgresql
+  tag: 16.1.0-debian-11-r15
+`,
+				"rabbitmq": `global:
+  imageRegistry: docker.io
+image:
+  registry: docker.io
+  repository: bitnamilegacy/rabbitmq
+  tag: "3.13"
+`,
+			},
+			// Only postgresql gets a mapping → only postgresql.global.imageRegistry
+			// should be neutralised; rabbitmq.global.imageRegistry stays alone.
+			mappings: []ImageMapping{{
+				OriginalRepo: "bitnamilegacy/postgresql",
+				PatchedRepo:  "ghcr.io/verity-org/bitnamilegacy/postgresql",
+				PatchedTag:   "16.1.0-debian-11-r15",
+			}},
+			want: []ValueOverride{
+				{
+					Path:        "postgresql.image",
+					Repository:  "verity-org/bitnamilegacy/postgresql",
+					Tag:         "16.1.0-debian-11-r15",
+					SetRegistry: "ghcr.io",
+				},
+				{
+					Path:             "postgresql.global.imageRegistry",
+					IsScalarOverride: true,
+				},
+				// rabbitmq.global.imageRegistry deliberately absent.
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			subcharts := make(map[string][]byte, len(tt.subchartValues))
+			for name, values := range tt.subchartValues {
+				subcharts[name] = []byte(values)
+			}
+
+			got, err := ResolveValuePathsWithSubcharts([]byte(tt.parentValues), subcharts, tt.mappings, nil)
+			if err != nil {
+				t.Fatalf("ResolveValuePathsWithSubcharts() error = %v", err)
+			}
+
+			sortFn := func(s []ValueOverride) {
+				sort.Slice(s, func(i, j int) bool {
+					return s[i].Path < s[j].Path
+				})
+			}
+			sortFn(got)
+			sortFn(tt.want)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("ResolveValuePathsWithSubcharts() =\n  got=%#v\n  want=%#v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestScopeOfPath documents the rule used by `globalNeutralisationScopes`
+// to map a value-path to its scope (root or subchart name). The function
+// is only ever called with image-override paths and global-registry
+// paths, so the rule "first segment unless it equals `global` or
+// `image`" is sufficient — but the table makes the cases explicit.
+func TestScopeOfPath(t *testing.T) {
+	cases := []struct {
+		path string
+		want string
+	}{
+		// Root-scope image overrides.
+		{"image", ""},
+		{"image.registry", ""},
+
+		// Subchart-scope image overrides.
+		{"postgresql.image", "postgresql"},
+		{"alertmanager.image", "alertmanager"},
+		{"kube-state-metrics.image", "kube-state-metrics"},
+
+		// Root-scope global-registry paths.
+		{"global.imageRegistry", ""},
+		{"global.image.registry", ""},
+
+		// Subchart-scope global-registry paths.
+		{"postgresql.global.imageRegistry", "postgresql"},
+		{"telemetry.global.image.registry", "telemetry"},
+
+		// Edge cases — single-segment and empty.
+		{"", ""},
+		{"foo", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.path, func(t *testing.T) {
+			if got := scopeOfPath(tc.path); got != tc.want {
+				t.Fatalf("scopeOfPath(%q) = %q, want %q", tc.path, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestCollectGlobalRegistryPaths covers both Bitnami and Grafana
+// global-registry conventions plus the edge cases.
+func TestCollectGlobalRegistryPaths(t *testing.T) {
+	cases := []struct {
+		name      string
+		valuesYML string
+		prefix    string
+		want      []string
+	}{
+		{
+			name:      "Bitnami global.imageRegistry detected",
+			valuesYML: "global:\n  imageRegistry: docker.io\n",
+			want:      []string{"global.imageRegistry"},
+		},
+		{
+			name:      "Grafana global.image.registry detected",
+			valuesYML: "global:\n  image:\n    registry: docker.io\n",
+			want:      []string{"global.image.registry"},
+		},
+		{
+			name: "both patterns coexist",
+			valuesYML: `global:
+  imageRegistry: docker.io
+  image:
+    registry: docker.io
+`,
+			want: []string{"global.imageRegistry", "global.image.registry"},
+		},
+		{
+			name:      "empty-string global is still a declaration",
+			valuesYML: "global:\n  imageRegistry: \"\"\n",
+			want:      []string{"global.imageRegistry"},
+		},
+		{
+			name:      "subchart prefix prepended",
+			valuesYML: "global:\n  imageRegistry: docker.io\n",
+			prefix:    "postgresql",
+			want:      []string{"postgresql.global.imageRegistry"},
+		},
+		{
+			name:      "no global at all",
+			valuesYML: "image:\n  repository: foo\n",
+			want:      nil,
+		},
+		{
+			name:      "non-string global.imageRegistry ignored",
+			valuesYML: "global:\n  imageRegistry: 42\n",
+			want:      []string{},
+		},
+		{
+			name:      "global is not a map",
+			valuesYML: "global: docker.io\n",
+			want:      nil,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := collectGlobalRegistryPaths([]byte(tc.valuesYML), tc.prefix)
+			if err != nil {
+				t.Fatalf("collectGlobalRegistryPaths() error = %v", err)
+			}
+			// `nil` and empty-slice want compare unequal under reflect.DeepEqual,
+			// so coerce both to a canonical empty form.
+			if len(got) == 0 && len(tc.want) == 0 {
+				return
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("collectGlobalRegistryPaths(%q, %q) = %v, want %v", tc.valuesYML, tc.prefix, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestWalkValues(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -747,7 +1048,14 @@ server:
 			}},
 		},
 		{
-			name: "registry empty string ignored",
+			// `registry: ""` is a DECLARATION (empty-string value, but the
+			// field exists in the upstream values.yaml). The chart's
+			// template will still concatenate that field, so the wrapper
+			// must still compose into it. Pre-#312-review-2 we treated
+			// the empty-string declaration as "absent" and silently
+			// produced `/ghcr.io/...` leading-slash refs for any chart
+			// that shipped its registry sibling defaulted to empty.
+			name: "registry empty string is a declaration",
 			yamlIn: `image:
   registry: ""
   repository: "foo"
@@ -758,7 +1066,7 @@ server:
 				Repo:        "foo",
 				HasTag:      true,
 				Registry:    "",
-				HasRegistry: false,
+				HasRegistry: true,
 			}},
 		},
 		{
@@ -787,7 +1095,10 @@ server:
 			}},
 		},
 		{
-			name: "defaultRegistry empty string ignored",
+			// Same rule as `registry: ""` — empty-string declaration is
+			// still a declaration. The chart template will concatenate
+			// the field; the wrapper must compose into it.
+			name: "defaultRegistry empty string is a declaration",
 			yamlIn: `image:
   defaultRegistry: ""
   repository: "foo"
@@ -798,7 +1109,7 @@ server:
 				Repo:               "foo",
 				HasTag:             true,
 				HasRegistry:        false,
-				HasDefaultRegistry: false,
+				HasDefaultRegistry: true,
 			}},
 		},
 		{
@@ -1174,7 +1485,56 @@ func TestSubchartKeyFromArchive(t *testing.T) {
 	}
 }
 
-func TestResolveValuePathsClearRegistryOnRegistryOnlyPath(t *testing.T) {
+// TestSplitRegistryHost covers the Docker reference-parser convention for
+// detecting whether the first path segment of an image reference is a
+// registry hostname. The three positive cases (DNS hostname with `.`,
+// host:port with `:`, bare `localhost`) must all split; everything else
+// must return ok=false so the caller falls back to the legacy "leave repo
+// as-is" behaviour.
+func TestSplitRegistryHost(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		registry string
+		path     string
+		ok       bool
+	}{
+		// Docker-convention positive cases.
+		{"dns hostname", "ghcr.io/verity-org/grafana", "ghcr.io", "verity-org/grafana", true},
+		{"dns hostname multi-segment", "registry.k8s.io/kube-apiserver", "registry.k8s.io", "kube-apiserver", true},
+		{"host with port", "registry.example.com:5000/foo/bar", "registry.example.com:5000", "foo/bar", true},
+		{"localhost with port", "localhost:5000/foo", "localhost:5000", "foo", true},
+		// Bare-`localhost` is the case the contains-`.`-or-`:` heuristic
+		// alone would miss. Docker's reference parser treats it as a
+		// registry host (the only non-`.`/non-`:` exception).
+		{"bare localhost", "localhost/foo", "localhost", "foo", true},
+		{"bare localhost nested path", "localhost/team/repo", "localhost", "team/repo", true},
+
+		// Negative cases — Docker treats these as Docker-Hub paths (the
+		// implicit `docker.io/library/` namespace) and our helper falls
+		// back to "leave the repo as-is".
+		{"dockerhub library shorthand", "library/nginx", "", "library/nginx", false},
+		{"dockerhub user/repo", "verity-org/grafana", "", "verity-org/grafana", false},
+		{"single segment", "nginx", "", "nginx", false},
+		{"empty input", "", "", "", false},
+		{"leading slash", "/foo/bar", "", "/foo/bar", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			gotReg, gotPath, gotOK := splitRegistryHost(tc.input)
+			if gotReg != tc.registry || gotPath != tc.path || gotOK != tc.ok {
+				t.Fatalf("splitRegistryHost(%q) = (%q, %q, %v), want (%q, %q, %v)",
+					tc.input, gotReg, gotPath, gotOK, tc.registry, tc.path, tc.ok)
+			}
+		})
+	}
+}
+
+// TestResolveValuePathsComposeRegistryOnRegistryOnlyPath covers the
+// registry-only-pair shape (no `repository` sibling) walked via the
+// pair-loop pathHasRegistry map. After #308 wave 2 the wrapper composes
+// the registry into a sibling field rather than clearing it.
+func TestResolveValuePathsComposeRegistryOnRegistryOnlyPath(t *testing.T) {
 	yml := `image:
   registry: "ghcr.io"
   tag: "v1"
@@ -1193,10 +1553,10 @@ func TestResolveValuePathsClearRegistryOnRegistryOnlyPath(t *testing.T) {
 		t.Fatalf("ResolveValuePaths() error = %v", err)
 	}
 	want := []ValueOverride{{
-		Path:          "image",
-		Repository:    "ghcr.io/verity-org/zalando/postgres-operator",
-		Tag:           "v1",
-		ClearRegistry: true,
+		Path:        "image",
+		Repository:  "verity-org/zalando/postgres-operator",
+		Tag:         "v1",
+		SetRegistry: "ghcr.io",
 	}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("ResolveValuePaths() = %#v, want %#v", got, want)

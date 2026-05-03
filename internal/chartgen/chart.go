@@ -149,6 +149,15 @@ func buildValuesTree(chartName string, chartValues map[string]any, overrides []V
 	}
 
 	for _, override := range overrides {
+		// IsScalarOverride wins over the legacy `Value != ""` shape so
+		// that intentional empty-string scalars (#308 wave 3 global
+		// registry neutralisation) are written through. The legacy
+		// branch remains for ChartImageOverride csv/single-source
+		// scalars that always carry a non-empty Value.
+		if override.IsScalarOverride {
+			setScalarValue(chartRoot, override.Path, override.Value)
+			continue
+		}
 		if override.Value != "" {
 			setScalarValue(chartRoot, override.Path, override.Value)
 			continue
@@ -158,16 +167,18 @@ func buildValuesTree(chartName string, chartValues map[string]any, overrides []V
 			"repository": override.Repository,
 			"tag":        override.Tag,
 		}
-		if override.ClearRegistry {
-			leaf["registry"] = ""
+		// SetRegistry / SetDefaultRegistry carry the registry hostname
+		// (e.g. `ghcr.io`) extracted from the patched FQDN, so the
+		// chart's template `{{ <sibling> }}/{{ repository }}` composes
+		// to `ghcr.io/verity-org/<repo>:<tag>` regardless of whether
+		// the template short-circuits via `default` or concatenates
+		// directly. Empty siblings (`""`) would produce leading-slash
+		// renders for direct-concatenation templates (see #308 wave 2).
+		if override.SetRegistry != "" {
+			leaf["registry"] = override.SetRegistry
 		}
-		// ClearDefaultRegistry is independent of ClearRegistry — a chart
-		// can use either or both sibling fields. kyverno 3.7.x is the
-		// canonical case for `defaultRegistry`; postgres-operator and
-		// most other 3-field charts use `registry`. See ValueOverride
-		// docs for the full rationale.
-		if override.ClearDefaultRegistry {
-			leaf["defaultRegistry"] = ""
+		if override.SetDefaultRegistry != "" {
+			leaf["defaultRegistry"] = override.SetDefaultRegistry
 		}
 
 		setScalarValue(chartRoot, override.Path, leaf)
