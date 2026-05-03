@@ -157,29 +157,51 @@ replacements:
     tag: "1.17"
 
   # argo-cd chart (9.5.4) → argocd controller; dex shared with dex chart.
+  # Tag `3.3` pins the floating-minor track published by images/argocd.yaml
+  # (`versions: "3.3": {}`). Without an explicit tag, chart-gen carries
+  # the chart's appVersion through verbatim — `v3.3.8`, with the `v`
+  # prefix. Verity publishes `3.3`, `3.3.8`, `3` (no `v`-prefix variants),
+  # so the chart's literal `v3.3.8` 404s on pull. Pinning `tag: "3.3"`
+  # strips the `v` and floats on minor patches. Same root cause as
+  # kyverno (#254 / PR #298); same fix shape. See #308 Wave 1.
   "argoproj/argocd":
     registry: "ghcr.io/verity-org"
     image: "argocd"
+    tag: "3.3"
   "argoproj/argo-rollouts":
     registry: "ghcr.io/verity-org"
     image: "argo-rollouts"
     tag: "1"
+  # Tag `2` pins the floating-major track published by images/dex.yaml
+  # (`versions: "2": {}`); chart's appVersion `v2.44.0` is not published.
   "dexidp/dex":
     registry: "ghcr.io/verity-org"
     image: "dex"
+    tag: "2"
 
-  # metrics-server chart (3.13.0).
+  # metrics-server chart (3.13.0). Tag `0.8` pins the floating-minor
+  # track declared by images/metrics-server.yaml (`versions: "0.8": {}`
+  # alongside the catch-all `"0": {}`). The chart renders `v0.8.0` —
+  # same `v`-prefix mismatch as argocd above; pinning to `0.8` strips
+  # the `v` and floats on patches. The dedicated `0.8` stream survives
+  # Wolfi minor bumps; if/when 0.9.x ships, declare `"0.9": {}` too and
+  # bump this pin.
   "metrics-server/metrics-server":
     registry: "ghcr.io/verity-org"
     image: "metrics-server"
+    tag: "0.8"
 
-  # opensearch + opensearch-dashboards charts (3.6.0).
+  # opensearch + opensearch-dashboards charts (3.6.0). Tag `3` pins the
+  # floating-major track published by images/opensearch{,-dashboards}.yaml
+  # (`versions: "3": {}`); chart's `:3.6.0` is not published.
   "opensearchproject/opensearch":
     registry: "ghcr.io/verity-org"
     image: "opensearch"
+    tag: "3"
   "opensearchproject/opensearch-dashboards":
     registry: "ghcr.io/verity-org"
     image: "opensearch-dashboards"
+    tag: "3"
 
   # postgres-operator chart (1.15.1). Migrated Copa→Integer; this entry
   # routes the chart's image to the existing images/postgres-operator.yaml
