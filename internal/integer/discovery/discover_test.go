@@ -754,3 +754,107 @@ versions:
 	assert.NotContains(t, rendered, "- erlang-26\n",
 		"unaliased literal `erlang-26` would crash apko publish — guard against regression")
 }
+
+// TestResolveStreamRenderVersion locks in the contract of the helper that
+// the local CLI build path (cmd/integer_build.go) and the discovery path
+// (expandImage) BOTH call to convert a declared stream version into the
+// stem render.Config will substitute. Extracted so the two paths cannot
+// drift again, the way they did between PR #307 (which fixed only
+// discovery) and the follow-up PR that closed the build-path gap.
+func TestResolveStreamRenderVersion(t *testing.T) {
+	tests := []struct {
+		name    string
+		def     *config.ImageDef
+		pkgs    []apkindex.Package
+		stream  string
+		want    string
+		comment string
+	}{
+		{
+			name: "literal match in upstream pattern → stream unchanged",
+			def: &config.ImageDef{
+				Upstream: config.Upstream{Package: "nodejs-{{version}}"},
+				Types: map[string]config.TypeTemplate{
+					"default": {Packages: []string{"nodejs-{{version}}"}},
+				},
+			},
+			pkgs:   []apkindex.Package{{Name: "nodejs-22", Version: "22.0.0-r0"}},
+			stream: "22",
+			want:   "22",
+		},
+		{
+			name: "floating-major aliased to minor (kyverno shape)",
+			def: &config.ImageDef{
+				Upstream: config.Upstream{Package: "kyverno-{{version}}"},
+				Types: map[string]config.TypeTemplate{
+					"default": {Packages: []string{"kyverno-{{version}}"}},
+				},
+			},
+			pkgs:   []apkindex.Package{{Name: "kyverno-1.17", Version: "1.17.5-r0"}},
+			stream: "1",
+			want:   "1.17",
+		},
+		{
+			name: "unversioned upstream + versioned type packages (erlang shape)",
+			def: &config.ImageDef{
+				Upstream: config.Upstream{Package: "erlang"},
+				Types: map[string]config.TypeTemplate{
+					"default": {Packages: []string{"erlang-{{version}}"}},
+				},
+			},
+			pkgs: []apkindex.Package{
+				{Name: "erlang", Version: "27.0-r0"},
+				{Name: "erlang-26.3", Version: "26.3.0.0-r0"},
+			},
+			stream: "26",
+			want:   "26.3",
+		},
+		{
+			name: "no APKINDEX (offline) returns stream unchanged",
+			def: &config.ImageDef{
+				Upstream: config.Upstream{Package: "kyverno-{{version}}"},
+				Types: map[string]config.TypeTemplate{
+					"default": {Packages: []string{"kyverno-{{version}}"}},
+				},
+			},
+			pkgs:   nil,
+			stream: "1",
+			want:   "1",
+		},
+		{
+			name: "unsatisfiable stream (Wolfi dropped 2.x for prometheus) returns stream unchanged",
+			def: &config.ImageDef{
+				Upstream: config.Upstream{Package: "prometheus-{{version}}"},
+				Types: map[string]config.TypeTemplate{
+					"default": {Packages: []string{"prometheus-{{version}}"}},
+				},
+			},
+			// APKINDEX has 3.x packages but no 2.55 / 2.55.x.
+			pkgs: []apkindex.Package{
+				{Name: "prometheus-3.9", Version: "3.9.1-r0"},
+				{Name: "prometheus-3.11", Version: "3.11.3-r0"},
+			},
+			stream: "2.55",
+			want:   "2.55",
+		},
+		{
+			// Regression for nil-pointer dereference flagged on PR #311.
+			// VersionedPackagePattern handles nil, but the fallback
+			// `def.Upstream.Package` would panic. The exported helper
+			// must no-op gracefully on nil — match the offline behavior.
+			name:    "nil def returns stream unchanged (no panic)",
+			def:     nil,
+			pkgs:    []apkindex.Package{{Name: "kyverno-1.17", Version: "1.17.5-r0"}},
+			stream:  "1",
+			want:    "1",
+			comment: "nil def must not panic; stream returns unchanged",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := discovery.ResolveStreamRenderVersion(tt.def, tt.pkgs, tt.stream)
+			assert.Equal(t, tt.want, got, tt.comment)
+		})
+	}
+}

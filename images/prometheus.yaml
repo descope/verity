@@ -26,7 +26,14 @@ types:
       env-file: "fips.env"
 
 versions:
-  "2.55":
-    skip-types: [fips]
+  # Wolfi dropped the 2.x stream entirely; previously declared "2.55" never
+  # had a satisfiable APK ("nothing provides prometheus-2.55"). Track the
+  # current stable streams Wolfi actually publishes (prometheus-3.9 …
+  # prometheus-3.11). FIPS is skipped on every stream because the upstream
+  # melange recipe currently only targets 3.9 (see types.fips.melange) and
+  # FIPS prometheus has been disabled across the fleet since PR #157 —
+  # re-enabling per-stream is a separate change.
   "3.9":
+    skip-types: [fips]
+  "3.11":
     skip-types: [fips]
