@@ -1,0 +1,48 @@
+package:
+  name: goss
+  version: "0.4.9"
+  epoch: 0
+  description: "Quick and easy server validation"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/goss-org/goss
+      tag: v${{package.version}}
+      expected-commit: 5704120d25902119cb1139e04bca3db7742a9f73
+
+  - uses: go/build
+    with:
+      packages: ./cmd/goss
+      output: goss
+      ldflags: |
+        -X github.com/goss-org/goss/util.version=${{package.version}}
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: goss-org/goss
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        goss --version
+        goss --help

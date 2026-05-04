@@ -1,0 +1,48 @@
+package:
+  name: pack
+  version: "0.40.4"
+  epoch: 0
+  description: "CLI for building apps using Cloud Native Buildpacks"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/buildpacks/pack
+      tag: v${{package.version}}
+      expected-commit: 3ebbecd20f477a4711d5cd28427956c61f6b13e3
+
+  - uses: go/build
+    with:
+      packages: ./cmd/pack
+      output: pack
+      ldflags: |
+        -X github.com/buildpacks/pack.Version=${{package.version}}
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: buildpacks/pack
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        pack version
+        pack --help
