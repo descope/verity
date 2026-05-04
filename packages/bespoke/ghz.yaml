@@ -1,0 +1,48 @@
+package:
+  name: ghz
+  version: "0.121.0"
+  epoch: 0
+  description: "Simple gRPC benchmarking and load testing tool"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/bojand/ghz
+      tag: v${{package.version}}
+      expected-commit: 17fc95cf71d12362fc0b822bfb927912cbda572b
+
+  - uses: go/build
+    with:
+      packages: ./cmd/ghz
+      output: ghz
+      ldflags: |
+        -X main.version=${{package.version}}
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: bojand/ghz
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        ghz --version
+        ghz --help

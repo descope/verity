@@ -1,0 +1,50 @@
+package:
+  name: vegeta
+  version: "12.13.0"
+  epoch: 0
+  description: "HTTP load testing tool and library"
+  copyright:
+    - license: MIT
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/tsenart/vegeta
+      tag: v${{package.version}}
+      expected-commit: 507c4f028fbad80168f3b734dab9530d3aabfefa
+
+  - uses: go/build
+    with:
+      packages: .
+      output: vegeta
+      ldflags: |
+        -X main.Version=v${{package.version}}
+        -X main.Commit=$(git rev-parse HEAD)
+        -X main.Date=$(date -u -d@${SOURCE_DATE_EPOCH} +%FT%TZ)
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: tsenart/vegeta
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        vegeta -version
+        vegeta -h 2>&1 | grep -F "Usage:"
