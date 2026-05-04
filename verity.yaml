@@ -52,6 +52,16 @@ chartValues:
   aws-load-balancer-controller:
     clusterName: verity-placeholder
 
+  # cluster-autoscaler requires autoDiscovery.clusterName to render templates.
+  # The wrapper chart consumers MUST override this to their actual cluster name.
+  cluster-autoscaler:
+    autoDiscovery.clusterName: verity-placeholder
+
+  # workload-identity-webhook requires azureTenantID to render templates.
+  # The wrapper chart consumers MUST override this to their actual tenant ID.
+  workload-identity-webhook:
+    azureTenantID: verity-placeholder
+
   # jenkins 5.9.18 otherwise renders an unpatched bats helm-test pod and a
   # default inbound agent image. Keep the wrapper focused on the controller and
   # the existing kiwigrid sidecar image.
@@ -466,6 +476,29 @@ replacements:
     registry: "ghcr.io/verity-org"
     image: "fluent-bit"
     tag: "4.2"
+
+  # Wave 12 charts (autoscaling + storage + cloud identity).
+  # cluster-autoscaler 9.57.0 (app 1.35.0) → v1.35 major.minor track.
+  # Rebuild config declares `versions: "1.35"` which publishes a 1.35 floating
+  # tag tracking the latest 1.35.x package release.
+  "autoscaling/cluster-autoscaler":
+    registry: "ghcr.io/verity-org"
+    image: "cluster-autoscaler"
+    tag: "1.35"
+  # nfs-subdir-external-provisioner 4.0.18 (app 4.0.2) → v4 major track.
+  # Rebuild config declares `versions: "4"` (major-only), so the durable tag
+  # is "4". Pinning to "4.0" would break when Wolfi advances to 4.1.x.
+  "sig-storage/nfs-subdir-external-provisioner":
+    registry: "ghcr.io/verity-org"
+    image: "nfs-subdir-external-provisioner"
+    tag: "4"
+  # workload-identity-webhook 1.5.1 (app v1.5.1) → v1 major track.
+  # Rebuild config declares `versions: "1"` (major-only), so the durable tag
+  # is "1". Image path has 3 segments (azure/workload-identity/webhook).
+  "azure/workload-identity/webhook":
+    registry: "ghcr.io/verity-org"
+    image: "azure-workload-identity-webhook"
+    tag: "1"
 
 # Images the orchestrator should skip entirely, regardless of source
 # (standalone copa-config.yaml entry OR chart-discovered). Reserve this
