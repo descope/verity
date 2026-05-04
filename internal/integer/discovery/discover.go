@@ -88,6 +88,52 @@ func DiscoverFromFiles(opts Options) ([]DiscoveredImage, error) {
 	return results, nil
 }
 
+// ResolveStreamRenderVersion returns the version stem that render.Config
+// must substitute for every "{{version}}" placeholder in the apko
+// template — `packages:` constraints AND any other string field that
+// uses the placeholder. For "1.21" / "22" streams that map directly to
+// a Wolfi APK, the returned stem equals streamVersion. For floating-
+// major streams whose literal name doesn't exist in Wolfi (e.g.
+// "kyverno-1" → only "kyverno-1.17" is published), the returned stem is
+// the highest matching minor ("1.17") so apko's apk solver can satisfy
+// the constraint.
+//
+// The resolution pattern (the package template that drives apk
+// solving) is picked by ImageDef.VersionedPackagePattern: for most
+// images it is upstream.package (kyverno, cilium, crossplane,
+// fluent-bit, prometheus, istio-*, …); for the erlang/haproxy shape
+// where upstream.package is unversioned, it is the first
+// "{{version}}"-templated entry across types[*].packages. When neither
+// has a placeholder, upstream.package is used as a fallback (no alias
+// resolution applies in that case).
+//
+// pkgs == nil OR len(pkgs) == 0 disables aliasing (returns
+// streamVersion unchanged) so that offline builds remain
+// deterministic; the caller is responsible for surfacing
+// unresolvable cases via `verity integer validate`. The
+// empty-but-non-nil case matches `apkindex.ResolveAliasVersion`'s
+// own short-circuit, so callers can pass either shape interchangeably.
+//
+// This helper centralises the alias logic so the discovery path
+// (expandImage) and the local CLI build path (cmd/integer build) stay
+// in lockstep — see the PR #307 follow-up that exposed the gap.
+func ResolveStreamRenderVersion(def *config.ImageDef, pkgs []apkindex.Package, streamVersion string) string {
+	if def == nil {
+		// Both call sites (discovery.expandImage and cmd.runIntegerBuild)
+		// validate def upstream of this helper, but the helper is exported
+		// and could be called by future callers without that guarantee.
+		// Returning streamVersion unchanged is the safe no-op: the caller
+		// then renders the literal as if no alias resolution happened,
+		// which matches the offline / no-APKINDEX behavior.
+		return streamVersion
+	}
+	resolutionPattern := def.VersionedPackagePattern()
+	if resolutionPattern == "" {
+		resolutionPattern = def.Upstream.Package
+	}
+	return apkindex.ResolveAliasVersion(pkgs, resolutionPattern, streamVersion)
+}
+
 // expandImage converts one ImageDef into DiscoveredImage entries by
 // resolving versions and rendering apko configs for each version × type.
 func expandImage(def *config.ImageDef, imagesDir, registry string, pkgs []apkindex.Package, genDir string) ([]DiscoveredImage, error) {
@@ -99,35 +145,17 @@ func expandImage(def *config.ImageDef, imagesDir, registry string, pkgs []apkind
 	basePath := filepath.Join(imagesDir, "_base")
 	latestVersion := FindLatestVersion(versions)
 
+	// resolutionPattern is the same for every version of this image; compute
+	// once and reuse for the per-version full-version lookup below.
+	resolutionPattern := def.VersionedPackagePattern()
+	if resolutionPattern == "" {
+		resolutionPattern = def.Upstream.Package
+	}
+
 	var results []DiscoveredImage
 
 	for _, v := range versions {
-		// Resolve the version stem that render.Config will substitute for
-		// every "{{version}}" placeholder in the type template — apko
-		// `packages:` constraints AND any other string field that uses the
-		// placeholder (env vars, entrypoint, paths, …). For "1.21" / "22"
-		// streams that map directly to a Wolfi APK, renderVersion == v.
-		// For floating-major streams whose literal name doesn't exist in
-		// Wolfi (e.g. "kyverno-1" → only "kyverno-1.17" is published),
-		// renderVersion is the highest matching minor stem ("1.17") so
-		// apko's apk solver can satisfy the constraint.
-		//
-		// resolutionPattern picks the package template that drives apk
-		// solving. Most images put it in upstream.package (kyverno,
-		// cilium, crossplane, fluent-bit, prometheus, istio-*, …); a
-		// few (erlang, haproxy) keep upstream.package unversioned and
-		// template only the type's packages: list — for those,
-		// VersionedPackagePattern walks types[*].packages to find the
-		// actual constraint shape ("erlang-{{version}}") so alias
-		// resolution still fires. This is the fix for the chronic
-		// Integer Build Image failures across kyverno:1, cilium:1,
-		// crossplane:2, erlang:26/27/28, fluentd:1, prometheus:2.55,
-		// haproxy:3.x, …
-		resolutionPattern := def.VersionedPackagePattern()
-		if resolutionPattern == "" {
-			resolutionPattern = def.Upstream.Package
-		}
-		renderVersion := apkindex.ResolveAliasVersion(pkgs, resolutionPattern, v)
+		renderVersion := ResolveStreamRenderVersion(def, pkgs, v)
 
 		// Resolve full version from APKINDEX for semver tag expansion. Use
 		// the aliased stem so semver cascade tags ("1.17", "1.17.5") still
