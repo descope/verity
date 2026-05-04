@@ -483,17 +483,20 @@ replacements:
     registry: "ghcr.io/verity-org"
     image: "cluster-autoscaler"
     tag: "1.35"
-  # nfs-subdir-external-provisioner 4.0.18 (app 4.0.2) → v4.0 major.minor track.
+  # nfs-subdir-external-provisioner 4.0.18 (app 4.0.2) → v4 major track.
+  # Rebuild config declares `versions: "4"` (major-only), so the durable tag
+  # is "4". Pinning to "4.0" would break when Wolfi advances to 4.1.x.
   "sig-storage/nfs-subdir-external-provisioner":
     registry: "ghcr.io/verity-org"
     image: "nfs-subdir-external-provisioner"
-    tag: "4.0"
-  # workload-identity-webhook 1.5.1 (app v1.5.1) → exact tag match. Image path
-  # has 3 segments (azure/workload-identity/webhook).
+    tag: "4"
+  # workload-identity-webhook 1.5.1 (app v1.5.1) → v1 major track.
+  # Rebuild config declares `versions: "1"` (major-only), so the durable tag
+  # is "1". Image path has 3 segments (azure/workload-identity/webhook).
   "azure/workload-identity/webhook":
     registry: "ghcr.io/verity-org"
     image: "azure-workload-identity-webhook"
-    tag: "1.5"
+    tag: "1"
 
 # Images the orchestrator should skip entirely, regardless of source
 # (standalone copa-config.yaml entry OR chart-discovered). Reserve this
