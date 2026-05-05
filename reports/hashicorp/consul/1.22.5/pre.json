@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.69.3"
   },
-  "ReportID": "019de93e-de85-727b-a160-13cdf78667c8",
-  "CreatedAt": "2026-05-02T15:11:44.773164888Z",
+  "ReportID": "019df9ec-eaeb-7a23-8c2f-332298d68c49",
+  "CreatedAt": "2026-05-05T20:55:46.667665993Z",
   "ArtifactID": "sha256:2d64761252be405a6aabc87b27a520f1bb0cf9cb171288657fe220d26f8affd2",
   "ArtifactName": "mirror.gcr.io/hashicorp/consul:1.22.5",
   "ArtifactType": "container_image",
@@ -3830,6 +3830,7 @@
             "Digest": "sha256:fdaa89b1156e5189293290be464aa014f3c57dcd74f1fbdd22aacf096b6511cf",
             "DiffID": "sha256:b1b63ec4fc3ae2187c1a26d9951ddcb2da462c2b7506825bffd9b2fdf29728c7"
           },
+          "SeveritySource": "nvd",
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-33845",
           "DataSource": {
             "ID": "alpine",
@@ -3839,9 +3840,61 @@
           "Fingerprint": "sha256:cf4faaeaf0461c0c53108975d1c33c9aa8730c874a4cfc5b587634bf9472bd6b",
           "Title": "gnutls: GnuTLS: Denial of Service via DTLS zero-length fragment",
           "Description": "A flaw in GnuTLS DTLS handshake parsing allows malformed fragments with zero length and non-zero offset, leading to an integer underflow during reassembly and resulting in an out-of-bounds read. This issue is remotely exploitable and may cause information disclosure or denial of service.",
-          "Severity": "HIGH",
+          "Severity": "CRITICAL",
           "CweIDs": [
             "CWE-191"
+          ],
+          "VendorSeverity": {
+            "nvd": 4,
+            "redhat": 3
+          },
+          "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:H",
+              "V3Score": 9.1
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://access.redhat.com/errata/RHSA-2026:13274",
+            "https://access.redhat.com/security/cve/CVE-2026-33845",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2450624",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-33845",
+            "https://www.cve.org/CVERecord?id=CVE-2026-33845"
+          ],
+          "PublishedDate": "2026-04-30T18:16:28.003Z",
+          "LastModifiedDate": "2026-05-05T03:03:19.247Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-33846",
+          "PkgID": "gnutls@3.8.12-r0",
+          "PkgName": "gnutls",
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/gnutls@3.8.12-r0?arch=x86_64\u0026distro=3.23.3",
+            "UID": "8bf63b1658a0946a"
+          },
+          "InstalledVersion": "3.8.12-r0",
+          "FixedVersion": "3.8.13-r0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:fdaa89b1156e5189293290be464aa014f3c57dcd74f1fbdd22aacf096b6511cf",
+            "DiffID": "sha256:b1b63ec4fc3ae2187c1a26d9951ddcb2da462c2b7506825bffd9b2fdf29728c7"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-33846",
+          "DataSource": {
+            "ID": "alpine",
+            "Name": "Alpine Secdb",
+            "URL": "https://secdb.alpinelinux.org/"
+          },
+          "Fingerprint": "sha256:5dff3c22fb470dce9daa573af13b4bd81b760bffad40bb4897b9b866dda1369c",
+          "Title": "gnutls: GnuTLS: Denial of Service via heap buffer overflow in DTLS handshake fragment reassembly",
+          "Description": "A heap buffer overflow vulnerability exists in the DTLS handshake fragment reassembly logic of GnuTLS. The issue arises in merge_handshake_packet() where incoming handshake fragments are matched and merged based solely on handshake type, without validating that the message_length field remains consistent across all fragments of the same logical message. An attacker can exploit this by sending crafted DTLS fragments with conflicting message_length values, causing the implementation to allocate a buffer based on a smaller initial fragment and subsequently write beyond its bounds using larger, inconsistent fragments. Because the merge operation does not enforce proper bounds checking against the allocated buffer size, this results in an out-of-bounds write on the heap. The vulnerability is remotely exploitable without authentication via the DTLS handshake path and can lead to application crashes or potential memory corruption.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-130"
           ],
           "VendorSeverity": {
             "redhat": 3
@@ -3853,13 +3906,14 @@
             }
           },
           "References": [
-            "https://access.redhat.com/security/cve/CVE-2026-33845",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2450624",
-            "https://nvd.nist.gov/vuln/detail/CVE-2026-33845",
-            "https://www.cve.org/CVERecord?id=CVE-2026-33845"
+            "https://access.redhat.com/errata/RHSA-2026:13274",
+            "https://access.redhat.com/security/cve/CVE-2026-33846",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2450625",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-33846",
+            "https://www.cve.org/CVERecord?id=CVE-2026-33846"
           ],
-          "PublishedDate": "2026-04-30T18:16:28.003Z",
-          "LastModifiedDate": "2026-04-30T19:14:49.917Z"
+          "PublishedDate": "2026-05-04T10:15:59.69Z",
+          "LastModifiedDate": "2026-05-04T15:22:52.85Z"
         },
         {
           "VulnerabilityID": "CVE-2026-3833",
@@ -3899,6 +3953,7 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:13274",
             "https://access.redhat.com/security/cve/CVE-2026-3833",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2445763",
             "https://gitlab.com/gnutls/gnutls/-/issues/1803",
@@ -3906,7 +3961,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-3833"
           ],
           "PublishedDate": "2026-04-30T18:16:30.577Z",
-          "LastModifiedDate": "2026-04-30T19:16:09.663Z"
+          "LastModifiedDate": "2026-05-03T20:16:02.713Z"
         },
         {
           "VulnerabilityID": "CVE-2026-3832",
@@ -3946,6 +4001,7 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:13274",
             "https://access.redhat.com/security/cve/CVE-2026-3832",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2445762",
             "https://gitlab.com/gnutls/gnutls/-/issues/1801",
@@ -3953,31 +4009,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-3832"
           ],
           "PublishedDate": "2026-04-30T18:16:30.433Z",
-          "LastModifiedDate": "2026-04-30T19:16:09.533Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-33846",
-          "PkgID": "gnutls@3.8.12-r0",
-          "PkgName": "gnutls",
-          "PkgIdentifier": {
-            "PURL": "pkg:apk/alpine/gnutls@3.8.12-r0?arch=x86_64\u0026distro=3.23.3",
-            "UID": "8bf63b1658a0946a"
-          },
-          "InstalledVersion": "3.8.12-r0",
-          "FixedVersion": "3.8.13-r0",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:fdaa89b1156e5189293290be464aa014f3c57dcd74f1fbdd22aacf096b6511cf",
-            "DiffID": "sha256:b1b63ec4fc3ae2187c1a26d9951ddcb2da462c2b7506825bffd9b2fdf29728c7"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-33846",
-          "DataSource": {
-            "ID": "alpine",
-            "Name": "Alpine Secdb",
-            "URL": "https://secdb.alpinelinux.org/"
-          },
-          "Fingerprint": "sha256:5dff3c22fb470dce9daa573af13b4bd81b760bffad40bb4897b9b866dda1369c",
-          "Severity": "UNKNOWN"
+          "LastModifiedDate": "2026-05-03T20:16:02.537Z"
         },
         {
           "VulnerabilityID": "CVE-2026-42009",
@@ -4249,6 +4281,7 @@
             "http://www.openwall.com/lists/oss-security/2026/04/09/6",
             "https://access.redhat.com/errata/RHSA-2026:12423",
             "https://access.redhat.com/errata/RHSA-2026:12441",
+            "https://access.redhat.com/errata/RHSA-2026:13285",
             "https://access.redhat.com/errata/RHSA-2026:7473",
             "https://access.redhat.com/security/cve/CVE-2026-4878",
             "https://bugzilla.redhat.com/2451615",
@@ -4264,7 +4297,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-4878"
           ],
           "PublishedDate": "2026-04-09T16:16:31.987Z",
-          "LastModifiedDate": "2026-04-30T20:16:24.837Z"
+          "LastModifiedDate": "2026-05-04T02:15:58.233Z"
         },
         {
           "VulnerabilityID": "CVE-2026-4878",
@@ -4320,6 +4353,7 @@
             "http://www.openwall.com/lists/oss-security/2026/04/09/6",
             "https://access.redhat.com/errata/RHSA-2026:12423",
             "https://access.redhat.com/errata/RHSA-2026:12441",
+            "https://access.redhat.com/errata/RHSA-2026:13285",
             "https://access.redhat.com/errata/RHSA-2026:7473",
             "https://access.redhat.com/security/cve/CVE-2026-4878",
             "https://bugzilla.redhat.com/2451615",
@@ -4335,7 +4369,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-4878"
           ],
           "PublishedDate": "2026-04-09T16:16:31.987Z",
-          "LastModifiedDate": "2026-04-30T20:16:24.837Z"
+          "LastModifiedDate": "2026-05-04T02:15:58.233Z"
         },
         {
           "VulnerabilityID": "CVE-2026-4878",
@@ -4391,6 +4425,7 @@
             "http://www.openwall.com/lists/oss-security/2026/04/09/6",
             "https://access.redhat.com/errata/RHSA-2026:12423",
             "https://access.redhat.com/errata/RHSA-2026:12441",
+            "https://access.redhat.com/errata/RHSA-2026:13285",
             "https://access.redhat.com/errata/RHSA-2026:7473",
             "https://access.redhat.com/security/cve/CVE-2026-4878",
             "https://bugzilla.redhat.com/2451615",
@@ -4406,7 +4441,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-4878"
           ],
           "PublishedDate": "2026-04-09T16:16:31.987Z",
-          "LastModifiedDate": "2026-04-30T20:16:24.837Z"
+          "LastModifiedDate": "2026-05-04T02:15:58.233Z"
         },
         {
           "VulnerabilityID": "CVE-2026-4878",
@@ -4462,6 +4497,7 @@
             "http://www.openwall.com/lists/oss-security/2026/04/09/6",
             "https://access.redhat.com/errata/RHSA-2026:12423",
             "https://access.redhat.com/errata/RHSA-2026:12441",
+            "https://access.redhat.com/errata/RHSA-2026:13285",
             "https://access.redhat.com/errata/RHSA-2026:7473",
             "https://access.redhat.com/security/cve/CVE-2026-4878",
             "https://bugzilla.redhat.com/2451615",
@@ -4477,7 +4513,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-4878"
           ],
           "PublishedDate": "2026-04-09T16:16:31.987Z",
-          "LastModifiedDate": "2026-04-30T20:16:24.837Z"
+          "LastModifiedDate": "2026-05-04T02:15:58.233Z"
         },
         {
           "VulnerabilityID": "CVE-2026-4878",
@@ -4533,6 +4569,7 @@
             "http://www.openwall.com/lists/oss-security/2026/04/09/6",
             "https://access.redhat.com/errata/RHSA-2026:12423",
             "https://access.redhat.com/errata/RHSA-2026:12441",
+            "https://access.redhat.com/errata/RHSA-2026:13285",
             "https://access.redhat.com/errata/RHSA-2026:7473",
             "https://access.redhat.com/security/cve/CVE-2026-4878",
             "https://bugzilla.redhat.com/2451615",
@@ -4548,7 +4585,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-4878"
           ],
           "PublishedDate": "2026-04-09T16:16:31.987Z",
-          "LastModifiedDate": "2026-04-30T20:16:24.837Z"
+          "LastModifiedDate": "2026-05-04T02:15:58.233Z"
         },
         {
           "VulnerabilityID": "CVE-2026-31789",
@@ -5715,7 +5752,7 @@
             "https://bugzilla.redhat.com/show_bug.cgi?id=2448754",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-27135",
             "https://errata.almalinux.org/9/ALSA-2026-7896.html",
-            "https://errata.rockylinux.org/RLSA-2026:7668",
+            "https://errata.rockylinux.org/RLSA-2026:7666",
             "https://github.com/nghttp2/nghttp2/commit/5c7df8fa815ac1004d9ecb9d1f7595c4d37f46e1",
             "https://github.com/nghttp2/nghttp2/security/advisories/GHSA-6933-cjhr-5qg6",
             "https://linux.oracle.com/cve/CVE-2026-27135.html",
@@ -10265,7 +10302,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-34986"
           ],
           "PublishedDate": "2026-04-06T17:17:11.87Z",
-          "LastModifiedDate": "2026-04-07T13:20:11.643Z"
+          "LastModifiedDate": "2026-05-04T15:20:44.337Z"
         },
         {
           "VulnerabilityID": "CVE-2026-34986",
@@ -10334,7 +10371,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-34986"
           ],
           "PublishedDate": "2026-04-06T17:17:11.87Z",
-          "LastModifiedDate": "2026-04-07T13:20:11.643Z"
+          "LastModifiedDate": "2026-05-04T15:20:44.337Z"
         },
         {
           "VulnerabilityID": "CVE-2026-33186",
@@ -10447,10 +10484,12 @@
             "https://access.redhat.com/errata/RHSA-2026:9044",
             "https://access.redhat.com/security/cve/CVE-2026-25679",
             "https://bugzilla.redhat.com/2445356",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2445345",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2445356",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-25679",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-27137",
             "https://errata.almalinux.org/9/ALSA-2026-9044.html",
-            "https://errata.rockylinux.org/RLSA-2026:8841",
+            "https://errata.rockylinux.org/RLSA-2026:8842",
             "https://go.dev/cl/752180",
             "https://go.dev/issue/77578",
             "https://groups.google.com/g/golang-announce/c/EdhZqrQ98hk",
