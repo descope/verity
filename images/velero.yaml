@@ -8,6 +8,12 @@ types:
     base: wolfi-base
     packages: ["velero"]
     entrypoint: /usr/bin/velero
+    paths:
+      # vmware-tanzu/velero helm chart's upgrade-crds Job runs `/velero install`
+      # — chart hardcodes /velero in the Job command. Verity's wolfi rebuild
+      # ships at /usr/bin/velero (FHS). Symlink keeps both layouts working.
+      # See verity-org/verity#318 (A.2 FHS-path mismatch sub-cluster).
+      - {path: /velero, type: symlink, source: /usr/bin/velero, uid: 0, gid: 0}
 
 versions:
   "1": {}

@@ -41,6 +41,7 @@ type apkoEntrypoint struct {
 type apkoPath struct {
 	Path        string `yaml:"path"`
 	Type        string `yaml:"type,omitempty"`
+	Source      string `yaml:"source,omitempty"`
 	UID         int    `yaml:"uid"`
 	GID         int    `yaml:"gid"`
 	Permissions uint32 `yaml:"permissions,omitempty"`
@@ -102,6 +103,7 @@ func Config(tmpl *config.TypeTemplate, version, basePath string) ([]byte, error)
 			cfg.Paths[i] = apkoPath{
 				Path:        sub(p.Path, version),
 				Type:        ptype,
+				Source:      sub(p.Source, version),
 				UID:         p.UID,
 				GID:         p.GID,
 				Permissions: perms,

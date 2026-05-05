@@ -129,9 +129,21 @@ type MelangeSpec struct {
 }
 
 // PathDef is one path entry in an apko config.
+//
+// For type: "directory" (the default), set Path/UID/GID/Permissions.
+// For type: "symlink", set Path (the link location) and Source (the target
+// the link points to). UID/GID/Permissions are accepted by apko for
+// symlinks but the kernel ignores them at use time.
+//
+// Symlink entries are how chart-target rebuilds can satisfy chart Deployment
+// templates that hardcode binaries at non-FHS paths (e.g. chart expects
+// /usr/local/bin/etcd; verity's wolfi rebuild ships /usr/bin/etcd) without
+// duplicating the binary or modifying the upstream wolfi melange recipe.
+// See verity-org/verity#318 (A.2 FHS-path mismatch sub-cluster).
 type PathDef struct {
 	Path        string `yaml:"path"`
-	Type        string `yaml:"type,omitempty"` // defaults to "directory"
+	Type        string `yaml:"type,omitempty"`   // defaults to "directory"; supports "symlink"
+	Source      string `yaml:"source,omitempty"` // for type: symlink — the target path the link points to
 	UID         int    `yaml:"uid"`
 	GID         int    `yaml:"gid"`
 	Permissions string `yaml:"permissions,omitempty"` // e.g. "0o755"
