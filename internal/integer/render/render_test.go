@@ -250,7 +250,7 @@ func TestConfig_PathSymlink_RequiresSource(t *testing.T) {
 	}
 	_, err := render.Config(&tmpl, "latest", "_base")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "type=symlink requires source")
+	assert.ErrorIs(t, err, render.ErrSymlinkRequiresSource)
 	assert.Contains(t, err.Error(), "/usr/local/bin/etcd")
 }
 
@@ -268,6 +268,7 @@ func TestConfig_PathSourceOnNonSymlink_Errors(t *testing.T) {
 	}
 	_, err := render.Config(&tmpl, "latest", "_base")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "source is only valid for type=symlink")
+	assert.ErrorIs(t, err, render.ErrSourceOnNonSymlink)
 	assert.Contains(t, err.Error(), "/usr/local/bin/etcd")
+	assert.Contains(t, err.Error(), `type="directory"`) // ensure the actual type is reported
 }

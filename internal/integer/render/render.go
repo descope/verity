@@ -2,6 +2,7 @@
 package render
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strconv"
@@ -13,6 +14,19 @@ import (
 )
 
 const placeholder = "{{version}}"
+
+// Sentinel errors returned by Config when path entries violate the
+// type/source invariants enforced for apko compatibility.
+var (
+	// ErrSymlinkRequiresSource is returned when a path entry has
+	// type=symlink but no Source. apko rejects symlink entries without
+	// a target at melange/apko build time; we fail fast at render.
+	ErrSymlinkRequiresSource = errors.New("type=symlink requires source")
+	// ErrSourceOnNonSymlink is returned when a path entry sets Source
+	// without type=symlink. apko rejects source on directory (and other)
+	// types; we fail fast at render.
+	ErrSourceOnNonSymlink = errors.New("source is only valid for type=symlink")
+)
 
 // apkoConfig is the YAML structure written for apko. Only fields used by
 // integer are represented here; apko ignores unknown fields.
@@ -101,10 +115,10 @@ func Config(tmpl *config.TypeTemplate, version, basePath string) ([]byte, error)
 			// config that fails opaquely at build time. apko rejects source
 			// on directory entries and rejects symlink entries with no source.
 			if ptype == "symlink" && p.Source == "" {
-				return nil, fmt.Errorf("path %q: type=symlink requires source", p.Path)
+				return nil, fmt.Errorf("path %q: %w", p.Path, ErrSymlinkRequiresSource)
 			}
 			if ptype != "symlink" && p.Source != "" {
-				return nil, fmt.Errorf("path %q: source is only valid for type=symlink (got type=%q)", p.Path, ptype)
+				return nil, fmt.Errorf("path %q (got type=%q): %w", p.Path, ptype, ErrSourceOnNonSymlink)
 			}
 			perms, err := parsePermissions(p.Permissions)
 			if err != nil {
