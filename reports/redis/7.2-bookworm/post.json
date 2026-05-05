@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.69.3"
   },
-  "ReportID": "019df431-ab0f-7e2b-9fb1-1b1ce35d381b",
-  "CreatedAt": "2026-05-04T18:13:09.007931439Z",
+  "ReportID": "019df6a9-dcd9-7d3e-968e-b522aed35b7e",
+  "CreatedAt": "2026-05-05T05:43:40.505869021Z",
   "ArtifactID": "sha256:6f3babe60e6b9f79b23f47e96a3f5afc2ca84c5b3099a62591870f9e01cf3cb0",
   "ArtifactName": "ghcr.io/verity-org/cache:redis-7.2-bookworm",
   "ArtifactType": "container_image",
@@ -10166,7 +10166,7 @@
             "https://sourceware.org/bugzilla/show_bug.cgi?id=34069"
           ],
           "PublishedDate": "2026-04-28T19:37:47.523Z",
-          "LastModifiedDate": "2026-04-28T22:16:50.07Z"
+          "LastModifiedDate": "2026-05-04T17:57:24.007Z"
         },
         {
           "VulnerabilityID": "CVE-2026-0861",
@@ -11093,7 +11093,7 @@
             "https://sourceware.org/bugzilla/show_bug.cgi?id=34069"
           ],
           "PublishedDate": "2026-04-28T19:37:47.523Z",
-          "LastModifiedDate": "2026-04-28T22:16:50.07Z"
+          "LastModifiedDate": "2026-05-04T17:57:24.007Z"
         },
         {
           "VulnerabilityID": "CVE-2026-4878",
@@ -11445,6 +11445,52 @@
           "LastModifiedDate": "2026-05-03T20:16:02.377Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-33846",
+          "PkgID": "libgnutls30@3.7.9-2+deb12u6",
+          "PkgName": "libgnutls30",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libgnutls30@3.7.9-2%2Bdeb12u6?arch=amd64\u0026distro=debian-12.13",
+            "UID": "4d4bf1b68cd93030"
+          },
+          "InstalledVersion": "3.7.9-2+deb12u6",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:ff86ea2e5edce334d19a34fbc65d1a511aa1fc823dba1110422f991aa56b44d4",
+            "DiffID": "sha256:0da811fd3ed46c38cea69079fa395a3d715dbdbdd5c8177107c450bf6332bbfa"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-33846",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:10b5d6d811c9b6451ae7657a7de557819f79029490a8f01b629e7961b79f5205",
+          "Title": "gnutls: GnuTLS: Denial of Service via heap buffer overflow in DTLS handshake fragment reassembly",
+          "Description": "A heap buffer overflow vulnerability exists in the DTLS handshake fragment reassembly logic of GnuTLS. The issue arises in merge_handshake_packet() where incoming handshake fragments are matched and merged based solely on handshake type, without validating that the message_length field remains consistent across all fragments of the same logical message. An attacker can exploit this by sending crafted DTLS fragments with conflicting message_length values, causing the implementation to allocate a buffer based on a smaller initial fragment and subsequently write beyond its bounds using larger, inconsistent fragments. Because the merge operation does not enforce proper bounds checking against the allocated buffer size, this results in an out-of-bounds write on the heap. The vulnerability is remotely exploitable without authentication via the DTLS handshake path and can lead to application crashes or potential memory corruption.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-130"
+          ],
+          "VendorSeverity": {
+            "redhat": 3
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://access.redhat.com/errata/RHSA-2026:13274",
+            "https://access.redhat.com/security/cve/CVE-2026-33846",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2450625",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-33846",
+            "https://www.cve.org/CVERecord?id=CVE-2026-33846"
+          ],
+          "PublishedDate": "2026-05-04T10:15:59.69Z",
+          "LastModifiedDate": "2026-05-04T15:22:52.85Z"
+        },
+        {
           "VulnerabilityID": "CVE-2026-3833",
           "PkgID": "libgnutls30@3.7.9-2+deb12u6",
           "PkgName": "libgnutls30",
@@ -11684,39 +11730,6 @@
           ],
           "PublishedDate": "2026-04-30T18:16:30.433Z",
           "LastModifiedDate": "2026-05-03T20:16:02.537Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-33846",
-          "PkgID": "libgnutls30@3.7.9-2+deb12u6",
-          "PkgName": "libgnutls30",
-          "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/libgnutls30@3.7.9-2%2Bdeb12u6?arch=amd64\u0026distro=debian-12.13",
-            "UID": "4d4bf1b68cd93030"
-          },
-          "InstalledVersion": "3.7.9-2+deb12u6",
-          "Status": "affected",
-          "Layer": {
-            "Digest": "sha256:ff86ea2e5edce334d19a34fbc65d1a511aa1fc823dba1110422f991aa56b44d4",
-            "DiffID": "sha256:0da811fd3ed46c38cea69079fa395a3d715dbdbdd5c8177107c450bf6332bbfa"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-33846",
-          "DataSource": {
-            "ID": "debian",
-            "Name": "Debian Security Tracker",
-            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
-          },
-          "Fingerprint": "sha256:10b5d6d811c9b6451ae7657a7de557819f79029490a8f01b629e7961b79f5205",
-          "Description": "A heap buffer overflow vulnerability exists in the DTLS handshake fragment reassembly logic of GnuTLS. The issue arises in merge_handshake_packet() where incoming handshake fragments are matched and merged based solely on handshake type, without validating that the message_length field remains consistent across all fragments of the same logical message. An attacker can exploit this by sending crafted DTLS fragments with conflicting message_length values, causing the implementation to allocate a buffer based on a smaller initial fragment and subsequently write beyond its bounds using larger, inconsistent fragments. Because the merge operation does not enforce proper bounds checking against the allocated buffer size, this results in an out-of-bounds write on the heap. The vulnerability is remotely exploitable without authentication via the DTLS handshake path and can lead to application crashes or potential memory corruption.",
-          "Severity": "UNKNOWN",
-          "CweIDs": [
-            "CWE-130"
-          ],
-          "References": [
-            "https://access.redhat.com/security/cve/CVE-2026-33846",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2450625"
-          ],
-          "PublishedDate": "2026-05-04T10:15:59.69Z",
-          "LastModifiedDate": "2026-05-04T10:15:59.69Z"
         },
         {
           "VulnerabilityID": "CVE-2026-42009",
