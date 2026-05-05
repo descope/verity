@@ -104,40 +104,54 @@ func Config(tmpl *config.TypeTemplate, version, basePath string) ([]byte, error)
 
 	// Paths.
 	if len(tmpl.Paths) > 0 {
-		cfg.Paths = make([]apkoPath, len(tmpl.Paths))
-		for i, p := range tmpl.Paths {
-			ptype := p.Type
-			if ptype == "" {
-				ptype = "directory"
-			}
-			// Enforce source/type invariants at render time so misconfigured
-			// YAML fails fast with a clear error instead of producing apko
-			// config that fails opaquely at build time. apko rejects source
-			// on directory entries and rejects symlink entries with no source.
-			if ptype == "symlink" && p.Source == "" {
-				return nil, fmt.Errorf("path %q: %w", p.Path, ErrSymlinkRequiresSource)
-			}
-			if ptype != "symlink" && p.Source != "" {
-				return nil, fmt.Errorf("path %q (got type=%q): %w", p.Path, ptype, ErrSourceOnNonSymlink)
-			}
-			perms, err := parsePermissions(p.Permissions)
-			if err != nil {
-				return nil, fmt.Errorf("path %q: %w", p.Path, err)
-			}
-			cfg.Paths[i] = apkoPath{
-				Path:        sub(p.Path, version),
-				Type:        ptype,
-				Source:      sub(p.Source, version),
-				UID:         p.UID,
-				GID:         p.GID,
-				Permissions: perms,
-			}
+		paths, err := convertPaths(tmpl.Paths, version)
+		if err != nil {
+			return nil, err
 		}
+		cfg.Paths = paths
 	}
 
 	out, err := yaml.Marshal(&cfg)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling apko config: %w", err)
+	}
+	return out, nil
+}
+
+// convertPaths transforms a slice of config.PathDef entries into the apko
+// representation, applying {{version}} substitution and enforcing the
+// source/type invariants apko itself enforces at build time:
+//
+//   - type=symlink requires Source (apko rejects symlinks without a target)
+//   - Source set on any non-symlink type is invalid (apko rejects it)
+//
+// Failing fast at render keeps misconfigured YAML errors close to their YAML
+// source instead of surfacing as opaque apko/melange build failures.
+func convertPaths(in []config.PathDef, version string) ([]apkoPath, error) {
+	out := make([]apkoPath, len(in))
+	for i, p := range in {
+		ptype := p.Type
+		if ptype == "" {
+			ptype = "directory"
+		}
+		if ptype == "symlink" && p.Source == "" {
+			return nil, fmt.Errorf("path %q: %w", p.Path, ErrSymlinkRequiresSource)
+		}
+		if ptype != "symlink" && p.Source != "" {
+			return nil, fmt.Errorf("path %q (got type=%q): %w", p.Path, ptype, ErrSourceOnNonSymlink)
+		}
+		perms, err := parsePermissions(p.Permissions)
+		if err != nil {
+			return nil, fmt.Errorf("path %q: %w", p.Path, err)
+		}
+		out[i] = apkoPath{
+			Path:        sub(p.Path, version),
+			Type:        ptype,
+			Source:      sub(p.Source, version),
+			UID:         p.UID,
+			GID:         p.GID,
+			Permissions: perms,
+		}
 	}
 	return out, nil
 }
