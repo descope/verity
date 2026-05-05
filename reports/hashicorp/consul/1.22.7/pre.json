@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.69.3"
   },
-  "ReportID": "019dce37-d369-7427-b60c-1767a58939d6",
-  "CreatedAt": "2026-04-27T09:14:18.345273391Z",
+  "ReportID": "019df9ee-9bd7-7447-b0ea-2111ccdf985b",
+  "CreatedAt": "2026-05-05T20:57:37.495281826Z",
   "ArtifactID": "sha256:bdd9b62dfb71515609b8b869c349815a45d8f619a080148bad9b758040f34a39",
   "ArtifactName": "mirror.gcr.io/hashicorp/consul:1.22.7",
   "ArtifactType": "container_image",
@@ -3809,6 +3809,486 @@
             "usr/lib/libzstd.so.1.5.7"
           ],
           "AnalyzedBy": "apk"
+        }
+      ],
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2026-33845",
+          "PkgID": "gnutls@3.8.12-r0",
+          "PkgName": "gnutls",
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/gnutls@3.8.12-r0?arch=x86_64\u0026distro=3.23.4",
+            "UID": "89d8d289d434a8c"
+          },
+          "InstalledVersion": "3.8.12-r0",
+          "FixedVersion": "3.8.13-r0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:79f1a979ebf110deb74e5d592fa16e63149e074f7fd81f3913642e23b04e61bf",
+            "DiffID": "sha256:00ee820ba5a1aa02414780596bdcef600b5b2d57e1ef6129776e34a5344b451a"
+          },
+          "SeveritySource": "nvd",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-33845",
+          "DataSource": {
+            "ID": "alpine",
+            "Name": "Alpine Secdb",
+            "URL": "https://secdb.alpinelinux.org/"
+          },
+          "Fingerprint": "sha256:5a56ab7a86d749ec0ec2df2f177a57e6ec6f6ea8f9640c51c2598d34d1092d37",
+          "Title": "gnutls: GnuTLS: Denial of Service via DTLS zero-length fragment",
+          "Description": "A flaw in GnuTLS DTLS handshake parsing allows malformed fragments with zero length and non-zero offset, leading to an integer underflow during reassembly and resulting in an out-of-bounds read. This issue is remotely exploitable and may cause information disclosure or denial of service.",
+          "Severity": "CRITICAL",
+          "CweIDs": [
+            "CWE-191"
+          ],
+          "VendorSeverity": {
+            "nvd": 4,
+            "redhat": 3
+          },
+          "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:H",
+              "V3Score": 9.1
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://access.redhat.com/errata/RHSA-2026:13274",
+            "https://access.redhat.com/security/cve/CVE-2026-33845",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2450624",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-33845",
+            "https://www.cve.org/CVERecord?id=CVE-2026-33845"
+          ],
+          "PublishedDate": "2026-04-30T18:16:28.003Z",
+          "LastModifiedDate": "2026-05-05T03:03:19.247Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-33846",
+          "PkgID": "gnutls@3.8.12-r0",
+          "PkgName": "gnutls",
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/gnutls@3.8.12-r0?arch=x86_64\u0026distro=3.23.4",
+            "UID": "89d8d289d434a8c"
+          },
+          "InstalledVersion": "3.8.12-r0",
+          "FixedVersion": "3.8.13-r0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:79f1a979ebf110deb74e5d592fa16e63149e074f7fd81f3913642e23b04e61bf",
+            "DiffID": "sha256:00ee820ba5a1aa02414780596bdcef600b5b2d57e1ef6129776e34a5344b451a"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-33846",
+          "DataSource": {
+            "ID": "alpine",
+            "Name": "Alpine Secdb",
+            "URL": "https://secdb.alpinelinux.org/"
+          },
+          "Fingerprint": "sha256:38a0d2245cc41e296887e1007565e055ac15322cb5d09a6d47d8b2396c89ca8e",
+          "Title": "gnutls: GnuTLS: Denial of Service via heap buffer overflow in DTLS handshake fragment reassembly",
+          "Description": "A heap buffer overflow vulnerability exists in the DTLS handshake fragment reassembly logic of GnuTLS. The issue arises in merge_handshake_packet() where incoming handshake fragments are matched and merged based solely on handshake type, without validating that the message_length field remains consistent across all fragments of the same logical message. An attacker can exploit this by sending crafted DTLS fragments with conflicting message_length values, causing the implementation to allocate a buffer based on a smaller initial fragment and subsequently write beyond its bounds using larger, inconsistent fragments. Because the merge operation does not enforce proper bounds checking against the allocated buffer size, this results in an out-of-bounds write on the heap. The vulnerability is remotely exploitable without authentication via the DTLS handshake path and can lead to application crashes or potential memory corruption.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-130"
+          ],
+          "VendorSeverity": {
+            "redhat": 3
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://access.redhat.com/errata/RHSA-2026:13274",
+            "https://access.redhat.com/security/cve/CVE-2026-33846",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2450625",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-33846",
+            "https://www.cve.org/CVERecord?id=CVE-2026-33846"
+          ],
+          "PublishedDate": "2026-05-04T10:15:59.69Z",
+          "LastModifiedDate": "2026-05-04T15:22:52.85Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-3833",
+          "PkgID": "gnutls@3.8.12-r0",
+          "PkgName": "gnutls",
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/gnutls@3.8.12-r0?arch=x86_64\u0026distro=3.23.4",
+            "UID": "89d8d289d434a8c"
+          },
+          "InstalledVersion": "3.8.12-r0",
+          "FixedVersion": "3.8.13-r0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:79f1a979ebf110deb74e5d592fa16e63149e074f7fd81f3913642e23b04e61bf",
+            "DiffID": "sha256:00ee820ba5a1aa02414780596bdcef600b5b2d57e1ef6129776e34a5344b451a"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-3833",
+          "DataSource": {
+            "ID": "alpine",
+            "Name": "Alpine Secdb",
+            "URL": "https://secdb.alpinelinux.org/"
+          },
+          "Fingerprint": "sha256:58b1b8a7333e92203ccf2d6517bad9fd841b5455096364356ebc79e46837fb69",
+          "Title": "gnutls: GnuTLS: Policy bypass due to case-sensitive nameConstraints comparison",
+          "Description": "A flaw was found in gnutls. This vulnerability occurs because gnutls performs case-sensitive comparisons of `nameConstraints` labels, specifically for `dNSName` (DNS) or `rfc822Name` (email) constraints within `excludedSubtrees` or `permittedSubtrees`. A remote attacker can exploit this by crafting a leaf certificate with casing differences in the Subject Alternative Name (SAN), leading to a policy bypass where a certificate that should be rejected is instead accepted. This could result in unauthorized access or information disclosure.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-178"
+          ],
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+              "V3Score": 6.5
+            }
+          },
+          "References": [
+            "https://access.redhat.com/errata/RHSA-2026:13274",
+            "https://access.redhat.com/security/cve/CVE-2026-3833",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2445763",
+            "https://gitlab.com/gnutls/gnutls/-/issues/1803",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-3833",
+            "https://www.cve.org/CVERecord?id=CVE-2026-3833"
+          ],
+          "PublishedDate": "2026-04-30T18:16:30.577Z",
+          "LastModifiedDate": "2026-05-03T20:16:02.713Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-3832",
+          "PkgID": "gnutls@3.8.12-r0",
+          "PkgName": "gnutls",
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/gnutls@3.8.12-r0?arch=x86_64\u0026distro=3.23.4",
+            "UID": "89d8d289d434a8c"
+          },
+          "InstalledVersion": "3.8.12-r0",
+          "FixedVersion": "3.8.13-r0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:79f1a979ebf110deb74e5d592fa16e63149e074f7fd81f3913642e23b04e61bf",
+            "DiffID": "sha256:00ee820ba5a1aa02414780596bdcef600b5b2d57e1ef6129776e34a5344b451a"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-3832",
+          "DataSource": {
+            "ID": "alpine",
+            "Name": "Alpine Secdb",
+            "URL": "https://secdb.alpinelinux.org/"
+          },
+          "Fingerprint": "sha256:bc2f52800eb42a23fb386879561ce5ae5fd634a8718dd7820930d2c962cb1978",
+          "Title": "gnutls: gnutls: Security bypass allows acceptance of revoked server certificates via crafted OCSP response",
+          "Description": "A flaw was found in gnutls. A remote attacker could exploit this vulnerability by presenting a specially crafted Online Certificate Status Protocol (OCSP) response during a TLS handshake. Due to a logic error in how gnutls processes multi-record OCSP responses, a client with OCSP verification enabled may incorrectly accept a revoked server certificate, potentially leading to a compromise of trust.",
+          "Severity": "LOW",
+          "CweIDs": [
+            "CWE-179"
+          ],
+          "VendorSeverity": {
+            "redhat": 1
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N",
+              "V3Score": 3.7
+            }
+          },
+          "References": [
+            "https://access.redhat.com/errata/RHSA-2026:13274",
+            "https://access.redhat.com/security/cve/CVE-2026-3832",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2445762",
+            "https://gitlab.com/gnutls/gnutls/-/issues/1801",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-3832",
+            "https://www.cve.org/CVERecord?id=CVE-2026-3832"
+          ],
+          "PublishedDate": "2026-04-30T18:16:30.433Z",
+          "LastModifiedDate": "2026-05-03T20:16:02.537Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-42009",
+          "PkgID": "gnutls@3.8.12-r0",
+          "PkgName": "gnutls",
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/gnutls@3.8.12-r0?arch=x86_64\u0026distro=3.23.4",
+            "UID": "89d8d289d434a8c"
+          },
+          "InstalledVersion": "3.8.12-r0",
+          "FixedVersion": "3.8.13-r0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:79f1a979ebf110deb74e5d592fa16e63149e074f7fd81f3913642e23b04e61bf",
+            "DiffID": "sha256:00ee820ba5a1aa02414780596bdcef600b5b2d57e1ef6129776e34a5344b451a"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-42009",
+          "DataSource": {
+            "ID": "alpine",
+            "Name": "Alpine Secdb",
+            "URL": "https://secdb.alpinelinux.org/"
+          },
+          "Fingerprint": "sha256:8925cb8fa1bdc49098746104b509efaf461c9ffd8580031d6fa96fb0bb1e9ebe",
+          "Severity": "UNKNOWN"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-42010",
+          "PkgID": "gnutls@3.8.12-r0",
+          "PkgName": "gnutls",
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/gnutls@3.8.12-r0?arch=x86_64\u0026distro=3.23.4",
+            "UID": "89d8d289d434a8c"
+          },
+          "InstalledVersion": "3.8.12-r0",
+          "FixedVersion": "3.8.13-r0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:79f1a979ebf110deb74e5d592fa16e63149e074f7fd81f3913642e23b04e61bf",
+            "DiffID": "sha256:00ee820ba5a1aa02414780596bdcef600b5b2d57e1ef6129776e34a5344b451a"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-42010",
+          "DataSource": {
+            "ID": "alpine",
+            "Name": "Alpine Secdb",
+            "URL": "https://secdb.alpinelinux.org/"
+          },
+          "Fingerprint": "sha256:3f543df17e5d888d2484744d3e76f8f11f08b66148b7039b2cc8068d9b433e34",
+          "Severity": "UNKNOWN"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-42011",
+          "PkgID": "gnutls@3.8.12-r0",
+          "PkgName": "gnutls",
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/gnutls@3.8.12-r0?arch=x86_64\u0026distro=3.23.4",
+            "UID": "89d8d289d434a8c"
+          },
+          "InstalledVersion": "3.8.12-r0",
+          "FixedVersion": "3.8.13-r0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:79f1a979ebf110deb74e5d592fa16e63149e074f7fd81f3913642e23b04e61bf",
+            "DiffID": "sha256:00ee820ba5a1aa02414780596bdcef600b5b2d57e1ef6129776e34a5344b451a"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-42011",
+          "DataSource": {
+            "ID": "alpine",
+            "Name": "Alpine Secdb",
+            "URL": "https://secdb.alpinelinux.org/"
+          },
+          "Fingerprint": "sha256:06e9dd19fbbb6ffedb9b9d24c7e2a28fff86ddecbcc6047b7233c44505f32818",
+          "Severity": "UNKNOWN"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-42012",
+          "PkgID": "gnutls@3.8.12-r0",
+          "PkgName": "gnutls",
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/gnutls@3.8.12-r0?arch=x86_64\u0026distro=3.23.4",
+            "UID": "89d8d289d434a8c"
+          },
+          "InstalledVersion": "3.8.12-r0",
+          "FixedVersion": "3.8.13-r0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:79f1a979ebf110deb74e5d592fa16e63149e074f7fd81f3913642e23b04e61bf",
+            "DiffID": "sha256:00ee820ba5a1aa02414780596bdcef600b5b2d57e1ef6129776e34a5344b451a"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-42012",
+          "DataSource": {
+            "ID": "alpine",
+            "Name": "Alpine Secdb",
+            "URL": "https://secdb.alpinelinux.org/"
+          },
+          "Fingerprint": "sha256:d6797a8d0534034a63568d4e223a09ce3dd04fe3cbed4b5141069e347e50d0ce",
+          "Severity": "UNKNOWN"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-42013",
+          "PkgID": "gnutls@3.8.12-r0",
+          "PkgName": "gnutls",
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/gnutls@3.8.12-r0?arch=x86_64\u0026distro=3.23.4",
+            "UID": "89d8d289d434a8c"
+          },
+          "InstalledVersion": "3.8.12-r0",
+          "FixedVersion": "3.8.13-r0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:79f1a979ebf110deb74e5d592fa16e63149e074f7fd81f3913642e23b04e61bf",
+            "DiffID": "sha256:00ee820ba5a1aa02414780596bdcef600b5b2d57e1ef6129776e34a5344b451a"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-42013",
+          "DataSource": {
+            "ID": "alpine",
+            "Name": "Alpine Secdb",
+            "URL": "https://secdb.alpinelinux.org/"
+          },
+          "Fingerprint": "sha256:d418fc67edbac5c007744cbd63867a21f2cac67c0b59674e1cb194a2d66af40b",
+          "Severity": "UNKNOWN"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-42014",
+          "PkgID": "gnutls@3.8.12-r0",
+          "PkgName": "gnutls",
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/gnutls@3.8.12-r0?arch=x86_64\u0026distro=3.23.4",
+            "UID": "89d8d289d434a8c"
+          },
+          "InstalledVersion": "3.8.12-r0",
+          "FixedVersion": "3.8.13-r0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:79f1a979ebf110deb74e5d592fa16e63149e074f7fd81f3913642e23b04e61bf",
+            "DiffID": "sha256:00ee820ba5a1aa02414780596bdcef600b5b2d57e1ef6129776e34a5344b451a"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-42014",
+          "DataSource": {
+            "ID": "alpine",
+            "Name": "Alpine Secdb",
+            "URL": "https://secdb.alpinelinux.org/"
+          },
+          "Fingerprint": "sha256:79ae5fb6e186c56ac14bf0c5cb6afdfb08f9546610be8196d668e7112f28d571",
+          "Severity": "UNKNOWN"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-42015",
+          "PkgID": "gnutls@3.8.12-r0",
+          "PkgName": "gnutls",
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/gnutls@3.8.12-r0?arch=x86_64\u0026distro=3.23.4",
+            "UID": "89d8d289d434a8c"
+          },
+          "InstalledVersion": "3.8.12-r0",
+          "FixedVersion": "3.8.13-r0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:79f1a979ebf110deb74e5d592fa16e63149e074f7fd81f3913642e23b04e61bf",
+            "DiffID": "sha256:00ee820ba5a1aa02414780596bdcef600b5b2d57e1ef6129776e34a5344b451a"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-42015",
+          "DataSource": {
+            "ID": "alpine",
+            "Name": "Alpine Secdb",
+            "URL": "https://secdb.alpinelinux.org/"
+          },
+          "Fingerprint": "sha256:25307a5217671e7053f48c47652423b6f635c67843716176d37f9b31ba6a2fe4",
+          "Severity": "UNKNOWN"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-5260",
+          "PkgID": "gnutls@3.8.12-r0",
+          "PkgName": "gnutls",
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/gnutls@3.8.12-r0?arch=x86_64\u0026distro=3.23.4",
+            "UID": "89d8d289d434a8c"
+          },
+          "InstalledVersion": "3.8.12-r0",
+          "FixedVersion": "3.8.13-r0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:79f1a979ebf110deb74e5d592fa16e63149e074f7fd81f3913642e23b04e61bf",
+            "DiffID": "sha256:00ee820ba5a1aa02414780596bdcef600b5b2d57e1ef6129776e34a5344b451a"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-5260",
+          "DataSource": {
+            "ID": "alpine",
+            "Name": "Alpine Secdb",
+            "URL": "https://secdb.alpinelinux.org/"
+          },
+          "Fingerprint": "sha256:3b9e4af1c2bae07ac4cf93048d93ac5dbb7af41cdd764aa7a8618ee7417022fe",
+          "Severity": "UNKNOWN"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-5419",
+          "PkgID": "gnutls@3.8.12-r0",
+          "PkgName": "gnutls",
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/gnutls@3.8.12-r0?arch=x86_64\u0026distro=3.23.4",
+            "UID": "89d8d289d434a8c"
+          },
+          "InstalledVersion": "3.8.12-r0",
+          "FixedVersion": "3.8.13-r0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:79f1a979ebf110deb74e5d592fa16e63149e074f7fd81f3913642e23b04e61bf",
+            "DiffID": "sha256:00ee820ba5a1aa02414780596bdcef600b5b2d57e1ef6129776e34a5344b451a"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-5419",
+          "DataSource": {
+            "ID": "alpine",
+            "Name": "Alpine Secdb",
+            "URL": "https://secdb.alpinelinux.org/"
+          },
+          "Fingerprint": "sha256:3345fbd351624a76c9d09d70695ea196531064ca6b07e06588b76ad89425aa5f",
+          "Severity": "UNKNOWN"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-27135",
+          "PkgID": "nghttp2-libs@1.68.0-r0",
+          "PkgName": "nghttp2-libs",
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/nghttp2-libs@1.68.0-r0?arch=x86_64\u0026distro=3.23.4",
+            "UID": "74e42e23a979e950"
+          },
+          "InstalledVersion": "1.68.0-r0",
+          "FixedVersion": "1.68.1",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:79f1a979ebf110deb74e5d592fa16e63149e074f7fd81f3913642e23b04e61bf",
+            "DiffID": "sha256:00ee820ba5a1aa02414780596bdcef600b5b2d57e1ef6129776e34a5344b451a"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27135",
+          "DataSource": {
+            "ID": "alpine",
+            "Name": "Alpine Secdb",
+            "URL": "https://secdb.alpinelinux.org/"
+          },
+          "Fingerprint": "sha256:21befb7bc7966108d022fb93ed15bd8eaba33cd9d02208954d73265c0288ced7",
+          "Title": "nghttp2: nghttp2: Denial of Service via malformed HTTP/2 frames after session termination",
+          "Description": "nghttp2 is an implementation of the Hypertext Transfer Protocol version 2 in C. Prior to version 1.68.1, the nghttp2 library stops reading the incoming data when user facing public API `nghttp2_session_terminate_session` or `nghttp2_session_terminate_session2` is called by the application. They might be called internally by the library when it detects the situation that is subject to connection error. Due to the missing internal state validation, the library keeps reading the rest of the data after one of those APIs is called. Then receiving a malformed frame that causes FRAME_SIZE_ERROR causes assertion failure. nghttp2 v1.68.1 adds missing state validation to avoid assertion failure. No known workarounds are available.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-617"
+          ],
+          "VendorSeverity": {
+            "alma": 3,
+            "amazon": 3,
+            "azure": 3,
+            "cbl-mariner": 3,
+            "oracle-oval": 3,
+            "photon": 3,
+            "redhat": 3,
+            "rocky": 3
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "http://www.openwall.com/lists/oss-security/2026/03/20/3",
+            "https://access.redhat.com/errata/RHSA-2026:7896",
+            "https://access.redhat.com/security/cve/CVE-2026-27135",
+            "https://bugzilla.redhat.com/2441268",
+            "https://bugzilla.redhat.com/2442922",
+            "https://bugzilla.redhat.com/2448754",
+            "https://bugzilla.redhat.com/2453151",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2448754",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-27135",
+            "https://errata.almalinux.org/9/ALSA-2026-7896.html",
+            "https://errata.rockylinux.org/RLSA-2026:7666",
+            "https://github.com/nghttp2/nghttp2/commit/5c7df8fa815ac1004d9ecb9d1f7595c4d37f46e1",
+            "https://github.com/nghttp2/nghttp2/security/advisories/GHSA-6933-cjhr-5qg6",
+            "https://linux.oracle.com/cve/CVE-2026-27135.html",
+            "https://linux.oracle.com/errata/ELSA-2026-8339.html",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-27135",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27135"
+          ],
+          "PublishedDate": "2026-03-18T18:16:26.723Z",
+          "LastModifiedDate": "2026-03-23T17:51:17.017Z"
         }
       ]
     },
