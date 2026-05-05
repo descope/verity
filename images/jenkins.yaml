@@ -6,7 +6,12 @@ upstream:
 types:
   default:
     base: wolfi-base
-    packages: ["jenkins-{{version}}"]
+    # busybox supplies /bin/sh + coreutils for the chart's `init` container,
+    # which runs `sh -c '...'` to apply jcasc config before the main jenkins
+    # process starts. Without it the init container fails at runc exec with
+    # `sh: executable file not found`. Same shape as the valkey fix in #327.
+    # See verity-org/verity#318 (A.1 shell-missing cluster).
+    packages: ["jenkins-{{version}}", "busybox"]
     entrypoint: /usr/bin/java -jar /usr/share/java/jenkins/jenkins.war
     environment:
       JENKINS_HOME: /var/jenkins_home
