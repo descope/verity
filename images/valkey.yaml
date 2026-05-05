@@ -6,14 +6,18 @@ upstream:
 types:
   default:
     base: wolfi-base
-    packages: ["valkey-{{version}}"]
+    # busybox supplies /bin/sh + coreutils for chart wrapper scripts
+    # (bitnami/valkey chart's pod command is `sh -c '...'`). Without it the
+    # main container fails at runc exec with `/bin/sh: no such file or
+    # directory`. See verity-org/verity#318 (A.1 shell-missing cluster).
+    packages: ["valkey-{{version}}", "busybox"]
     entrypoint: /usr/bin/valkey-server
     paths:
       - {path: /data, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
 
   fips:
     base: wolfi-fips
-    packages: ["valkey-{{version}}"]
+    packages: ["valkey-{{version}}", "busybox"]
     entrypoint: /usr/bin/valkey-server
     environment:
       OPENSSL_MODULES: /usr/lib/ossl-modules
