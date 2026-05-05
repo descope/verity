@@ -96,6 +96,16 @@ func Config(tmpl *config.TypeTemplate, version, basePath string) ([]byte, error)
 			if ptype == "" {
 				ptype = "directory"
 			}
+			// Enforce source/type invariants at render time so misconfigured
+			// YAML fails fast with a clear error instead of producing apko
+			// config that fails opaquely at build time. apko rejects source
+			// on directory entries and rejects symlink entries with no source.
+			if ptype == "symlink" && p.Source == "" {
+				return nil, fmt.Errorf("path %q: type=symlink requires source", p.Path)
+			}
+			if ptype != "symlink" && p.Source != "" {
+				return nil, fmt.Errorf("path %q: source is only valid for type=symlink (got type=%q)", p.Path, ptype)
+			}
 			perms, err := parsePermissions(p.Permissions)
 			if err != nil {
 				return nil, fmt.Errorf("path %q: %w", p.Path, err)

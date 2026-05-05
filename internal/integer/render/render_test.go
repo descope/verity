@@ -230,8 +230,44 @@ func TestConfig_PathSymlink_VersionSubstitution(t *testing.T) {
 
 	paths, ok := cfg["paths"].([]any)
 	require.True(t, ok, "expected paths key to be []any")
+	require.Len(t, paths, 1)
 	p, ok := paths[0].(map[string]any)
 	require.True(t, ok, "expected path entry to be map[string]any")
 	assert.Equal(t, "/usr/local/bin/etcd-3.6", p["path"])
 	assert.Equal(t, "/usr/bin/etcd-3.6", p["source"])
+}
+
+// TestConfig_PathSymlink_RequiresSource is a regression guard: type=symlink
+// without a Source field is misconfigured and apko would reject it at build
+// time. Render should fail fast with a clear error instead. (Caught by code
+// review on PR #330 — the renderer originally accepted this silently.)
+func TestConfig_PathSymlink_RequiresSource(t *testing.T) {
+	tmpl := config.TypeTemplate{
+		Base: "wolfi-base",
+		Paths: []config.PathDef{
+			{Path: "/usr/local/bin/etcd", Type: "symlink", UID: 0, GID: 0}, // no Source
+		},
+	}
+	_, err := render.Config(&tmpl, "latest", "_base")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "type=symlink requires source")
+	assert.Contains(t, err.Error(), "/usr/local/bin/etcd")
+}
+
+// TestConfig_PathSourceOnNonSymlink_Errors is the inverse regression guard:
+// Source is only valid for type=symlink. Any other type with Source set is a
+// misconfiguration; apko rejects it at build. Render should fail fast.
+// (Caught by code review on PR #330 — same root cause as RequiresSource.)
+func TestConfig_PathSourceOnNonSymlink_Errors(t *testing.T) {
+	tmpl := config.TypeTemplate{
+		Base: "wolfi-base",
+		Paths: []config.PathDef{
+			// type defaults to "directory" — Source on a directory is invalid.
+			{Path: "/usr/local/bin/etcd", Source: "/usr/bin/etcd", UID: 0, GID: 0},
+		},
+	}
+	_, err := render.Config(&tmpl, "latest", "_base")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "source is only valid for type=symlink")
+	assert.Contains(t, err.Error(), "/usr/local/bin/etcd")
 }
