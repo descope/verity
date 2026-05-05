@@ -94,9 +94,15 @@ replacements:
     registry: "ghcr.io/verity-org"
     image: "kube-state-metrics"
     tag: "2.18.0"
+  # prometheus chart pulls pushgateway:v1.11.2 (with v prefix); verity-org
+  # publishes only non-v tags (`latest`, `1.11`, `1.11.2`). Pin floating-minor
+  # `1.11` per the Wave 1 methodology in #310 so chart-gen writes a tag that
+  # actually resolves. Closes the prometheus shard's only red pod (the rest
+  # of the chart is green per nightly diagnostics).
   "prometheus/pushgateway":
     registry: "ghcr.io/verity-org"
     image: "pushgateway"
+    tag: "1.11"
 
   # Observability wave 2. The prometheus chart was dropped from this PR
   # (kube-prometheus-stack rendered images for jkroepke/kube-webhook-certgen
