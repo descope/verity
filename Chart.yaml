@@ -20,8 +20,15 @@ dependencies:
     version: "1.15.1"
     repository: "https://opensource.zalando.com/postgres-operator/charts/postgres-operator"
 
+  # Pinned at 3.7.2 — chart 3.8.0 (#314 bump) deployment passes
+  # `--apiCallTimeout=30s` to the kyverno binary, but Verity's wolfi-rebuilt
+  # `kyverno-1.17` doesn't recognise that flag (added upstream in 1.18+).
+  # Result: container CrashLoopBackOff with "flag provided but not defined:
+  # -apiCallTimeout". Bumping back to 3.7.2 restores yesterday's working
+  # state. The 3.8.0 bump is unblocked once the kyverno-1.18+ rebuild lands
+  # in `images/kyverno*.yaml`.
   - name: kyverno
-    version: "3.8.0"
+    version: "3.7.2"
     repository: "oci://ghcr.io/kyverno/charts"
 
   - name: argo-cd

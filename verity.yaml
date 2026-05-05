@@ -215,10 +215,19 @@ replacements:
 
   # postgres-operator chart (1.15.1). Migrated Copa→Integer; this entry
   # routes the chart's image to the existing images/postgres-operator.yaml
-  # rebuild.
+  # rebuild. Tag `1.15` pins the maintained floating-minor track declared
+  # by images/postgres-operator.yaml (`versions: "1.15": {}` alongside the
+  # `"1"` catch-all). Without an explicit tag, chart-gen carries the
+  # chart's appVersion `v1.15.1` through verbatim, but Verity publishes
+  # non-v tags only — same v-prefix mismatch as argocd/dex (Wave 1, #310).
+  # The dedicated `1.15` stream survives Wolfi minor bumps; if/when 1.16.x
+  # ships, declare `"1.16": {}` too and bump this pin. Sample pre-fix
+  # failure: `ghcr.io/verity-org/postgres-operator:v1.15.1: not found`
+  # (run 25318761444 → diagnostics-postgres-operator).
   "zalando/postgres-operator":
     registry: "ghcr.io/verity-org"
     image: "postgres-operator"
+    tag: "1.15"
 
   # cert-manager chart (1.20.2). Jetstack chart image refs keep the upstream
   # quay.io/jetstack path and v-prefixed tag; Verity publishes the rebuilds at
