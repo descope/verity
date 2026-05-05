@@ -254,9 +254,18 @@ replacements:
   "ingress-nginx/kube-webhook-certgen":
     registry: "ghcr.io/verity-org"
     image: "kubernetes/ingress-nginx/kube-webhook-certgen"
+  # external-dns chart 1.20.0 ships appVersion v0.20.0; Wolfi currently
+  # only publishes up to external-dns-0.18.x. The rebuild lives at
+  # ghcr.io/verity-org/external-dns (see images/external-dns.yaml).
+  # Pin to "0.18" — the highest minor Wolfi actually publishes — until
+  # upstream catches up. Chart-vs-binary skew is two minors but the
+  # external-dns CLI flags consumed by the chart Deployment have been
+  # stable since 0.10+, so this is expected to render and run.
+  # Tracked: verity-org/verity#309 (#318 Wave 1 follow-up).
   "external-dns/external-dns":
     registry: "ghcr.io/verity-org"
-    image: "kubernetes-sigs/external-dns"
+    image: "external-dns"
+    tag: "0.18"
 
   # Integer-backed free wins.
   "valkey/valkey":
