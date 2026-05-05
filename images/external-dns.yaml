@@ -1,0 +1,22 @@
+name: external-dns
+description: "ExternalDNS Kubernetes DNS controller — Wolfi rebuild targets upstream CVEs (chart 1.20.x; #309)"
+upstream:
+  package: external-dns
+
+types:
+  default:
+    base: wolfi-base
+    packages: ["external-dns"]
+    entrypoint: /usr/bin/external-dns
+
+versions:
+  "0": {}
+  # Maintained minor stream — verity-org/verity#309 unblocks #318 Wave 1 by
+  # publishing this rebuild. Chart `external-dns 1.20.0` ships with
+  # appVersion `v0.20.0` but Wolfi currently only ships up to
+  # `external-dns-0.18.x`; verity.yaml `replacements:` therefore pins
+  # `tag: "0.18"` (chart-vs-binary skew is two minors). When Wolfi
+  # publishes 0.19 / 0.20, add the matching `"0.19": {}` / `"0.20": {}`
+  # entries here AND bump the `tag:` in verity.yaml in lock-step (mirror
+  # the metrics-server `"0.8"` precedent).
+  "0.18": {}
