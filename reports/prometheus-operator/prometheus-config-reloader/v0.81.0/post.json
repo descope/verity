@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.69.3"
   },
-  "ReportID": "019dcdc7-83b7-7649-a703-15f107462c7d",
-  "CreatedAt": "2026-04-27T07:11:37.91141325Z",
+  "ReportID": "019dfbe8-8517-734a-be8e-3a409709db9b",
+  "CreatedAt": "2026-05-06T06:10:12.887216859Z",
   "ArtifactID": "sha256:3368bfac0b4ceb7e0cc49b707d910571dd3803ccb882b2d2937d93d4d5a3f8b2",
   "ArtifactName": "ghcr.io/verity-org/cache:prometheus-operator-prometheus-config-reloader-v0.81.0",
   "ArtifactType": "container_image",
@@ -1776,6 +1776,114 @@
       ],
       "Vulnerabilities": [
         {
+          "VulnerabilityID": "CVE-2026-42151",
+          "VendorIDs": [
+            "GHSA-wg65-39gg-5wfj"
+          ],
+          "PkgID": "github.com/prometheus/prometheus@v0.301.0",
+          "PkgName": "github.com/prometheus/prometheus",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/github.com/prometheus/prometheus@v0.301.0",
+            "UID": "91e00ff2fda6e212"
+          },
+          "InstalledVersion": "v0.301.0",
+          "FixedVersion": "0.311.3",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:9c8cb679a775f8295bd42ed76fbd55f7e32c8e2028ffe5dd4b406971cc038e6f",
+            "DiffID": "sha256:d2d7ae89540e0e813847037d41825e2605e9c1b4c200be225b0d260fdb785ae5"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-42151",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Go",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
+          },
+          "Fingerprint": "sha256:c8df81f399b6d44d1513d50fc132f0ee086850967f486d81de905e7692b9ebf5",
+          "Title": "Prometheus Azure AD remote write OAuth client secret exposed via config API",
+          "Description": "Prometheus is an open-source monitoring system and time series database. Prior to versions 3.5.3 and 3.11.3, the client_secret field in the Azure AD remote write OAuth configuration (storage/remote/azuread) was typed as string instead of Secret. Prometheus redacts fields of type Secret when serving the configuration via the /-/config HTTP API endpoint. Because the field was a plain string, the Azure OAuth client secret was exposed in plaintext to any user or process with access to that endpoint. This issue has been patched in versions 3.5.3 and 3.11.3.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-200",
+            "CWE-312"
+          ],
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://github.com/prometheus/prometheus",
+            "https://github.com/prometheus/prometheus/pull/18587",
+            "https://github.com/prometheus/prometheus/pull/18590",
+            "https://github.com/prometheus/prometheus/releases/tag/v3.11.3",
+            "https://github.com/prometheus/prometheus/releases/tag/v3.5.3",
+            "https://github.com/prometheus/prometheus/security/advisories/GHSA-wg65-39gg-5wfj",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-42151"
+          ],
+          "PublishedDate": "2026-05-04T19:16:04.22Z",
+          "LastModifiedDate": "2026-05-04T19:16:04.22Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-42154",
+          "VendorIDs": [
+            "GHSA-8rm2-7qqf-34qm"
+          ],
+          "PkgID": "github.com/prometheus/prometheus@v0.301.0",
+          "PkgName": "github.com/prometheus/prometheus",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/github.com/prometheus/prometheus@v0.301.0",
+            "UID": "91e00ff2fda6e212"
+          },
+          "InstalledVersion": "v0.301.0",
+          "FixedVersion": "0.311.3",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:9c8cb679a775f8295bd42ed76fbd55f7e32c8e2028ffe5dd4b406971cc038e6f",
+            "DiffID": "sha256:d2d7ae89540e0e813847037d41825e2605e9c1b4c200be225b0d260fdb785ae5"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-42154",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Go",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
+          },
+          "Fingerprint": "sha256:98b946b9ca980455f49a77a0b44ebb230f4369f374ce1fa9511222477d82d45e",
+          "Title": "Prometheus: Remote read endpoint allows denial of service via crafted snappy payload",
+          "Description": "Prometheus is an open-source monitoring system and time series database. Prior to versions 3.5.3 and 3.11.3, the remote read endpoint (/api/v1/read) does not validate the declared decoded length in a snappy-compressed request body before allocating memory. An unauthenticated attacker can send a small payload that causes a huge heap allocation per request. Under concurrent load this can exhaust available memory and crash the Prometheus process. This issue has been patched in versions 3.5.3 and 3.11.3.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-400",
+            "CWE-789"
+          ],
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://github.com/prometheus/prometheus",
+            "https://github.com/prometheus/prometheus/pull/18584",
+            "https://github.com/prometheus/prometheus/pull/18585",
+            "https://github.com/prometheus/prometheus/releases/tag/v3.11.3",
+            "https://github.com/prometheus/prometheus/releases/tag/v3.5.3",
+            "https://github.com/prometheus/prometheus/security/advisories/GHSA-8rm2-7qqf-34qm",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-42154"
+          ],
+          "PublishedDate": "2026-05-04T19:16:04.397Z",
+          "LastModifiedDate": "2026-05-04T19:16:04.397Z"
+        },
+        {
           "VulnerabilityID": "CVE-2026-40179",
           "VendorIDs": [
             "GHSA-vffh-x6r8-xx99"
@@ -1818,7 +1926,9 @@
               "V40Score": 5.3
             },
             "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
               "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:N/VI:N/VA:N/SC:L/SI:L/SA:N",
+              "V3Score": 6.1,
               "V40Score": 5.3
             },
             "nvd": {
@@ -1835,6 +1945,43 @@
           ],
           "PublishedDate": "2026-04-15T23:16:09.87Z",
           "LastModifiedDate": "2026-04-22T20:04:15.1Z"
+        },
+        {
+          "VulnerabilityID": "GHSA-fw8g-cg8f-9j28",
+          "PkgID": "github.com/prometheus/prometheus@v0.301.0",
+          "PkgName": "github.com/prometheus/prometheus",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/github.com/prometheus/prometheus@v0.301.0",
+            "UID": "91e00ff2fda6e212"
+          },
+          "InstalledVersion": "v0.301.0",
+          "FixedVersion": "0.311.3",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:9c8cb679a775f8295bd42ed76fbd55f7e32c8e2028ffe5dd4b406971cc038e6f",
+            "DiffID": "sha256:d2d7ae89540e0e813847037d41825e2605e9c1b4c200be225b0d260fdb785ae5"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://github.com/advisories/GHSA-fw8g-cg8f-9j28",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Go",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
+          },
+          "Fingerprint": "sha256:87cd524fb06376f4ba6265cf2ab65f3d37a8f8d2e7a60174ff6bfa6c11296e83",
+          "Title": "Prometheus vulnerable to stored XSS via crafted histogram bucket label values in the old web UI heatmap display",
+          "Description": "### Impact\n\nIn the Prometheus server's legacy web UI (enabled via the command-line flag `--enable-feature=old-ui`), the histogram heatmap chart view does not escape `le` label values when inserting them into the HTML for use as axis tick mark labels.\n\nAn attacker who can inject crafted metrics (e.g. via a compromised scrape target, remote write, or OTLP receiver endpoint) can execute JavaScript in the browser of any Prometheus user who views the metric in the heatmap chart UI. From the XSS context, an attacker could for example:\n\n- Read `/api/v1/status/config` to extract sensitive configuration (although credentials / secrets are redacted by the server)\n- Call `/-/quit` to shut down Prometheus (only if `--web.enable-lifecycle` is set)\n- Call `/api/v1/admin/tsdb/delete_series` to delete data (only if `--web.enable-admin-api` is set)\n- Exfiltrate metric data to an external server\n\nNote that this only affects users who have explicitly enabled the legacy Prometheus web UI using the `--enable-feature=old-ui` command-line flag.\n\n### Patches\n\nA patch is available at https://github.com/prometheus/prometheus/releases/tag/v0.311.3.\n\n### Workarounds\n\nIf at all possible, disable the legacy web UI by removing the `--enable-feature=old-ui` command-line flag).\n\nIf this is not an option, take the following precautions:\n\n- If using the remote write receiver (`--web.enable-remote-write-receiver`), ensure it is not exposed to untrusted sources.\n- If using the OTLP receiver (`--web.enable-otlp-receiver`), ensure it is not exposed to untrusted sources.\n- Ensure scrape targets are trusted and not under attacker control.\n- Do not enable admin / mutating API endpoints (e.g. `--web.enable-admin-api` or `web.enable-lifecycle`) in cases where you cannot prevent untrusted data from being ingested.\n- Users should avoid clicking untrusted links, especially those containing functions such as `label_replace`, as they may generate poisoned label names and values.\n\n### Resources\n\n- CVE-2019-10215 — prior stored DOM XSS vulnerability in Prometheus query history, fixed in v2.7.2\n- CVE-2026-40179 — prior stored DOM XSS vulnerability in Prometheus web UI (hover tooltips and metrics explorer), fixed in v3.11.2",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "References": [
+            "https://github.com/prometheus/prometheus",
+            "https://github.com/prometheus/prometheus/commit/38f23b9075ced1de2b82d2dad8b2bebb1ecd5b7d",
+            "https://github.com/prometheus/prometheus/security/advisories/GHSA-fw8g-cg8f-9j28"
+          ],
+          "PublishedDate": "2026-05-05T21:53:18Z",
+          "LastModifiedDate": "2026-05-05T21:53:18Z"
         },
         {
           "VulnerabilityID": "CVE-2025-47914",
@@ -2138,7 +2285,8 @@
             "oracle-oval": 3,
             "photon": 4,
             "redhat": 2,
-            "rocky": 3
+            "rocky": 3,
+            "ubuntu": 2
           },
           "CVSS": {
             "bitnami": {
@@ -2155,22 +2303,23 @@
             }
           },
           "References": [
-            "https://access.redhat.com/errata/RHSA-2026:5146",
+            "https://access.redhat.com/errata/RHSA-2026:4177",
             "https://access.redhat.com/security/cve/CVE-2025-68121",
-            "https://bugzilla.redhat.com/2418462",
             "https://bugzilla.redhat.com/2434432",
             "https://bugzilla.redhat.com/2437111",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2434431",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2418462",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2434432",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2437111",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-61726",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-61728",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-61729",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-68121",
-            "https://errata.almalinux.org/10/ALSA-2026-5146.html",
-            "https://errata.rockylinux.org/RLSA-2026:4672",
+            "https://errata.almalinux.org/9/ALSA-2026-4177.html",
+            "https://errata.rockylinux.org/RLSA-2026:5146",
+            "https://github.com/golang/go/issues/77113",
             "https://go.dev/cl/737700",
             "https://go.dev/issue/77217",
             "https://groups.google.com/g/golang-announce/c/K09ubi9FQFk",
+            "https://groups.google.com/g/golang-announce/c/Vd2tYVM8eUc",
             "https://linux.oracle.com/cve/CVE-2025-68121.html",
             "https://linux.oracle.com/errata/ELSA-2026-5146.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2025-68121",
@@ -2178,7 +2327,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2025-68121"
           ],
           "PublishedDate": "2026-02-05T18:16:10.857Z",
-          "LastModifiedDate": "2026-02-20T17:25:50.303Z"
+          "LastModifiedDate": "2026-04-29T14:16:16.17Z"
         },
         {
           "VulnerabilityID": "CVE-2025-47907",
@@ -2233,11 +2382,11 @@
           },
           "References": [
             "http://www.openwall.com/lists/oss-security/2025/08/06/1",
-            "https://access.redhat.com/errata/RHSA-2025:20983",
+            "https://access.redhat.com/errata/RHSA-2025:20909",
             "https://access.redhat.com/security/cve/CVE-2025-47907",
             "https://bugzilla.redhat.com/2387083",
             "https://bugzilla.redhat.com/2393152",
-            "https://errata.almalinux.org/10/ALSA-2025-20983.html",
+            "https://errata.almalinux.org/9/ALSA-2025-20909.html",
             "https://go.dev/cl/693735",
             "https://go.dev/issue/74831",
             "https://groups.google.com/g/golang-announce/c/x5MKroML2yM",
@@ -2301,13 +2450,13 @@
           },
           "References": [
             "http://www.openwall.com/lists/oss-security/2025/10/08/1",
-            "https://access.redhat.com/errata/RHSA-2026:1837",
+            "https://access.redhat.com/errata/RHSA-2026:1381",
             "https://access.redhat.com/security/cve/CVE-2025-58183",
             "https://bugzilla.redhat.com/2407258",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2407258",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-58183",
-            "https://errata.almalinux.org/10/ALSA-2026-1837.html",
-            "https://errata.rockylinux.org/RLSA-2025:23948",
+            "https://errata.almalinux.org/9/ALSA-2026-1381.html",
+            "https://errata.rockylinux.org/RLSA-2025:23295",
             "https://go.dev/cl/709861",
             "https://go.dev/issue/75677",
             "https://groups.google.com/g/golang-announce/c/4Emdl2iQ_bI",
@@ -2373,19 +2522,18 @@
             }
           },
           "References": [
-            "https://access.redhat.com/errata/RHSA-2026:5146",
+            "https://access.redhat.com/errata/RHSA-2026:4177",
             "https://access.redhat.com/security/cve/CVE-2025-61726",
-            "https://bugzilla.redhat.com/2418462",
             "https://bugzilla.redhat.com/2434432",
             "https://bugzilla.redhat.com/2437111",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2434431",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2418462",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2434432",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2437111",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-61726",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-61728",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-61729",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-68121",
-            "https://errata.almalinux.org/10/ALSA-2026-5146.html",
-            "https://errata.rockylinux.org/RLSA-2026:4672",
+            "https://errata.almalinux.org/9/ALSA-2026-4177.html",
+            "https://errata.rockylinux.org/RLSA-2026:5146",
             "https://go.dev/cl/736712",
             "https://go.dev/issue/77101",
             "https://groups.google.com/g/golang-announce/c/Vd2tYVM8eUc",
@@ -2451,20 +2599,22 @@
           },
           "References": [
             "http://www.openwall.com/lists/oss-security/2026/01/15/4",
-            "https://access.redhat.com/errata/RHSA-2026:3752",
+            "https://access.redhat.com/errata/RHSA-2026:3753",
             "https://access.redhat.com/security/cve/CVE-2025-61728",
             "https://bugzilla.redhat.com/2418462",
             "https://bugzilla.redhat.com/2434431",
             "https://bugzilla.redhat.com/2434432",
             "https://bugzilla.redhat.com/2437111",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2418462",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2434431",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2434432",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2437111",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-61726",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-61728",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-61729",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-68121",
-            "https://errata.almalinux.org/10/ALSA-2026-3752.html",
-            "https://errata.rockylinux.org/RLSA-2026:4672",
+            "https://errata.almalinux.org/9/ALSA-2026-3753.html",
+            "https://errata.rockylinux.org/RLSA-2026:3336",
             "https://go.dev/cl/736713",
             "https://go.dev/issue/77102",
             "https://groups.google.com/g/golang-announce/c/Vd2tYVM8eUc",
@@ -2530,19 +2680,19 @@
             }
           },
           "References": [
-            "https://access.redhat.com/errata/RHSA-2026:5146",
+            "https://access.redhat.com/errata/RHSA-2026:3928",
             "https://access.redhat.com/security/cve/CVE-2025-61729",
             "https://bugzilla.redhat.com/2418462",
             "https://bugzilla.redhat.com/2434432",
             "https://bugzilla.redhat.com/2437111",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2268022",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2418462",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2418900",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2024-24785",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2434432",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2437111",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-61726",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-61729",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-65637",
-            "https://errata.almalinux.org/10/ALSA-2026-5146.html",
-            "https://errata.rockylinux.org/RLSA-2026:3428",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-68121",
+            "https://errata.almalinux.org/9/ALSA-2026-3928.html",
+            "https://errata.rockylinux.org/RLSA-2026:5146",
             "https://go.dev/cl/725920",
             "https://go.dev/issue/76445",
             "https://groups.google.com/g/golang-announce/c/8FJoBkPddm4",
@@ -2606,14 +2756,15 @@
             }
           },
           "References": [
-            "https://access.redhat.com/errata/RHSA-2026:8842",
+            "https://access.redhat.com/errata/RHSA-2026:9044",
             "https://access.redhat.com/security/cve/CVE-2026-25679",
-            "https://bugzilla.redhat.com/2445345",
             "https://bugzilla.redhat.com/2445356",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2445345",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2445356",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-25679",
-            "https://errata.almalinux.org/10/ALSA-2026-8842.html",
-            "https://errata.rockylinux.org/RLSA-2026:7011",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-27137",
+            "https://errata.almalinux.org/9/ALSA-2026-9044.html",
+            "https://errata.rockylinux.org/RLSA-2026:8842",
             "https://go.dev/cl/752180",
             "https://go.dev/issue/77578",
             "https://groups.google.com/g/golang-announce/c/EdhZqrQ98hk",
@@ -2658,6 +2809,7 @@
             "CWE-770"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "bitnami": 3,
             "oracle-oval": 3,
             "redhat": 3
@@ -2678,7 +2830,7 @@
             "https://go.dev/issue/78282",
             "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
             "https://linux.oracle.com/cve/CVE-2026-32280.html",
-            "https://linux.oracle.com/errata/ELSA-2026-10219.html",
+            "https://linux.oracle.com/errata/ELSA-2026-11514.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-32280",
             "https://pkg.go.dev/vuln/GO-2026-4947",
             "https://www.cve.org/CVERecord?id=CVE-2026-32280"
@@ -2719,6 +2871,7 @@
             "CWE-295"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "bitnami": 3,
             "nvd": 3,
             "redhat": 2
@@ -2782,6 +2935,7 @@
             "CWE-770"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "bitnami": 3,
             "nvd": 3,
             "oracle-oval": 3
@@ -2801,7 +2955,7 @@
             "https://go.dev/issue/78334",
             "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
             "https://linux.oracle.com/cve/CVE-2026-32283.html",
-            "https://linux.oracle.com/errata/ELSA-2026-10219.html",
+            "https://linux.oracle.com/errata/ELSA-2026-11881.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-32283",
             "https://pkg.go.dev/vuln/GO-2026-4870"
           ],
@@ -2913,13 +3067,13 @@
           },
           "References": [
             "http://www.openwall.com/lists/oss-security/2025/04/04/4",
-            "https://access.redhat.com/errata/RHSA-2025:9146",
+            "https://access.redhat.com/errata/RHSA-2025:9635",
             "https://access.redhat.com/security/cve/CVE-2025-22871",
             "https://bugzilla.redhat.com/2358493",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2358493",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-22871",
-            "https://errata.almalinux.org/10/ALSA-2025-9146.html",
-            "https://errata.rockylinux.org/RLSA-2025:9845",
+            "https://errata.almalinux.org/9/ALSA-2025-9635.html",
+            "https://errata.rockylinux.org/RLSA-2025:9317",
             "https://github.com/roadrunner-server/roadrunner",
             "https://github.com/roadrunner-server/roadrunner/commit/f269279ee87d0b88127741cad1042389af7605fa",
             "https://github.com/roadrunner-server/roadrunner/issues/2166",
@@ -3045,13 +3199,13 @@
             }
           },
           "References": [
-            "https://access.redhat.com/errata/RHSA-2025:10677",
+            "https://access.redhat.com/errata/RHSA-2025:15887",
             "https://access.redhat.com/security/cve/CVE-2025-4673",
             "https://bugzilla.redhat.com/2373305",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2373305",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-4673",
-            "https://errata.almalinux.org/10/ALSA-2025-10677.html",
-            "https://errata.rockylinux.org/RLSA-2025:10672",
+            "https://errata.almalinux.org/9/ALSA-2025-15887.html",
+            "https://errata.rockylinux.org/RLSA-2025:16432",
             "https://go.dev/cl/679257",
             "https://go.dev/issue/73816",
             "https://groups.google.com/g/golang-announce/c/ufZ8WpEsA3A",
@@ -3120,11 +3274,9 @@
             "https://access.redhat.com/security/cve/CVE-2025-47906",
             "https://bugzilla.redhat.com/2396546",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2396546",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2407258",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-47906",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-58183",
             "https://errata.almalinux.org/9/ALSA-2025-22005.html",
-            "https://errata.rockylinux.org/RLSA-2025:22668",
+            "https://errata.rockylinux.org/RLSA-2025:22005",
             "https://go.dev/cl/691775",
             "https://go.dev/issue/74466",
             "https://groups.google.com/g/golang-announce/c/x5MKroML2yM",
@@ -3873,6 +4025,7 @@
             "CWE-59"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "bitnami": 2,
             "nvd": 2,
             "oracle-oval": 3,
@@ -3898,7 +4051,7 @@
             "https://go.dev/issue/78293",
             "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
             "https://linux.oracle.com/cve/CVE-2026-32282.html",
-            "https://linux.oracle.com/errata/ELSA-2026-10219.html",
+            "https://linux.oracle.com/errata/ELSA-2026-11712.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-32282",
             "https://pkg.go.dev/vuln/GO-2026-4864",
             "https://www.cve.org/CVERecord?id=CVE-2026-32282"
@@ -3939,6 +4092,7 @@
             "CWE-770"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "bitnami": 2,
             "nvd": 2,
             "photon": 3,
@@ -4003,6 +4157,7 @@
             "CWE-79"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "bitnami": 2,
             "nvd": 2,
             "photon": 4,
