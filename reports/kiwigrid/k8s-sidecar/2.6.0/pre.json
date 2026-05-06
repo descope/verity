@@ -3,10 +3,10 @@
   "Trivy": {
     "Version": "0.69.3"
   },
-  "ReportID": "019dc3de-8857-7a0d-b9bd-5cf5fa963d6e",
-  "CreatedAt": "2026-04-25T09:00:34.26366002Z",
-  "ArtifactID": "sha256:c75ce8f0a979d4e5efa9da78390382e648ec71d228c7a9840e1924ffa3fea1a0",
-  "ArtifactName": "ghcr.io/kiwigrid/k8s-sidecar:2.6.0",
+  "ReportID": "019dfbd1-b9fe-7995-99bb-bc1d421a3013",
+  "CreatedAt": "2026-05-06T05:45:19.102630193Z",
+  "ArtifactID": "sha256:d13d3cdcb932cb51fff941b1a3bf2d95bad42727759d564a2d5a8dd861a74433",
+  "ArtifactName": "docker.io/kiwigrid/k8s-sidecar:2.6.0",
   "ArtifactType": "container_image",
   "Metadata": {
     "Size": 99997184,
@@ -24,12 +24,12 @@
       "sha256:05f244941410ac37e452c94f7966db63e213047151ca97eead0d7a40421a9072"
     ],
     "RepoTags": [
-      "ghcr.io/kiwigrid/k8s-sidecar:2.6.0"
+      "kiwigrid/k8s-sidecar:2.6.0"
     ],
     "RepoDigests": [
-      "ghcr.io/kiwigrid/k8s-sidecar@sha256:a6c101156d42ef1050c536fcbcc03bf314544a63ee2daafe45280bc8dbab398f"
+      "kiwigrid/k8s-sidecar@sha256:a6c101156d42ef1050c536fcbcc03bf314544a63ee2daafe45280bc8dbab398f"
     ],
-    "Reference": "ghcr.io/kiwigrid/k8s-sidecar:2.6.0",
+    "Reference": "kiwigrid/k8s-sidecar:2.6.0",
     "ImageConfig": {
       "architecture": "amd64",
       "created": "2026-04-08T06:07:41.424118225Z",
@@ -207,7 +207,7 @@
   },
   "Results": [
     {
-      "Target": "ghcr.io/kiwigrid/k8s-sidecar:2.6.0 (alpine 3.23.3)",
+      "Target": "docker.io/kiwigrid/k8s-sidecar:2.6.0 (alpine 3.23.3)",
       "Class": "os-pkgs",
       "Type": "alpine",
       "Packages": [
@@ -1988,7 +1988,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:145c293fbf3417e3872bd2841da9027813f3ad5807a8b19881c7474a79ff4c2d",
+          "Fingerprint": "sha256:f41b39b5023bda9931f71287fe1e3ad2e7376c7b39bb108556005898d1437440",
           "Title": "openssl: OpenSSL: Heap buffer overflow on 32-bit systems from large X.509 certificate processing",
           "Description": "Issue summary: Converting an excessively large OCTET STRING value to\na hexadecimal string leads to a heap buffer overflow on 32 bit platforms.\n\nImpact summary: A heap buffer overflow may lead to a crash or possibly\nan attacker controlled code execution or other undefined behavior.\n\nIf an attacker can supply a crafted X.509 certificate with an excessively\nlarge OCTET STRING value in extensions such as the Subject Key Identifier\n(SKID) or Authority Key Identifier (AKID) which are being converted to hex,\nthe size of the buffer needed for the result is calculated as multiplication\nof the input length by 3. On 32 bit platforms, this multiplication may overflow\nresulting in the allocation of a smaller buffer and a heap buffer overflow.\n\nApplications and services that print or log contents of untrusted X.509\ncertificates are vulnerable to this issue. As the certificates would have\nto have sizes of over 1 Gigabyte, printing or logging such certificates\nis a fairly unlikely operation and only 32 bit platforms are affected,\nthis issue was assigned Low severity.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3 and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "CRITICAL",
@@ -2014,6 +2014,7 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-31789",
+            "https://github.com/advisories/GHSA-j79m-9jxq-788r",
             "https://github.com/openssl/openssl/commit/364f095b80601db632b0def6a33316967f863bde",
             "https://github.com/openssl/openssl/commit/7a9087efd769f362ad9c0e30c7baaa6bbfa65ecf",
             "https://github.com/openssl/openssl/commit/945b935ac66cc7f1a41f1b849c7c25adb5351f49",
@@ -2050,7 +2051,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:95245b2007fd145e71a892a448e3ce04d44afa5e186d86ad4295f584d9dede29",
+          "Fingerprint": "sha256:d3a7b72573a2ee54f1726390f28033c5ed8172e7d9bb28f5247b4aee4542f2d0",
           "Title": "openssl: OpenSSL: Arbitrary code execution due to use-after-free in DANE TLSA authentication",
           "Description": "Issue summary: An uncommon configuration of clients performing DANE TLSA-based\nserver authentication, when paired with uncommon server DANE TLSA records, may\nresult in a use-after-free and/or double-free on the client side.\n\nImpact summary: A use after free can have a range of potential consequences\nsuch as the corruption of valid data, crashes or execution of arbitrary code.\n\nHowever, the issue only affects clients that make use of TLSA records with both\nthe PKIX-TA(0/PKIX-EE(1) certificate usages and the DANE-TA(2) certificate\nusage.\n\nBy far the most common deployment of DANE is in SMTP MTAs for which RFC7672\nrecommends that clients treat as 'unusable' any TLSA records that have the PKIX\ncertificate usages.  These SMTP (or other similar) clients are not vulnerable\nto this issue.  Conversely, any clients that support only the PKIX usages, and\nignore the DANE-TA(2) usage are also not vulnerable.\n\nThe client would also need to be communicating with a server that publishes a\nTLSA RRset with both types of TLSA records.\n\nNo FIPS modules are affected by this issue, the problem code is outside the\nFIPS module boundary.",
           "Severity": "HIGH",
@@ -2113,7 +2114,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:dffc38635cb74f91088e7dddd4098dab96992dae0eeeb5704766f7b573477d24",
+          "Fingerprint": "sha256:410774bff60535be71a71c971c73c711d86cef051d236a43cfe94eaaba315718",
           "Title": "openssl: OpenSSL: Denial of Service due to NULL pointer dereference in delta CRL processing",
           "Description": "Issue summary: When a delta CRL that contains a Delta CRL Indicator extension\nis processed a NULL pointer dereference might happen if the required CRL\nNumber extension is missing.\n\nImpact summary: A NULL pointer dereference can trigger a crash which\nleads to a Denial of Service for an application.\n\nWhen CRL processing and delta CRL processing is enabled during X.509\ncertificate verification, the delta CRL processing does not check\nwhether the CRL Number extension is NULL before dereferencing it.\nWhen a malformed delta CRL file is being processed, this parameter\ncan be NULL, causing a NULL pointer dereference.\n\nExploiting this issue requires the X509_V_FLAG_USE_DELTAS flag to be enabled in\nthe verification context, the certificate being verified to contain a\nfreshestCRL extension or the base CRL to have the EXFLAG_FRESHEST flag set, and\nan attacker to provide a malformed CRL to an application that processes it.\n\nThe vulnerability is limited to Denial of Service and cannot be escalated to\nachieve code execution or memory disclosure. For that reason the issue was\nassessed as Low severity according to our Security Policy.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3 and 3.0 are not affected by this issue,\nas the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "HIGH",
@@ -2123,12 +2124,17 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
+            "julia": 3,
             "nvd": 3,
             "photon": 3,
             "redhat": 1,
             "ubuntu": 1
           },
           "CVSS": {
+            "julia": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            },
             "nvd": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 7.5
@@ -2177,7 +2183,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:a0a24a7dac39a9d0b3e182e70cdb9cc9b01332f2ebc4080c09054c2a4e704684",
+          "Fingerprint": "sha256:e607c56ac6a71144abc11a4ddb45dd2687ce9aa31df6ba920f69dc0a10c3506c",
           "Title": "openssl: OpenSSL: Denial of Service vulnerability in CMS processing",
           "Description": "Issue summary: During processing of a crafted CMS EnvelopedData message\nwith KeyAgreeRecipientInfo a NULL pointer dereference can happen.\n\nImpact summary: Applications that process attacker-controlled CMS data may\ncrash before authentication or cryptographic operations occur resulting in\nDenial of Service.\n\nWhen a CMS EnvelopedData message that uses KeyAgreeRecipientInfo is\nprocessed, the optional parameters field of KeyEncryptionAlgorithmIdentifier\nis examined without checking for its presence. This results in a NULL\npointer dereference if the field is missing.\n\nApplications and services that call CMS_decrypt() on untrusted input\n(e.g., S/MIME processing or CMS-based protocols) are vulnerable.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3 and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "HIGH",
@@ -2187,12 +2193,17 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
+            "julia": 3,
             "nvd": 3,
             "photon": 3,
             "redhat": 1,
             "ubuntu": 1
           },
           "CVSS": {
+            "julia": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            },
             "nvd": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 7.5
@@ -2204,6 +2215,7 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-28389",
+            "https://github.com/advisories/GHSA-7x88-9hgc-69gf",
             "https://github.com/openssl/openssl/commit/16cea4188e0ea567deb4f93f85902247e67384f5",
             "https://github.com/openssl/openssl/commit/785cbf7ea3b5a6f5adf0c1ccb92b79d89c35c616",
             "https://github.com/openssl/openssl/commit/7b5274e812400cacb6f3be4c2df5340923fa807f",
@@ -2241,7 +2253,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:3f71245ae569e2797fec230abfcafc2e36e3fd7e745ca6d93a20b01d84f18a29",
+          "Fingerprint": "sha256:d840c26f5880137c9bfdb5b9e8afcbe62012c411d5bffb3581c459f93504fefa",
           "Title": "openssl: OpenSSL: Denial of Service due to NULL pointer dereference in CMS EnvelopedData processing",
           "Description": "Issue summary: During processing of a crafted CMS EnvelopedData message\nwith KeyTransportRecipientInfo a NULL pointer dereference can happen.\n\nImpact summary: Applications that process attacker-controlled CMS data may\ncrash before authentication or cryptographic operations occur resulting in\nDenial of Service.\n\nWhen a CMS EnvelopedData message that uses KeyTransportRecipientInfo with\nRSA-OAEP encryption is processed, the optional parameters field of\nRSA-OAEP SourceFunc algorithm identifier is examined without checking\nfor its presence. This results in a NULL pointer dereference if the field\nis missing.\n\nApplications and services that call CMS_decrypt() on untrusted input\n(e.g., S/MIME processing or CMS-based protocols) are vulnerable.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3 and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "HIGH",
@@ -2251,12 +2263,17 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
+            "julia": 3,
             "nvd": 3,
             "photon": 3,
             "redhat": 2,
             "ubuntu": 1
           },
           "CVSS": {
+            "julia": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            },
             "nvd": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 7.5
@@ -2304,7 +2321,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:f81c7678447fc2435b4b43d64bdec7caae154f298f87847a6681026444f046b5",
+          "Fingerprint": "sha256:000962cb3ae99dcae21891cac14ef26873bbc48925c04c66a75993e1e7a9c0fe",
           "Title": "openssl: openssl: Information Disclosure from Uninitialized Memory via Invalid RSA Public Key",
           "Description": "Issue summary: Applications using RSASVE key encapsulation to establish\na secret encryption key can send contents of an uninitialized memory buffer to\na malicious peer.\n\nImpact summary: The uninitialized buffer might contain sensitive data from the\nprevious execution of the application process which leads to sensitive data\nleakage to an attacker.\n\nRSA_public_encrypt() returns the number of bytes written on success and -1\non error. The affected code tests only whether the return value is non-zero.\nAs a result, if RSA encryption fails, encapsulation can still return success to\nthe caller, set the output lengths, and leave the caller to use the contents of\nthe ciphertext buffer as if a valid KEM ciphertext had been produced.\n\nIf applications use EVP_PKEY_encapsulate() with RSA/RSASVE on an\nattacker-supplied invalid RSA public key without first validating that key,\nthen this may cause stale or uninitialized contents of the caller-provided\nciphertext buffer to be disclosed to the attacker in place of the KEM\nciphertext.\n\nAs a workaround calling EVP_PKEY_public_check() or\nEVP_PKEY_public_check_quick() before EVP_PKEY_encapsulate() will mitigate\nthe issue.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3, 3.1 and 3.0 are affected by this issue.",
           "Severity": "MEDIUM",
@@ -2314,11 +2331,16 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
+            "julia": 3,
             "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
           "CVSS": {
+            "julia": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 7.5
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N",
               "V3Score": 5.9
@@ -2326,6 +2348,7 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-31790",
+            "https://github.com/advisories/GHSA-vgxx-5xj5-q97x",
             "https://github.com/openssl/openssl/commit/001e01db3e996e13ffc72386fe79d03a6683b5ac",
             "https://github.com/openssl/openssl/commit/abd8b2eec7e3f3fda60ecfb68498b246b52af482",
             "https://github.com/openssl/openssl/commit/b922e24e5b23ffb9cb9e14cadff23d91e9f7e406",
@@ -2361,7 +2384,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:8059d202b1e0b5325d978e697feaeb44ad14dddb1ece5c364430f3c143072442",
+          "Fingerprint": "sha256:da749657d0146bd1b0204c572575bed2508e4f1769d3708e13b9e8b5d19e4e8d",
           "Title": "openssl: OpenSSL TLS 1.3 server may choose unexpected key agreement group",
           "Description": "Issue summary: An OpenSSL TLS 1.3 server may fail to negotiate the expected\npreferred key exchange group when its key exchange group configuration includes\nthe default by using the 'DEFAULT' keyword.\n\nImpact summary: A less preferred key exchange may be used even when a more\npreferred group is supported by both client and server, if the group\nwas not included among the client's initial predicated keyshares.\nThis will sometimes be the case with the new hybrid post-quantum groups,\nif the client chooses to defer their use until specifically requested by\nthe server.\n\nIf an OpenSSL TLS 1.3 server's configuration uses the 'DEFAULT' keyword to\ninterpolate the built-in default group list into its own configuration, perhaps\nadding or removing specific elements, then an implementation defect causes the\n'DEFAULT' list to lose its 'tuple' structure, and all server-supported groups\nwere treated as a single sufficiently secure 'tuple', with the server not\nsending a Hello Retry Request (HRR) even when a group in a more preferred tuple\nwas mutually supported.\n\nAs a result, the client and server might fail to negotiate a mutually supported\npost-quantum key agreement group, such as 'X25519MLKEM768', if the client's\nconfiguration results in only 'classical' groups (such as 'X25519' being the\nonly ones in the client's initial keyshare prediction).\n\nOpenSSL 3.5 and later support a new syntax for selecting the most preferred TLS\n1.3 key agreement group on TLS servers.  The old syntax had a single 'flat'\nlist of groups, and treated all the supported groups as sufficiently secure.\nIf any of the keyshares predicted by the client were supported by the server\nthe most preferred among these was selected, even if other groups supported by\nthe client, but not included in the list of predicted keyshares would have been\nmore preferred, if included.\n\nThe new syntax partitions the groups into distinct 'tuples' of roughly\nequivalent security.  Within each tuple the most preferred group included among\nthe client's predicted keyshares is chosen, but if the client supports a group\nfrom a more preferred tuple, but did not predict any corresponding keyshares,\nthe server will ask the client to retry the ClientHello (by issuing a Hello\nRetry Request or HRR) with the most preferred mutually supported group.\n\nThe above works as expected when the server's configuration uses the built-in\ndefault group list, or explicitly defines its own list by directly defining the\nvarious desired groups and group 'tuples'.\n\nNo OpenSSL FIPS modules are affected by this issue, the code in question lies\noutside the FIPS boundary.\n\nOpenSSL 3.6 and 3.5 are vulnerable to this issue.\n\nOpenSSL 3.6 users should upgrade to OpenSSL 3.6.2 once it is released.\nOpenSSL 3.5 users should upgrade to OpenSSL 3.5.6 once it is released.\n\nOpenSSL 3.4, 3.3, 3.0, 1.0.2 and 1.1.1 are not affected by this issue.",
           "Severity": "LOW",
@@ -2370,10 +2393,15 @@
           ],
           "VendorSeverity": {
             "amazon": 1,
+            "julia": 3,
             "redhat": 1,
             "ubuntu": 1
           },
           "CVSS": {
+            "julia": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 7.5
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:L/A:N",
               "V3Score": 3.1
@@ -2382,6 +2410,7 @@
           "References": [
             "http://www.openwall.com/lists/oss-security/2026/03/13/3",
             "https://access.redhat.com/security/cve/CVE-2026-2673",
+            "https://github.com/advisories/GHSA-wj64-gh9j-xm82",
             "https://github.com/openssl/openssl/commit/2157c9d81f7b0bd7dfa25b960e928ec28e8dd63f",
             "https://github.com/openssl/openssl/commit/85977e013f32ceb96aa034c0e741adddc1a05e34",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-2673",
@@ -2414,7 +2443,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:062eec573115af36b53063ce4f5b80ac98f52fad157c348d7f14ce6f9b8a0996",
+          "Fingerprint": "sha256:e0dbeb82defdd8c16f2c501282ba6c4770e45650ed366a2eb50fb645daec1729",
           "Title": "openssl: OpenSSL: Heap buffer overflow on 32-bit systems from large X.509 certificate processing",
           "Description": "Issue summary: Converting an excessively large OCTET STRING value to\na hexadecimal string leads to a heap buffer overflow on 32 bit platforms.\n\nImpact summary: A heap buffer overflow may lead to a crash or possibly\nan attacker controlled code execution or other undefined behavior.\n\nIf an attacker can supply a crafted X.509 certificate with an excessively\nlarge OCTET STRING value in extensions such as the Subject Key Identifier\n(SKID) or Authority Key Identifier (AKID) which are being converted to hex,\nthe size of the buffer needed for the result is calculated as multiplication\nof the input length by 3. On 32 bit platforms, this multiplication may overflow\nresulting in the allocation of a smaller buffer and a heap buffer overflow.\n\nApplications and services that print or log contents of untrusted X.509\ncertificates are vulnerable to this issue. As the certificates would have\nto have sizes of over 1 Gigabyte, printing or logging such certificates\nis a fairly unlikely operation and only 32 bit platforms are affected,\nthis issue was assigned Low severity.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3 and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "CRITICAL",
@@ -2440,6 +2469,7 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-31789",
+            "https://github.com/advisories/GHSA-j79m-9jxq-788r",
             "https://github.com/openssl/openssl/commit/364f095b80601db632b0def6a33316967f863bde",
             "https://github.com/openssl/openssl/commit/7a9087efd769f362ad9c0e30c7baaa6bbfa65ecf",
             "https://github.com/openssl/openssl/commit/945b935ac66cc7f1a41f1b849c7c25adb5351f49",
@@ -2476,7 +2506,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:c5257e2e815f55bae3962a997e32e5a45a215d23191d480623ea50d3c2263c9e",
+          "Fingerprint": "sha256:d0c1fe42e6a9d684004223c959f2a9d91398a169cecf9b4fec82cf7a02d09d73",
           "Title": "openssl: OpenSSL: Arbitrary code execution due to use-after-free in DANE TLSA authentication",
           "Description": "Issue summary: An uncommon configuration of clients performing DANE TLSA-based\nserver authentication, when paired with uncommon server DANE TLSA records, may\nresult in a use-after-free and/or double-free on the client side.\n\nImpact summary: A use after free can have a range of potential consequences\nsuch as the corruption of valid data, crashes or execution of arbitrary code.\n\nHowever, the issue only affects clients that make use of TLSA records with both\nthe PKIX-TA(0/PKIX-EE(1) certificate usages and the DANE-TA(2) certificate\nusage.\n\nBy far the most common deployment of DANE is in SMTP MTAs for which RFC7672\nrecommends that clients treat as 'unusable' any TLSA records that have the PKIX\ncertificate usages.  These SMTP (or other similar) clients are not vulnerable\nto this issue.  Conversely, any clients that support only the PKIX usages, and\nignore the DANE-TA(2) usage are also not vulnerable.\n\nThe client would also need to be communicating with a server that publishes a\nTLSA RRset with both types of TLSA records.\n\nNo FIPS modules are affected by this issue, the problem code is outside the\nFIPS module boundary.",
           "Severity": "HIGH",
@@ -2539,7 +2569,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:ab4ae49f73eb1bbc5c7ea003cea41ec341f3d985313986a2953791551a7af064",
+          "Fingerprint": "sha256:b4fab0d269bf8973329718a132de01837d881345656ddd5f717b81f4b383ef73",
           "Title": "openssl: OpenSSL: Denial of Service due to NULL pointer dereference in delta CRL processing",
           "Description": "Issue summary: When a delta CRL that contains a Delta CRL Indicator extension\nis processed a NULL pointer dereference might happen if the required CRL\nNumber extension is missing.\n\nImpact summary: A NULL pointer dereference can trigger a crash which\nleads to a Denial of Service for an application.\n\nWhen CRL processing and delta CRL processing is enabled during X.509\ncertificate verification, the delta CRL processing does not check\nwhether the CRL Number extension is NULL before dereferencing it.\nWhen a malformed delta CRL file is being processed, this parameter\ncan be NULL, causing a NULL pointer dereference.\n\nExploiting this issue requires the X509_V_FLAG_USE_DELTAS flag to be enabled in\nthe verification context, the certificate being verified to contain a\nfreshestCRL extension or the base CRL to have the EXFLAG_FRESHEST flag set, and\nan attacker to provide a malformed CRL to an application that processes it.\n\nThe vulnerability is limited to Denial of Service and cannot be escalated to\nachieve code execution or memory disclosure. For that reason the issue was\nassessed as Low severity according to our Security Policy.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3 and 3.0 are not affected by this issue,\nas the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "HIGH",
@@ -2549,12 +2579,17 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
+            "julia": 3,
             "nvd": 3,
             "photon": 3,
             "redhat": 1,
             "ubuntu": 1
           },
           "CVSS": {
+            "julia": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            },
             "nvd": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 7.5
@@ -2603,7 +2638,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:9994bba7269a67e74572556ea584420489deeed6f938d7d326e531cf35f9af3b",
+          "Fingerprint": "sha256:0aae4dd0bc6ecfa32a5cffda385e24143f6143d742da3c09662eeca9021d2e25",
           "Title": "openssl: OpenSSL: Denial of Service vulnerability in CMS processing",
           "Description": "Issue summary: During processing of a crafted CMS EnvelopedData message\nwith KeyAgreeRecipientInfo a NULL pointer dereference can happen.\n\nImpact summary: Applications that process attacker-controlled CMS data may\ncrash before authentication or cryptographic operations occur resulting in\nDenial of Service.\n\nWhen a CMS EnvelopedData message that uses KeyAgreeRecipientInfo is\nprocessed, the optional parameters field of KeyEncryptionAlgorithmIdentifier\nis examined without checking for its presence. This results in a NULL\npointer dereference if the field is missing.\n\nApplications and services that call CMS_decrypt() on untrusted input\n(e.g., S/MIME processing or CMS-based protocols) are vulnerable.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3 and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "HIGH",
@@ -2613,12 +2648,17 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
+            "julia": 3,
             "nvd": 3,
             "photon": 3,
             "redhat": 1,
             "ubuntu": 1
           },
           "CVSS": {
+            "julia": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            },
             "nvd": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 7.5
@@ -2630,6 +2670,7 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-28389",
+            "https://github.com/advisories/GHSA-7x88-9hgc-69gf",
             "https://github.com/openssl/openssl/commit/16cea4188e0ea567deb4f93f85902247e67384f5",
             "https://github.com/openssl/openssl/commit/785cbf7ea3b5a6f5adf0c1ccb92b79d89c35c616",
             "https://github.com/openssl/openssl/commit/7b5274e812400cacb6f3be4c2df5340923fa807f",
@@ -2667,7 +2708,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:d414c14706308ae78ae5954d77e7d7e61f1408316aece185450b98c804a30b44",
+          "Fingerprint": "sha256:7a420b42ab5e7451754f81fa213165958a4b0ecdd44ca3c5a4d51372510bbfff",
           "Title": "openssl: OpenSSL: Denial of Service due to NULL pointer dereference in CMS EnvelopedData processing",
           "Description": "Issue summary: During processing of a crafted CMS EnvelopedData message\nwith KeyTransportRecipientInfo a NULL pointer dereference can happen.\n\nImpact summary: Applications that process attacker-controlled CMS data may\ncrash before authentication or cryptographic operations occur resulting in\nDenial of Service.\n\nWhen a CMS EnvelopedData message that uses KeyTransportRecipientInfo with\nRSA-OAEP encryption is processed, the optional parameters field of\nRSA-OAEP SourceFunc algorithm identifier is examined without checking\nfor its presence. This results in a NULL pointer dereference if the field\nis missing.\n\nApplications and services that call CMS_decrypt() on untrusted input\n(e.g., S/MIME processing or CMS-based protocols) are vulnerable.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3 and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "HIGH",
@@ -2677,12 +2718,17 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
+            "julia": 3,
             "nvd": 3,
             "photon": 3,
             "redhat": 2,
             "ubuntu": 1
           },
           "CVSS": {
+            "julia": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            },
             "nvd": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 7.5
@@ -2730,7 +2776,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:2c01c19972a70aafc3f4cb8e11bef11f1e3e4e62d4ca04e3eada034662e302a3",
+          "Fingerprint": "sha256:5dd248e453f450b0c69f4f27f1aaa61d1019b8e757f66d3f607b82829666c6ab",
           "Title": "openssl: openssl: Information Disclosure from Uninitialized Memory via Invalid RSA Public Key",
           "Description": "Issue summary: Applications using RSASVE key encapsulation to establish\na secret encryption key can send contents of an uninitialized memory buffer to\na malicious peer.\n\nImpact summary: The uninitialized buffer might contain sensitive data from the\nprevious execution of the application process which leads to sensitive data\nleakage to an attacker.\n\nRSA_public_encrypt() returns the number of bytes written on success and -1\non error. The affected code tests only whether the return value is non-zero.\nAs a result, if RSA encryption fails, encapsulation can still return success to\nthe caller, set the output lengths, and leave the caller to use the contents of\nthe ciphertext buffer as if a valid KEM ciphertext had been produced.\n\nIf applications use EVP_PKEY_encapsulate() with RSA/RSASVE on an\nattacker-supplied invalid RSA public key without first validating that key,\nthen this may cause stale or uninitialized contents of the caller-provided\nciphertext buffer to be disclosed to the attacker in place of the KEM\nciphertext.\n\nAs a workaround calling EVP_PKEY_public_check() or\nEVP_PKEY_public_check_quick() before EVP_PKEY_encapsulate() will mitigate\nthe issue.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3, 3.1 and 3.0 are affected by this issue.",
           "Severity": "MEDIUM",
@@ -2740,11 +2786,16 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
+            "julia": 3,
             "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
           "CVSS": {
+            "julia": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 7.5
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N",
               "V3Score": 5.9
@@ -2752,6 +2803,7 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-31790",
+            "https://github.com/advisories/GHSA-vgxx-5xj5-q97x",
             "https://github.com/openssl/openssl/commit/001e01db3e996e13ffc72386fe79d03a6683b5ac",
             "https://github.com/openssl/openssl/commit/abd8b2eec7e3f3fda60ecfb68498b246b52af482",
             "https://github.com/openssl/openssl/commit/b922e24e5b23ffb9cb9e14cadff23d91e9f7e406",
@@ -2787,7 +2839,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:d22b2f9a61b528f4c3909da23ea5e3cfe05ba55b2ca745c26d1d539e50fbf198",
+          "Fingerprint": "sha256:b68f0b84e74a6358732250c4e6f7f4c5c762dc2b122bb5881c9232ef1eb8b1a7",
           "Title": "openssl: OpenSSL TLS 1.3 server may choose unexpected key agreement group",
           "Description": "Issue summary: An OpenSSL TLS 1.3 server may fail to negotiate the expected\npreferred key exchange group when its key exchange group configuration includes\nthe default by using the 'DEFAULT' keyword.\n\nImpact summary: A less preferred key exchange may be used even when a more\npreferred group is supported by both client and server, if the group\nwas not included among the client's initial predicated keyshares.\nThis will sometimes be the case with the new hybrid post-quantum groups,\nif the client chooses to defer their use until specifically requested by\nthe server.\n\nIf an OpenSSL TLS 1.3 server's configuration uses the 'DEFAULT' keyword to\ninterpolate the built-in default group list into its own configuration, perhaps\nadding or removing specific elements, then an implementation defect causes the\n'DEFAULT' list to lose its 'tuple' structure, and all server-supported groups\nwere treated as a single sufficiently secure 'tuple', with the server not\nsending a Hello Retry Request (HRR) even when a group in a more preferred tuple\nwas mutually supported.\n\nAs a result, the client and server might fail to negotiate a mutually supported\npost-quantum key agreement group, such as 'X25519MLKEM768', if the client's\nconfiguration results in only 'classical' groups (such as 'X25519' being the\nonly ones in the client's initial keyshare prediction).\n\nOpenSSL 3.5 and later support a new syntax for selecting the most preferred TLS\n1.3 key agreement group on TLS servers.  The old syntax had a single 'flat'\nlist of groups, and treated all the supported groups as sufficiently secure.\nIf any of the keyshares predicted by the client were supported by the server\nthe most preferred among these was selected, even if other groups supported by\nthe client, but not included in the list of predicted keyshares would have been\nmore preferred, if included.\n\nThe new syntax partitions the groups into distinct 'tuples' of roughly\nequivalent security.  Within each tuple the most preferred group included among\nthe client's predicted keyshares is chosen, but if the client supports a group\nfrom a more preferred tuple, but did not predict any corresponding keyshares,\nthe server will ask the client to retry the ClientHello (by issuing a Hello\nRetry Request or HRR) with the most preferred mutually supported group.\n\nThe above works as expected when the server's configuration uses the built-in\ndefault group list, or explicitly defines its own list by directly defining the\nvarious desired groups and group 'tuples'.\n\nNo OpenSSL FIPS modules are affected by this issue, the code in question lies\noutside the FIPS boundary.\n\nOpenSSL 3.6 and 3.5 are vulnerable to this issue.\n\nOpenSSL 3.6 users should upgrade to OpenSSL 3.6.2 once it is released.\nOpenSSL 3.5 users should upgrade to OpenSSL 3.5.6 once it is released.\n\nOpenSSL 3.4, 3.3, 3.0, 1.0.2 and 1.1.1 are not affected by this issue.",
           "Severity": "LOW",
@@ -2796,10 +2848,15 @@
           ],
           "VendorSeverity": {
             "amazon": 1,
+            "julia": 3,
             "redhat": 1,
             "ubuntu": 1
           },
           "CVSS": {
+            "julia": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 7.5
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:L/A:N",
               "V3Score": 3.1
@@ -2808,6 +2865,7 @@
           "References": [
             "http://www.openwall.com/lists/oss-security/2026/03/13/3",
             "https://access.redhat.com/security/cve/CVE-2026-2673",
+            "https://github.com/advisories/GHSA-wj64-gh9j-xm82",
             "https://github.com/openssl/openssl/commit/2157c9d81f7b0bd7dfa25b960e928ec28e8dd63f",
             "https://github.com/openssl/openssl/commit/85977e013f32ceb96aa034c0e741adddc1a05e34",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-2673",
@@ -2839,7 +2897,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:00ae34032a693912c862443da95089e1abf23bd36ace981de30e21e274b4fd83",
+          "Fingerprint": "sha256:a5d40d96a65384b9a23d11cdf2b372f1bd4112b3b21c877c6f96d6c8c6736410",
           "Title": "util-linux: TOCTOU in the mount program when setting up loop devices",
           "Description": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.",
           "Severity": "MEDIUM",
@@ -2849,10 +2907,15 @@
             "CWE-367"
           ],
           "VendorSeverity": {
+            "julia": 2,
             "redhat": 2,
             "ubuntu": 2
           },
           "CVSS": {
+            "julia": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 4.7
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
               "V3Score": 4.7
@@ -2890,7 +2953,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:c7791630b8f734da5efac1375b8a50bf90b654d38044466c1a8a0e2a2b0e750e",
+          "Fingerprint": "sha256:eb63377af717c0239d7e83cdc4c791f8ab25283d438b15f773c5190e54003fde",
           "Title": "musl: musl libc: Arbitrary code execution and denial of service via stack-based memory corruption in qsort",
           "Description": "An issue was discovered in musl libc 0.7.10 through 1.2.6. Stack-based memory corruption can occur during qsort of very large arrays, due to incorrectly implemented double-word primitives. The number of elements must exceed about seven million, i.e., the 32nd Leonardo number on 32-bit platforms (or the 64th Leonardo number on 64-bit platforms, which is not practical).",
           "Severity": "HIGH",
@@ -2915,7 +2978,7 @@
             "https://www.openwall.com/lists/oss-security/2026/04/10/13"
           ],
           "PublishedDate": "2026-04-10T17:17:14.107Z",
-          "LastModifiedDate": "2026-04-13T15:02:06.187Z"
+          "LastModifiedDate": "2026-04-27T19:18:46.69Z"
         },
         {
           "VulnerabilityID": "CVE-2026-6042",
@@ -2938,7 +3001,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:3894897bcacda1ef1b1ff5259bb5f8cbada0488c49aacb68392bbc94dd1f23df",
+          "Fingerprint": "sha256:c6b8f2e62f1d813fa3fa45ad931848a46659035fc988cdb73f99ce6461fd1a2d",
           "Title": "musl libc: GB18030 4-byte Decoder: musl libc: Denial of Service via inefficient algorithmic complexity in iconv",
           "Description": "A security flaw has been discovered in musl libc up to 1.2.6. Affected is the function iconv of the file src/locale/iconv.c of the component GB18030 4-byte Decoder. Performing a manipulation results in inefficient algorithmic complexity. The attack must be initiated from a local position. To fix this issue, it is recommended to deploy a patch.",
           "Severity": "MEDIUM",
@@ -2990,7 +3053,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:0f55e55470da3b73698b2a73d3af2a03ac7ee351407a87b47ec9e49038a75446",
+          "Fingerprint": "sha256:b218c051bad9c67baaf37b9d7d0350dc7d9c0214131bd129154a6a506cb39e41",
           "Title": "musl: musl libc: Arbitrary code execution and denial of service via stack-based memory corruption in qsort",
           "Description": "An issue was discovered in musl libc 0.7.10 through 1.2.6. Stack-based memory corruption can occur during qsort of very large arrays, due to incorrectly implemented double-word primitives. The number of elements must exceed about seven million, i.e., the 32nd Leonardo number on 32-bit platforms (or the 64th Leonardo number on 64-bit platforms, which is not practical).",
           "Severity": "HIGH",
@@ -3015,7 +3078,7 @@
             "https://www.openwall.com/lists/oss-security/2026/04/10/13"
           ],
           "PublishedDate": "2026-04-10T17:17:14.107Z",
-          "LastModifiedDate": "2026-04-13T15:02:06.187Z"
+          "LastModifiedDate": "2026-04-27T19:18:46.69Z"
         },
         {
           "VulnerabilityID": "CVE-2026-6042",
@@ -3038,7 +3101,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:84e93221b4d69931a16b27399053c44bcfc45ad44041772c4df81e0e73d3a69b",
+          "Fingerprint": "sha256:de00c2420729cff0ead5821e6a8848095341dd40ad1cffd9182cfdb87a011ac5",
           "Title": "musl libc: GB18030 4-byte Decoder: musl libc: Denial of Service via inefficient algorithmic complexity in iconv",
           "Description": "A security flaw has been discovered in musl libc up to 1.2.6. Affected is the function iconv of the file src/locale/iconv.c of the component GB18030 4-byte Decoder. Performing a manipulation results in inefficient algorithmic complexity. The attack must be initiated from a local position. To fix this issue, it is recommended to deploy a patch.",
           "Severity": "MEDIUM",
@@ -3070,6 +3133,63 @@
           "LastModifiedDate": "2026-04-24T18:01:13.913Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-34743",
+          "PkgID": "xz-libs@5.8.2-r0",
+          "PkgName": "xz-libs",
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/xz-libs@5.8.2-r0?arch=x86_64\u0026distro=3.23.3",
+            "UID": "3c1589b6a5aafd51"
+          },
+          "InstalledVersion": "5.8.2-r0",
+          "FixedVersion": "5.8.3-r0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:3566efde290bd04ef1658d390fe2c17f4a9fdf47499f81e1e52f4ecccec500e6",
+            "DiffID": "sha256:761b1299773fbe6dfcfd578b411ffc60fc388aebe0755a20c75f28397aff10cd"
+          },
+          "SeveritySource": "nvd",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-34743",
+          "DataSource": {
+            "ID": "alpine",
+            "Name": "Alpine Secdb",
+            "URL": "https://secdb.alpinelinux.org/"
+          },
+          "Fingerprint": "sha256:9576a509fa630a1928baec3adbf8cfa94e12b267bc640d3241476c4535f019a4",
+          "Title": "xz: XZ Utils: Denial of Service via buffer overflow in index decoding",
+          "Description": "XZ Utils provide a general-purpose data-compression library plus command-line tools. Prior to version 5.8.3, if lzma_index_decoder() was used to decode an Index that contained no Records, the resulting lzma_index was left in a state where where a subsequent lzma_index_append() would allocate too little memory, and a buffer overflow would occur. This issue has been patched in version 5.8.3.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-122"
+          ],
+          "VendorSeverity": {
+            "azure": 1,
+            "nvd": 2,
+            "photon": 2,
+            "redhat": 2
+          },
+          "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+              "V3Score": 5.3
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+              "V3Score": 5.3
+            }
+          },
+          "References": [
+            "http://www.openwall.com/lists/oss-security/2026/03/31/13",
+            "https://access.redhat.com/security/cve/CVE-2026-34743",
+            "https://github.com/tukaani-project/xz/commit/c8c22869e780ff57c96b46939c3d79ff99395f87",
+            "https://github.com/tukaani-project/xz/releases/tag/v5.8.3",
+            "https://github.com/tukaani-project/xz/security/advisories/GHSA-x872-m794-cxhv",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-34743",
+            "https://www.cve.org/CVERecord?id=CVE-2026-34743"
+          ],
+          "PublishedDate": "2026-04-02T19:21:33.187Z",
+          "LastModifiedDate": "2026-04-15T17:33:17.68Z"
+        },
+        {
           "VulnerabilityID": "CVE-2026-22184",
           "PkgID": "zlib@1.3.1-r2",
           "PkgName": "zlib",
@@ -3091,7 +3211,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:5a3fb6873095fd401411bca6c6f59e5051c5cc8a472c40281977e21fd5ec017e",
+          "Fingerprint": "sha256:a19c2c3bb51b257e85c0e021eae3b32f9583febab600b9573aa674b5460190e7",
           "Title": "zlib: zlib: Arbitrary code execution via buffer overflow in untgz utility",
           "Description": "zlib versions up to and including 1.3.1.2 include a global buffer overflow in the untgz utility located under contrib/untgz. The vulnerability is limited to the standalone demonstration utility and does not affect the core zlib compression library. The flaw occurs when a user executes the untgz command with an excessively long archive name supplied via the command line, leading to an out-of-bounds write in a fixed-size global buffer.",
           "Severity": "HIGH",
@@ -3147,7 +3267,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:28c671ca4874eed2352f3846ce922f8e6a409ab46680910464705284740ad5a9",
+          "Fingerprint": "sha256:471fd026f2cca685a061046cce658ef7f8ea2f535ba179369c08c90fe0e8a096",
           "Title": "zlib: zlib: Denial of Service via infinite loop in CRC32 combine functions",
           "Description": "zlib before 1.3.2 allows CPU consumption via crc32_combine64 and crc32_combine_gen64 because x2nmodp can do right shifts within a loop that has no termination condition.",
           "Severity": "MEDIUM",
@@ -3155,6 +3275,7 @@
             "CWE-1284"
           ],
           "VendorSeverity": {
+            "amazon": 1,
             "azure": 1,
             "cbl-mariner": 1,
             "nvd": 2,
@@ -3861,7 +3982,7 @@
             "Name": "GitHub Security Advisory pip",
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Apip"
           },
-          "Fingerprint": "sha256:1a6436f5e3c16f1ef8b0d02f0a28b238e5bf62e25e81d7b6b7b65c6c937ed5a8",
+          "Fingerprint": "sha256:6a357d2b5f78ea4f40be3df86080f203c74079af2eb9d5e41d906f9a042a6a07",
           "Title": "pip: pip: Incorrect file installation due to improper archive handling",
           "Description": "pip handles concatenated tar and ZIP files as ZIP files regardless of filename or whether a file is both a tar and ZIP file. This behavior could result in confusing installation behavior, such as installing \"incorrect\" files according to the filename of the archive. New behavior only proceeds with installation if the file identifies uniquely as a ZIP or tar archive, not as both.",
           "Severity": "MEDIUM",
@@ -3920,7 +4041,7 @@
             "Name": "GitHub Security Advisory pip",
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Apip"
           },
-          "Fingerprint": "sha256:bc35bb4b05730cd583eeb8c3fd50fe7ed480c8b118899b6a5664e52652b07148",
+          "Fingerprint": "sha256:96d81634c674217708edf519b89bd5f6bc77748ec43cdfff0ef36167146eb3ac",
           "Title": "pip: pip: Information disclosure via path traversal when installing crafted wheel archives",
           "Description": "When pip is installing and extracting a maliciously crafted wheel archive, files may be extracted outside the installation directory. The path traversal is limited to prefixes of the installation directory, thus isn't able to inject or overwrite executable files in typical situations.",
           "Severity": "LOW",
@@ -3981,7 +4102,7 @@
             "Name": "GitHub Security Advisory pip",
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Apip"
           },
-          "Fingerprint": "sha256:1a6436f5e3c16f1ef8b0d02f0a28b238e5bf62e25e81d7b6b7b65c6c937ed5a8",
+          "Fingerprint": "sha256:6a357d2b5f78ea4f40be3df86080f203c74079af2eb9d5e41d906f9a042a6a07",
           "Title": "pip: pip: Incorrect file installation due to improper archive handling",
           "Description": "pip handles concatenated tar and ZIP files as ZIP files regardless of filename or whether a file is both a tar and ZIP file. This behavior could result in confusing installation behavior, such as installing \"incorrect\" files according to the filename of the archive. New behavior only proceeds with installation if the file identifies uniquely as a ZIP or tar archive, not as both.",
           "Severity": "MEDIUM",
