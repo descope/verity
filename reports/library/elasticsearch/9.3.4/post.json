@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.69.3"
   },
-  "ReportID": "019dfa32-3bbd-78b1-a211-968220854cd1",
-  "CreatedAt": "2026-05-05T22:11:29.341571314Z",
+  "ReportID": "019dfbd9-4e9b-74d8-a78d-0e93008a7f49",
+  "CreatedAt": "2026-05-06T05:53:35.899319759Z",
   "ArtifactID": "sha256:591e36794701662367cdbe96cd7deb29080b0f5ae01653f2cc02ee1ec24fea23",
   "ArtifactName": "ghcr.io/verity-org/cache:library-elasticsearch-9.3.4",
   "ArtifactType": "container_image",
@@ -36181,6 +36181,64 @@
           "LastModifiedDate": "2026-04-15T00:35:42.02Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-31790",
+          "PkgID": "openssl-fips-provider@3.0.7-8.el9.x86_64",
+          "PkgName": "openssl-fips-provider",
+          "PkgIdentifier": {
+            "PURL": "pkg:rpm/redhat/openssl-fips-provider@3.0.7-8.el9?arch=x86_64\u0026distro=redhat-9.7",
+            "UID": "8260b44d53e212aa"
+          },
+          "InstalledVersion": "3.0.7-8.el9",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:c770e69088fa05bea8942da1c1e3fa6066cc7c288153d81443e0c9435861e0b1",
+            "DiffID": "sha256:73dd5047f87493ec5a883a7efcc591fcf9fd17284490e83ae258105607396e34"
+          },
+          "SeveritySource": "redhat",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-31790",
+          "Fingerprint": "sha256:9d56999b5031deae2825f5cb466a5e9e4416c27f7c0504106423df1cfdc5f1d6",
+          "Title": "openssl: openssl: Information Disclosure from Uninitialized Memory via Invalid RSA Public Key",
+          "Description": "Issue summary: Applications using RSASVE key encapsulation to establish\na secret encryption key can send contents of an uninitialized memory buffer to\na malicious peer.\n\nImpact summary: The uninitialized buffer might contain sensitive data from the\nprevious execution of the application process which leads to sensitive data\nleakage to an attacker.\n\nRSA_public_encrypt() returns the number of bytes written on success and -1\non error. The affected code tests only whether the return value is non-zero.\nAs a result, if RSA encryption fails, encapsulation can still return success to\nthe caller, set the output lengths, and leave the caller to use the contents of\nthe ciphertext buffer as if a valid KEM ciphertext had been produced.\n\nIf applications use EVP_PKEY_encapsulate() with RSA/RSASVE on an\nattacker-supplied invalid RSA public key without first validating that key,\nthen this may cause stale or uninitialized contents of the caller-provided\nciphertext buffer to be disclosed to the attacker in place of the KEM\nciphertext.\n\nAs a workaround calling EVP_PKEY_public_check() or\nEVP_PKEY_public_check_quick() before EVP_PKEY_encapsulate() will mitigate\nthe issue.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3, 3.1 and 3.0 are affected by this issue.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-754"
+          ],
+          "VendorSeverity": {
+            "amazon": 3,
+            "azure": 2,
+            "julia": 3,
+            "photon": 3,
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "julia": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 7.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 5.9
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-31790",
+            "https://github.com/advisories/GHSA-vgxx-5xj5-q97x",
+            "https://github.com/openssl/openssl/commit/001e01db3e996e13ffc72386fe79d03a6683b5ac",
+            "https://github.com/openssl/openssl/commit/abd8b2eec7e3f3fda60ecfb68498b246b52af482",
+            "https://github.com/openssl/openssl/commit/b922e24e5b23ffb9cb9e14cadff23d91e9f7e406",
+            "https://github.com/openssl/openssl/commit/d5f8e71cd0a54e961d0c3b174348f8308486f790",
+            "https://github.com/openssl/openssl/commit/eed200f58cd8645ed77e46b7e9f764e284df379e",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-31790",
+            "https://openssl-library.org/news/secadv/20260407.txt",
+            "https://ubuntu.com/security/notices/USN-8155-1",
+            "https://www.cve.org/CVERecord?id=CVE-2026-31790",
+            "https://www.openwall.com/lists/oss-security/2026/04/07/11"
+          ],
+          "PublishedDate": "2026-04-07T22:16:21.77Z",
+          "LastModifiedDate": "2026-04-23T15:39:44.033Z"
+        },
+        {
           "VulnerabilityID": "CVE-2026-2673",
           "PkgID": "openssl-fips-provider@3.0.7-8.el9.x86_64",
           "PkgName": "openssl-fips-provider",
@@ -36232,6 +36290,64 @@
           ],
           "PublishedDate": "2026-03-13T19:54:34.033Z",
           "LastModifiedDate": "2026-03-17T18:16:15.6Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-31790",
+          "PkgID": "openssl-fips-provider-so@3.0.7-8.el9.x86_64",
+          "PkgName": "openssl-fips-provider-so",
+          "PkgIdentifier": {
+            "PURL": "pkg:rpm/redhat/openssl-fips-provider-so@3.0.7-8.el9?arch=x86_64\u0026distro=redhat-9.7",
+            "UID": "c90a9c070cc565ff"
+          },
+          "InstalledVersion": "3.0.7-8.el9",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:c770e69088fa05bea8942da1c1e3fa6066cc7c288153d81443e0c9435861e0b1",
+            "DiffID": "sha256:73dd5047f87493ec5a883a7efcc591fcf9fd17284490e83ae258105607396e34"
+          },
+          "SeveritySource": "redhat",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-31790",
+          "Fingerprint": "sha256:ca58faae7c6d0e07e04a3ac2ee7fb29a316b2244fec0eac37a1da3c67bd3c829",
+          "Title": "openssl: openssl: Information Disclosure from Uninitialized Memory via Invalid RSA Public Key",
+          "Description": "Issue summary: Applications using RSASVE key encapsulation to establish\na secret encryption key can send contents of an uninitialized memory buffer to\na malicious peer.\n\nImpact summary: The uninitialized buffer might contain sensitive data from the\nprevious execution of the application process which leads to sensitive data\nleakage to an attacker.\n\nRSA_public_encrypt() returns the number of bytes written on success and -1\non error. The affected code tests only whether the return value is non-zero.\nAs a result, if RSA encryption fails, encapsulation can still return success to\nthe caller, set the output lengths, and leave the caller to use the contents of\nthe ciphertext buffer as if a valid KEM ciphertext had been produced.\n\nIf applications use EVP_PKEY_encapsulate() with RSA/RSASVE on an\nattacker-supplied invalid RSA public key without first validating that key,\nthen this may cause stale or uninitialized contents of the caller-provided\nciphertext buffer to be disclosed to the attacker in place of the KEM\nciphertext.\n\nAs a workaround calling EVP_PKEY_public_check() or\nEVP_PKEY_public_check_quick() before EVP_PKEY_encapsulate() will mitigate\nthe issue.\n\nThe FIPS modules in 3.6, 3.5, 3.4, 3.3, 3.1 and 3.0 are affected by this issue.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-754"
+          ],
+          "VendorSeverity": {
+            "amazon": 3,
+            "azure": 2,
+            "julia": 3,
+            "photon": 3,
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "julia": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 7.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 5.9
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-31790",
+            "https://github.com/advisories/GHSA-vgxx-5xj5-q97x",
+            "https://github.com/openssl/openssl/commit/001e01db3e996e13ffc72386fe79d03a6683b5ac",
+            "https://github.com/openssl/openssl/commit/abd8b2eec7e3f3fda60ecfb68498b246b52af482",
+            "https://github.com/openssl/openssl/commit/b922e24e5b23ffb9cb9e14cadff23d91e9f7e406",
+            "https://github.com/openssl/openssl/commit/d5f8e71cd0a54e961d0c3b174348f8308486f790",
+            "https://github.com/openssl/openssl/commit/eed200f58cd8645ed77e46b7e9f764e284df379e",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-31790",
+            "https://openssl-library.org/news/secadv/20260407.txt",
+            "https://ubuntu.com/security/notices/USN-8155-1",
+            "https://www.cve.org/CVERecord?id=CVE-2026-31790",
+            "https://www.openwall.com/lists/oss-security/2026/04/07/11"
+          ],
+          "PublishedDate": "2026-04-07T22:16:21.77Z",
+          "LastModifiedDate": "2026-04-23T15:39:44.033Z"
         },
         {
           "VulnerabilityID": "CVE-2026-2673",
@@ -37421,6 +37537,7 @@
           "VendorSeverity": {
             "azure": 2,
             "cbl-mariner": 2,
+            "oracle-oval": 2,
             "photon": 3,
             "redhat": 2,
             "ubuntu": 2
@@ -37444,6 +37561,8 @@
             "https://github.com/systemd/systemd/commit/b5fd14693057e5f2c9b4a49603be64ec3608ff6c",
             "https://github.com/systemd/systemd/commit/efa6ba2ab625aaa160ac435a09e6482fc63bdbe8",
             "https://github.com/systemd/systemd/security/advisories/GHSA-gx6q-6f99-m764",
+            "https://linux.oracle.com/cve/CVE-2026-29111.html",
+            "https://linux.oracle.com/errata/ELSA-2026-13677.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-29111",
             "https://ubuntu.com/security/notices/USN-8119-1",
             "https://ubuntu.com/security/notices/USN-8119-2",
