@@ -94,9 +94,18 @@ chartValues:
   # Set dummy github creds so the smoke test can confirm the chart deploys
   # and the binary renders the help/usage path correctly. Real users would
   # override these with valid GitHub App creds. See verity-org/verity#323.
+  #
+  # github.secret is the webhook-validation HMAC secret. The chart's
+  # secret-webhook.yaml template requires it whenever any github.*
+  # config is set (or chart-gen / helm template aborts with
+  # "github.secret is required if github configuration is specified" —
+  # caught by Chart Generation failure on the original #331 merge).
+  # Verified via `helm template atlantis ... -f values.yaml` locally
+  # with all three fields present.
   atlantis:
     github.user: verity-ci-placeholder
     github.token: verity-ci-placeholder-token-not-real
+    github.secret: verity-ci-placeholder-webhook-secret
 
   # openbao chart starts the server in standalone mode by default — the
   # server runs but stays sealed (`Initialized: false`, `Sealed: true`)
