@@ -65,8 +65,12 @@ chartValues:
 
   # aws-load-balancer-controller requires a clusterName to render templates.
   # The wrapper chart consumers MUST override this to their actual cluster name.
+  # Also requires `region:` — chart relies on EC2 IMDS for auto-detection,
+  # which kind has no endpoint for; setting any value satisfies the validator
+  # so the controller can finish startup. See verity-org/verity#323.
   aws-load-balancer-controller:
     clusterName: verity-placeholder
+    region: us-east-1
 
   # cluster-autoscaler requires autoDiscovery.clusterName to render templates.
   # The wrapper chart consumers MUST override this to their actual cluster name.
@@ -84,6 +88,33 @@ chartValues:
   jenkins:
     controller.testEnabled: false
     agent.enabled: false
+
+  # atlantis chart's CI-default values include no VCS credentials, so the
+  # binary aborts at startup with `--gh-user/--gh-token ... must be set`.
+  # Set dummy github creds so the smoke test can confirm the chart deploys
+  # and the binary renders the help/usage path correctly. Real users would
+  # override these with valid GitHub App creds. See verity-org/verity#323.
+  atlantis:
+    github.user: verity-ci-placeholder
+    github.token: verity-ci-placeholder-token-not-real
+
+  # openbao chart starts the server in standalone mode by default — the
+  # server runs but stays sealed (`Initialized: false`, `Sealed: true`)
+  # forever because nothing auto-initializes it. Enable dev mode for CI
+  # smoke so the server boots fully unsealed and the smoke check can
+  # complete. dev mode is in-memory only — never use in production.
+  # See verity-org/verity#323.
+  openbao:
+    server.dev.enabled: true
+
+  # gitea chart defaults `image.rootless: true`, which pulls
+  # `ghcr.io/verity-org/gitea:1-rootless` — a tag verity does not publish
+  # (only `gitea:1` is rebuilt). Switch to the non-rootless image so the
+  # chart pulls a tag that actually resolves. Trade-off: chart drops the
+  # rootless-only security context default; acceptable for CI smoke.
+  # See verity-org/verity#326.
+  gitea:
+    image.rootless: false
 
   # kyverno 3.7.2: disable the post-upgrade `crds.migration` hook. It runs
   # `kubectl` from `registry.k8s.io/kubectl:v1.34.3`. Verity rebuilds kubectl
