@@ -173,4 +173,102 @@ func TestConfig_PathDefaultType(t *testing.T) {
 	p, ok := paths[0].(map[string]any)
 	require.True(t, ok, "expected path entry to be map[string]any")
 	assert.Equal(t, "directory", p["type"])
+	// directory entries must NOT emit a source field — apko rejects it.
+	_, hasSource := p["source"]
+	assert.False(t, hasSource, "directory path should not emit source field")
+}
+
+// TestConfig_PathSymlink covers the symlink path type added for #318 (A.2
+// FHS-path mismatch). Charts that hardcode binaries at non-FHS paths (e.g.
+// /usr/local/bin/etcd, /fluent-bit/bin/fluent-bit, /velero) are routed to
+// verity's wolfi-FHS layout (/usr/bin/<x>) via these symlinks instead of
+// duplicating binaries or modifying the upstream wolfi melange recipe.
+//
+// Regression guard: a previous schema rev had no Source field, so authors
+// could not express symlinks at all and were forced into chart-command
+// overrides per chart. This test fails against that schema and passes
+// against the current one.
+func TestConfig_PathSymlink(t *testing.T) {
+	tmpl := config.TypeTemplate{
+		Base: "wolfi-base",
+		Paths: []config.PathDef{
+			{Path: "/usr/local/bin/etcd", Type: "symlink", Source: "/usr/bin/etcd", UID: 0, GID: 0},
+		},
+	}
+	out, err := render.Config(&tmpl, "latest", "_base")
+	require.NoError(t, err)
+
+	var cfg map[string]any
+	require.NoError(t, yaml.Unmarshal(out, &cfg))
+
+	paths, ok := cfg["paths"].([]any)
+	require.True(t, ok, "expected paths key to be []any")
+	require.Len(t, paths, 1)
+	p, ok := paths[0].(map[string]any)
+	require.True(t, ok, "expected path entry to be map[string]any")
+	assert.Equal(t, "/usr/local/bin/etcd", p["path"])
+	assert.Equal(t, "symlink", p["type"])
+	assert.Equal(t, "/usr/bin/etcd", p["source"])
+	assert.Equal(t, 0, p["uid"])
+	assert.Equal(t, 0, p["gid"])
+}
+
+// TestConfig_PathSymlink_VersionSubstitution confirms {{version}} substitution
+// applies inside Source (so version-templated symlink targets work).
+func TestConfig_PathSymlink_VersionSubstitution(t *testing.T) {
+	tmpl := config.TypeTemplate{
+		Base: "wolfi-base",
+		Paths: []config.PathDef{
+			{Path: "/usr/local/bin/etcd-{{version}}", Type: "symlink", Source: "/usr/bin/etcd-{{version}}", UID: 0, GID: 0},
+		},
+	}
+	out, err := render.Config(&tmpl, "3.6", "_base")
+	require.NoError(t, err)
+
+	var cfg map[string]any
+	require.NoError(t, yaml.Unmarshal(out, &cfg))
+
+	paths, ok := cfg["paths"].([]any)
+	require.True(t, ok, "expected paths key to be []any")
+	require.Len(t, paths, 1)
+	p, ok := paths[0].(map[string]any)
+	require.True(t, ok, "expected path entry to be map[string]any")
+	assert.Equal(t, "/usr/local/bin/etcd-3.6", p["path"])
+	assert.Equal(t, "/usr/bin/etcd-3.6", p["source"])
+}
+
+// TestConfig_PathSymlink_RequiresSource is a regression guard: type=symlink
+// without a Source field is misconfigured and apko would reject it at build
+// time. Render should fail fast with a clear error instead. (Caught by code
+// review on PR #330 — the renderer originally accepted this silently.)
+func TestConfig_PathSymlink_RequiresSource(t *testing.T) {
+	tmpl := config.TypeTemplate{
+		Base: "wolfi-base",
+		Paths: []config.PathDef{
+			{Path: "/usr/local/bin/etcd", Type: "symlink", UID: 0, GID: 0}, // no Source
+		},
+	}
+	_, err := render.Config(&tmpl, "latest", "_base")
+	require.Error(t, err)
+	assert.ErrorIs(t, err, render.ErrSymlinkRequiresSource)
+	assert.Contains(t, err.Error(), "/usr/local/bin/etcd")
+}
+
+// TestConfig_PathSourceOnNonSymlink_Errors is the inverse regression guard:
+// Source is only valid for type=symlink. Any other type with Source set is a
+// misconfiguration; apko rejects it at build. Render should fail fast.
+// (Caught by code review on PR #330 — same root cause as RequiresSource.)
+func TestConfig_PathSourceOnNonSymlink_Errors(t *testing.T) {
+	tmpl := config.TypeTemplate{
+		Base: "wolfi-base",
+		Paths: []config.PathDef{
+			// type defaults to "directory" — Source on a directory is invalid.
+			{Path: "/usr/local/bin/etcd", Source: "/usr/bin/etcd", UID: 0, GID: 0},
+		},
+	}
+	_, err := render.Config(&tmpl, "latest", "_base")
+	require.Error(t, err)
+	assert.ErrorIs(t, err, render.ErrSourceOnNonSymlink)
+	assert.Contains(t, err.Error(), "/usr/local/bin/etcd")
+	assert.Contains(t, err.Error(), `type="directory"`) // ensure the actual type is reported
 }
