@@ -351,11 +351,19 @@ replacements:
     image: "minio-operator"
     tag: "7.1.1"
 
-  # jenkins 5.9.18.
+  # jenkins 5.9.18 — chart's appVersion is `2.555.1-jdk21`. chart-gen
+  # was previously pinning the rendered image tag at the exact patch
+  # (`2.555.1`), but verity's jenkins rebuild lives on the `2.x` floating
+  # stream — fixes added to `images/jenkins.yaml` (e.g. busybox in #328)
+  # only land in NEW patch builds and don't republish older tags. Pinning
+  # `tag: "2"` cascades to whatever wolfi's latest `jenkins-2` patch is,
+  # so chart-side updates pick up the rebuild's package list immediately.
+  # Mirrors the floating-minor methodology used by metrics-server / valkey
+  # / external-dns. See verity-org/verity#328 follow-up.
   "jenkins/jenkins":
     registry: "ghcr.io/verity-org"
     image: "jenkins"
-    tag: "2.555.1"
+    tag: "2"
 
   # Wave 4 charts (mesh + observability).
   # traefik 39.0.8 → traefik 3.6.x; rebuild publishes major.minor tag.
