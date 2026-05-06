@@ -2,6 +2,7 @@
 package render
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strconv"
@@ -13,6 +14,19 @@ import (
 )
 
 const placeholder = "{{version}}"
+
+// Sentinel errors returned by Config when path entries violate the
+// type/source invariants enforced for apko compatibility.
+var (
+	// ErrSymlinkRequiresSource is returned when a path entry has
+	// type=symlink but no Source. apko rejects symlink entries without
+	// a target at melange/apko build time; we fail fast at render.
+	ErrSymlinkRequiresSource = errors.New("type=symlink requires source")
+	// ErrSourceOnNonSymlink is returned when a path entry sets Source
+	// without type=symlink. apko rejects source on directory (and other)
+	// types; we fail fast at render.
+	ErrSourceOnNonSymlink = errors.New("source is only valid for type=symlink")
+)
 
 // apkoConfig is the YAML structure written for apko. Only fields used by
 // integer are represented here; apko ignores unknown fields.
@@ -41,6 +55,7 @@ type apkoEntrypoint struct {
 type apkoPath struct {
 	Path        string `yaml:"path"`
 	Type        string `yaml:"type,omitempty"`
+	Source      string `yaml:"source,omitempty"`
 	UID         int    `yaml:"uid"`
 	GID         int    `yaml:"gid"`
 	Permissions uint32 `yaml:"permissions,omitempty"`
@@ -89,29 +104,54 @@ func Config(tmpl *config.TypeTemplate, version, basePath string) ([]byte, error)
 
 	// Paths.
 	if len(tmpl.Paths) > 0 {
-		cfg.Paths = make([]apkoPath, len(tmpl.Paths))
-		for i, p := range tmpl.Paths {
-			ptype := p.Type
-			if ptype == "" {
-				ptype = "directory"
-			}
-			perms, err := parsePermissions(p.Permissions)
-			if err != nil {
-				return nil, fmt.Errorf("path %q: %w", p.Path, err)
-			}
-			cfg.Paths[i] = apkoPath{
-				Path:        sub(p.Path, version),
-				Type:        ptype,
-				UID:         p.UID,
-				GID:         p.GID,
-				Permissions: perms,
-			}
+		paths, err := convertPaths(tmpl.Paths, version)
+		if err != nil {
+			return nil, err
 		}
+		cfg.Paths = paths
 	}
 
 	out, err := yaml.Marshal(&cfg)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling apko config: %w", err)
+	}
+	return out, nil
+}
+
+// convertPaths transforms a slice of config.PathDef entries into the apko
+// representation, applying {{version}} substitution and enforcing the
+// source/type invariants apko itself enforces at build time:
+//
+//   - type=symlink requires Source (apko rejects symlinks without a target)
+//   - Source set on any non-symlink type is invalid (apko rejects it)
+//
+// Failing fast at render keeps misconfigured YAML errors close to their YAML
+// source instead of surfacing as opaque apko/melange build failures.
+func convertPaths(in []config.PathDef, version string) ([]apkoPath, error) {
+	out := make([]apkoPath, len(in))
+	for i, p := range in {
+		ptype := p.Type
+		if ptype == "" {
+			ptype = "directory"
+		}
+		if ptype == "symlink" && p.Source == "" {
+			return nil, fmt.Errorf("path %q: %w", p.Path, ErrSymlinkRequiresSource)
+		}
+		if ptype != "symlink" && p.Source != "" {
+			return nil, fmt.Errorf("path %q (got type=%q): %w", p.Path, ptype, ErrSourceOnNonSymlink)
+		}
+		perms, err := parsePermissions(p.Permissions)
+		if err != nil {
+			return nil, fmt.Errorf("path %q: %w", p.Path, err)
+		}
+		out[i] = apkoPath{
+			Path:        sub(p.Path, version),
+			Type:        ptype,
+			Source:      sub(p.Source, version),
+			UID:         p.UID,
+			GID:         p.GID,
+			Permissions: perms,
+		}
 	}
 	return out, nil
 }
