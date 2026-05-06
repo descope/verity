@@ -33,6 +33,22 @@ chartValues:
     gateway.enabled: false
     chunksCache.enabled: false
     resultsCache.enabled: false
+    # Default replicas: 3 per component with anti-affinity. Single-node kind
+    # can only place 1; the others sit Pending forever (FailedScheduling:
+    # didn't match pod anti-affinity rules). Drop to 1 each for CI smoke
+    # — see verity-org/verity#322.
+    backend.replicas: 1
+    read.replicas: 1
+    write.replicas: 1
+
+  # minio 5.4.0 (charts.min.io) defaults to mode: distributed with 16-replica
+  # StatefulSet and 16Gi memory requests — kind cannot place even one pod
+  # (FailedScheduling: Insufficient memory). Standalone mode + 1 replica +
+  # 256Mi requests fits CI smoke. See verity-org/verity#322.
+  minio:
+    mode: standalone
+    replicas: 1
+    resources.requests.memory: 256Mi
 
   # mimir-distributed 6.0.6 can render as a single-image runtime if we turn off
   # optional bundled infra components (MinIO, Kafka, nginx gateway, rollout-operator).
