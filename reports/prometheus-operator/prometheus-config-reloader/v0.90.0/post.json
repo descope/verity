@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.69.3"
   },
-  "ReportID": "019dca8f-c948-710b-b229-20976dacb0a8",
-  "CreatedAt": "2026-04-26T16:11:54.056069976Z",
+  "ReportID": "019dfbe4-02bf-709e-bb82-cb2656dd8dba",
+  "CreatedAt": "2026-05-06T06:05:17.37504223Z",
   "ArtifactID": "sha256:d50bbb42eb72563a68bf96774e83b6a937f8397c8c508463a2bf433817d0dc73",
   "ArtifactName": "ghcr.io/verity-org/cache:prometheus-operator-prometheus-config-reloader-v0.90.0",
   "ArtifactType": "container_image",
@@ -1846,6 +1846,114 @@
       ],
       "Vulnerabilities": [
         {
+          "VulnerabilityID": "CVE-2026-42151",
+          "VendorIDs": [
+            "GHSA-wg65-39gg-5wfj"
+          ],
+          "PkgID": "github.com/prometheus/prometheus@v0.310.0",
+          "PkgName": "github.com/prometheus/prometheus",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/github.com/prometheus/prometheus@v0.310.0",
+            "UID": "a3061baab692c876"
+          },
+          "InstalledVersion": "v0.310.0",
+          "FixedVersion": "0.311.3",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:3540f39d5e40def8ba068e096209cd7645ce31836073ae53a9ef3ecb44a61ca5",
+            "DiffID": "sha256:e9188f2b17ade67d521db29ad4d466bb92bae0c8e6215dcf0df67f47b9e8c465"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-42151",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Go",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
+          },
+          "Fingerprint": "sha256:3e5ef91b34864a951c8261eacc40bdc4ad61d635916f28a2351062b969d48090",
+          "Title": "Prometheus Azure AD remote write OAuth client secret exposed via config API",
+          "Description": "Prometheus is an open-source monitoring system and time series database. Prior to versions 3.5.3 and 3.11.3, the client_secret field in the Azure AD remote write OAuth configuration (storage/remote/azuread) was typed as string instead of Secret. Prometheus redacts fields of type Secret when serving the configuration via the /-/config HTTP API endpoint. Because the field was a plain string, the Azure OAuth client secret was exposed in plaintext to any user or process with access to that endpoint. This issue has been patched in versions 3.5.3 and 3.11.3.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-200",
+            "CWE-312"
+          ],
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://github.com/prometheus/prometheus",
+            "https://github.com/prometheus/prometheus/pull/18587",
+            "https://github.com/prometheus/prometheus/pull/18590",
+            "https://github.com/prometheus/prometheus/releases/tag/v3.11.3",
+            "https://github.com/prometheus/prometheus/releases/tag/v3.5.3",
+            "https://github.com/prometheus/prometheus/security/advisories/GHSA-wg65-39gg-5wfj",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-42151"
+          ],
+          "PublishedDate": "2026-05-04T19:16:04.22Z",
+          "LastModifiedDate": "2026-05-04T19:16:04.22Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-42154",
+          "VendorIDs": [
+            "GHSA-8rm2-7qqf-34qm"
+          ],
+          "PkgID": "github.com/prometheus/prometheus@v0.310.0",
+          "PkgName": "github.com/prometheus/prometheus",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/github.com/prometheus/prometheus@v0.310.0",
+            "UID": "a3061baab692c876"
+          },
+          "InstalledVersion": "v0.310.0",
+          "FixedVersion": "0.311.3",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:3540f39d5e40def8ba068e096209cd7645ce31836073ae53a9ef3ecb44a61ca5",
+            "DiffID": "sha256:e9188f2b17ade67d521db29ad4d466bb92bae0c8e6215dcf0df67f47b9e8c465"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-42154",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Go",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
+          },
+          "Fingerprint": "sha256:69bb6560fe5e6a57e3b3dd8012fbaf661ec149c437cc7c3115301d7bf5de4b62",
+          "Title": "Prometheus: Remote read endpoint allows denial of service via crafted snappy payload",
+          "Description": "Prometheus is an open-source monitoring system and time series database. Prior to versions 3.5.3 and 3.11.3, the remote read endpoint (/api/v1/read) does not validate the declared decoded length in a snappy-compressed request body before allocating memory. An unauthenticated attacker can send a small payload that causes a huge heap allocation per request. Under concurrent load this can exhaust available memory and crash the Prometheus process. This issue has been patched in versions 3.5.3 and 3.11.3.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-400",
+            "CWE-789"
+          ],
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://github.com/prometheus/prometheus",
+            "https://github.com/prometheus/prometheus/pull/18584",
+            "https://github.com/prometheus/prometheus/pull/18585",
+            "https://github.com/prometheus/prometheus/releases/tag/v3.11.3",
+            "https://github.com/prometheus/prometheus/releases/tag/v3.5.3",
+            "https://github.com/prometheus/prometheus/security/advisories/GHSA-8rm2-7qqf-34qm",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-42154"
+          ],
+          "PublishedDate": "2026-05-04T19:16:04.397Z",
+          "LastModifiedDate": "2026-05-04T19:16:04.397Z"
+        },
+        {
           "VulnerabilityID": "CVE-2026-40179",
           "VendorIDs": [
             "GHSA-vffh-x6r8-xx99"
@@ -1888,7 +1996,9 @@
               "V40Score": 5.3
             },
             "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
               "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:N/VI:N/VA:N/SC:L/SI:L/SA:N",
+              "V3Score": 6.1,
               "V40Score": 5.3
             },
             "nvd": {
@@ -1905,6 +2015,43 @@
           ],
           "PublishedDate": "2026-04-15T23:16:09.87Z",
           "LastModifiedDate": "2026-04-22T20:04:15.1Z"
+        },
+        {
+          "VulnerabilityID": "GHSA-fw8g-cg8f-9j28",
+          "PkgID": "github.com/prometheus/prometheus@v0.310.0",
+          "PkgName": "github.com/prometheus/prometheus",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/github.com/prometheus/prometheus@v0.310.0",
+            "UID": "a3061baab692c876"
+          },
+          "InstalledVersion": "v0.310.0",
+          "FixedVersion": "0.311.3",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:3540f39d5e40def8ba068e096209cd7645ce31836073ae53a9ef3ecb44a61ca5",
+            "DiffID": "sha256:e9188f2b17ade67d521db29ad4d466bb92bae0c8e6215dcf0df67f47b9e8c465"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://github.com/advisories/GHSA-fw8g-cg8f-9j28",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Go",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
+          },
+          "Fingerprint": "sha256:d886fe1b8f2937e251af3ed158105d30e2c5105d7741b0d726c8a18fc44ecd49",
+          "Title": "Prometheus vulnerable to stored XSS via crafted histogram bucket label values in the old web UI heatmap display",
+          "Description": "### Impact\n\nIn the Prometheus server's legacy web UI (enabled via the command-line flag `--enable-feature=old-ui`), the histogram heatmap chart view does not escape `le` label values when inserting them into the HTML for use as axis tick mark labels.\n\nAn attacker who can inject crafted metrics (e.g. via a compromised scrape target, remote write, or OTLP receiver endpoint) can execute JavaScript in the browser of any Prometheus user who views the metric in the heatmap chart UI. From the XSS context, an attacker could for example:\n\n- Read `/api/v1/status/config` to extract sensitive configuration (although credentials / secrets are redacted by the server)\n- Call `/-/quit` to shut down Prometheus (only if `--web.enable-lifecycle` is set)\n- Call `/api/v1/admin/tsdb/delete_series` to delete data (only if `--web.enable-admin-api` is set)\n- Exfiltrate metric data to an external server\n\nNote that this only affects users who have explicitly enabled the legacy Prometheus web UI using the `--enable-feature=old-ui` command-line flag.\n\n### Patches\n\nA patch is available at https://github.com/prometheus/prometheus/releases/tag/v0.311.3.\n\n### Workarounds\n\nIf at all possible, disable the legacy web UI by removing the `--enable-feature=old-ui` command-line flag).\n\nIf this is not an option, take the following precautions:\n\n- If using the remote write receiver (`--web.enable-remote-write-receiver`), ensure it is not exposed to untrusted sources.\n- If using the OTLP receiver (`--web.enable-otlp-receiver`), ensure it is not exposed to untrusted sources.\n- Ensure scrape targets are trusted and not under attacker control.\n- Do not enable admin / mutating API endpoints (e.g. `--web.enable-admin-api` or `web.enable-lifecycle`) in cases where you cannot prevent untrusted data from being ingested.\n- Users should avoid clicking untrusted links, especially those containing functions such as `label_replace`, as they may generate poisoned label names and values.\n\n### Resources\n\n- CVE-2019-10215 — prior stored DOM XSS vulnerability in Prometheus query history, fixed in v2.7.2\n- CVE-2026-40179 — prior stored DOM XSS vulnerability in Prometheus web UI (hover tooltips and metrics explorer), fixed in v3.11.2",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "References": [
+            "https://github.com/prometheus/prometheus",
+            "https://github.com/prometheus/prometheus/commit/38f23b9075ced1de2b82d2dad8b2bebb1ecd5b7d",
+            "https://github.com/prometheus/prometheus/security/advisories/GHSA-fw8g-cg8f-9j28"
+          ],
+          "PublishedDate": "2026-05-05T21:53:18Z",
+          "LastModifiedDate": "2026-05-05T21:53:18Z"
         }
       ]
     }
