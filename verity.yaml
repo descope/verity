@@ -351,11 +351,31 @@ replacements:
     image: "minio-operator"
     tag: "7.1.1"
 
-  # jenkins 5.9.18.
+  # jenkins 5.9.18 — chart's appVersion is `2.555.1-jdk21`. This entry was
+  # previously pinned at `tag: "2.555.1"` here in verity.yaml (chart-gen
+  # then propagated that exact patch into the wrapper values, which is
+  # what reached the registry). Fixes added to `images/jenkins.yaml`
+  # (e.g. busybox in #328) only land in NEW patch builds; older patch
+  # tags like `:2.555.1` and even `:2.555` (which aliases to `:2.555.1`)
+  # don't get republished. Verified via `crane digest`:
+  #   :2       → e40b4fd... (latest, has busybox)
+  #   :2.555.1 → d3f1891... (frozen, no busybox)
+  #   :2.555   → d3f1891... (alias of :2.555.1, also frozen)
+  #
+  # Floating-major `tag: "2"` is the only stream that cascades forward
+  # to the latest jenkins-2 patch (currently :2.560), so chart-side
+  # updates pick up rebuild package-list changes immediately.
+  #
+  # This is one floating-stream level coarser than the floating-minor
+  # pattern used by metrics-server (`0.8`), valkey (`9.0`), external-dns
+  # (`0.18`), kyverno (`1.34`), pushgateway (`1.11`), but the principle
+  # is the same: pin the smallest floating-stream that wolfi actively
+  # republishes when the rebuild changes. For jenkins, that's the major.
+  # See verity-org/verity#328 follow-up for the original busybox addition.
   "jenkins/jenkins":
     registry: "ghcr.io/verity-org"
     image: "jenkins"
-    tag: "2.555.1"
+    tag: "2"
 
   # Wave 4 charts (mesh + observability).
   # traefik 39.0.8 → traefik 3.6.x; rebuild publishes major.minor tag.
