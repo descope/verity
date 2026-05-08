@@ -1,7 +1,11 @@
 package:
   name: vcluster
   version: "0.34.0"
-  epoch: 0
+  # Epoch 99 ensures our bespoke (built without bundling vulnerable helm-3)
+  # outranks Wolfi's upstream vcluster apk (currently epoch 3, which transitively
+  # pulls helm-3 3.19.2-r2 with 4 unfixed CRIT/HIGH CVEs). When Wolfi catches
+  # up on its apk repo, we can drop the bespoke override.
+  epoch: 99
   description: "Virtual Kubernetes clusters running inside a namespace of a host cluster"
   copyright:
     - license: Apache-2.0
