@@ -86,16 +86,23 @@ chartValues:
   # default inbound agent image. Keep the wrapper focused on the controller and
   # the existing kiwigrid sidecar image.
   #
-  # NOTE: jenkins is still red after #328 (busybox) + #334 (tag pin). The
-  # init container surfaces a layered failure — chart's apply_config.sh
-  # calls /usr/local/bin/install-plugins.sh which the verity wolfi rebuild
-  # doesn't ship. The natural chartValues fix would be
-  # `controller.installPlugins: []` to skip plugin install entirely, but
-  # internal/discovery/charts.go's helmSetPair only supports scalar types
-  # (string/bool/number) — empty-list values would fail with
-  # ErrChartValueUnsupportedType. Tracked separately; see verity-org/verity#318.
+  # `controller.installPlugins: []` skips the chart's plugin-installation
+  # init step, which calls `/usr/local/bin/install-plugins.sh`. Verity's
+  # wolfi rebuild ships only the JVM + jenkins.war (no helper scripts) —
+  # without this override, the `init` container crashes with
+  # `/var/jenkins_config/apply_config.sh: line 14: /usr/local/bin/install-plugins.sh: not found`.
+  # Skipping plugin install at smoke-test time is fine; real users can
+  # install plugins post-deploy via the UI / configuration-as-code.
+  #
+  # The empty-list override only works because of the helmSetPair
+  # --set-json support added in this same PR (was previously rejected
+  # with ErrChartValueUnsupportedType — see #336 review history).
+  # Verified end-to-end: `helm template jenkins/jenkins --set-json
+  # 'controller.installPlugins=[]'` drops install-plugins.sh references
+  # from the rendered chart (1 → 0).
   jenkins:
     controller.testEnabled: false
+    controller.installPlugins: []
     agent.enabled: false
 
   # atlantis chart's CI-default values include no VCS credentials, so the
