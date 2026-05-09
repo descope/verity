@@ -1,0 +1,50 @@
+package:
+  name: statsd-exporter
+  version: "0.29.0"
+  epoch: 0
+  description: "Prometheus exporter that translates StatsD metrics to Prometheus format"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/prometheus/statsd_exporter
+      tag: v${{package.version}}
+      expected-commit: 595c7742c20fcfa691d21618201ae957b1f00945
+
+  - uses: go/build
+    with:
+      packages: .
+      output: statsd_exporter
+      ldflags: |
+        -X github.com/prometheus/common/version.Version=${{package.version}}
+        -X github.com/prometheus/common/version.Revision=$(git rev-parse HEAD)
+        -X github.com/prometheus/common/version.Branch=v${{package.version}}
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: prometheus/statsd_exporter
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        statsd_exporter --version
+        statsd_exporter --help

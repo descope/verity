@@ -1,0 +1,50 @@
+package:
+  name: elasticsearch-exporter
+  version: "1.10.0"
+  epoch: 0
+  description: "Prometheus exporter for Elasticsearch cluster metrics"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/prometheus-community/elasticsearch_exporter
+      tag: v${{package.version}}
+      expected-commit: eee51ae24a6c802046077c59aff82f6f65cc220e
+
+  - uses: go/build
+    with:
+      packages: .
+      output: elasticsearch_exporter
+      ldflags: |
+        -X github.com/prometheus/common/version.Version=${{package.version}}
+        -X github.com/prometheus/common/version.Revision=$(git rev-parse HEAD)
+        -X github.com/prometheus/common/version.Branch=v${{package.version}}
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: prometheus-community/elasticsearch_exporter
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        elasticsearch_exporter --version
+        elasticsearch_exporter --help

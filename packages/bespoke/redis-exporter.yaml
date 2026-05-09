@@ -1,0 +1,49 @@
+package:
+  name: redis-exporter
+  version: "1.83.0"
+  epoch: 0
+  description: "Prometheus exporter for Redis server metrics"
+  copyright:
+    - license: MIT
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/oliver006/redis_exporter
+      tag: v${{package.version}}
+      expected-commit: 1c261b87e1431be106c241181038274b406c9592
+
+  - uses: go/build
+    with:
+      packages: .
+      output: redis_exporter
+      ldflags: |
+        -X main.BuildVersion=${{package.version}}
+        -X main.BuildCommitSha=$(git rev-parse HEAD)
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: oliver006/redis_exporter
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        redis_exporter --version
+        redis_exporter --help

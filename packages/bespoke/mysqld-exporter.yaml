@@ -1,0 +1,50 @@
+package:
+  name: mysqld-exporter
+  version: "0.19.0"
+  epoch: 0
+  description: "Prometheus exporter for MySQL server metrics"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/prometheus/mysqld_exporter
+      tag: v${{package.version}}
+      expected-commit: 464bc5de74325c3ba85b237561e4b6c0bc3ca6d7
+
+  - uses: go/build
+    with:
+      packages: .
+      output: mysqld_exporter
+      ldflags: |
+        -X github.com/prometheus/common/version.Version=${{package.version}}
+        -X github.com/prometheus/common/version.Revision=$(git rev-parse HEAD)
+        -X github.com/prometheus/common/version.Branch=v${{package.version}}
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: prometheus/mysqld_exporter
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        mysqld_exporter --version
+        mysqld_exporter --help
