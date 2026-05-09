@@ -9,7 +9,7 @@ covers the system design, component responsibilities, and pipeline mechanics.
 | Component | Role |
 | --- | --- |
 | **Verity CLI** (Go) | Orchestrates scanning, discovery, Integer builds, chart generation, patching, and catalog assembly |
-| **Copa** | Go library (`github.com/project-copacetic/copacetic/pkg/patch`) bundled into the verity binary via `internal/patch`. Patches OS, Python (`pip`), and Go packages in container images without rebuilding. Exposed as `verity patch` |
+| **Copa** | Go library (`github.com/project-copacetic/copacetic/pkg/patch`) bundled into the verity binary via `internal/patch`, exposed as `verity patch`. Patches OS, Python (`pip`), and Go packages in container images without rebuilding. Pinned at upstream Copa v0.14.0 base via the `verity-org/copacetic` `verity` integration branch, which carries v0.14.0 plus 67 fork commits adding Go-binary-patching extensions: synthetic binary fallback for distroless images, Trivy-target binary path extraction (handles non-standard binary locations like `/cockroach/cockroach`), OCI label source resolution (`org.opencontainers.image.revision`), and pre-rebuild Solve verification |
 | **Trivy** | Vulnerability scanner (CVE detection, SBOM generation) |
 | **BuildKit** | Builds patched container images (production pipeline uses the GHCR-mirrored `buildx-stable-1` digest; PR smoke tests use a pinned buildx driver image; local `docker-compose.yaml` currently pins `moby/buildkit:v0.29.0`) |
 | **apko / melange** | Builds Wolfi-based Integer images from source (apko rootfs + melange APKs) |
@@ -210,7 +210,7 @@ workflow `.github/scripts/patch-image.sh` calls this command.
 | `--buildkit-addr` | *(empty)* | BuildKit endpoint (e.g., `buildx://copa-builder`) |
 | `--timeout` | `5m` | Upper bound on the whole patch operation |
 | `--platform` | *(empty)* | Single platform to build for (e.g. `linux/amd64`) |
-| `--go-vcs-url` | *(empty)* | Go module VCS URL for stripped/distroless binaries. Wired through copa's `types.Options.GoVCSURL` via a temporary `go.mod` replace directive → `verity-org/copacetic feat/go-vcs-resolution` (upstream copa PR #1546). Replace directive is dropped once #1546 merges upstream. |
+| `--go-vcs-url` | *(empty)* | Go module VCS URL for stripped/distroless binaries (or for monorepos whose embedded VCS path is wrong at older release tags). Wired through copa's `types.Options.GoVCSURL` via a `go.mod` replace directive → `verity-org/copacetic` `verity` branch (upstream Copa v0.14.0 + fork-only Go-binary-patching extensions; see Components table). |
 
 Copa's sentinel `ErrNoUpdatesFound` maps to exit code `0` with stderr line
 `"no package updates found for image <ref>"` so `patch-image.sh`'s existing

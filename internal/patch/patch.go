@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/moby/buildkit/util/progress/progressui"
 	copapatch "github.com/project-copacetic/copacetic/pkg/patch"
 	"github.com/project-copacetic/copacetic/pkg/types"
 )
@@ -100,11 +99,21 @@ type Config struct {
 
 	// GoVCSURL is the explicit Go module VCS URL used by copa's Go binary
 	// rebuild path when the binary lacks embedded buildinfo (stripped /
-	// distroless). Flows through to types.Options.GoVCSURL, which is
-	// currently provided by a go.mod replace directive pointing at the
-	// verity-org/copacetic feat/go-vcs-resolution branch (upstream copa
-	// PR #1546). The replace directive is dropped once #1546 merges
-	// upstream and verity re-pins to a tagged release.
+	// distroless) or when the embedded VCS path is wrong (monorepos with
+	// per-component release tags). Flows through to types.Options.GoVCSURL.
+	//
+	// Backed by the verity-org/copacetic `verity` branch, which carries
+	// upstream copa v0.14.0 plus fork-specific Go-binary-patching
+	// extensions: synthetic binary fallback when on-image binary
+	// detection fails on distroless, Trivy-target binary path
+	// extraction so cockroach-class non-standard binary locations
+	// resolve, OCI label source resolution (org.opencontainers.image.
+	// revision), and pre-rebuild Solve verification. Upstream v0.14.0
+	// alone ships a stripped-down version of these capabilities and
+	// would regress patching for cockroachdb, mongodb, kyverno-
+	// distroless, and prom-config-reloader. Drop the replace directive
+	// only when upstream lands the equivalent of the fork-only commits
+	// documented in SCR-2026-05-06-001.
 	GoVCSURL string
 }
 
@@ -159,7 +168,7 @@ func (c *Config) toOptions() *types.Options {
 		BkAddr:              c.BuildKitAddr,
 		Timeout:             timeout,
 		GoVCSURL:            c.GoVCSURL,
-		Progress:            progressui.DisplayMode("plain"),
+		Progress:            types.DisplayMode("plain"),
 	}
 	if c.Platform != "" {
 		opts.Platforms = []string{c.Platform}

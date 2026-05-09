@@ -10,17 +10,23 @@ set -euo pipefail
 #
 # Optional env vars:
 #   GO_VCS_URL     Explicit Go module VCS URL for stripped/distroless Go
-#                  binaries. Flows through verity patch → copa's
-#                  types.Options.GoVCSURL (currently sourced from a go.mod
-#                  replace directive → verity-org/copacetic feat/go-vcs-
-#                  resolution; the replace directive is dropped once
-#                  upstream copa PR #1546 merges). The retry branch below
-#                  handles the residual case where the Go rebuild still
-#                  fails, falling back to OS-only patches. The retry also
-#                  triggers when the patch log shows a Go-rebuild failure
-#                  even if GO_VCS_URL was not set (e.g. cockroachdb's
-#                  /cockroach/cockroach binary is at a non-standard path
-#                  copa's discovery doesn't walk).
+#                  binaries (or for monorepos whose embedded VCS paths
+#                  point at the wrong directory at older release tags).
+#                  Flows through verity patch → copa's types.Options.
+#                  GoVCSURL. Sourced from the verity-org/copacetic
+#                  `verity` branch (upstream v0.14.0 + fork extensions
+#                  for synthetic binary fallback, Trivy-target binary
+#                  path extraction, OCI label source resolution, and
+#                  pre-rebuild Solve verification — see SCR-2026-05-06-
+#                  001 for why the fork stays).
+#
+#                  The retry branch below handles the residual case
+#                  where the Go rebuild still fails, falling back to
+#                  OS-only patches. The retry also triggers when the
+#                  patch log shows a Go-rebuild failure even if
+#                  GO_VCS_URL was not set (e.g. cockroachdb's /cockroach
+#                  /cockroach binary is at a non-standard path copa's
+#                  discovery doesn't walk on its own).
 
 : "${PLATFORM:?PLATFORM is required}"
 : "${SOURCE:?SOURCE is required}"

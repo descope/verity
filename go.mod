@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/google/go-containerregistry v0.21.5
 	github.com/moby/buildkit v0.29.0
-	github.com/project-copacetic/copacetic v0.13.1-0.20260422213235-21047038c9fe
+	github.com/project-copacetic/copacetic v0.14.0
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v3 v3.8.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -138,4 +138,4 @@ require (
 	k8s.io/apimachinery v0.35.2 // indirect
 )
 
-replace github.com/project-copacetic/copacetic => github.com/verity-org/copacetic v0.0.0-20260424111537-fd4ff4a74837
+replace github.com/project-copacetic/copacetic => github.com/verity-org/copacetic v0.0.0-20260508181309-0c2044849ef7
