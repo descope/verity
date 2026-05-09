@@ -173,6 +173,20 @@ chartValues:
     envoy.image.useDigest: false
     operator.replicas: 1
 
+  # airflow chart bundles a `postgresql` sub-chart with image
+  # `bitnamilegacy/postgresql:16.1.0-debian-11-r15`. chart-gen rewrites
+  # the repository to `verity-org/bitnamilegacy/postgresql` (and that
+  # tag DOES exist in verity-org/), but the chart's own
+  # `postgresql.image.registry: docker.io` default is preserved,
+  # producing the broken `docker.io/verity-org/bitnamilegacy/postgresql:...`
+  # double-prefix. Setting `postgresql.image.registry: ghcr.io` clears
+  # the docker.io prefix so the rendered ref becomes
+  # `ghcr.io/verity-org/bitnamilegacy/postgresql:16.1.0-debian-11-r15`,
+  # which resolves cleanly. Same shape as the tempo-distributed fix.
+  # See verity-org/verity#318.
+  airflow:
+    postgresql.image.registry: ghcr.io
+
   # jenkins 5.9.18 otherwise renders an unpatched bats helm-test pod and a
   # default inbound agent image. Keep the wrapper focused on the controller and
   # the existing kiwigrid sidecar image.
