@@ -15,6 +15,20 @@ types:
       - {path: /usr/share/opensearch/data, type: directory, uid: 65532, gid: 65532, permissions: 0o700}
       - {path: /usr/share/opensearch/logs, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
       - {path: /usr/share/opensearch/config, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+      # Wolfi's openjdk package installs at `/usr/lib/jvm/java-25-openjdk/`
+      # (verified via `crane export ghcr.io/verity-org/opensearch:3`).
+      # The image's `OPENSEARCH_JAVA_HOME` env (above) points at
+      # `/usr/lib/jvm/default-jvm` — a conventional Debian/Wolfi alias
+      # that the openjdk package doesn't itself create. Without a symlink
+      # opensearch fails at startup with:
+      #   could not find java in OPENSEARCH_JAVA_HOME at
+      #     /usr/lib/jvm/default-jvm/bin/java
+      # Symlinking `default-jvm` → the actual openjdk install root keeps
+      # the env-var-pointed path resolvable. Same FHS-adapter pattern as
+      # etcd / fluent-bit / velero in #330. Fixes both opensearch and
+      # opensearch-dashboards (which uses the same OPENSEARCH_JAVA_HOME
+      # convention via the shared opensearch image).
+      - {path: /usr/lib/jvm/default-jvm, type: symlink, source: /usr/lib/jvm/java-25-openjdk, uid: 0, gid: 0}
 
 versions:
   "3": {}
