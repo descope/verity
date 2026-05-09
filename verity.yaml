@@ -17,8 +17,38 @@ overrides:
 chartValues:
   # grafana chart 10.5.15 otherwise renders a bats test pod. Disable it so the
   # wrapper only needs to route the primary Grafana workload image.
+  #
+  # Plus two CI-compat fixes for verity's wolfi grafana rebuild:
+  #
+  # 1. securityContext.run{AsUser,AsGroup,fsGroup}: 65532
+  #    Chart defaults runAsUser=runAsGroup=fsGroup=472 (matching the
+  #    upstream `grafana/grafana` image's `grafana` user uid). Verity's
+  #    wolfi rebuild has no uid 472 in /etc/passwd — it ships only `root`
+  #    (0) and `nonroot` (65532). Without a passwd entry for the running
+  #    uid, grafana fails at startup with:
+  #      "could not get current OS user to detect process privileges"
+  #    Pinning to verity's wolfi `nonroot` uid 65532 (which DOES have
+  #    a /etc/passwd entry) lets grafana detect its own user. The
+  #    chart's `runAsNonRoot: true` invariant stays intact (65532 is
+  #    a nonroot uid).
+  #
+  # 2. env.GF_PATHS_HOME: /usr/share/grafana
+  #    Grafana looks for `defaults.ini` relative to `homepath` (default
+  #    is the working dir, which is `/`). Verity's image installs the
+  #    config at `/usr/share/grafana/conf/defaults.ini` (matching the
+  #    wolfi package layout). Without this env var, grafana fails:
+  #      "Could not find config defaults, make sure homepath command
+  #       line parameter is set or working directory is homepath"
+  #    Setting GF_PATHS_HOME points grafana at the right install root.
+  #
+  # See verity-org/verity#318 (was originally suspected to be wolfi-
+  # package issue; turned out chartValues fully address it).
   grafana:
     testFramework.enabled: false
+    securityContext.runAsUser: 65532
+    securityContext.runAsGroup: 65532
+    securityContext.fsGroup: 65532
+    env.GF_PATHS_HOME: /usr/share/grafana
 
   # loki 7.0.0 requires explicit test schema + bucket names to render, and its
   # default gateway/caches add unpatchable auxiliary images. Keep a minimal
