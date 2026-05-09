@@ -82,6 +82,20 @@ chartValues:
   workload-identity-webhook:
     azureTenantID: verity-placeholder
 
+  # nfs-subdir-external-provisioner chart's Deployment requires `nfs.server`
+  # to render — without it, helm install aborts with:
+  #   Deployment.apps "nfs-subdir-external-provisioner" is invalid:
+  #     spec.template.spec.volumes[0].nfs.server: Required value
+  # CI smoke just needs the provisioner pod up; it doesn't actually request
+  # storage from NFS at startup, so any placeholder satisfies the validator.
+  # Real users would set this to their actual NFS server hostname/IP and
+  # `nfs.path` to the export root. Mirror the `verity-placeholder` pattern
+  # used by aws-load-balancer-controller / cluster-autoscaler /
+  # workload-identity-webhook.
+  nfs-subdir-external-provisioner:
+    nfs.server: 10.0.0.1
+    nfs.path: /
+
   # jenkins 5.9.18 otherwise renders an unpatched bats helm-test pod and a
   # default inbound agent image. Keep the wrapper focused on the controller and
   # the existing kiwigrid sidecar image.
