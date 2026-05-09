@@ -35,6 +35,9 @@ pipeline:
         -X github.com/prometheus/common/version.Revision=$(git rev-parse HEAD)
         -X github.com/prometheus/common/version.Branch=v${{package.version}}
 
+  - runs: |
+      install -Dm644 snmp.yml "${{targets.destdir}}/etc/snmp_exporter/snmp.yml"
+
   - uses: strip
 
 update:
