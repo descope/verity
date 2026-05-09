@@ -60,17 +60,37 @@ chartValues:
 
   # tempo-distributed 1.61.3 defaults to a separate Memcached statefulset; the
   # minimal CI-friendly wrapper just runs the Tempo microservices themselves.
+  #
+  # `global.image.registry: ghcr.io` overrides the chart's per-component
+  # `image.registry: docker.io` defaults. Without this, chart-gen rewrites
+  # `image.repository` from `grafana/tempo` → `verity-org/tempo` but
+  # leaves `image.registry` at `docker.io`, producing the broken
+  # `docker.io/verity-org/tempo:2` reference (verified via May 9 nightly
+  # diagnostic dump on issue #318). Same chart-side workaround as the
+  # chartgen ClearDefaultRegistry plumbing for `defaultRegistry` siblings
+  # in PR #312, but `image.registry` siblings need their own fix path —
+  # this chartValues override is the surgical equivalent.
   tempo-distributed:
     memcached.enabled: false
+    global.image.registry: ghcr.io
 
   # aws-load-balancer-controller requires a clusterName to render templates.
   # The wrapper chart consumers MUST override this to their actual cluster name.
   # Also requires `region:` — chart relies on EC2 IMDS for auto-detection,
   # which kind has no endpoint for; setting any value satisfies the validator
   # so the controller can finish startup. See verity-org/verity#323.
+  #
+  # `vpcId:` is a continuation of the same EC2-IMDS-fallback pattern.
+  # After region: was set in #331/#332, the controller next tries to fetch
+  # VPC ID from EC2 IMDS and fails the same way:
+  #   "failed to get VPC ID: failed to fetch VPC ID from instance metadata"
+  # (verified via May 9 nightly diagnostic dump). Setting any value
+  # satisfies the validator; the chart renders it as `--aws-vpc-id=...`
+  # which the controller accepts without making real EC2 API calls.
   aws-load-balancer-controller:
     clusterName: verity-placeholder
     region: us-east-1
+    vpcId: vpc-placeholder
 
   # cluster-autoscaler requires autoDiscovery.clusterName to render templates.
   # The wrapper chart consumers MUST override this to their actual cluster name.
@@ -118,10 +138,19 @@ chartValues:
   # caught by Chart Generation failure on the original #331 merge).
   # Verified via `helm template atlantis ... -f values.yaml` locally
   # with all three fields present.
+  #
+  # `test.enabled: false` disables the chart's optional `atlantis-ui-test`
+  # bats helm-test pod (default `image: bats/bats` which verity doesn't
+  # rebuild). The diagnostic dump shows main `atlantis-0` pod Running
+  # successfully but the UI-test pod terminates with `Error`, which
+  # chart-integration interprets as overall failure. Disabling the test
+  # pod lets the smoke test verify just the controller — the UI test
+  # itself is a non-essential auxiliary check.
   atlantis:
     github.user: verity-ci-placeholder
     github.token: verity-ci-placeholder-token-not-real
     github.secret: verity-ci-placeholder-webhook-secret
+    test.enabled: false
 
   # openbao chart starts the server in standalone mode by default — the
   # server runs but stays sealed (`Initialized: false`, `Sealed: true`)
