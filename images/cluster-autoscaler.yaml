@@ -8,6 +8,15 @@ types:
     base: wolfi-base
     packages: ["cluster-autoscaler-1.35"]
     entrypoint: /usr/bin/cluster-autoscaler
+    paths:
+      # kubernetes/autoscaler helm chart's StatefulSet hardcodes the
+      # container command as `["./cluster-autoscaler", ...]` with the
+      # default workingDir (`/`), so the kernel resolves it as
+      # `/cluster-autoscaler`. Verity's wolfi rebuild ships at
+      # `/usr/bin/cluster-autoscaler` (FHS). Symlink keeps both layouts
+      # working. Same shape as velero (#330) and etcd (#330).
+      # See verity-org/verity#318 (A.2 FHS-path mismatch sub-cluster).
+      - {path: /cluster-autoscaler, type: symlink, source: /usr/bin/cluster-autoscaler, uid: 0, gid: 0}
 
 versions:
   "1.35": {}
