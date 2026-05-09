@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/moby/buildkit/util/progress/progressui"
 	copapatch "github.com/project-copacetic/copacetic/pkg/patch"
 	"github.com/project-copacetic/copacetic/pkg/types"
 )
@@ -159,7 +158,7 @@ func (c *Config) toOptions() *types.Options {
 		BkAddr:              c.BuildKitAddr,
 		Timeout:             timeout,
 		GoVCSURL:            c.GoVCSURL,
-		Progress:            progressui.DisplayMode("plain"),
+		Progress:            types.PlainMode,
 	}
 	if c.Platform != "" {
 		opts.Platforms = []string{c.Platform}
