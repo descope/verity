@@ -556,6 +556,45 @@ func TestHelmSetArgs(t *testing.T) {
 			},
 			wantErr: ErrChartValueUnsupportedType,
 		},
+		// Programmatic-construction cases — copilot review on PR #342
+		// flagged that the type-switch-only path would reject these
+		// even though JSON encoding handles them natively. The
+		// reflection fall-through in tryHelmSetJSON covers them.
+		{
+			name: "[]string slice uses --set-json (programmatic, not yaml.v3-decoded)",
+			chartValues: map[string]any{
+				"controller.command": []string{"/usr/local/bin/argocd-server", "--port", "8080"},
+			},
+			want: []string{"--set-json", `controller.command=["/usr/local/bin/argocd-server","--port","8080"]`},
+		},
+		{
+			name: "[]int slice uses --set-json (programmatic)",
+			chartValues: map[string]any{
+				"replicas": []int{1, 2, 3},
+			},
+			want: []string{"--set-json", "replicas=[1,2,3]"},
+		},
+		{
+			name: "fixed-size array uses --set-json",
+			chartValues: map[string]any{
+				"ports": [3]int{80, 443, 8080},
+			},
+			want: []string{"--set-json", "ports=[80,443,8080]"},
+		},
+		{
+			name: "map[string]string uses --set-json (programmatic, not yaml.v3-decoded)",
+			chartValues: map[string]any{
+				"labels": map[string]string{"app": "argo-cd", "tier": "backend"},
+			},
+			want: []string{"--set-json", `labels={"app":"argo-cd","tier":"backend"}`},
+		},
+		{
+			name: "map[string]int uses --set-json (programmatic)",
+			chartValues: map[string]any{
+				"resources": map[string]int{"cpu": 100, "memory": 128},
+			},
+			want: []string{"--set-json", `resources={"cpu":100,"memory":128}`},
+		},
 		{
 			name: "deterministic key ordering",
 			chartValues: map[string]any{

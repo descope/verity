@@ -9,6 +9,7 @@ import (
 	"io"
 	"math"
 	"os/exec"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -57,12 +58,10 @@ const helmSetFlag = "--set"
 // type coercion that --set applies (e.g. "false" parsed as bool).
 const helmSetStringFlag = "--set-string"
 
-// helmSetJSONFlag is the helm CLI flag for complex (slice or map) values.
-// helm parses the value as JSON and merges it into the chart values tree,
-// preserving list-typed and nested-map-typed configuration that --set's
-// strvals parser cannot represent (e.g. `controller.installPlugins: []`
-// for the jenkins chart, or per-component `command: [<list>]` overrides
-// for argo-cd). See verity-org/verity#318 (jenkins/argo-cd unblock).
+// helmSetJSONFlag is the helm CLI flag for values that cannot be expressed
+// in --set's strvals syntax. The value is parsed as JSON and merged into
+// the chart values tree, so it supports lists, nested maps, and any other
+// shape JSON can represent.
 const helmSetJSONFlag = "--set-json"
 
 // ExtractChartImages runs helm template for a chart and returns all unique image references found.
@@ -168,6 +167,47 @@ func escapeHelmSetValue(v string) string {
 	return v
 }
 
+// helmSetJSONValue encodes value as JSON and returns the --set-json flag
+// pair. Used for any non-scalar value that JSON can represent (slice,
+// array, string-keyed map, etc.) — helm's --set strvals parser cannot
+// represent these shapes.
+func helmSetJSONValue(path string, value any) (flag, encoded string, err error) {
+	jsonBytes, jerr := json.Marshal(value)
+	if jerr != nil {
+		return "", "", fmt.Errorf("path %q: failed to JSON-encode value: %w", path, jerr)
+	}
+	return helmSetJSONFlag, string(jsonBytes), nil
+}
+
+// tryHelmSetJSON checks via reflection whether value is a JSON-encodable
+// container (slice/array, or map with string keys). Returns handled=true
+// when value matches; handled=false leaves the caller to reject with
+// ErrChartValueUnsupportedType.
+//
+// Reflection here intentionally widens beyond the type-switch fast paths
+// (`[]any`, `map[string]any`) so callers constructing chartValues
+// programmatically (e.g. `[]string`, `map[string]string`,
+// `[]int{1, 2, 3}`) don't hit ErrChartValueUnsupportedType for shapes
+// that JSON encoding handles natively.
+func tryHelmSetJSON(path string, value any) (flag, encoded string, err error, handled bool) {
+	rv := reflect.ValueOf(value)
+	if !rv.IsValid() {
+		return "", "", nil, false
+	}
+	switch rv.Kind() {
+	case reflect.Slice, reflect.Array:
+		flag, encoded, err = helmSetJSONValue(path, value)
+		return flag, encoded, err, true
+	case reflect.Map:
+		// Only string-keyed maps round-trip cleanly to JSON objects.
+		if rv.Type().Key().Kind() == reflect.String {
+			flag, encoded, err = helmSetJSONValue(path, value)
+			return flag, encoded, err, true
+		}
+	}
+	return "", "", nil, false
+}
+
 func helmSetPair(path string, value any) (flag, encoded string, err error) {
 	switch v := value.(type) {
 	case string:
@@ -190,30 +230,19 @@ func helmSetPair(path string, value any) (flag, encoded string, err error) {
 			return "", "", fmt.Errorf("%w: %q=%v", ErrChartValueUnsupportedFloat, path, v)
 		}
 		return helmSetFlag, strconv.FormatFloat(v, 'f', -1, 64), nil
-	case []any:
-		// Slice values cannot be expressed via helm --set's strvals
-		// syntax, so we encode the slice as JSON and use --set-json.
-		// Empty lists `[]` are also handled here, which is exactly
-		// what charts like jenkins (`controller.installPlugins: []`)
-		// require to disable a default-populated list field.
-		jsonBytes, jerr := json.Marshal(v)
-		if jerr != nil {
-			return "", "", fmt.Errorf("path %q: failed to JSON-encode list: %w", path, jerr)
-		}
-		return helmSetJSONFlag, string(jsonBytes), nil
-	case map[string]any:
-		// Nested map values (e.g. struct-shaped overrides) need
-		// --set-json for the same reason as slices.
-		jsonBytes, jerr := json.Marshal(v)
-		if jerr != nil {
-			return "", "", fmt.Errorf("path %q: failed to JSON-encode map: %w", path, jerr)
-		}
-		return helmSetJSONFlag, string(jsonBytes), nil
 	case nil:
 		return "", "", fmt.Errorf("%w: %q", ErrChartValueNil, path)
-	default:
-		return "", "", fmt.Errorf("%w: %q has type %T", ErrChartValueUnsupportedType, path, value)
 	}
+	// Slice/array/string-keyed-map fall through to the JSON path via
+	// reflection. The reflection branch widens support beyond the
+	// concrete `[]any` and `map[string]any` types decoded by yaml.v3
+	// (which is the common case via verity.yaml chartValues) to also
+	// handle programmatically-constructed values like `[]string` /
+	// `map[string]int` that JSON can encode just fine.
+	if flag, encoded, jerr, handled := tryHelmSetJSON(path, value); handled {
+		return flag, encoded, jerr
+	}
+	return "", "", fmt.Errorf("%w: %q has type %T", ErrChartValueUnsupportedType, path, value)
 }
 
 // extractImagesFromManifests parses multi-document Helm YAML output and collects unique image references.
