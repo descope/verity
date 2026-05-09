@@ -1,0 +1,50 @@
+package:
+  name: earthly
+  version: "0.8.16"
+  epoch: 0
+  description: "Build automation for the container era"
+  copyright:
+    - license: MPL-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/earthly/earthly
+      tag: v${{package.version}}
+      expected-commit: c48905267920d5599e849e8e043f801c6baab94a
+
+  - uses: go/build
+    with:
+      packages: ./cmd/earthly
+      output: earthly
+      ldflags: |
+        -X main.Version=v${{package.version}}
+        -X main.GitSha=$(git rev-parse HEAD)
+        -X main.BuiltBy=verity
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: earthly/earthly
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        earthly --version
+        earthly --help

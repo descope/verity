@@ -1,0 +1,67 @@
+package:
+  name: tracee
+  version: "0.24.1"
+  epoch: 0
+  description: "Runtime security and forensics for containers — eBPF-based"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+      - libelf
+      - zlib
+      - zstd
+
+environment:
+  contents:
+    packages:
+      - build-base
+      - busybox
+      - ca-certificates-bundle
+      - clang-16
+      - elfutils-dev
+      - gcc
+      - go
+      - libbpf-dev
+      - libelf
+      - libelf-static
+      - linux-headers
+      - llvm-16
+      - make
+      - pkgconf-dev
+      - zlib-dev
+      - zlib-static
+      - zstd-dev
+      - zstd-static
+  environment:
+    CGO_ENABLED: "1"
+    GO111MODULE: "on"
+    CC: clang-16
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/aquasecurity/tracee
+      tag: v${{package.version}}
+      expected-commit: b40e7f3f89ade93b7f480b9007ab8aafeb978472
+      recurse-submodules: true
+
+  - runs: |
+        make bpf
+        make tracee BUILD_FLAGS="-trimpath" \
+          STATIC=1
+        install -Dm755 dist/tracee "${{targets.destdir}}/usr/bin/tracee"
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: aquasecurity/tracee
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        tracee --version
+        tracee --help

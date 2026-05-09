@@ -1,0 +1,61 @@
+package:
+  name: vcluster
+  version: "0.34.0"
+  # Epoch 99 ensures our bespoke (built without bundling vulnerable helm-3)
+  # outranks Wolfi's upstream vcluster apk (currently epoch 3, which transitively
+  # pulls helm-3 3.19.2-r2 with 4 unfixed CRIT/HIGH CVEs). When Wolfi catches
+  # up on its apk repo, we can drop the bespoke override.
+  epoch: 99
+  description: "Virtual Kubernetes clusters running inside a namespace of a host cluster"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/loft-sh/vcluster
+      tag: v${{package.version}}
+      expected-commit: bb9e88b0a9e45c68d744eebe6bde5c4664cdb676
+
+  - uses: go/build
+    with:
+      packages: ./cmd/vcluster
+      output: vcluster
+      ldflags: |
+        -X github.com/loft-sh/vcluster/pkg/upgrade.version=v${{package.version}}
+        -X github.com/loft-sh/vcluster/pkg/upgrade.commit=$(git rev-parse HEAD)
+
+  - uses: go/build
+    with:
+      packages: ./cmd/vclusterctl
+      output: vclusterctl
+      ldflags: |
+        -X github.com/loft-sh/vcluster/pkg/upgrade.version=v${{package.version}}
+        -X github.com/loft-sh/vcluster/pkg/upgrade.commit=$(git rev-parse HEAD)
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: loft-sh/vcluster
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        vcluster --version
+        vclusterctl --help

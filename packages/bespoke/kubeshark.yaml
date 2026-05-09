@@ -1,0 +1,53 @@
+package:
+  name: kubeshark
+  version: "53.2.5"
+  epoch: 0
+  description: "API traffic viewer for Kubernetes — Wireshark-like in-cluster traffic analysis"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+      - libpcap
+
+environment:
+  contents:
+    packages:
+      - build-base
+      - busybox
+      - ca-certificates-bundle
+      - go
+      - libpcap
+  environment:
+    CGO_ENABLED: "1"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/kubeshark/kubeshark
+      tag: v${{package.version}}
+      expected-commit: ab81b0c3a75bc07c19e5092e94775a633408c170
+
+  - uses: go/build
+    with:
+      packages: .
+      output: kubeshark
+      ldflags: |
+        -X github.com/kubeshark/kubeshark/misc.Ver=${{package.version}}
+        -X github.com/kubeshark/kubeshark/misc.Branch=v${{package.version}}
+        -X github.com/kubeshark/kubeshark/misc.GitCommitHash=$(git rev-parse HEAD)
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: kubeshark/kubeshark
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        kubeshark version
+        kubeshark --help
