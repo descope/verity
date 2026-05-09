@@ -509,9 +509,50 @@ func TestHelmSetArgs(t *testing.T) {
 			wantErr: ErrChartValueNil,
 		},
 		{
-			name: "map value rejected",
+			name: "empty list value uses --set-json",
+			chartValues: map[string]any{
+				"controller.installPlugins": []any{},
+			},
+			want: []string{"--set-json", "controller.installPlugins=[]"},
+		},
+		{
+			name: "list of strings uses --set-json",
+			chartValues: map[string]any{
+				"command": []any{"/usr/local/bin/argocd-server", "--port", "8080"},
+			},
+			want: []string{"--set-json", `command=["/usr/local/bin/argocd-server","--port","8080"]`},
+		},
+		{
+			name: "list of mixed types uses --set-json",
+			chartValues: map[string]any{
+				"args": []any{"--replicas", 3, "--enabled", true},
+			},
+			want: []string{"--set-json", `args=["--replicas",3,"--enabled",true]`},
+		},
+		{
+			name: "map value uses --set-json (was rejected pre-list-support)",
 			chartValues: map[string]any{
 				"x": map[string]any{"y": 1},
+			},
+			want: []string{"--set-json", `x={"y":1}`},
+		},
+		{
+			name: "nested map value uses --set-json",
+			chartValues: map[string]any{
+				"controller.resources": map[string]any{
+					"requests": map[string]any{"cpu": "100m", "memory": "128Mi"},
+					"limits":   map[string]any{"cpu": "500m", "memory": "512Mi"},
+				},
+			},
+			want: []string{
+				"--set-json",
+				`controller.resources={"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"100m","memory":"128Mi"}}`,
+			},
+		},
+		{
+			name: "non-string-keyed map still rejected",
+			chartValues: map[string]any{
+				"x": map[int]string{1: "a"},
 			},
 			wantErr: ErrChartValueUnsupportedType,
 		},

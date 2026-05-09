@@ -3,6 +3,7 @@ package discovery
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -37,9 +38,12 @@ var (
 	ErrChartValueNil = errors.New("chart value is nil")
 
 	// ErrChartValueUnsupportedType is wrapped when a chartValues entry
-	// is a complex type (slice/map/struct) instead of one of the scalar
-	// types Helm's --set / --set-string accept.
-	ErrChartValueUnsupportedType = errors.New("chart value type is unsupported (use scalar string/bool/number)")
+	// is a type that none of helm's --set / --set-string / --set-json
+	// flags can represent. Scalars (string/bool/number) go through
+	// --set-string / --set; slices ([]any) and string-keyed maps
+	// (map[string]any) go through --set-json. Any other type (struct,
+	// channel, etc.) is rejected.
+	ErrChartValueUnsupportedType = errors.New("chart value type is unsupported (use scalar string/bool/number, slice, or string-keyed map)")
 
 	imageTagPattern    = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
 	imageDigestPattern = regexp.MustCompile(`^sha256:[a-f0-9]{64}$`)
@@ -52,6 +56,14 @@ const helmSetFlag = "--set"
 // helmSetStringFlag is the helm CLI flag for string values, avoiding the
 // type coercion that --set applies (e.g. "false" parsed as bool).
 const helmSetStringFlag = "--set-string"
+
+// helmSetJSONFlag is the helm CLI flag for complex (slice or map) values.
+// helm parses the value as JSON and merges it into the chart values tree,
+// preserving list-typed and nested-map-typed configuration that --set's
+// strvals parser cannot represent (e.g. `controller.installPlugins: []`
+// for the jenkins chart, or per-component `command: [<list>]` overrides
+// for argo-cd). See verity-org/verity#318 (jenkins/argo-cd unblock).
+const helmSetJSONFlag = "--set-json"
 
 // ExtractChartImages runs helm template for a chart and returns all unique image references found.
 // Overrides are applied to substitute tag variants (e.g., distroless-libc → debian).
@@ -178,6 +190,25 @@ func helmSetPair(path string, value any) (flag, encoded string, err error) {
 			return "", "", fmt.Errorf("%w: %q=%v", ErrChartValueUnsupportedFloat, path, v)
 		}
 		return helmSetFlag, strconv.FormatFloat(v, 'f', -1, 64), nil
+	case []any:
+		// Slice values cannot be expressed via helm --set's strvals
+		// syntax, so we encode the slice as JSON and use --set-json.
+		// Empty lists `[]` are also handled here, which is exactly
+		// what charts like jenkins (`controller.installPlugins: []`)
+		// require to disable a default-populated list field.
+		jsonBytes, jerr := json.Marshal(v)
+		if jerr != nil {
+			return "", "", fmt.Errorf("path %q: failed to JSON-encode list: %w", path, jerr)
+		}
+		return helmSetJSONFlag, string(jsonBytes), nil
+	case map[string]any:
+		// Nested map values (e.g. struct-shaped overrides) need
+		// --set-json for the same reason as slices.
+		jsonBytes, jerr := json.Marshal(v)
+		if jerr != nil {
+			return "", "", fmt.Errorf("path %q: failed to JSON-encode map: %w", path, jerr)
+		}
+		return helmSetJSONFlag, string(jsonBytes), nil
 	case nil:
 		return "", "", fmt.Errorf("%w: %q", ErrChartValueNil, path)
 	default:
