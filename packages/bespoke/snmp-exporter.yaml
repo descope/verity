@@ -1,0 +1,50 @@
+package:
+  name: snmp-exporter
+  version: "0.30.1"
+  epoch: 0
+  description: "Prometheus exporter for SNMP-instrumented devices"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/prometheus/snmp_exporter
+      tag: v${{package.version}}
+      expected-commit: 48b810afbd9222b74439ad1cf7d0d7b7c0cf4290
+
+  - uses: go/build
+    with:
+      packages: .
+      output: snmp_exporter
+      ldflags: |
+        -X github.com/prometheus/common/version.Version=${{package.version}}
+        -X github.com/prometheus/common/version.Revision=$(git rev-parse HEAD)
+        -X github.com/prometheus/common/version.Branch=v${{package.version}}
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: prometheus/snmp_exporter
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        snmp_exporter --version
+        snmp_exporter --help

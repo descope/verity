@@ -1,0 +1,49 @@
+package:
+  name: kafka-exporter
+  version: "1.9.0"
+  epoch: 0
+  description: "Prometheus exporter for Apache Kafka broker metrics"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/danielqsj/kafka_exporter
+      tag: v${{package.version}}
+      expected-commit: 8ec24078707d4d3b349e71522ebd7f179746072d
+
+  - uses: go/build
+    with:
+      packages: .
+      output: kafka_exporter
+      ldflags: |
+        -X github.com/prometheus/common/version.Version=${{package.version}}
+        -X github.com/prometheus/common/version.Revision=$(git rev-parse HEAD)
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: danielqsj/kafka_exporter
+    strip-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        kafka_exporter --version
+        kafka_exporter --help
