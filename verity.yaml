@@ -85,6 +85,15 @@ chartValues:
   # jenkins 5.9.18 otherwise renders an unpatched bats helm-test pod and a
   # default inbound agent image. Keep the wrapper focused on the controller and
   # the existing kiwigrid sidecar image.
+  #
+  # NOTE: jenkins is still red after #328 (busybox) + #334 (tag pin). The
+  # init container surfaces a layered failure — chart's apply_config.sh
+  # calls /usr/local/bin/install-plugins.sh which the verity wolfi rebuild
+  # doesn't ship. The natural chartValues fix would be
+  # `controller.installPlugins: []` to skip plugin install entirely, but
+  # internal/discovery/charts.go's helmSetPair only supports scalar types
+  # (string/bool/number) — empty-list values would fail with
+  # ErrChartValueUnsupportedType. Tracked separately; see verity-org/verity#318.
   jenkins:
     controller.testEnabled: false
     agent.enabled: false
@@ -114,6 +123,15 @@ chartValues:
   # complete. dev mode is in-memory only — never use in production.
   # See verity-org/verity#323.
   openbao:
+    server.dev.enabled: true
+
+  # vault — same pattern as openbao (vault is the upstream openbao forked
+  # from). Standalone mode boots the server but leaves it sealed forever
+  # in CI; dev mode auto-init+auto-unseal so smoke test can verify the
+  # API responds. dev mode is in-memory only — never use in production.
+  # Diagnostic showed `Initialized: false / Sealed: true` post-deploy,
+  # identical to the pre-#331 openbao failure shape.
+  vault:
     server.dev.enabled: true
 
   # gitea chart defaults `image.rootless: true`, which pulls
