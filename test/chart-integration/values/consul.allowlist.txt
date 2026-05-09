@@ -1,0 +1,16 @@
+# consul upstream image allowlist (SCR-2026-04-30-001)
+#
+# The hashicorp/consul chart pulls these two upstream images directly
+# from `hashicorp/...` (not via verity.yaml's `consul/consul` replacement
+# entry which only covers a different chart-image path):
+#
+#   hashicorp/consul:1.22.7              — main consul server binary
+#   hashicorp/consul-k8s-control-plane:1.9.7
+#                                        — k8s-specific control plane
+#                                          for connect-inject /
+#                                          partition-init / sync-catalog
+#
+# Allowlist until verity adds rebuilds for both. Chart's main pods are
+# healthy after the connect-inject disable in #348.
+hashicorp/consul
+hashicorp/consul-k8s-control-plane

@@ -1,0 +1,21 @@
+# nats upstream image allowlist (SCR-2026-04-30-001)
+#
+# The nats chart pulls two auxiliary images that verity does not
+# currently rebuild. The main nats binary itself runs from
+# ghcr.io/verity-org/nats:* (the verity rebuild handles that). These
+# auxiliaries are a CLI shell helper and a config-reloader sidecar:
+#
+#   docker.io/natsio/nats-box:0.19.3                     — interactive
+#                                                         shell pod for
+#                                                         debugging
+#   docker.io/natsio/nats-server-config-reloader:0.21.1  — sidecar that
+#                                                         SIGHUPs the
+#                                                         server on
+#                                                         configmap
+#                                                         changes
+#
+# Allowlist these until verity adds rebuilds OR the chart's
+# `natsBox.enabled: false` / `reloader.enabled: false` chartValues
+# disable them for CI smoke. Chart's main pods are healthy.
+docker.io/natsio/nats-box
+docker.io/natsio/nats-server-config-reloader
