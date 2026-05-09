@@ -5,7 +5,6 @@ go 1.26.3
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/google/go-containerregistry v0.21.5
-	github.com/moby/buildkit v0.29.0
 	github.com/project-copacetic/copacetic v0.13.1-0.20260422213235-21047038c9fe
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v3 v3.8.0
@@ -73,6 +72,7 @@ require (
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	github.com/moby/buildkit v0.29.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/moby/moby/api v1.54.1 // indirect
@@ -138,4 +138,4 @@ require (
 	k8s.io/apimachinery v0.35.2 // indirect
 )
 
-replace github.com/project-copacetic/copacetic => github.com/verity-org/copacetic v0.0.0-20260424111537-fd4ff4a74837
+replace github.com/project-copacetic/copacetic => github.com/verity-org/copacetic v0.0.0-20260509192146-fb8ae0f4fc76
