@@ -6,7 +6,20 @@ upstream:
 types:
   default:
     base: wolfi-base
-    packages: ["opensearch-{{version}}"]
+    # `opensearch-{{version}}` provides the OpenSearch binaries + bundled
+    # JDK. `openjdk-25-default-jvm` is wolfi's alias subpackage that
+    # creates `/usr/lib/jvm/default-jvm` → `/usr/lib/jvm/java-25-openjdk`,
+    # which the image's OPENSEARCH_JAVA_HOME env (below) points at.
+    # Without this alias package the symlink is missing and opensearch
+    # fails at startup with:
+    #   could not find java in OPENSEARCH_JAVA_HOME at
+    #     /usr/lib/jvm/default-jvm/bin/java
+    # When wolfi bumps to openjdk-26, swap to `openjdk-26-default-jvm`
+    # (and verify OPENSEARCH_JAVA_HOME still resolves). Letting wolfi own
+    # the symlink-vs-actual-install mapping is more maintainable than the
+    # repo authoring the symlink itself. See verity-org/verity#318 and
+    # verity-org/verity#351 review for the original symlink discussion.
+    packages: ["opensearch-{{version}}", "openjdk-25-default-jvm"]
     entrypoint: /usr/share/opensearch/opensearch-docker-entrypoint.sh
     environment:
       OPENSEARCH_HOME: /usr/share/opensearch
@@ -15,20 +28,6 @@ types:
       - {path: /usr/share/opensearch/data, type: directory, uid: 65532, gid: 65532, permissions: 0o700}
       - {path: /usr/share/opensearch/logs, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
       - {path: /usr/share/opensearch/config, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
-      # Wolfi's openjdk package installs at `/usr/lib/jvm/java-25-openjdk/`
-      # (verified via `crane export ghcr.io/verity-org/opensearch:3`).
-      # The image's `OPENSEARCH_JAVA_HOME` env (above) points at
-      # `/usr/lib/jvm/default-jvm` — a conventional Debian/Wolfi alias
-      # that the openjdk package doesn't itself create. Without a symlink
-      # opensearch fails at startup with:
-      #   could not find java in OPENSEARCH_JAVA_HOME at
-      #     /usr/lib/jvm/default-jvm/bin/java
-      # Symlinking `default-jvm` → the actual openjdk install root keeps
-      # the env-var-pointed path resolvable. Same FHS-adapter pattern as
-      # etcd / fluent-bit / velero in #330. Fixes both opensearch and
-      # opensearch-dashboards (which uses the same OPENSEARCH_JAVA_HOME
-      # convention via the shared opensearch image).
-      - {path: /usr/lib/jvm/default-jvm, type: symlink, source: /usr/lib/jvm/java-25-openjdk, uid: 0, gid: 0}
 
 versions:
   "3": {}
