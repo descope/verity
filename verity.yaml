@@ -175,15 +175,27 @@ chartValues:
 
   # airflow chart bundles a `postgresql` sub-chart with image
   # `bitnamilegacy/postgresql:16.1.0-debian-11-r15`. chart-gen rewrites
-  # the repository to `verity-org/bitnamilegacy/postgresql` (and that
-  # tag DOES exist in verity-org/), but the chart's own
-  # `postgresql.image.registry: docker.io` default is preserved,
-  # producing the broken `docker.io/verity-org/bitnamilegacy/postgresql:...`
-  # double-prefix. Setting `postgresql.image.registry: ghcr.io` clears
-  # the docker.io prefix so the rendered ref becomes
-  # `ghcr.io/verity-org/bitnamilegacy/postgresql:16.1.0-debian-11-r15`,
-  # which resolves cleanly. Same shape as the tempo-distributed fix.
-  # See verity-org/verity#318.
+  # the repository (`bitnamilegacy/postgresql` →
+  # `verity-org/bitnamilegacy/postgresql`) but doesn't touch the
+  # chart's own `postgresql.image.registry: docker.io` default, so the
+  # rendered reference is the broken double-prefix:
+  #
+  #   docker.io/ghcr.io/verity-org/bitnamilegacy/postgresql:16.1.0-debian-11-r15
+  #                                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  #                                          (chart-gen-rewritten repo,
+  #                                           with docker.io still
+  #                                           prepended from the
+  #                                           untouched image.registry
+  #                                           field)
+  #
+  # The `ghcr.io/verity-org/bitnamilegacy/postgresql:16.1.0-debian-11-r15`
+  # tag DOES exist in verity-org/ — the only thing wrong with the
+  # generated wrapper is the extraneous `docker.io/` prefix.
+  #
+  # Setting `postgresql.image.registry: ghcr.io` overrides the chart's
+  # `image.registry` default so the rendered reference becomes the
+  # clean `ghcr.io/verity-org/bitnamilegacy/postgresql:16.1.0-debian-11-r15`.
+  # Same shape as the tempo-distributed fix. See verity-org/verity#318.
   airflow:
     postgresql.image.registry: ghcr.io
 
