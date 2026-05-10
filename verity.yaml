@@ -58,39 +58,42 @@ chartValues:
     minio.enabled: false
     rollout_operator.enabled: false
 
-  # tempo-distributed 1.61.3 defaults to a separate Memcached statefulset; the
-  # minimal CI-friendly wrapper just runs the Tempo microservices themselves.
+  # tempo-distributed 1.61.3 defaults to a separate Memcached statefulset;
+  # the minimal CI-friendly wrapper just runs the Tempo microservices
+  # themselves.
   #
   # `global.image.registry: ghcr.io` overrides the chart's per-component
   # `image.registry: docker.io` defaults. Without this, chart-gen rewrites
   # `image.repository` from `grafana/tempo` → `verity-org/tempo` but
   # leaves `image.registry` at `docker.io`, producing the broken
   # `docker.io/verity-org/tempo:2` reference (verified via May 9 nightly
-  # diagnostic dump on issue #318). Same chart-side workaround as the
-  # chartgen ClearDefaultRegistry plumbing for `defaultRegistry` siblings
-  # in PR #312, but `image.registry` siblings need their own fix path —
-  # this chartValues override is the surgical equivalent.
+  # diagnostic dump on verity-org/verity#318). Same chart-side workaround
+  # as the chart-gen ClearDefaultRegistry plumbing for `defaultRegistry`
+  # siblings in verity-org/verity#312, but `image.registry` siblings need
+  # their own fix path — this chartValues override is the surgical
+  # equivalent.
   tempo-distributed:
     memcached.enabled: false
     global.image.registry: ghcr.io
 
-  # aws-load-balancer-controller requires a clusterName to render templates.
-  # The wrapper chart consumers MUST override this to their actual cluster name.
-  # Also requires `region:` — chart relies on EC2 IMDS for auto-detection,
-  # which kind has no endpoint for; setting any value satisfies the validator
-  # so the controller can finish startup. See verity-org/verity#323.
+  # aws-load-balancer-controller — three placeholder values that wrapper
+  # chart consumers MUST override before deploying to a real cluster:
+  #   - clusterName: identifies the EKS cluster; controller refuses to
+  #                  start without it
+  #   - region:     normally auto-detected from EC2 IMDS; kind has no
+  #                  IMDS so the auto-detect fails. Any AWS region works
+  #                  for CI smoke
+  #   - vpcId:      same EC2-IMDS-fallback pattern as region. Format
+  #                  `vpc-` + 17 hex chars matches the AWS-issued shape
+  #                  so any controller-side format validator stays happy.
   #
-  # `vpcId:` is a continuation of the same EC2-IMDS-fallback pattern.
-  # After region: was set in #331/#332, the controller next tries to fetch
-  # VPC ID from EC2 IMDS and fails the same way:
-  #   "failed to get VPC ID: failed to fetch VPC ID from instance metadata"
-  # (verified via May 9 nightly diagnostic dump). Setting any value
-  # satisfies the validator; the chart renders it as `--aws-vpc-id=...`
-  # which the controller accepts without making real EC2 API calls.
+  # All three diagnosed via verity-org/verity#323 (region:, clusterName:)
+  # and the May 9 nightly dump (vpcId:). Real users override all three
+  # to their actual EKS cluster identifiers.
   aws-load-balancer-controller:
     clusterName: verity-placeholder
     region: us-east-1
-    vpcId: vpc-placeholder
+    vpcId: vpc-00000000000000000
 
   # cluster-autoscaler requires autoDiscovery.clusterName to render templates.
   # The wrapper chart consumers MUST override this to their actual cluster name.
