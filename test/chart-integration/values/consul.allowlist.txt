@@ -1,8 +1,8 @@
 # consul upstream image allowlist (SCR-2026-04-30-001)
 #
 # The hashicorp/consul chart pulls these two upstream images directly
-# from `hashicorp/...` (not via verity.yaml's `consul/consul` replacement
-# entry which only covers a different chart-image path):
+# from `hashicorp/...`. Verity.yaml's `consul/consul` replacement only
+# covers a different chart-image path, not these:
 #
 #   hashicorp/consul:1.22.7              — main consul server binary
 #   hashicorp/consul-k8s-control-plane:1.9.7
@@ -10,7 +10,14 @@
 #                                          for connect-inject /
 #                                          partition-init / sync-catalog
 #
-# Allowlist until verity adds rebuilds for both. Chart's main pods are
-# healthy after the connect-inject disable in #348.
-hashicorp/consul
-hashicorp/consul-k8s-control-plane
+# Format note: isAccepted (test/chart-integration/assertions.go:205) uses
+# strings.HasPrefix, so we add separators (`:` for tag refs, `@` for
+# digest refs) to ensure each prefix only matches its intended repo and
+# not unrelated `hashicorp/consul*` repos. Per copilot review on PR #353:
+# without `:` / `@`, `hashicorp/consul` would also match
+# `hashicorp/consul-k8s-control-plane` (making the second entry redundant)
+# and could broaden allowance to any `hashicorp/consul*` repo.
+hashicorp/consul:
+hashicorp/consul@
+hashicorp/consul-k8s-control-plane:
+hashicorp/consul-k8s-control-plane@

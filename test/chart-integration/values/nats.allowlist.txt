@@ -14,8 +14,17 @@
 #                                                         configmap
 #                                                         changes
 #
-# Allowlist these until verity adds rebuilds OR the chart's
-# `natsBox.enabled: false` / `reloader.enabled: false` chartValues
-# disable them for CI smoke. Chart's main pods are healthy.
-docker.io/natsio/nats-box
-docker.io/natsio/nats-server-config-reloader
+# Format note: isAccepted (test/chart-integration/assertions.go:205) uses
+# strings.HasPrefix, and Docker Hub images may render in chart manifests
+# either with or without the `docker.io/` registry prefix depending on
+# how the chart constructs the image string. Adding both forms ensures
+# the allowlist matches regardless. Plus `:` / `@` separators per the
+# pattern used in consul.allowlist.txt (review on PR #353).
+docker.io/natsio/nats-box:
+docker.io/natsio/nats-box@
+docker.io/natsio/nats-server-config-reloader:
+docker.io/natsio/nats-server-config-reloader@
+natsio/nats-box:
+natsio/nats-box@
+natsio/nats-server-config-reloader:
+natsio/nats-server-config-reloader@

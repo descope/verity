@@ -8,6 +8,11 @@
 # pod spec keeps the digest and pulls the upstream image directly.
 #
 # Allowlisting the upstream prefix unblocks the chart-integration smoke
-# test while a separate chart-gen fix (similar to cilium #352's
-# useDigest: false chartValues) lands.
-registry.k8s.io/ingress-nginx/controller
+# test while a separate chart-gen fix (similar to cilium's
+# useDigest: false chartValues in verity-org/verity#352) lands.
+#
+# Format note: isAccepted (test/chart-integration/assertions.go:205) uses
+# strings.HasPrefix; using `:` and `@` separators ensures the prefix only
+# matches the controller image's tag/digest forms, not unrelated repos.
+registry.k8s.io/ingress-nginx/controller:
+registry.k8s.io/ingress-nginx/controller@
