@@ -20,15 +20,22 @@ dependencies:
     version: "1.15.1"
     repository: "https://opensource.zalando.com/postgres-operator/charts/postgres-operator"
 
-  # Pinned at 3.7.2 — chart 3.8.0 (#314 bump) deployment passes
+  # Pinned at 3.7.2 — chart 3.8.0 (#314 + #355 bumps) deployment passes
   # `--apiCallTimeout=30s` to the kyverno binary, but Verity's wolfi-rebuilt
   # `kyverno-1.17` doesn't recognise that flag (added upstream in 1.18+).
   # Result: container CrashLoopBackOff with "flag provided but not defined:
-  # -apiCallTimeout". Bumping back to 3.7.2 restores yesterday's working
-  # state. The 3.8.0 bump is unblocked once the kyverno-1.18+ rebuild lands
-  # in `images/kyverno*.yaml`.
+  # -apiCallTimeout" (verified against chart-integration run 25662716854,
+  # admission-controller pod logs). Bumping back to 3.7.2 restores the
+  # working state. The 3.8.0 bump is unblocked once the kyverno-1.18+
+  # rebuild lands in `images/kyverno*.yaml`.
+  #
+  # Note: .github/renovate.json marks this dep `enabled: false` for the
+  # helmv3 manager, but Renovate re-bumped it anyway in #355. The follow-
+  # up automerge rule (matchUpdateTypes minor/patch) may be overriding
+  # `enabled: false`. Track separately; for now the revert is the
+  # immediate fix.
   - name: kyverno
-    version: "3.8.0"
+    version: "3.7.2"
     repository: "oci://ghcr.io/kyverno/charts"
 
   - name: argo-cd
