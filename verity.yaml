@@ -251,6 +251,34 @@ chartValues:
   meilisearch:
     environment.MEILI_DB_PATH: /meili_data
 
+  # metrics-server scrapes the kubelet's `/metrics/resource` endpoint over
+  # TLS. In kind clusters the kubelet uses a self-signed cert without IP
+  # SANs, which fails Go's TLS validation:
+  #   "tls: failed to verify certificate: x509: cannot validate certificate
+  #    for 172.18.0.2 because it doesn't contain any IP SANs"
+  # Standard kind workaround is `--kubelet-insecure-tls`, which the chart
+  # supports via `args:` (defaults: cert-dir + preferred-address-types +
+  # node-status-port + metric-resolution). Adding this CI-only flag lets
+  # the scraper succeed without skipping cert validation in production
+  # users (their `args:` defaults are unchanged). Uses the list-typed
+  # chartValues capability landed in verity-org/verity#342.
+  metrics-server:
+    args: ["--kubelet-insecure-tls"]
+
+  # consul's connect-inject sidecar injector deployment depends on a
+  # webhook TLS cert that's created at install time by a separate
+  # `consul-consul-webhook-cert-manager` Job. The chart has no init-
+  # container ordering between them, so the connect-inject Pod often
+  # starts before the cert Job finishes and fails:
+  #   FailedMount: secret "consul-consul-connect-inject-webhook-cert"
+  #   not found
+  # CI smoke just needs the consul server pod healthy — the connect
+  # injector is an optional sidecar feature for service mesh use cases.
+  # Disabling it removes the cert race entirely. Real users running with
+  # connect-inject enabled need real cert-manager integration anyway.
+  consul:
+    connectInject.enabled: false
+
   # kyverno 3.7.2: disable the post-upgrade `crds.migration` hook. It runs
   # `kubectl` from `registry.k8s.io/kubectl:v1.34.3`. Verity rebuilds kubectl
   # on the floating `1.34` minor track (`images/kubectl.yaml`) but does not
