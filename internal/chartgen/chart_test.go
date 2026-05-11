@@ -12,7 +12,11 @@ import (
 	"github.com/verity-org/verity/internal/config"
 )
 
-const testPromRepo = "ghcr.io/verity-org/prom"
+const (
+	testPromRepo       = "ghcr.io/verity-org/prom"
+	testPromServerRepo = "ghcr.io/verity-org/prometheus"
+	testPromServerTag  = "v3.2.1"
+)
 
 func TestBuildWrapperChart(t *testing.T) {
 	original := config.ChartSpec{
@@ -108,8 +112,8 @@ func TestBuildWrapperChartValues(t *testing.T) {
 			chartValues: nil,
 			overrides: []ValueOverride{{
 				Path:       "server.image",
-				Repository: "ghcr.io/verity-org/prometheus",
-				Tag:        "v3.2.1",
+				Repository: testPromServerRepo,
+				Tag:        testPromServerTag,
 			}},
 			assert: func(t *testing.T, values map[string]any) {
 				prom, ok := values["prometheus"].(map[string]any)
@@ -124,7 +128,7 @@ func TestBuildWrapperChartValues(t *testing.T) {
 				if !ok {
 					t.Fatal("image missing")
 				}
-				if image["repository"] != "ghcr.io/verity-org/prometheus" || image["tag"] != "v3.2.1" {
+				if image["repository"] != testPromServerRepo || image["tag"] != testPromServerTag {
 					t.Fatalf("prometheus.server.image = %#v, want repository/tag override", image)
 				}
 			},
@@ -134,7 +138,7 @@ func TestBuildWrapperChartValues(t *testing.T) {
 			chartValues: nil,
 			overrides: []ValueOverride{
 				{Path: "image", Repository: testPromRepo, Tag: "v3"},
-				{Path: "server.image", Repository: "ghcr.io/verity-org/prometheus", Tag: "v3.2.1"},
+				{Path: "server.image", Repository: testPromServerRepo, Tag: testPromServerTag},
 			},
 			assert: func(t *testing.T, values map[string]any) {
 				prom, ok := values["prometheus"].(map[string]any)
@@ -156,7 +160,7 @@ func TestBuildWrapperChartValues(t *testing.T) {
 				if img["repository"] != testPromRepo || img["tag"] != "v3" {
 					t.Fatalf("prometheus.image = %#v, want override", img)
 				}
-				if serverImg["repository"] != "ghcr.io/verity-org/prometheus" || serverImg["tag"] != "v3.2.1" {
+				if serverImg["repository"] != testPromServerRepo || serverImg["tag"] != testPromServerTag {
 					t.Fatalf("prometheus.server.image = %#v, want override", serverImg)
 				}
 			},
@@ -191,6 +195,150 @@ func TestBuildWrapperChartValues(t *testing.T) {
 				}
 				if image["repository"] != testPromRepo || image["tag"] != "v3" {
 					t.Fatalf("prometheus.image = %#v, want override", image)
+				}
+			},
+		},
+	}
+
+	original := config.ChartSpec{Name: "prometheus", Version: "28.9.1", Repository: "oci://repo/charts"}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chart, err := BuildWrapperChart(original, tt.chartValues, tt.overrides)
+			if err != nil {
+				t.Fatalf("BuildWrapperChart() error = %v", err)
+			}
+
+			var values map[string]any
+			if err := yaml.Unmarshal(chart.ValuesYAML, &values); err != nil {
+				t.Fatalf("yaml.Unmarshal(ValuesYAML) error = %v", err)
+			}
+
+			tt.assert(t, values)
+		})
+	}
+}
+
+// TestBuildWrapperChartValuesMergeMapValue covers the mergeMapValue
+// path that buildValuesTree uses when applying map-shaped image
+// overrides on top of chartValues entries living at the same dotted
+// path. Split out from TestBuildWrapperChartValues to keep the
+// per-function cyclomatic complexity within the maintidx threshold.
+func TestBuildWrapperChartValuesMergeMapValue(t *testing.T) {
+	tests := []struct {
+		name        string
+		chartValues map[string]any
+		overrides   []ValueOverride
+		assert      func(t *testing.T, values map[string]any)
+	}{
+		{
+			// Regression for verity-org/verity#326 — gitea's
+			// `image.rootless: false` (a chartValues sibling of
+			// `image.repository` / `image.tag`) was being silently
+			// dropped because the image-override pass replaced the
+			// entire `image:` subtree with `{repository, tag}`,
+			// losing the rootless sibling. mergeMapValue must
+			// preserve unrelated chart-value keys that land at the
+			// same dotted path as a map-shaped image override.
+			name: "chart values siblings under image path preserved through image override",
+			chartValues: map[string]any{
+				"image.rootless": false,
+			},
+			overrides: []ValueOverride{{
+				Path:       "image",
+				Repository: testPromRepo,
+				Tag:        "v3",
+			}},
+			assert: func(t *testing.T, values map[string]any) {
+				prom, ok := values["prometheus"].(map[string]any)
+				if !ok {
+					t.Fatal("prometheus root missing")
+				}
+				image, ok := prom["image"].(map[string]any)
+				if !ok {
+					t.Fatalf("image missing: %#v", prom)
+				}
+				if !reflect.DeepEqual(image["rootless"], false) {
+					t.Fatalf("image.rootless dropped by override merge: %#v", image)
+				}
+				if image["repository"] != testPromRepo || image["tag"] != "v3" {
+					t.Fatalf("image override fields missing: %#v", image)
+				}
+			},
+		},
+		{
+			// Nested-path variant: chartValues sibling deep under an
+			// image override (`server.image.rootless: true`) must
+			// survive the override pass at the same path.
+			name: "chart values siblings under nested image path preserved",
+			chartValues: map[string]any{
+				"server.image.rootless":   true,
+				"server.image.pullPolicy": "Always",
+			},
+			overrides: []ValueOverride{{
+				Path:       "server.image",
+				Repository: testPromServerRepo,
+				Tag:        testPromServerTag,
+			}},
+			assert: func(t *testing.T, values map[string]any) {
+				prom, ok := values["prometheus"].(map[string]any)
+				if !ok {
+					t.Fatal("prometheus root missing")
+				}
+				server, ok := prom["server"].(map[string]any)
+				if !ok {
+					t.Fatal("server missing")
+				}
+				image, ok := server["image"].(map[string]any)
+				if !ok {
+					t.Fatalf("server.image missing: %#v", server)
+				}
+				if !reflect.DeepEqual(image["rootless"], true) {
+					t.Fatalf("server.image.rootless dropped: %#v", image)
+				}
+				if image["pullPolicy"] != "Always" {
+					t.Fatalf("server.image.pullPolicy dropped: %#v", image)
+				}
+				if image["repository"] != testPromServerRepo || image["tag"] != testPromServerTag {
+					t.Fatalf("server.image override fields missing: %#v", image)
+				}
+			},
+		},
+		{
+			// Override at a path with no prior chartValues sibling
+			// must still produce the full {repository, tag} leaf —
+			// preserves backwards compatibility with the single-image
+			// override path.
+			name: "override at unoccupied image path writes fresh leaf",
+			chartValues: map[string]any{
+				"unrelated.flag": true,
+			},
+			overrides: []ValueOverride{{
+				Path:       "image",
+				Repository: testPromRepo,
+				Tag:        "v3",
+			}},
+			assert: func(t *testing.T, values map[string]any) {
+				prom, ok := values["prometheus"].(map[string]any)
+				if !ok {
+					t.Fatal("prometheus root missing")
+				}
+				image, ok := prom["image"].(map[string]any)
+				if !ok {
+					t.Fatalf("image missing: %#v", prom)
+				}
+				if image["repository"] != testPromRepo || image["tag"] != "v3" {
+					t.Fatalf("image override fields missing: %#v", image)
+				}
+				if _, present := image["rootless"]; present {
+					t.Fatalf("image.rootless leaked from elsewhere: %#v", image)
+				}
+				unrelated, ok := prom["unrelated"].(map[string]any)
+				if !ok {
+					t.Fatalf("unrelated subtree missing: %#v", prom)
+				}
+				if !reflect.DeepEqual(unrelated["flag"], true) {
+					t.Fatalf("unrelated.flag chart value lost: %#v", unrelated)
 				}
 			},
 		},
