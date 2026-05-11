@@ -190,9 +190,9 @@ func buildValuesTree(chartName string, chartValues map[string]any, overrides []V
 		// `image.registry` written by the image-override pass. The
 		// previous setScalarValue call replaced the entire subtree at
 		// override.Path with `leaf`, silently dropping the chartValues
-		// sibling and triggering the gitea `:1-rootless` ImagePullBack
-		// off + the missing-rootless-flag pattern documented in
-		// verity-org/verity#326.
+		// sibling and triggering the gitea `:1-rootless`
+		// ImagePullBackOff + missing-rootless-flag pattern documented
+		// in verity-org/verity#326.
 		mergeMapValue(chartRoot, override.Path, leaf)
 	}
 
@@ -244,7 +244,7 @@ func setScalarValue(root map[string]any, path string, value any) {
 // image-override pass's `image.repository` / `image.tag`). Replacing
 // the whole subtree silently drops the chartValues sibling and was
 // the root cause of the gitea `:1-rootless` ImagePullBackOff
-// regression diagnosed against chart-integration run 25662716854.
+// regression tracked under verity-org/verity#326.
 //
 // Entries in `value` win over any same-key entries already present at
 // the leaf; siblings present at the leaf but absent from `value` are
