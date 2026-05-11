@@ -17,6 +17,19 @@
 # without `:` / `@`, `hashicorp/consul` would also match
 # `hashicorp/consul-k8s-control-plane` (making the second entry redundant)
 # and could broaden allowance to any `hashicorp/consul*` repo.
+#
+# Registry-prefix note: the consul chart renders pod spec images
+# WITH the `docker.io/` prefix already attached (verified against
+# chart-integration run 25662716854: image field reported as
+# `docker.io/hashicorp/consul:1.22.7` etc.). The unprefixed
+# `hashicorp/consul:` forms are kept below for forward compatibility
+# in case a future kubelet/containerd combination strips the
+# `docker.io/` prefix, but the `docker.io/` variants are what
+# actually match today.
+docker.io/hashicorp/consul:
+docker.io/hashicorp/consul@
+docker.io/hashicorp/consul-k8s-control-plane:
+docker.io/hashicorp/consul-k8s-control-plane@
 hashicorp/consul:
 hashicorp/consul@
 hashicorp/consul-k8s-control-plane:

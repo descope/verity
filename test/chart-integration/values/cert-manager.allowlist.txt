@@ -1,0 +1,38 @@
+# cert-manager upstream image allowlist (SCR-2026-04-30-001)
+#
+# The jetstack/cert-manager chart pulls three sibling images directly
+# from quay.io/jetstack at the chart's pinned version:
+#
+#   quay.io/jetstack/cert-manager-controller:v1.20.2  — main controller
+#                                                       (manages
+#                                                       Certificate /
+#                                                       Issuer
+#                                                       resources)
+#   quay.io/jetstack/cert-manager-cainjector:v1.20.2  — injects CA
+#                                                       bundles into
+#                                                       webhook
+#                                                       configs and
+#                                                       APIServices
+#   quay.io/jetstack/cert-manager-webhook:v1.20.2     — admission
+#                                                       webhook for
+#                                                       validating
+#                                                       cert-manager
+#                                                       CRDs
+#
+# verity.yaml has no `cert-manager/*` chart-wrapper replacement entry
+# (yet). Until the wrapper chart adds these three images to its
+# rebuild matrix and chart-gen learns to rewrite all three pod-spec
+# references, allowlist the upstreams so the chart-integration smoke
+# test can verify cert-manager still installs cleanly under the
+# verity-bundled Helm tooling.
+#
+# Format note: isAccepted (test/chart-integration/assertions.go:205)
+# uses strings.HasPrefix; the `:` and `@` separators ensure each
+# prefix only matches its intended image's tag or digest forms and
+# does not broaden to unrelated `quay.io/jetstack/*` repos.
+quay.io/jetstack/cert-manager-controller:
+quay.io/jetstack/cert-manager-controller@
+quay.io/jetstack/cert-manager-cainjector:
+quay.io/jetstack/cert-manager-cainjector@
+quay.io/jetstack/cert-manager-webhook:
+quay.io/jetstack/cert-manager-webhook@

@@ -1,0 +1,41 @@
+# vault upstream image allowlist (SCR-2026-04-30-001)
+#
+# The hashicorp/vault chart pulls two upstream images directly from
+# Docker Hub:
+#
+#   docker.io/hashicorp/vault:1.21.2       — main vault server binary
+#                                            (KV / PKI / Transit /
+#                                            etc.)
+#   docker.io/hashicorp/vault-k8s:1.7.2    — kubernetes-native
+#                                            injector / agent
+#                                            sidecar controller
+#
+# verity.yaml has no `hashicorp/vault*` chart-wrapper replacement
+# entry. Until the wrapper chart adds vault to its rebuild matrix
+# and chart-gen learns to rewrite both pod-spec references,
+# allowlist the upstreams so the chart-integration smoke test can
+# verify vault still installs cleanly under the verity-bundled Helm
+# tooling.
+#
+# Registry-prefix note: the chart renders pod spec images WITH the
+# `docker.io/` prefix already attached (verified against
+# chart-integration run 25662716854: image field reported as
+# `docker.io/hashicorp/vault:1.21.2` etc.). Unprefixed
+# `hashicorp/vault:` forms are kept below for forward compatibility
+# in case a future kubelet/containerd combination strips the
+# `docker.io/` prefix.
+#
+# Format note: isAccepted (test/chart-integration/assertions.go:205)
+# uses strings.HasPrefix; the `:` and `@` separators ensure each
+# prefix only matches its intended image's tag or digest forms and
+# does not broaden to unrelated `hashicorp/vault*` repos (notably
+# `hashicorp/vault-k8s` would otherwise match `hashicorp/vault`
+# without the separators).
+docker.io/hashicorp/vault:
+docker.io/hashicorp/vault@
+docker.io/hashicorp/vault-k8s:
+docker.io/hashicorp/vault-k8s@
+hashicorp/vault:
+hashicorp/vault@
+hashicorp/vault-k8s:
+hashicorp/vault-k8s@
