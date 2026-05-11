@@ -182,6 +182,31 @@ chartValues:
   gitea:
     image.rootless: false
 
+  # cert-manager startupapicheck Job runs `cert-manager check api --wait=1m`
+  # to verify webhook readiness post-install. The default 1-minute timeout
+  # is too aggressive for kind-based CI where webhook readiness can take
+  # 90+ seconds, causing the Job to hit BackoffLimitExceeded even though
+  # the main cert-manager controller, cainjector, and webhook pods are all
+  # Running and Ready. Disabling the optional check for CI smoke lets the
+  # smoke test verify just the controller pods. Real users should keep
+  # `startupapicheck.enabled: true` to catch genuine webhook misconfigs
+  # at install time. Diagnostic: dump shows main pods Running, only the
+  # `cert-manager-startupapicheck` Job pod hits backoff. See
+  # verity-org/verity#324 (probe-race carve-out).
+  cert-manager:
+    startupapicheck.enabled: false
+
+  # meilisearch defaults its DB path to `./data.ms` (relative to the
+  # current working directory, which is `/`). Combined with the chart's
+  # `securityContext.readOnlyRootFilesystem: true`, this fails at startup
+  # with `Read-only file system (os error 30)` even though the chart
+  # mounts an emptyDir at `/meili_data`. Setting `MEILI_DB_PATH` via the
+  # chart's `environment:` ConfigMap routes meilisearch's writes to the
+  # writable mount. See verity-org/verity#324 (carve-out, was probe-race
+  # but actual root cause turned out to be db-path / read-only-rootfs).
+  meilisearch:
+    environment.MEILI_DB_PATH: /meili_data
+
   # kyverno 3.7.2: disable the post-upgrade `crds.migration` hook. It runs
   # `kubectl` from `registry.k8s.io/kubectl:v1.34.3`. Verity rebuilds kubectl
   # on the floating `1.34` minor track (`images/kubectl.yaml`) but does not
