@@ -181,7 +181,18 @@ func buildValuesTree(chartName string, chartValues map[string]any, overrides []V
 			leaf["defaultRegistry"] = override.SetDefaultRegistry
 		}
 
-		setScalarValue(chartRoot, override.Path, leaf)
+		// mergeMapValue (not setScalarValue) so any sibling fields
+		// already populated under override.Path by an earlier
+		// chartValues entry survive — e.g. gitea's `image.rootless:
+		// false` written by buildValuesTree's chartValues pass MUST
+		// remain a sibling of `image.repository` / `image.tag` /
+		// `image.registry` written by the image-override pass. The
+		// previous setScalarValue call replaced the entire subtree at
+		// override.Path with `leaf`, silently dropping the chartValues
+		// sibling and triggering the gitea `:1-rootless` ImagePullBack
+		// off + the missing-rootless-flag pattern documented in
+		// verity-org/verity#326.
+		mergeMapValue(chartRoot, override.Path, leaf)
 	}
 
 	return root
@@ -198,6 +209,70 @@ func setScalarValue(root map[string]any, path string, value any) {
 
 		if i == len(parts)-1 {
 			current[part] = value
+			return
+		}
+
+		next, ok := current[part]
+		if !ok {
+			nextMap := make(map[string]any)
+			current[part] = nextMap
+			current = nextMap
+			continue
+		}
+
+		nextMap, ok := next.(map[string]any)
+		if !ok {
+			nextMap = make(map[string]any)
+			current[part] = nextMap
+		}
+		current = nextMap
+	}
+}
+
+// mergeMapValue walks `root` along `path` and merges `value` into the
+// existing leaf map at `path`. If no map exists at the leaf, it is
+// created and `value`'s entries copied in. If the leaf is a non-map
+// scalar, it is replaced with `value` (same fallback shape as
+// setScalarValue handles when an intermediate non-map node is found).
+//
+// Difference from setScalarValue: setScalarValue REPLACES the leaf at
+// `path` outright. That is correct for scalar overrides (a single
+// string/bool/int) but wrong for map-shaped image overrides, because
+// an earlier chartValues pass may have already written sibling keys
+// at the same path (e.g. gitea's `image.rootless: false` next to the
+// image-override pass's `image.repository` / `image.tag`). Replacing
+// the whole subtree silently drops the chartValues sibling and was
+// the root cause of the gitea `:1-rootless` ImagePullBackOff
+// regression diagnosed against chart-integration run 25662716854.
+//
+// Entries in `value` win over any same-key entries already present at
+// the leaf; siblings present at the leaf but absent from `value` are
+// preserved.
+func mergeMapValue(root map[string]any, path string, value map[string]any) {
+	parts := splitOverridePath(path)
+	current := root
+
+	for i, part := range parts {
+		if part == "" {
+			continue
+		}
+
+		if i == len(parts)-1 {
+			existing, ok := current[part].(map[string]any)
+			if !ok {
+				// Either no existing entry, or a non-map scalar
+				// occupies the slot. Fall back to the setScalarValue
+				// shape: drop a fresh map containing `value`.
+				next := make(map[string]any)
+				for k, v := range value {
+					next[k] = v
+				}
+				current[part] = next
+				return
+			}
+			for k, v := range value {
+				existing[k] = v
+			}
 			return
 		}
 
