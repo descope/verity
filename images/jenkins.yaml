@@ -11,7 +11,19 @@ types:
     # process starts. Without it the init container fails at runc exec with
     # `sh: executable file not found`. Same shape as the valkey fix in
     # verity-org/verity#327. See verity-org/verity#318 (A.1 shell-missing cluster).
-    packages: ["jenkins-{{version}}", "busybox"]
+    #
+    # openjdk-21-default-jvm provides the JVM runtime + `/usr/bin/java`
+    # symlink + `/usr/lib/jvm/default-jvm` alias path that the entrypoint
+    # and JAVA_HOME below reference. The wolfi `jenkins` package itself
+    # does NOT declare a JVM dependency, so without an explicit JDK pull
+    # the container crashes immediately at runc exec with:
+    #   exec: "/usr/bin/java": stat /usr/bin/java: no such file or directory
+    # → StatefulSet Ready 0/1, helm install --wait timeouts at 10m.
+    # Verified against chart-integration run 25662716854, jenkins-0
+    # status.lastState.terminated.message. Jenkins LTS 2.x requires Java
+    # 17+; we choose 21 for parity with cassandra.yaml + maven.yaml +
+    # openjdk.yaml versioning.
+    packages: ["jenkins-{{version}}", "busybox", "openjdk-21-default-jvm"]
     entrypoint: /usr/bin/java -jar /usr/share/java/jenkins/jenkins.war
     environment:
       JENKINS_HOME: /var/jenkins_home
