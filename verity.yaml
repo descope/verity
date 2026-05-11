@@ -275,6 +275,18 @@ chartValues:
   meilisearch:
     environment.MEILI_DB_PATH: /meili_data
 
+  # airflow 1.21.0 bundles a bitnamilegacy/postgresql sub-chart that defaults
+  # to image.registry: docker.io. Chart-gen rewrites the repository part
+  # (bitnamilegacy/postgresql → verity-org/bitnamilegacy/postgresql) but
+  # doesn't clear the registry default, producing a broken double-prefix:
+  #   docker.io/ghcr.io/verity-org/bitnamilegacy/postgresql:16.1.0-debian-11-r15
+  # which fails with "failed to resolve reference". Verity already ships the
+  # rebuild at ghcr.io/verity-org/bitnamilegacy/postgresql, so just clearing
+  # the docker.io prefix lets the chart use Verity's image cleanly.
+  # See verity-org/verity#354 / #318.
+  airflow:
+    postgresql.image.registry: ghcr.io
+
   # metrics-server scrapes the kubelet's `/metrics/resource` endpoint over
   # TLS. In kind clusters the kubelet uses a self-signed cert without IP
   # SANs, which fails Go's TLS validation:
