@@ -149,6 +149,30 @@ chartValues:
     nfs.server: 10.0.0.1
     nfs.path: /
 
+  # cilium chart pins each component image by digest (e.g.
+  # `image.digest: sha256:2e61680...`) AND has `image.useDigest: true`,
+  # so the rendered pod spec is `image@sha256:...`. chart-gen replaces
+  # the repository with `ghcr.io/verity-org/cilium`, but the upstream
+  # digest doesn't match verity's rebuild content — pull fails:
+  #   Failed to pull image "ghcr.io/verity-org/cilium:1.19@sha256:2e616...":
+  #     failed to resolve reference (digest mismatch)
+  # Disable per-component useDigest so the chart pulls by tag only.
+  # Same `useDigest: false` flip needed for the operator image (chart
+  # tracks digests separately per component).
+  #
+  # Also: `operator.replicas: 1` — chart defaults to 2 with anti-affinity,
+  # but a single-node kind cluster can only place 1. Mirror the loki /
+  # minio kind-sizing pattern.
+  #
+  # See verity-org/verity#318. The upstream chart's digest pinning is
+  # intentional for production users (sigstore/cosign verification),
+  # but cannot survive chart-gen's repository rewrite.
+  cilium:
+    image.useDigest: false
+    operator.image.useDigest: false
+    envoy.image.useDigest: false
+    operator.replicas: 1
+
   # jenkins 5.9.18 otherwise renders an unpatched bats helm-test pod and a
   # default inbound agent image. Keep the wrapper focused on the controller and
   # the existing kiwigrid sidecar image.
