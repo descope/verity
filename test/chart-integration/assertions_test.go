@@ -171,26 +171,58 @@ func TestIsAccepted(t *testing.T) {
 	allow := []string{
 		"quay.io/special/escape-hatch",
 		"registry.k8s.io/known-cant-rewrite",
+		"registry.k8s.io/ingress-nginx/controller@",
 	}
 	cases := []struct {
-		name  string
-		image string
-		want  bool
+		name    string
+		image   string
+		imageID string
+		want    bool
 	}{
-		{"verity registry", "ghcr.io/verity-org/prometheus/prometheus:v3.9.1", true},
-		{"verity registry verbose", "ghcr.io/verity-org/library/nginx:1.29.5-patched", true},
-		{"allowlist exact", "quay.io/special/escape-hatch:latest", true},
-		{"allowlist prefix", "registry.k8s.io/known-cant-rewrite/sub:v1", true},
-		{"upstream rejected", "quay.io/prometheus/prometheus:v3.9.1", false},
-		{"docker hub rejected", "docker.io/library/postgres:17", false},
-		{"empty rejected", "", false},
-		{"double-ghcr (chart-gen bug pattern) rejected", "ghcr.io/ghcr.io/verity-org/foo:tag", false},
+		{"verity registry", "ghcr.io/verity-org/prometheus/prometheus:v3.9.1", "", true},
+		{"verity registry verbose", "ghcr.io/verity-org/library/nginx:1.29.5-patched", "", true},
+		{"allowlist exact", "quay.io/special/escape-hatch:latest", "", true},
+		{"allowlist prefix", "registry.k8s.io/known-cant-rewrite/sub:v1", "", true},
+		{"upstream rejected", "quay.io/prometheus/prometheus:v3.9.1", "", false},
+		{"docker hub rejected", "docker.io/library/postgres:17", "", false},
+		{"empty rejected", "", "", false},
+		{"double-ghcr (chart-gen bug pattern) rejected", "ghcr.io/ghcr.io/verity-org/foo:tag", "", false},
+		// Bare-digest fallback: kubelet sometimes records the
+		// container status image as just "sha256:<hex>" (no registry
+		// path), with the canonical reference preserved in imageID.
+		// isAccepted MUST fall back to imageID for allowlist matching
+		// in that case. See SCR-2026-04-30-001 + assertions.go
+		// containerStatus.Image docstring for the underlying cause.
+		{
+			name:    "bare digest with allowlisted imageID accepted",
+			image:   "sha256:895ddb49053a9b80e1c97354a933f59cc94fba4b6f831615687151c9b178218d",
+			imageID: "registry.k8s.io/ingress-nginx/controller@sha256:594ceea76b01c592858f803f9ff4d2cb40542cae2060410b2c95f75907d659e1",
+			want:    true,
+		},
+		{
+			name:    "bare digest with verity-prefixed imageID accepted",
+			image:   "sha256:deadbeef",
+			imageID: "ghcr.io/verity-org/library/foo@sha256:deadbeef",
+			want:    true,
+		},
+		{
+			name:    "bare digest with non-allowlisted imageID rejected",
+			image:   "sha256:cafebabe",
+			imageID: "docker.io/library/postgres@sha256:cafebabe",
+			want:    false,
+		},
+		{
+			name:    "bare digest with empty imageID rejected (no fallback target)",
+			image:   "sha256:cafebabe",
+			imageID: "",
+			want:    false,
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got := isAccepted(c.image, allow)
+			got := isAccepted(c.image, c.imageID, allow)
 			if got != c.want {
-				t.Fatalf("isAccepted(%q) = %v, want %v", c.image, got, c.want)
+				t.Fatalf("isAccepted(image=%q, imageID=%q) = %v, want %v", c.image, c.imageID, got, c.want)
 			}
 		})
 	}

@@ -48,8 +48,25 @@ type podList struct {
 }
 
 type containerStatus struct {
-	Name                 string `json:"name"`
+	Name string `json:"name"`
+	// Image is the container image string as reported by kubelet in
+	// .status.containerStatuses[].image. For most pods this is the
+	// same registry-prefixed reference present in the pod spec
+	// (e.g. "registry.k8s.io/ingress-nginx/controller:v1.15.1").
+	//
+	// HOWEVER, when a pod's spec.image carries BOTH a tag and a
+	// digest pin (e.g. "...controller:v1.15.1@sha256:594ce..."), the
+	// containerd/CRI implementation under kind sometimes normalises
+	// the rendered status.image down to the bare local digest
+	// ("sha256:895dd..."), discarding the registry path entirely.
+	// In that case ImageID still carries the canonical registry-
+	// prefixed digest reference (e.g.
+	// "registry.k8s.io/ingress-nginx/controller@sha256:594ce..."),
+	// so allowlist matching MUST fall back to ImageID when Image is
+	// a bare digest. See isAccepted for the fallback logic and
+	// SCR-2026-04-30-001 for the policy rationale.
 	Image                string `json:"image"`
+	ImageID              string `json:"imageID"`
 	RestartCount         int    `json:"restartCount"`
 	LastTerminationState struct {
 		Terminated *struct {
@@ -190,9 +207,13 @@ func collectImageViolations(pods *podList, allow []string) []string {
 	for _, p := range pods.Items {
 		all := append(append([]containerStatus{}, p.Status.ContainerStatuses...), p.Status.InitContainerStatuses...)
 		for _, cs := range all {
-			if isAccepted(cs.Image, allow) {
+			if isAccepted(cs.Image, cs.ImageID, allow) {
 				continue
 			}
+			// Diagnostic message uses Image (raw kubelet value) so
+			// the bare-digest case is still visible in CI logs;
+			// allowlist matching, however, has already consulted
+			// ImageID as a fallback above.
 			violations = append(violations, fmt.Sprintf(
 				"pod=%s/%s container=%s image=%s",
 				p.Metadata.Namespace, p.Metadata.Name, cs.Name, cs.Image,
@@ -202,7 +223,23 @@ func collectImageViolations(pods *podList, allow []string) []string {
 	return violations
 }
 
-func isAccepted(image string, allow []string) bool {
+// isAccepted returns true when the container is sourced from the
+// verity registry OR matches an allowlist prefix.
+//
+// Acceptance order:
+//
+//  1. verityRegistryPrefix short-circuit on `image`
+//  2. allowlist prefix match on `image`
+//  3. bare-digest fallback: if `image` looks like "sha256:..." (no
+//     registry path because kubelet/containerd normalised it), we
+//     re-run the verity short-circuit and allowlist match against
+//     `imageID`, which still carries the canonical registry-prefixed
+//     digest reference.
+//
+// imageID may be empty when the test calls isAccepted with synthetic
+// data; in that case the fallback degrades cleanly to the original
+// image-only behaviour.
+func isAccepted(image, imageID string, allow []string) bool {
 	if image == "" {
 		return false
 	}
@@ -212,6 +249,23 @@ func isAccepted(image string, allow []string) bool {
 	for _, prefix := range allow {
 		if strings.HasPrefix(image, prefix) {
 			return true
+		}
+	}
+	// Bare-digest fallback. kubelet sometimes records
+	// status.containerStatuses[].image as just "sha256:<hex>" when
+	// the pod spec pinned the image by tag+digest. In that case the
+	// allowlist prefixes (which are repository paths) cannot match,
+	// but imageID still carries "<repo>@sha256:<hex>" so the same
+	// prefix logic works against it. See containerStatus.Image
+	// docstring for the upstream cause.
+	if strings.HasPrefix(image, "sha256:") && imageID != "" {
+		if strings.HasPrefix(imageID, verityRegistryPrefix) {
+			return true
+		}
+		for _, prefix := range allow {
+			if strings.HasPrefix(imageID, prefix) {
+				return true
+			}
 		}
 	}
 	return false
