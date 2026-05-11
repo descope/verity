@@ -7,7 +7,21 @@ types:
   default:
     base: wolfi-base
     packages: ["grafana-{{version}}"]
-    entrypoint: /usr/bin/grafana server
+    # grafana 12.x requires --homepath to locate conf/defaults.ini.
+    # The wolfi package installs defaults.ini at /usr/share/grafana/
+    # conf/defaults.ini. Without --homepath (or chdir to that dir),
+    # the server binary aborts at startup with:
+    #   "Grafana-server Init Failed: Could not find config defaults,
+    #    make sure homepath command line parameter is set or working
+    #    directory is homepath"
+    # Verified against chart-integration run 25662716854, grafana
+    # job pod logs: ghcr.io/verity-org/grafana:12.4 with chart-default
+    # pod spec (no command:/args:/workingDir:) hit the abort above
+    # because the official upstream image sets WORKDIR /usr/share/
+    # grafana but the wolfi rebuild does not. Embedding --homepath
+    # in the entrypoint matches what the upstream image's launcher
+    # script does and unblocks chart-integration.
+    entrypoint: /usr/bin/grafana server --homepath /usr/share/grafana
     environment:
       GF_PATHS_CONFIG: /etc/grafana/grafana.ini
       GF_PATHS_DATA: /var/lib/grafana
