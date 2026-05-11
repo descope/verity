@@ -1,0 +1,30 @@
+# nats upstream image allowlist (SCR-2026-04-30-001)
+#
+# The nats chart pulls two auxiliary images that verity does not
+# currently rebuild. The main nats binary itself runs from
+# ghcr.io/verity-org/nats:* (the verity rebuild handles that). These
+# auxiliaries are a CLI shell helper and a config-reloader sidecar:
+#
+#   docker.io/natsio/nats-box:0.19.3                     — interactive
+#                                                         shell pod for
+#                                                         debugging
+#   docker.io/natsio/nats-server-config-reloader:0.21.1  — sidecar that
+#                                                         SIGHUPs the
+#                                                         server on
+#                                                         configmap
+#                                                         changes
+#
+# Format note: isAccepted (test/chart-integration/assertions.go:205) uses
+# strings.HasPrefix, and Docker Hub images may render in chart manifests
+# either with or without the `docker.io/` registry prefix depending on
+# how the chart constructs the image string. Adding both forms ensures
+# the allowlist matches regardless. Plus `:` / `@` separators per the
+# pattern used in consul.allowlist.txt (review on PR #353).
+docker.io/natsio/nats-box:
+docker.io/natsio/nats-box@
+docker.io/natsio/nats-server-config-reloader:
+docker.io/natsio/nats-server-config-reloader@
+natsio/nats-box:
+natsio/nats-box@
+natsio/nats-server-config-reloader:
+natsio/nats-server-config-reloader@

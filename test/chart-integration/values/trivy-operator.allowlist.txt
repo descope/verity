@@ -1,0 +1,23 @@
+# trivy-operator upstream image allowlist (SCR-2026-04-30-001)
+#
+# The trivy-operator chart launches scan jobs that pull the trivy
+# scanner image. verity.yaml has a `trivy-operator` replacement (the
+# operator controller itself runs from the verity rebuild), but the
+# scanner image referenced from operator config is a separate image:
+#
+#   mirror.gcr.io/aquasec/trivy:0.69.3   — trivy CVE-scanner CLI,
+#                                          launched per scan job to
+#                                          analyze cluster image
+#                                          contents
+#
+# verity has its own `trivy.yaml` rebuild — but the chart references
+# the upstream by digest/tag and chart-gen doesn't currently rewrite
+# scanner-image references inside operator ConfigMap data. Allowlist
+# the upstream until either the operator config gets a verity-aware
+# scanner override OR chart-gen learns to walk operator ConfigMap data.
+#
+# Format note: isAccepted (test/chart-integration/assertions.go:205) uses
+# strings.HasPrefix; using `:` and `@` separators ensures the prefix only
+# matches this specific image's tag/digest forms.
+mirror.gcr.io/aquasec/trivy:
+mirror.gcr.io/aquasec/trivy@
