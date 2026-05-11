@@ -3,6 +3,7 @@ package chartgen
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"sort"
@@ -263,16 +264,12 @@ func mergeMapValue(root map[string]any, path string, value map[string]any) {
 				// Either no existing entry, or a non-map scalar
 				// occupies the slot. Fall back to the setScalarValue
 				// shape: drop a fresh map containing `value`.
-				next := make(map[string]any)
-				for k, v := range value {
-					next[k] = v
-				}
+				next := make(map[string]any, len(value))
+				maps.Copy(next, value)
 				current[part] = next
 				return
 			}
-			for k, v := range value {
-				existing[k] = v
-			}
+			maps.Copy(existing, value)
 			return
 		}
 
