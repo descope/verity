@@ -6,7 +6,20 @@ upstream:
 types:
   default:
     base: wolfi-base
-    packages: ["opensearch-{{version}}"]
+    # `opensearch-{{version}}` provides the OpenSearch binaries + bundled
+    # JDK. `openjdk-25-default-jvm` is wolfi's alias subpackage that
+    # creates `/usr/lib/jvm/default-jvm` → `/usr/lib/jvm/java-25-openjdk`,
+    # which the image's OPENSEARCH_JAVA_HOME env (below) points at.
+    # Without this alias package the symlink is missing and opensearch
+    # fails at startup with:
+    #   could not find java in OPENSEARCH_JAVA_HOME at
+    #     /usr/lib/jvm/default-jvm/bin/java
+    # When wolfi bumps to openjdk-26, swap to `openjdk-26-default-jvm`
+    # (and verify OPENSEARCH_JAVA_HOME still resolves). Letting wolfi own
+    # the symlink-vs-actual-install mapping is more maintainable than the
+    # repo authoring the symlink itself. See verity-org/verity#318 and
+    # verity-org/verity#351 review for the original symlink discussion.
+    packages: ["opensearch-{{version}}", "openjdk-25-default-jvm"]
     entrypoint: /usr/share/opensearch/opensearch-docker-entrypoint.sh
     environment:
       OPENSEARCH_HOME: /usr/share/opensearch
