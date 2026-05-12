@@ -156,9 +156,15 @@ jobs:
       - name: Dispatch integer-build-image.yaml for each image
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IMAGES: ${{ needs.discover.outputs.images }}
         run: |
-          echo "$IMAGES" | jq -c '.[]' | while IFS= read -r image; do
+          # Write images JSON to a temp file instead of an env var to avoid
+          # E2BIG (argv+env > ~2MB / per-string > 128KB) when the matrix is large.
+          # Heredoc with quoted delimiter disables shell expansion of the body,
+          # tolerating any JSON content (including apostrophes) safely.
+          cat > "$RUNNER_TEMP/images.json" <<'__IMAGES_JSON_EOF__'
+          ${{ needs.discover.outputs.images }}
+          __IMAGES_JSON_EOF__
+          jq -c '.[]' "$RUNNER_TEMP/images.json" | while IFS= read -r image; do
             NAME=$(echo "$image" | jq -r '.name')
             VERSION=$(echo "$image" | jq -r '.version')
             TYPE=$(echo "$image" | jq -r '.type')
