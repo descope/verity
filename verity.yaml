@@ -255,8 +255,20 @@ chartValues:
   # smoke so the server boots fully unsealed and the smoke check can
   # complete. dev mode is in-memory only — never use in production.
   # See verity-org/verity#323.
+  #
+  # Bucket E probe-tune: bucket-confirmation.md openbao row shows the
+  # chart **functionally succeeded** (server-test pod exit=0, sealed=false)
+  # but the integration job's `helm install --wait` exceeded its 10-min
+  # budget before all pods crossed Ready. Chart's `server.readinessProbe`
+  # defaults to initialDelaySeconds=5, failureThreshold=2 (≈10s tolerance
+  # before the probe declares the pod NotReady). Stateful unseal warm-up
+  # is slower than that under kind. Raise initialDelaySeconds to 30s and
+  # failureThreshold to 6 (≈30s tolerance once started) so probes don't
+  # flap during the unseal warm-up window.
   openbao:
     server.dev.enabled: true
+    server.readinessProbe.initialDelaySeconds: 30
+    server.readinessProbe.failureThreshold: 6
 
   # vault — same pattern as openbao (vault is the upstream openbao forked
   # from). Standalone mode boots the server but leaves it sealed forever
