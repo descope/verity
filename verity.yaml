@@ -285,8 +285,33 @@ chartValues:
   # chart pulls a tag that actually resolves. Trade-off: chart drops the
   # rootless-only security context default; acceptable for CI smoke.
   # See verity-org/verity#326.
+  #
+  # Bucket B (SCR-2026-05-14-001 subtask 7) — PO decision Option A:
+  # bucket-confirmation.md gitea row: `init-directories` initContainer
+  # crashes with `exec /usr/sbinx/init_directory_structure.sh: no such
+  # file or directory`. `/usr/sbinx/` (with the 'x') is Bitnami's
+  # deliberate init-script path; the verity wolfi rebuild ships upstream
+  # gitea, which has no such script. Per subtask-7-handoff §3 Option A,
+  # swap to Bitnami's gitea image so the chart's init scripts find their
+  # expected paths. **PO accepted the CVE-posture trade-off** (Bitnami
+  # image is unpatched; verity-rebuilt CVE posture lost for this chart).
+  #
+  # IMPORTANT — chartgen image-override interaction: chartgen's image-
+  # override pass writes `image.repository` and `image.tag` AFTER these
+  # chartValues are merged, and override keys win over same-key
+  # collisions on identical paths (per commit 0f12b6352541 #361). If
+  # gitea is still listed in the image-discovery replacements / Integer
+  # rebuilds, the override may overwrite `image.repository` back to
+  # `ghcr.io/verity-org/gitea`, defeating this fix. Subtask 8 must
+  # confirm via `verity chart-gen --dry-run` whether these chartValues
+  # survive into the published wrapper. If they don't, follow-up will
+  # need to either (a) remove gitea from images/*.yaml or (b) add a
+  # per-chart "skip-image-override" feature to chartgen.
   gitea:
     image.rootless: false
+    image.registry: docker.io
+    image.repository: bitnami/gitea
+    image.tag: "1"
 
   # cert-manager startupapicheck Job runs `cert-manager check api --wait=1m`
   # to verify webhook readiness post-install. The default 1-minute timeout
