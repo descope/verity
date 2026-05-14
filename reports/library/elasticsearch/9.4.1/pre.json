@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.69.3"
   },
-  "ReportID": "019e1fea-90b4-7e39-a14f-bbd025a3fa1a",
-  "CreatedAt": "2026-05-13T05:58:46.708934455Z",
+  "ReportID": "019e250f-fb97-76ec-b281-2eaea8caffaa",
+  "CreatedAt": "2026-05-14T05:57:44.983455373Z",
   "ArtifactID": "sha256:8e79b6f18b03d1489bafcb0a3d59dea39c6e226c037a52ac53e6447cd934f070",
   "ArtifactName": "mirror.gcr.io/library/elasticsearch:9.4.1",
   "ArtifactType": "container_image",
@@ -30640,8 +30640,11 @@
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-4873",
           "Fingerprint": "sha256:8d3b79b708ff8ddc328d23a92dd473aadf400247946183e9f02c66e3b291d919",
           "Title": "curl: curl: Information disclosure due to incorrect TLS connection reuse",
-          "Description": "A flaw was found in curl. A remote attacker could exploit this by initiating an unencrypted connection (via IMAP, SMTP, or POP3) and then making a subsequent request to the same host that requires Transport Layer Security (TLS). Due to incorrect connection reuse, the subsequent request would bypass the TLS requirement, leading to the transmission of sensitive information in cleartext. This vulnerability, categorized as Cleartext Transmission of Sensitive Information (CWE-319), results in information disclosure.",
+          "Description": "A vulnerability exists where a connection requiring TLS incorrectly reuses an\nexisting unencrypted connection from the same connection pool. If an initial\ntransfer is made in clear-text (via IMAP, SMTP, or POP3), a subsequent request\nto that same host bypasses the TLS requirement and instead transmit data\nunencrypted.",
           "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-319"
+          ],
           "VendorSeverity": {
             "photon": 2,
             "redhat": 2,
@@ -30654,12 +30657,17 @@
             }
           },
           "References": [
+            "http://www.openwall.com/lists/oss-security/2026/04/29/7",
             "https://access.redhat.com/security/cve/CVE-2026-4873",
             "https://curl.se/docs/CVE-2026-4873.html",
+            "https://curl.se/docs/CVE-2026-4873.json",
+            "https://hackerone.com/reports/3621851",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-4873",
             "https://ubuntu.com/security/notices/USN-8227-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-4873"
-          ]
+          ],
+          "PublishedDate": "2026-05-13T13:01:55.893Z",
+          "LastModifiedDate": "2026-05-13T20:16:23.353Z"
         },
         {
           "VulnerabilityID": "CVE-2026-5545",
@@ -30679,14 +30687,22 @@
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-5545",
           "Fingerprint": "sha256:e8c31e5bbea3f8f0dd2fd99e45df9ff25bc8e133a5abdaa7e29453a652af4bfe",
           "Title": "curl: libcurl: Authentication bypass due to incorrect HTTP Negotiate connection reuse",
-          "Description": "A flaw was found in libcurl. An application using libcurl that performs an authenticated HTTP(S) request after a Negotiate-authenticated one to the same host may incorrectly reuse the previous connection. This authentication bypass vulnerability allows the second request to be sent over a connection authenticated with different credentials, potentially leading to unauthorized access or information disclosure.",
+          "Description": "libcurl might in some circumstances reuse the wrong connection when asked to\ndo an authenticated HTTP(S) request after a Negotiate-authenticated one, when\nboth use the same host.\n\nlibcurl features a pool of recent connections so that subsequent requests can\nreuse an existing connection to avoid overhead.\n\nWhen reusing a connection a range of criteria must be met. Due to a logical\nerror in the code, a request that was issued by an application could\nwrongfully reuse an existing connection to the same server that was\nauthenticated using different credentials.\n\nAn application that first uses Negotiate authentication to a server with\n`user1:password1` and then does another operation to the same server asking\nfor any authentication method but for `user2:password2` (while the previous\nconnection is still alive) - the second request gets confused and wrongly\nreuses the same connection and sends the new request over that connection\nthinking it uses a mix of user1's and user2's credentials when it is in fact\nstill using the connection authenticated for user1...",
           "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-613"
+          ],
           "VendorSeverity": {
+            "nvd": 2,
             "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
           "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:H/A:N",
+              "V3Score": 6.5
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N",
               "V3Score": 6.5
@@ -30695,10 +30711,14 @@
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-5545",
             "https://curl.se/docs/CVE-2026-5545.html",
+            "https://curl.se/docs/CVE-2026-5545.json",
+            "https://hackerone.com/reports/3642555",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-5545",
             "https://ubuntu.com/security/notices/USN-8227-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-5545"
-          ]
+          ],
+          "PublishedDate": "2026-05-13T13:01:56.19Z",
+          "LastModifiedDate": "2026-05-13T19:31:07.633Z"
         },
         {
           "VulnerabilityID": "CVE-2026-5773",
@@ -30718,26 +30738,39 @@
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-5773",
           "Fingerprint": "sha256:a96ad38ae93f2616493ec8323f24b834a242570a50839d6ac6557f2f82d0e741",
           "Title": "curl: libcurl: Wrong file transfer due to incorrect SMB connection reuse",
-          "Description": "A flaw was found in libcurl. Due to a logical error in the connection reuse mechanism for SMB (Server Message Block) transfers, libcurl might reuse an existing SMB connection with a different share than intended. This vulnerability, categorized as CWE-488 (Exposure of Data Element to Wrong Session), could lead to the download of an incorrect file or the upload of a file to an unintended location when an application uses libcurl for SMB transfers.",
+          "Description": "libcurl might in some circumstances reuse the wrong connection for SMB(S)\ntransfers.\n\nlibcurl features a pool of recent connections so that subsequent requests can\nreuse an existing connection to avoid overhead.\n\nWhen reusing a connection a range of criteria must be met. Due to a logical\nerror in the code, a network transfer operation that was requested by an\napplication could wrongfully reuse an existing SMB connection to the same\nserver that was using a different 'share' than the new subsequent transfer\nshould.\n\nThis could in unlucky situations lead to the download of the wrong file or the\nupload of a file to the wrong place. When this happens, the same credentials\nare used and the server name is the same.",
           "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-918"
+          ],
           "VendorSeverity": {
+            "nvd": 3,
             "photon": 2,
             "redhat": 2,
             "ubuntu": 1
           },
           "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 7.5
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
               "V3Score": 6.5
             }
           },
           "References": [
+            "http://www.openwall.com/lists/oss-security/2026/04/29/9",
             "https://access.redhat.com/security/cve/CVE-2026-5773",
             "https://curl.se/docs/CVE-2026-5773.html",
+            "https://curl.se/docs/CVE-2026-5773.json",
+            "https://hackerone.com/reports/3650689",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-5773",
             "https://ubuntu.com/security/notices/USN-8227-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-5773"
-          ]
+          ],
+          "PublishedDate": "2026-05-13T13:01:56.307Z",
+          "LastModifiedDate": "2026-05-13T19:13:14.097Z"
         },
         {
           "VulnerabilityID": "CVE-2026-6253",
@@ -30757,7 +30790,7 @@
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-6253",
           "Fingerprint": "sha256:95aab02d57ed18bd8786bcba4914761059ee46d4274919b50c60c48fa331d240",
           "Title": "curl: curl: Proxy credential disclosure via redirects to unauthenticated proxies",
-          "Description": "A flaw was found in curl. When curl is configured to use distinct proxies for different URL schemes, a redirect from a URL using an authenticated proxy to one using an unauthenticated proxy can inadvertently expose the initial proxy's credentials. This improper credential management (CWE-522) may allow an attacker to gain unauthorized access or information by intercepting these disclosed credentials.",
+          "Description": "curl might erroneously pass on credentials for a first proxy to a second\nproxy.\n\nThis can happen when the following conditions are true:\n\n1. curl is setup to use specific different proxies for different URL schemes\n2. the first proxy needs credentials\n3. the second proxy uses no credentials\n4. while using the first proxy (using say `http://`), curl is asked to follow\n   a redirect to a URL using another scheme (say `https://`), accessed using a\n   second, different, proxy",
           "Severity": "MEDIUM",
           "VendorSeverity": {
             "photon": 3,
@@ -30771,12 +30804,17 @@
             }
           },
           "References": [
+            "http://www.openwall.com/lists/oss-security/2026/04/29/11",
             "https://access.redhat.com/security/cve/CVE-2026-6253",
             "https://curl.se/docs/CVE-2026-6253.html",
+            "https://curl.se/docs/CVE-2026-6253.json",
+            "https://hackerone.com/reports/3669637",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-6253",
             "https://ubuntu.com/security/notices/USN-8227-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-6253"
-          ]
+          ],
+          "PublishedDate": "2026-05-13T13:01:56.57Z",
+          "LastModifiedDate": "2026-05-13T18:16:20.09Z"
         },
         {
           "VulnerabilityID": "CVE-2026-6429",
@@ -30796,7 +30834,7 @@
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-6429",
           "Fingerprint": "sha256:de7980aad5439b44bd1b1201877c886e6a6f3085c84055cf19123a8957113c13",
           "Title": "curl: libcurl: Credential leak via reused proxy connection during HTTP redirects",
-          "Description": "A flaw was found in libcurl. When configured to use a .netrc file for credentials and follow HTTP redirects, libcurl can inadvertently send the password from the initial connection to the redirected host. This sensitive information disclosure occurs when both the original and redirect URLs use clear text HTTP, are performed over the same HTTP proxy, and the same connection is reused. This vulnerability, categorized as an Exposure of Sensitive Information to an Unauthorized Actor (CWE-200), could allow an attacker to obtain user credentials.",
+          "Description": "When asked to both use a `.netrc` file for credentials and to follow HTTP\nredirects, libcurl could leak the password used for the first host to the\nfollowed-to host under certain circumstances.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
             "photon": 3,
@@ -30812,10 +30850,14 @@
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-6429",
             "https://curl.se/docs/CVE-2026-6429.html",
+            "https://curl.se/docs/CVE-2026-6429.json",
+            "https://hackerone.com/reports/3677759",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-6429",
             "https://ubuntu.com/security/notices/USN-8227-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-6429"
-          ]
+          ],
+          "PublishedDate": "2026-05-13T13:01:56.93Z",
+          "LastModifiedDate": "2026-05-13T14:50:58.767Z"
         },
         {
           "VulnerabilityID": "CVE-2024-11053",
@@ -31556,7 +31598,7 @@
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-6276",
           "Fingerprint": "sha256:a4ec935bfc807b007e66230764751c091636b45c237e1cc66fefade6543dcd92",
           "Title": "curl: libcurl: Information disclosure due to cookie leak when reusing connections with custom Host headers",
-          "Description": "A flaw was found in libcurl. This vulnerability allows for information disclosure when a custom `Host:` header is used in an initial HTTP request, and a subsequent request reuses the same connection without specifying a new `Host:` header. This can lead to libcurl incorrectly sending cookies intended for the first host to the second host, resulting in a cookie leak. This issue is categorized as an Origin Validation Error (CWE-346). Exploitation typically requires specific debugging configurations.",
+          "Description": "Using libcurl, when a custom `Host:` header is first set for an HTTP request\nand a second request is subsequently done using the same *easy handle* but\nwithout the custom `Host:` header set, the second request would use stale\ninformation and pass on cookies meant for the first host in the second\nrequest. Leak them.",
           "Severity": "LOW",
           "VendorSeverity": {
             "photon": 2,
@@ -31570,12 +31612,17 @@
             }
           },
           "References": [
+            "http://www.openwall.com/lists/oss-security/2026/04/29/13",
             "https://access.redhat.com/security/cve/CVE-2026-6276",
             "https://curl.se/docs/CVE-2026-6276.html",
+            "https://curl.se/docs/CVE-2026-6276.json",
+            "https://hackerone.com/reports/3671818",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-6276",
             "https://ubuntu.com/security/notices/USN-8227-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-6276"
-          ]
+          ],
+          "PublishedDate": "2026-05-13T13:01:56.8Z",
+          "LastModifiedDate": "2026-05-13T18:16:20.403Z"
         },
         {
           "VulnerabilityID": "CVE-2023-4156",
@@ -33085,9 +33132,14 @@
             "CWE-626"
           ],
           "VendorSeverity": {
+            "nvd": 4,
             "redhat": 3
           },
           "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 9.8
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
               "V3Score": 7.1
@@ -33100,7 +33152,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-42010"
           ],
           "PublishedDate": "2026-05-07T12:16:17.977Z",
-          "LastModifiedDate": "2026-05-07T15:16:09.64Z"
+          "LastModifiedDate": "2026-05-13T13:54:56.233Z"
         },
         {
           "VulnerabilityID": "CVE-2026-3833",
@@ -33258,6 +33310,7 @@
             "CWE-191"
           ],
           "VendorSeverity": {
+            "alma": 3,
             "redhat": 3
           },
           "CVSS": {
@@ -33267,8 +33320,12 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:16799",
             "https://access.redhat.com/security/cve/CVE-2026-40356",
+            "https://bugzilla.redhat.com/2463368",
+            "https://bugzilla.redhat.com/2463370",
             "https://cems.fun/2026/04/27/krb5-two-unauthenticated-network-vulnerabilities.html",
+            "https://errata.almalinux.org/8/ALSA-2026-16799.html",
             "https://github.com/krb5/krb5/commit/2e75f0d9362fb979f5fc92829431a590a130929f",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-40356",
             "https://web.mit.edu/kerberos/advisories/",
@@ -33301,6 +33358,7 @@
             "CWE-476"
           ],
           "VendorSeverity": {
+            "alma": 3,
             "redhat": 2
           },
           "CVSS": {
@@ -33310,8 +33368,12 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:16799",
             "https://access.redhat.com/security/cve/CVE-2026-40355",
+            "https://bugzilla.redhat.com/2463368",
+            "https://bugzilla.redhat.com/2463370",
             "https://cems.fun/2026/04/27/krb5-two-unauthenticated-network-vulnerabilities.html",
+            "https://errata.almalinux.org/8/ALSA-2026-16799.html",
             "https://github.com/krb5/krb5/commit/2e75f0d9362fb979f5fc92829431a590a130929f",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-40355",
             "https://web.mit.edu/kerberos/advisories/",
@@ -34166,8 +34228,11 @@
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-4873",
           "Fingerprint": "sha256:b03d969d7a6442773990469ddeeb3635661edd0a9923cc2a109a6e86a4e0cfec",
           "Title": "curl: curl: Information disclosure due to incorrect TLS connection reuse",
-          "Description": "A flaw was found in curl. A remote attacker could exploit this by initiating an unencrypted connection (via IMAP, SMTP, or POP3) and then making a subsequent request to the same host that requires Transport Layer Security (TLS). Due to incorrect connection reuse, the subsequent request would bypass the TLS requirement, leading to the transmission of sensitive information in cleartext. This vulnerability, categorized as Cleartext Transmission of Sensitive Information (CWE-319), results in information disclosure.",
+          "Description": "A vulnerability exists where a connection requiring TLS incorrectly reuses an\nexisting unencrypted connection from the same connection pool. If an initial\ntransfer is made in clear-text (via IMAP, SMTP, or POP3), a subsequent request\nto that same host bypasses the TLS requirement and instead transmit data\nunencrypted.",
           "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-319"
+          ],
           "VendorSeverity": {
             "photon": 2,
             "redhat": 2,
@@ -34180,12 +34245,17 @@
             }
           },
           "References": [
+            "http://www.openwall.com/lists/oss-security/2026/04/29/7",
             "https://access.redhat.com/security/cve/CVE-2026-4873",
             "https://curl.se/docs/CVE-2026-4873.html",
+            "https://curl.se/docs/CVE-2026-4873.json",
+            "https://hackerone.com/reports/3621851",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-4873",
             "https://ubuntu.com/security/notices/USN-8227-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-4873"
-          ]
+          ],
+          "PublishedDate": "2026-05-13T13:01:55.893Z",
+          "LastModifiedDate": "2026-05-13T20:16:23.353Z"
         },
         {
           "VulnerabilityID": "CVE-2026-5545",
@@ -34205,14 +34275,22 @@
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-5545",
           "Fingerprint": "sha256:fbedc60337c737dc06c45851fe3ddb82b0e480d17a44d31e0937b35f584db3dc",
           "Title": "curl: libcurl: Authentication bypass due to incorrect HTTP Negotiate connection reuse",
-          "Description": "A flaw was found in libcurl. An application using libcurl that performs an authenticated HTTP(S) request after a Negotiate-authenticated one to the same host may incorrectly reuse the previous connection. This authentication bypass vulnerability allows the second request to be sent over a connection authenticated with different credentials, potentially leading to unauthorized access or information disclosure.",
+          "Description": "libcurl might in some circumstances reuse the wrong connection when asked to\ndo an authenticated HTTP(S) request after a Negotiate-authenticated one, when\nboth use the same host.\n\nlibcurl features a pool of recent connections so that subsequent requests can\nreuse an existing connection to avoid overhead.\n\nWhen reusing a connection a range of criteria must be met. Due to a logical\nerror in the code, a request that was issued by an application could\nwrongfully reuse an existing connection to the same server that was\nauthenticated using different credentials.\n\nAn application that first uses Negotiate authentication to a server with\n`user1:password1` and then does another operation to the same server asking\nfor any authentication method but for `user2:password2` (while the previous\nconnection is still alive) - the second request gets confused and wrongly\nreuses the same connection and sends the new request over that connection\nthinking it uses a mix of user1's and user2's credentials when it is in fact\nstill using the connection authenticated for user1...",
           "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-613"
+          ],
           "VendorSeverity": {
+            "nvd": 2,
             "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
           "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:H/A:N",
+              "V3Score": 6.5
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N",
               "V3Score": 6.5
@@ -34221,10 +34299,14 @@
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-5545",
             "https://curl.se/docs/CVE-2026-5545.html",
+            "https://curl.se/docs/CVE-2026-5545.json",
+            "https://hackerone.com/reports/3642555",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-5545",
             "https://ubuntu.com/security/notices/USN-8227-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-5545"
-          ]
+          ],
+          "PublishedDate": "2026-05-13T13:01:56.19Z",
+          "LastModifiedDate": "2026-05-13T19:31:07.633Z"
         },
         {
           "VulnerabilityID": "CVE-2026-5773",
@@ -34244,26 +34326,39 @@
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-5773",
           "Fingerprint": "sha256:21af1585f5e1ebb351134746d3180b68b6fc1a0176cede7c6427d558b587a97b",
           "Title": "curl: libcurl: Wrong file transfer due to incorrect SMB connection reuse",
-          "Description": "A flaw was found in libcurl. Due to a logical error in the connection reuse mechanism for SMB (Server Message Block) transfers, libcurl might reuse an existing SMB connection with a different share than intended. This vulnerability, categorized as CWE-488 (Exposure of Data Element to Wrong Session), could lead to the download of an incorrect file or the upload of a file to an unintended location when an application uses libcurl for SMB transfers.",
+          "Description": "libcurl might in some circumstances reuse the wrong connection for SMB(S)\ntransfers.\n\nlibcurl features a pool of recent connections so that subsequent requests can\nreuse an existing connection to avoid overhead.\n\nWhen reusing a connection a range of criteria must be met. Due to a logical\nerror in the code, a network transfer operation that was requested by an\napplication could wrongfully reuse an existing SMB connection to the same\nserver that was using a different 'share' than the new subsequent transfer\nshould.\n\nThis could in unlucky situations lead to the download of the wrong file or the\nupload of a file to the wrong place. When this happens, the same credentials\nare used and the server name is the same.",
           "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-918"
+          ],
           "VendorSeverity": {
+            "nvd": 3,
             "photon": 2,
             "redhat": 2,
             "ubuntu": 1
           },
           "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 7.5
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
               "V3Score": 6.5
             }
           },
           "References": [
+            "http://www.openwall.com/lists/oss-security/2026/04/29/9",
             "https://access.redhat.com/security/cve/CVE-2026-5773",
             "https://curl.se/docs/CVE-2026-5773.html",
+            "https://curl.se/docs/CVE-2026-5773.json",
+            "https://hackerone.com/reports/3650689",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-5773",
             "https://ubuntu.com/security/notices/USN-8227-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-5773"
-          ]
+          ],
+          "PublishedDate": "2026-05-13T13:01:56.307Z",
+          "LastModifiedDate": "2026-05-13T19:13:14.097Z"
         },
         {
           "VulnerabilityID": "CVE-2026-6253",
@@ -34283,7 +34378,7 @@
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-6253",
           "Fingerprint": "sha256:580eeb723a9857d05b7b30b53fed4dce8ca2560f5a003892e4c2b8949f473a1a",
           "Title": "curl: curl: Proxy credential disclosure via redirects to unauthenticated proxies",
-          "Description": "A flaw was found in curl. When curl is configured to use distinct proxies for different URL schemes, a redirect from a URL using an authenticated proxy to one using an unauthenticated proxy can inadvertently expose the initial proxy's credentials. This improper credential management (CWE-522) may allow an attacker to gain unauthorized access or information by intercepting these disclosed credentials.",
+          "Description": "curl might erroneously pass on credentials for a first proxy to a second\nproxy.\n\nThis can happen when the following conditions are true:\n\n1. curl is setup to use specific different proxies for different URL schemes\n2. the first proxy needs credentials\n3. the second proxy uses no credentials\n4. while using the first proxy (using say `http://`), curl is asked to follow\n   a redirect to a URL using another scheme (say `https://`), accessed using a\n   second, different, proxy",
           "Severity": "MEDIUM",
           "VendorSeverity": {
             "photon": 3,
@@ -34297,12 +34392,17 @@
             }
           },
           "References": [
+            "http://www.openwall.com/lists/oss-security/2026/04/29/11",
             "https://access.redhat.com/security/cve/CVE-2026-6253",
             "https://curl.se/docs/CVE-2026-6253.html",
+            "https://curl.se/docs/CVE-2026-6253.json",
+            "https://hackerone.com/reports/3669637",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-6253",
             "https://ubuntu.com/security/notices/USN-8227-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-6253"
-          ]
+          ],
+          "PublishedDate": "2026-05-13T13:01:56.57Z",
+          "LastModifiedDate": "2026-05-13T18:16:20.09Z"
         },
         {
           "VulnerabilityID": "CVE-2026-6429",
@@ -34322,7 +34422,7 @@
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-6429",
           "Fingerprint": "sha256:8ff072c78fd39c8567cdcbe9e3b3cedd4a3f9b26c2b88543478a4f5270051bb0",
           "Title": "curl: libcurl: Credential leak via reused proxy connection during HTTP redirects",
-          "Description": "A flaw was found in libcurl. When configured to use a .netrc file for credentials and follow HTTP redirects, libcurl can inadvertently send the password from the initial connection to the redirected host. This sensitive information disclosure occurs when both the original and redirect URLs use clear text HTTP, are performed over the same HTTP proxy, and the same connection is reused. This vulnerability, categorized as an Exposure of Sensitive Information to an Unauthorized Actor (CWE-200), could allow an attacker to obtain user credentials.",
+          "Description": "When asked to both use a `.netrc` file for credentials and to follow HTTP\nredirects, libcurl could leak the password used for the first host to the\nfollowed-to host under certain circumstances.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
             "photon": 3,
@@ -34338,10 +34438,14 @@
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-6429",
             "https://curl.se/docs/CVE-2026-6429.html",
+            "https://curl.se/docs/CVE-2026-6429.json",
+            "https://hackerone.com/reports/3677759",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-6429",
             "https://ubuntu.com/security/notices/USN-8227-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-6429"
-          ]
+          ],
+          "PublishedDate": "2026-05-13T13:01:56.93Z",
+          "LastModifiedDate": "2026-05-13T14:50:58.767Z"
         },
         {
           "VulnerabilityID": "CVE-2024-11053",
@@ -35082,7 +35186,7 @@
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-6276",
           "Fingerprint": "sha256:960896600fb548f33db5e8491adf66d43eaaff071ef3edfb427e3a308728c324",
           "Title": "curl: libcurl: Information disclosure due to cookie leak when reusing connections with custom Host headers",
-          "Description": "A flaw was found in libcurl. This vulnerability allows for information disclosure when a custom `Host:` header is used in an initial HTTP request, and a subsequent request reuses the same connection without specifying a new `Host:` header. This can lead to libcurl incorrectly sending cookies intended for the first host to the second host, resulting in a cookie leak. This issue is categorized as an Origin Validation Error (CWE-346). Exploitation typically requires specific debugging configurations.",
+          "Description": "Using libcurl, when a custom `Host:` header is first set for an HTTP request\nand a second request is subsequently done using the same *easy handle* but\nwithout the custom `Host:` header set, the second request would use stale\ninformation and pass on cookies meant for the first host in the second\nrequest. Leak them.",
           "Severity": "LOW",
           "VendorSeverity": {
             "photon": 2,
@@ -35096,12 +35200,17 @@
             }
           },
           "References": [
+            "http://www.openwall.com/lists/oss-security/2026/04/29/13",
             "https://access.redhat.com/security/cve/CVE-2026-6276",
             "https://curl.se/docs/CVE-2026-6276.html",
+            "https://curl.se/docs/CVE-2026-6276.json",
+            "https://hackerone.com/reports/3671818",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-6276",
             "https://ubuntu.com/security/notices/USN-8227-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-6276"
-          ]
+          ],
+          "PublishedDate": "2026-05-13T13:01:56.8Z",
+          "LastModifiedDate": "2026-05-13T18:16:20.403Z"
         },
         {
           "VulnerabilityID": "CVE-2022-27943",
@@ -36224,7 +36333,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-2673"
           ],
           "PublishedDate": "2026-03-13T19:54:34.033Z",
-          "LastModifiedDate": "2026-05-12T13:17:34.043Z"
+          "LastModifiedDate": "2026-05-13T19:17:04.947Z"
         },
         {
           "VulnerabilityID": "CVE-2026-31790",
@@ -36337,7 +36446,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-2673"
           ],
           "PublishedDate": "2026-03-13T19:54:34.033Z",
-          "LastModifiedDate": "2026-05-12T13:17:34.043Z"
+          "LastModifiedDate": "2026-05-13T19:17:04.947Z"
         },
         {
           "VulnerabilityID": "CVE-2026-31790",
@@ -36450,7 +36559,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-2673"
           ],
           "PublishedDate": "2026-03-13T19:54:34.033Z",
-          "LastModifiedDate": "2026-05-12T13:17:34.043Z"
+          "LastModifiedDate": "2026-05-13T19:17:04.947Z"
         },
         {
           "VulnerabilityID": "CVE-2026-28386",
@@ -46703,6 +46812,1056 @@
             "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
           },
           "FilePath": "usr/share/elasticsearch/modules/x-pack-inference/siv-mode-1.5.2.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.client:elasticsearch-rest-client",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.client/elasticsearch-rest-client@9.4.1",
+            "UID": "e88677c7c05fb579"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/reindex/elasticsearch-rest-client-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.client:elasticsearch-rest-client",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.client/elasticsearch-rest-client@9.4.1",
+            "UID": "48de6084cae21d69"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-enrich/elasticsearch-rest-client-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.client:elasticsearch-rest-client",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.client/elasticsearch-rest-client@9.4.1",
+            "UID": "434fe7baa9d9ac42"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-monitoring/elasticsearch-rest-client-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.client:elasticsearch-rest-client-sniffer",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.client/elasticsearch-rest-client-sniffer@9.4.1",
+            "UID": "f00b30ef3374cbad"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-monitoring/elasticsearch-rest-client-sniffer-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:arrow",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/arrow@9.4.1",
+            "UID": "abe634b2b87e730"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-esql/arrow-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:elasticsearch-plugin-analysis-api",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/elasticsearch-plugin-analysis-api@9.4.1",
+            "UID": "e05faed8a24f7be3"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/elasticsearch-plugin-analysis-api-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:elasticsearch-plugin-api",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/elasticsearch-plugin-api@9.4.1",
+            "UID": "2cc36c3e663faa41"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/elasticsearch-plugin-api-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:elasticsearch-plugin-api",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/elasticsearch-plugin-api@9.4.1",
+            "UID": "16e227fff7aa5a42"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/tools/plugin-cli/elasticsearch-plugin-api-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:elasticsearch-scripting-painless-spi",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/elasticsearch-scripting-painless-spi@9.4.1",
+            "UID": "976ef097e26fabcc"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/lang-painless/spi/elasticsearch-scripting-painless-spi-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:es-opensaml-security-api",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/es-opensaml-security-api@9.4.1",
+            "UID": "ec3e1ca1524cf3fa"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-identity-provider/es-opensaml-security-api-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:es-opensaml-security-api",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/es-opensaml-security-api@9.4.1",
+            "UID": "7f2bd692992ae051"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-security/es-opensaml-security-api-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:esql-datasource-azure",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/esql-datasource-azure@9.4.1",
+            "UID": "ae9e1bcabd684a9c"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/esql-datasource-azure/esql-datasource-azure-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:esql-datasource-brotli",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/esql-datasource-brotli@9.4.1",
+            "UID": "2a9ac8b7a7f02abe"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/esql-datasource-brotli/esql-datasource-brotli-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:esql-datasource-bzip2",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/esql-datasource-bzip2@9.4.1",
+            "UID": "c736130591e1886a"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/esql-datasource-bzip2/esql-datasource-bzip2-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:esql-datasource-compression-libs",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/esql-datasource-compression-libs@9.4.1",
+            "UID": "feb516d27313301e"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/esql-datasource-compression-libs/esql-datasource-compression-libs-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:esql-datasource-csv",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/esql-datasource-csv@9.4.1",
+            "UID": "5f4d2aefa4df54a3"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/esql-datasource-csv/esql-datasource-csv-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:esql-datasource-gcs",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/esql-datasource-gcs@9.4.1",
+            "UID": "a0f588d6c2ff4659"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/esql-datasource-gcs/esql-datasource-gcs-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:esql-datasource-grpc",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/esql-datasource-grpc@9.4.1",
+            "UID": "df3caab9abd6c030"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/esql-datasource-grpc/esql-datasource-grpc-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:esql-datasource-gzip",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/esql-datasource-gzip@9.4.1",
+            "UID": "59882e9d6c71f7a5"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/esql-datasource-gzip/esql-datasource-gzip-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:esql-datasource-http",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/esql-datasource-http@9.4.1",
+            "UID": "a3e660da3d00059"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/esql-datasource-http/esql-datasource-http-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:esql-datasource-iceberg",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/esql-datasource-iceberg@9.4.1",
+            "UID": "eb4b880176cc909d"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/esql-datasource-iceberg/esql-datasource-iceberg-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:esql-datasource-lz4",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/esql-datasource-lz4@9.4.1",
+            "UID": "26e8329cc9d33d64"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/esql-datasource-lz4/esql-datasource-lz4-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:esql-datasource-ndjson",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/esql-datasource-ndjson@9.4.1",
+            "UID": "6751798a11f4005"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/esql-datasource-ndjson/esql-datasource-ndjson-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:esql-datasource-orc",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/esql-datasource-orc@9.4.1",
+            "UID": "f6c4835c4431f325"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/esql-datasource-orc/esql-datasource-orc-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:esql-datasource-parquet",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/esql-datasource-parquet@9.4.1",
+            "UID": "bd6ebec98aeb9aba"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/esql-datasource-parquet/esql-datasource-parquet-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:esql-datasource-s3",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/esql-datasource-s3@9.4.1",
+            "UID": "233a4ad99730ae0d"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/esql-datasource-s3/esql-datasource-s3-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:esql-datasource-snappy",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/esql-datasource-snappy@9.4.1",
+            "UID": "5eef01f4666d40db"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/esql-datasource-snappy/esql-datasource-snappy-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:esql-datasource-zstd",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/esql-datasource-zstd@9.4.1",
+            "UID": "f616cf7ca361df5d"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/esql-datasource-zstd/esql-datasource-zstd-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:transport-netty4",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/transport-netty4@9.4.1",
+            "UID": "cf1ea27b26007a70"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/repository-azure/transport-netty4-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:transport-netty4",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/transport-netty4@9.4.1",
+            "UID": "f9f7d1c2d8ff4646"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/transport-netty4/transport-netty4-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:transport-netty4",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/transport-netty4@9.4.1",
+            "UID": "da94672ad47a9ebf"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-security/transport-netty4-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:x-pack-core",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/x-pack-core@9.4.1",
+            "UID": "8aa2a42398fef56d"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-core/x-pack-core-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:x-pack-esql",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/x-pack-esql@9.4.1",
+            "UID": "7039b237d4e7177f"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-esql/x-pack-esql-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:x-pack-esql-compute",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/x-pack-esql-compute@9.4.1",
+            "UID": "16b02155823fc062"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-esql/x-pack-esql-compute-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:x-pack-esql-compute-ann",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/x-pack-esql-compute-ann@9.4.1",
+            "UID": "ee609ccda3436b10"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-esql/x-pack-esql-compute-ann-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:x-pack-esql-core",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/x-pack-esql-core@9.4.1",
+            "UID": "1d22dc757d21d797"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-esql-core/x-pack-esql-core-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:x-pack-kql",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/x-pack-kql@9.4.1",
+            "UID": "7eab12fc4acb081e"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-esql/x-pack-kql-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:x-pack-kql",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/x-pack-kql@9.4.1",
+            "UID": "b1051c95bf9b82de"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-kql/x-pack-kql-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:x-pack-mapper-version",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/x-pack-mapper-version@9.4.1",
+            "UID": "d373e16985062899"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/mapper-version/x-pack-mapper-version-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:x-pack-mapper-version",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/x-pack-mapper-version@9.4.1",
+            "UID": "4d4642733cec792e"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-esql-core/x-pack-mapper-version-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:x-pack-mapper-version",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/x-pack-mapper-version@9.4.1",
+            "UID": "508dc73c4c54afa9"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-ql/x-pack-mapper-version-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:x-pack-security",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/x-pack-security@9.4.1",
+            "UID": "f292a010649b5b2a"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-security/x-pack-security-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch.plugin:x-pack-template-resources",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch.plugin/x-pack-template-resources@9.4.1",
+            "UID": "6b49c31daf8c85f5"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-core/x-pack-template-resources-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch@9.4.1",
+            "UID": "d7bc53e7ec1e4703"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/elasticsearch-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-arrow",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-arrow@9.4.1",
+            "UID": "2150ef0bc37e0f99"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-esql/elasticsearch-arrow-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-cli",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-cli@9.4.1",
+            "UID": "6c8b4281b67aadf3"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/elasticsearch-cli-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-core",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-core@9.4.1",
+            "UID": "b85f6c77bbf6a92b"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/elasticsearch-core-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-core",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-core@9.4.1",
+            "UID": "997aafbe4cc71df3"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/tools/plugin-cli/elasticsearch-core-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-dissect",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-dissect@9.4.1",
+            "UID": "c1eba627589d6a17"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/ingest-common/elasticsearch-dissect-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-dissect",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-dissect@9.4.1",
+            "UID": "169ac79525494d20"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/runtime-fields-common/elasticsearch-dissect-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-dissect",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-dissect@9.4.1",
+            "UID": "5ad36160404258aa"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-esql/elasticsearch-dissect-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-entitlement",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-entitlement@9.4.1",
+            "UID": "dca5a2d7e1b0d80b"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/elasticsearch-entitlement-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-entitlement",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-entitlement@9.4.1",
+            "UID": "f8e19007b8a42e25"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/tools/plugin-cli/elasticsearch-entitlement-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-entitlement-bridge",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-entitlement-bridge@9.4.1",
+            "UID": "1dddd1db6fdc0bb"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/entitlement-bridge/elasticsearch-entitlement-bridge-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-exponential-histogram",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-exponential-histogram@9.4.1",
+            "UID": "1ec4c754a3f7c989"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/elasticsearch-exponential-histogram-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-geo",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-geo@9.4.1",
+            "UID": "f0dc52923289fd85"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/elasticsearch-geo-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-grok",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-grok@9.4.1",
+            "UID": "5c95ee814e594fc6"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/elasticsearch-grok-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-h3",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-h3@9.4.1",
+            "UID": "430fde7a78e5a8e5"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/spatial/elasticsearch-h3-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-h3",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-h3@9.4.1",
+            "UID": "f72eda3d0fbfe248"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-esql/elasticsearch-h3-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-logging",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-logging@9.4.1",
+            "UID": "65e46bcf5e6ff70f"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/elasticsearch-logging-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-lz4",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-lz4@9.4.1",
+            "UID": "cc78a5009fca5a72"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/elasticsearch-lz4-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-native",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-native@9.4.1",
+            "UID": "d2ff40bfa13196d5"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/elasticsearch-native-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-plugin-scanner",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-plugin-scanner@9.4.1",
+            "UID": "f0efe01ae8af7dc"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/tools/plugin-cli/elasticsearch-plugin-scanner-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-simdvec",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-simdvec@9.4.1",
+            "UID": "d850e0b442cf0991"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/elasticsearch-simdvec-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-ssl-config",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-ssl-config@9.4.1",
+            "UID": "1e66f24e7601d422"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/reindex/elasticsearch-ssl-config-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-ssl-config",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-ssl-config@9.4.1",
+            "UID": "f03754a0e5e38263"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/repository-azure/elasticsearch-ssl-config-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-ssl-config",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-ssl-config@9.4.1",
+            "UID": "e3a48d9dba5e5e78"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/transport-netty4/elasticsearch-ssl-config-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-ssl-config",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-ssl-config@9.4.1",
+            "UID": "c93a1889ed2e0af1"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-core/elasticsearch-ssl-config-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-swisshash",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-swisshash@9.4.1",
+            "UID": "8b69261c59066c8c"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-esql/elasticsearch-swisshash-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-tdigest",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-tdigest@9.4.1",
+            "UID": "2006353f71e32c0"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/elasticsearch-tdigest-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-user-agent-api",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-user-agent-api@9.4.1",
+            "UID": "9e130f72920ac7d0"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/elasticsearch-user-agent-api-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-web-utils",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-web-utils@9.4.1",
+            "UID": "dfc7e9b9a228f8be"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/ingest-common/elasticsearch-web-utils-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-web-utils",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-web-utils@9.4.1",
+            "UID": "eb2aa088ed14fed3"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/modules/x-pack-esql/elasticsearch-web-utils-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-x-content",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-x-content@9.4.1",
+            "UID": "bb85e8d120d74c09"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/elasticsearch-x-content-9.4.1.jar",
+          "AnalyzedBy": "jar"
+        },
+        {
+          "Name": "org.elasticsearch:elasticsearch-x-content",
+          "Identifier": {
+            "PURL": "pkg:maven/org.elasticsearch/elasticsearch-x-content@9.4.1",
+            "UID": "a4bb6fee61f00f39"
+          },
+          "Version": "9.4.1",
+          "Layer": {
+            "Digest": "sha256:bb7bdfe223801e75a51a6671cf874ed06c6871b6bf4ba44f7cf89dec547b89b3",
+            "DiffID": "sha256:ff351eeecedcd7a298259c443015050c7f9dd5b74301d2857ce0727af6591f8b"
+          },
+          "FilePath": "usr/share/elasticsearch/lib/tools/plugin-cli/elasticsearch-x-content-9.4.1.jar",
           "AnalyzedBy": "jar"
         },
         {
