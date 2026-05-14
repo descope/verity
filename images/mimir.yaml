@@ -23,6 +23,13 @@ types:
       # shows `/usr/bin/grafana-mimir -rwxr-xr-x` (executable, no
       # wolfi-perms bug). See verity-org/verity#318 (A.2 sub-cluster).
       - {path: /usr/bin/mimir, type: symlink, source: /usr/bin/grafana-mimir, uid: 0, gid: 0}
+      # Published `ghcr.io/verity-org/mimir:latest` ships the real binary at
+      # `/usr/bin/grafana-mimir` (with `/usr/bin/mimir` as a symlink to it),
+      # but the real binary has mode 0o000 — `runc` aborts with
+      # `exec: "/usr/bin/mimir": permission denied`. Declaring the path
+      # forces apko to apply +x during layer assembly.
+      # See SCR-2026-05-14-001 Bucket H.
+      - {path: /usr/bin/grafana-mimir, type: hardened-binary, uid: 0, gid: 0, permissions: 0o755}
 
 versions:
   "3.0": {}
