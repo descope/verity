@@ -23,7 +23,22 @@ types:
     # status.lastState.terminated.message. Jenkins LTS 2.x requires Java
     # 17+; we choose 21 for parity with cassandra.yaml + maven.yaml +
     # openjdk.yaml versioning.
-    packages: ["jenkins-{{version}}", "busybox", "openjdk-21-default-jvm"]
+    #
+    # `jenkins-{{version}}` (i.e. `jenkins-2`) is a SHELL package in wolfi —
+    # it ships no files of its own. The actual jenkins.war is shipped by the
+    # `jenkins-{{version}}-openjdk-21` subpackage (also `-openjdk-25`), which
+    # installs the war at /usr/share/java/jenkins/jenkins.war (the path our
+    # `entrypoint:` below already targets and the upstream helm chart
+    # hardcodes). Without the subpackage in `packages:`, the published image
+    # was missing the war entirely, producing
+    # `Error: Unable to access jarfile /usr/share/java/jenkins/jenkins.war`
+    # at container startup. Choosing openjdk-21 (LTS) over openjdk-25 (newest)
+    # to match the Jenkins LTS targeting in the helm chart's default JVM tier.
+    # Verified via gh api against wolfi-dev/os/jenkins-2.yaml (subpackage
+    # range over openjdk-versions, pipeline `mv war/target/jenkins.war
+    # ${{targets.contextdir}}/usr/share/java/jenkins/`). See
+    # SCR-2026-05-14-001 Bucket B + jenkins drill.
+    packages: ["jenkins-{{version}}", "jenkins-{{version}}-openjdk-21", "busybox", "openjdk-21-default-jvm"]
     entrypoint: /usr/bin/java -jar /usr/share/java/jenkins/jenkins.war
     environment:
       JENKINS_HOME: /var/jenkins_home
