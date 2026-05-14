@@ -140,9 +140,19 @@ type MelangeSpec struct {
 // /usr/local/bin/etcd; verity's wolfi rebuild ships /usr/bin/etcd) without
 // duplicating the binary or modifying the upstream wolfi melange recipe.
 // See verity-org/verity#318 (A.2 FHS-path mismatch sub-cluster).
+//
+// Type validation surface: render.go validates only "directory" and "symlink"
+// shapes. Any other Type value is forwarded to apko verbatim — used in this
+// repo to set "hardened-binary" for the Bucket H image-perm fixes
+// (SCR-2026-05-14-001 §2 AC-5), where the binary needs 0o755 with apko's
+// hardened-binary marker rather than a plain directory entry. "hardened-binary"
+// is apko's own standard value; verity treats it as opaque pass-through.
 type PathDef struct {
-	Path        string `yaml:"path"`
-	Type        string `yaml:"type,omitempty"`   // defaults to "directory"; supports "symlink"
+	Path string `yaml:"path"`
+	// Type defaults to "directory"; "symlink" is the only value verity
+	// validates structurally. Other values (notably "hardened-binary") are
+	// forwarded to apko unvalidated.
+	Type        string `yaml:"type,omitempty"`
 	Source      string `yaml:"source,omitempty"` // for type: symlink — the target path the link points to
 	UID         int    `yaml:"uid"`
 	GID         int    `yaml:"gid"`

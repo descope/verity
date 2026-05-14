@@ -266,3 +266,24 @@ Three slots held in reserve for {airflow, openbao, opensearch} if their respecti
 - Tracking issues: all three carry "needs new issue" sentinel; audit script (future) will surface them for issue-creation backlog.
 - Unit test status: **PASS — `VERITY_IT_SKIP_CLUSTER=1 go test -tags=integration -run 'TestLoadSkips|TestIsSkipped|TestProductionSKIPSYAMLIsValid' ./test/chart-integration/...` exit 0**. Log: `evidences/SCR-2026-05-14-001-chart-integration-recovery/logs/subtask-6b-skips-add-tests.log`. `TestProductionSKIPSYAMLIsValid` confirms the live 5-entry file validates cleanly.
 - Subtask-9 doc handoff already accounts for this — no update needed; the architecture-doc text describes the cap and lifecycle, not the specific entries.
+
+## business_analyst + technical_architect (subtask 9): Post Implementation Expectations
+- Files modified:
+  - `docs/architecture/TECHNICAL_ARCHITECTURE.md` (new) — full technical contract for SKIPS.yaml, retry wrapper, chartgen list/map chartValues, image entrypoint convention.
+  - `ARCHITECTURE.md` (one new subsection `### Chart-integration smoke tests` under `## Pipeline`, between `### Remaining workflows` and `### Skip Detection (Preflight)`).
+  - `internal/integer/config/types.go` (godoc extension on `PathDef` block-comment + `Type` field inline comment — documents `hardened-binary` pass-through; no struct field added).
+  - `evidences/SCR-2026-05-14-001-chart-integration-recovery/logs/failure-taxonomy.md` (appended Bucket H section — local-only, NOT committed; `evidences/` is `.gitignore`d, the institutional knowledge lives in the committed docs above).
+- Sections added (in committed docs):
+  - `docs/architecture/TECHNICAL_ARCHITECTURE.md#1-testchart-integrationskipsyaml` — schema, hard cap, fail-closed invariants (8), sentinel-file mechanism, lifecycle, cross-references.
+  - `docs/architecture/TECHNICAL_ARCHITECTURE.md#2-harness-retry-wrapper` — `InstallChartWithRetry`, classifier, package-level needle/reason vars as source of truth, crash-precedence rule, `parsePodStatusJSON` dependency-free rationale.
+  - `docs/architecture/TECHNICAL_ARCHITECTURE.md#3-chartgen-listmap-chartvalues-support` — pre/post state, `helm template` path switch (`--set` vs `-f`), `ErrChartValueConflictingShape`, PR [#361](https://github.com/verity-org/verity/pull/361) image-override precedence preserved + regression-tested.
+  - `docs/architecture/TECHNICAL_ARCHITECTURE.md#4-image-entrypoint-conventions-for-imageschartyaml` — when to set/omit `entrypoint:`, the `Entrypoint: null + Cmd: null` contract, argv[0] preservation through both absolute-path and PATH-resolution paths, verification.
+  - `ARCHITECTURE.md > Pipeline > Chart-integration smoke tests` — 4-bullet pointer to the technical doc (no duplication).
+  - `internal/integer/config/types.go` `PathDef` godoc — documents `hardened-binary` as forwarded-to-apko unvalidated.
+- Constraints honored:
+  - Conservative diffs — no drive-by re-flow of existing ARCHITECTURE.md sections. New subsection only.
+  - No SCR edits.
+  - No new top-level docs (TECHNICAL_ARCHITECTURE.md lives under `docs/architecture/` as the SCR AC-9 names explicitly).
+  - One commit, message format per spec.
+- AC-9 satisfied: **YES** — both `docs/architecture/TECHNICAL_ARCHITECTURE.md` and `ARCHITECTURE.md` cover the `SKIPS.yaml` mechanism AND the retry wrapper (and additionally cover the chartgen list/map extension + image entrypoint convention that emerged during implementation).
+- Awaiting subtask 10 (PR + 5-night watch + AC-8 strict-mode flip).

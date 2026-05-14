@@ -410,6 +410,31 @@ This keeps PR feedback fast while still exercising the real patch path. See
 | `lint.yaml` | Code quality (`golangci-lint`, `shellcheck`, `yamllint`, `actionlint`, `markdownlint`, `gosec`, `govulncheck`) |
 | `new-issue.yaml` | Parses `new-image` issue form; opens PR that adds the entry to `copa-config.yaml` |
 
+### Chart-integration smoke tests
+
+`chart-integration` is the nightly smoke suite under `test/chart-integration/`
+that helm-installs each wrapper chart on a kind cluster and asserts pods reach
+`Ready`. Four mechanisms govern admission, retry, and exclusion — each
+documented in full in
+[docs/architecture/TECHNICAL_ARCHITECTURE.md](docs/architecture/TECHNICAL_ARCHITECTURE.md):
+
+- **`test/chart-integration/SKIPS.yaml`** — institutional-debt register
+  with a code-enforced hard cap of 5 entries and a fail-closed loader;
+  each entry requires a tracking issue and an exit criterion.
+- **Harness retry wrapper** (`InstallChartWithRetry`) — 3 attempts × 30 s
+  backoff, retrying pull-class only; crash-class fails fast (the
+  `pullStderrNeedles` / `pullWaitingReasons` / `crashWaitingReasons` vars
+  in `harness_retry.go` are the source of truth).
+- **`chartgen` list/map `chartValues`** — `verity.yaml` `chartValues:` now
+  accepts list and map values under dotted-path keys, with `helm template`
+  transparently switching between `--set` and `-f`; the image-override
+  precedence rule from PR [#361](https://github.com/verity-org/verity/pull/361)
+  is preserved and regression-tested.
+- **Image entrypoint convention** — `images/<chart>.yaml` `entrypoint:` is
+  omitted for multicall binaries that argv[0]-dispatch (argo-cd),
+  bare-name chart args (dex), and charts whose Helm template hardcodes
+  `args:` (opensearch-dashboards).
+
 ### Skip Detection (Preflight)
 
 `verity preflight` maintains a manifest on the `reports` branch that records
