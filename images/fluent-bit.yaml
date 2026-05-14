@@ -10,6 +10,11 @@ types:
     entrypoint: /usr/bin/fluent-bit
     paths:
       - {path: /etc/fluent-bit, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+      # Published `ghcr.io/verity-org/fluent-bit:latest` ships
+      # `/usr/bin/fluent-bit` with mode 0o000 — `runc` aborts with
+      # `exec: permission denied`. Declaring the path forces apko to
+      # apply +x during layer assembly. See SCR-2026-05-14-001 Bucket H.
+      - {path: /usr/bin/fluent-bit, type: hardened-binary, uid: 0, gid: 0, permissions: 0o755}
       # fluent/fluent-bit helm chart hardcodes /fluent-bit/bin/fluent-bit in the
       # DaemonSet command — verity's wolfi rebuild ships at /usr/bin/fluent-bit
       # (FHS). Need parent directory entry first, then the symlink itself.
