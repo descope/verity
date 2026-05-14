@@ -349,6 +349,18 @@ chartValues:
     images.migrationsWaitTimeout: 180
     apiServer.startupProbe.failureThreshold: 12
 
+  # meilisearch 0.32.0 — Bucket E (startup probe too tight).
+  # bucket-confirmation.md (meilisearch row): pod terminated exit=137 (SIGKILL)
+  # because k8s killed it while the `/health` HTTP endpoint was still binding.
+  # Default startupProbe is periodSeconds=1 × failureThreshold=60 → 60s grace.
+  # Process logged the Meili ASCII banner before SIGKILL, so the binary did
+  # start; it just needed more time to bind /health.
+  #
+  # Triple the grace by raising failureThreshold 60 → 180 (period stays 1s so
+  # early-ready pods still flip Ready quickly). Total budget 180s.
+  meilisearch:
+    startupProbe.failureThreshold: 180
+
   # kyverno 3.7.2: disable the post-upgrade `crds.migration` hook. It runs
   # `kubectl` from `registry.k8s.io/kubectl:v1.34.3`. Verity rebuilds kubectl
   # on the floating `1.34` minor track (`images/kubectl.yaml`) but does not
