@@ -373,6 +373,19 @@ chartValues:
   meilisearch:
     startupProbe.failureThreshold: 180
 
+  # weaviate 17.8.0 — Bucket E (raft bootstrap is slower than the chart's
+  # default readinessProbe tolerance).
+  # bucket-confirmation.md weaviate row shows the pod's log converging to
+  # healthy ('node reporting ready, exiting bootstrap process' →
+  # 'leader_found') but `helm install --wait` timing out first. Chart
+  # default readinessProbe.initialDelaySeconds is 3 (lines 235-237 of the
+  # chart's values.yaml). Triple to 60 so raft bootstrap has runway before
+  # the probe starts polling; bump readinessProbe.failureThreshold 3 → 12
+  # (~120s additional tolerance once started).
+  weaviate:
+    readinessProbe.initialDelaySeconds: 60
+    readinessProbe.failureThreshold: 12
+
   # kyverno 3.7.2: disable the post-upgrade `crds.migration` hook. It runs
   # `kubectl` from `registry.k8s.io/kubectl:v1.34.3`. Verity rebuilds kubectl
   # on the floating `1.34` minor track (`images/kubectl.yaml`) but does not
