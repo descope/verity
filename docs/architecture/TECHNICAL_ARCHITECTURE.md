@@ -262,98 +262,29 @@ robustness against partial/truncated `kubectl` output.
 
 ## 3. `chartgen` list/map `chartValues` support
 
-### 3.1 Prior state (pre-SCR-2026-05-14-001)
+`verity.yaml` top-level `chartValues:` accepts **dotted-path keys with
+terminal scalar, list, or map values**. The schema is a flat dotted-path
+namespace; the terminal value at each key may be a scalar
+(`string`/`bool`/number), a list, or a string-keyed map. Internal map
+shapes, list-of-maps, and arbitrary nesting under a dotted-path key all
+flow through to the rendered chart's `values.yaml`. Bracket-index syntax
+(e.g. `foo[0].bar`) is not used — write the terminal value as a real
+list/map instead.
 
-`verity.yaml` top-level `chartValues:` accepted **dotted-path keys with
-scalar values only** (`string`, `bool`, integer types, float types).
-Non-scalar values returned `ErrChartValueUnsupportedType` at config-load
-time. Lists and maps could not be expressed at all — bracket notation
-like `extraEnvs[0].name` parsed but was rendered as a map keyed by the
-string `"0"`, not a real YAML list, so chart fields whose schema is a
-list could not be overridden.
-
-This blocked the Bucket A/C escalations from subtask 7 (argo-cd's
-`command:` and `args:` list-overrides, dex's leading-element-drop, the
-`copyutil` initContainer replacement). It also blocked any future
-`chartValues`-driven workaround for a chart that exposes a list-shaped
-knob.
-
-### 3.2 New state
-
-`chartValues` now accepts **dotted-path keys with terminal scalar, list,
-or map values**. The values are expanded into a real YAML tree by
-`buildChartValuesTree` / `setNestedValue` (`internal/discovery/charts.go`)
-and rendered to a per-invocation temp file. Internal map shapes,
-list-of-maps, and arbitrary nesting under a dotted-path key all work.
-
-### 3.3 `helm template` invocation — transparent path switch
-
-`helmTemplateArgs` in `internal/discovery/charts.go` now returns
-`([]string, func(), error)` — args, cleanup, error. It chooses one of
-two paths based on whether any non-scalar value is present:
-
-- **Scalar fast path** (pure-scalar chartValues): emits `--set` /
-  `--set-string` flags, exactly as before. Cleanup is nil. Existing
-  callers and existing test assertions see byte-identical argv —
-  `TestHelmSetArgs` runs unchanged across all 12 sub-cases.
-- **File-based path** (any non-scalar present): expands the entire
-  chartValues map (scalars *and* non-scalars together) into a YAML tree,
-  writes it to a `${TMPDIR}/values-<chart>-<rand>.yaml`-style temp file,
-  and emits `-f <path>`. Returns a cleanup func that removes the temp
-  file; callers must `defer cleanup()`. Mixed-shape chartValues are
-  handled in one file, not a mix of `--set` and `-f`.
-
-The switch is per-chart, transparent to the caller's argv-assembly
-logic, and deterministic for a given input (path selection depends only
-on chartValues shape).
-
-### 3.4 `ErrChartValueConflictingShape` — fail-closed at config-load
-
-A new sentinel error returned by the exported `ValidateChartValues`
-function in `internal/discovery/discover.go`. Triggered when two dotted-path
-keys disagree on the shape of an intermediate node (e.g.
-`foo.bar=value` AND `foo.bar.baz=value` — `bar` cannot be both scalar
-and map). Caught at `LoadVerityConfig` time, before any chart is
-rendered, with a clear error naming the conflicting paths.
-
-This is fail-closed by intent: a silent collapse (last-write-wins or
-quiet override) would land a subtly-wrong wrapper chart in the registry
-and surface as a phantom regression weeks later.
-
-### 3.5 Image-override precedence — PR [#361](https://github.com/verity-org/verity/pull/361) regression-tested
-
-The image-override precedence rule established in PR [#361](https://github.com/verity-org/verity/pull/361)
-is **preserved** by the list/map extension. The rule:
-
-> When a chart value path collides with a path the chartgen image-override
-> machinery writes (e.g. `image.tag`, `image.repository`,
-> `global.image.registry`), the **image override wins**. User-supplied
-> `chartValues` cannot mask the patched/Integer image routing.
-
-Regression tests landed in `internal/chartgen/chart_test.go`
-`TestBuildWrapperChartValues`:
-
-- Image override coexists with a list-valued chartValue under a different
-  path (no interference).
-- Image override and a map-valued chartValue collide on the same path →
-  image override wins (the chartValue's map shape does **not** swallow
-  the image override).
-
-Without these regression tests, a future refactor of the merge order
-could let a list/map `chartValues` entry shadow an image override, which
-would silently route a wrapper chart to the upstream registry. The tests
-make that failure mode loud.
-
-### 3.6 Cross-references
-
-- `internal/discovery/charts.go` — `helmTemplateArgs`,
-  `hasNonScalarChartValue`, `writeChartValuesFile`,
-  `buildChartValuesTree`, `setNestedValue`.
-- `internal/discovery/discover.go` — `ValidateChartValues`,
-  `ErrChartValueConflictingShape`.
-- `internal/chartgen/chart_test.go` `TestBuildWrapperChartValues` — #361
-  regression sub-cases (single image override; chart values merged before
-  image overrides; list-shape coexistence; map-shape collision).
+Implementation lives in `internal/discovery/charts.go` and emits one
+helm flag per `chartValues` entry: scalars go through `--set` /
+`--set-string`; non-scalar terminals are JSON-encoded and forwarded via
+`--set-json` (helm parses the JSON and merges it into the chart values
+tree, preserving list and map shapes). Type detection uses `reflect` to
+classify the terminal value — slices, arrays, and string-keyed maps
+take the `--set-json` route; non-encodable types
+(channels, functions, complex numbers, etc.) are rejected at config-load
+time with `ErrChartValueUnsupportedType`. Per-pair `--set-json` is the
+canonical mechanism (landed in
+PR [#342](https://github.com/verity-org/verity/pull/342)); the image-override
+precedence rule from
+PR [#361](https://github.com/verity-org/verity/pull/361) is preserved
+unchanged — chartValues cannot mask the patched/Integer image routing.
 
 ---
 

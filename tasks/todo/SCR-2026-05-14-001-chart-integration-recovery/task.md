@@ -239,6 +239,8 @@ Three slots held in reserve for {airflow, openbao, opensearch} if their respecti
   - **Promote 3 of {argo-cd, dex, cilium, workload-identity-webhook, cert-manager-csi-driver} to SKIPS.yaml** to fill the 3 free reserve slots. Priority by visibility / blast radius (highest first): `argo-cd` > `dex` > `cilium` > `workload-identity-webhook` > `cert-manager-csi-driver`.
   - **Open follow-up issues** for the 2 charts that don't fit in the skip-list budget — they will remain red in the nightly until image-side ENTRYPOINT fixes (argo-cd, dex) or chart-version bumps (cert-manager-csi-driver, workload-identity-webhook) land.
 
+> **2026-05-14 (rebase resolution):** Part A commit `665f8e7c0a` dropped during rebase onto `origin/main` — superseded by [#342](https://github.com/verity-org/verity/pull/342) which landed the same capability via `--set-json` per-pair instead of file-based. Part B findings remain valid (5 charts confirmed chart-template-blocked, added to SKIPS.yaml).
+
 ## developer (subtask 4b): Post Implementation Expectations
 - Files changed (2): `images/argocd.yaml` (default + fips — removed `entrypoint:` lines), `images/dex.yaml` (removed `entrypoint:` line).
 - Mechanism for argo-cd: Drop explicit `entrypoint:`; rely on K8s passing chart's hardcoded `args: [/usr/local/bin/argocd-<sub>, ...]` as the full argv when both `command: nil` and image `Entrypoint: null`. runc exec's the absolute symlink path, preserves argv[0], and argo-cd's `cmd/main.go` does `filepath.Base(os.Args[0])` to switch into the right sub-command. Depends on shim symlinks from commit `66db29b78a`.
@@ -287,3 +289,23 @@ Three slots held in reserve for {airflow, openbao, opensearch} if their respecti
   - One commit, message format per spec.
 - AC-9 satisfied: **YES** — both `docs/architecture/TECHNICAL_ARCHITECTURE.md` and `ARCHITECTURE.md` cover the `SKIPS.yaml` mechanism AND the retry wrapper (and additionally cover the chartgen list/map extension + image entrypoint convention that emerged during implementation).
 - Awaiting subtask 10 (PR + 5-night watch + AC-8 strict-mode flip).
+
+## tech_lead (subtask 10 — rebase step): Post Implementation Expectations
+- Rebased from `f20716efad` onto `68d410440a` (current `origin/main`).
+- Commits dropped: 2
+  - `62a62031fe` — abandoned copa-fork commit from CLOSED PR [#343](https://github.com/verity-org/verity/pull/343).
+  - `665f8e7c0a` — chartgen list/map extension, **superseded by [#342](https://github.com/verity-org/verity/pull/342)** (per-pair `--set-json` lands the same capability via a different design). Option A resolution per PMA.
+- Conflicts resolved (5 files, all keep-both-intents):
+  - `images/cluster-autoscaler.yaml` — symlink (main, [#330](https://github.com/verity-org/verity/pull/330)) + hardened-binary 0o755 (ours, Bucket H) in `paths:` list.
+  - `images/mimir.yaml` — `/usr/bin/mimir → grafana-mimir` symlink (main) + hardened-binary 0o755 on `/usr/bin/grafana-mimir` (ours).
+  - `images/jenkins.yaml` — `openjdk-21-default-jvm` (main, JVM runtime) + `jenkins-2-openjdk-21` subpackage (ours, ships `jenkins.war`) merged into a single `packages:` list.
+  - `tasks/current.md` — modify/delete; main deleted (task registry mechanism removed); accepted deletion. SCR doc + nightly SUMMARY.md from same commit landed cleanly.
+  - `verity.yaml` — concat-style; appended `airflow` chartValues block (ours) under main's `cert-manager`/`meilisearch`/`metrics-server`/`consul` blocks.
+- Follow-up commit on top: `docs: align chartgen + task notes with #342 list/map design (SCR-2026-05-14-001)` — rewrites TECHNICAL_ARCHITECTURE.md §3 to describe [#342](https://github.com/verity-org/verity/pull/342)'s `--set-json` mechanism (removes references to `ErrChartValueConflictingShape`, `writeChartValuesFile`, `helmTemplateArgs` signature change), and appends a rebase-resolution note to the subtask 7b post-impl block.
+- Post-rebase validation: **PASS**
+  - `go build ./...` — exit 0.
+  - `go test ./internal/integer/...` — all 6 packages ok.
+  - `go test ./internal/discovery/... ./internal/chartgen/...` — both ok.
+  - `VERITY_IT_SKIP_CLUSTER=1 go test -tags=integration ./test/chart-integration/... -run '<filter>'` — ok.
+  - Full log: `evidences/SCR-2026-05-14-001-chart-integration-recovery/logs/subtask-10-rebase-validation.log`.
+- Branch state: 28 commits ahead of `origin/main` (27 rebased SCR commits + 1 follow-up docs commit), ready to push.
