@@ -329,6 +329,26 @@ chartValues:
   consul:
     connectInject.enabled: false
 
+  # airflow 1.21.0 — Bucket E (probe race on chained postgres+webserver init).
+  # bucket-confirmation.md (airflow row) shows `wait-for-airflow-migrations`
+  # init container looping `Waiting for migrations... NN second(s)` because
+  # the bundled `airflow-postgresql-0` is slow to become reachable inside the
+  # 10-minute `helm install --wait` budget. The chart converges to healthy
+  # given more time, but `helm install` exits first.
+  #
+  # Knobs (all scalar — chartValues mechanism is dotted-path scalar-only,
+  # see internal/discovery/charts.go ErrChartValueUnsupportedType):
+  # - `images.migrationsWaitTimeout` (default 60s) — wait budget for
+  #   `wait-for-airflow-migrations`. Doubled to 180s to give the chained
+  #   postgres init time to finish before the wait-job gives up.
+  # - `apiServer.startupProbe.failureThreshold` (default 6) — Airflow 3.x
+  #   chart renamed `webserver` → `apiServer`; 6 × 10s = 60s grace from
+  #   container start. Doubled to 12 (= 120s) so a freshly-migrated API
+  #   server isn't killed before it binds.
+  airflow:
+    images.migrationsWaitTimeout: 180
+    apiServer.startupProbe.failureThreshold: 12
+
   # kyverno 3.7.2: disable the post-upgrade `crds.migration` hook. It runs
   # `kubectl` from `registry.k8s.io/kubectl:v1.34.3`. Verity rebuilds kubectl
   # on the floating `1.34` minor track (`images/kubectl.yaml`) but does not
