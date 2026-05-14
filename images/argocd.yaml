@@ -7,18 +7,29 @@ types:
   default:
     base: wolfi-base
     packages: ["argo-cd-{{version}}"]
-    entrypoint: /usr/bin/argocd
+    # Intentionally NO `entrypoint:` — argo-cd's binary (cmd/main.go) dispatches
+    # by `filepath.Base(os.Args[0])` to one of common.Command{CLI,Server,
+    # ApplicationController,ApplicationSetController,RepoServer,CMPServer,
+    # CommitServer,Dex,Notifications,GitAskPass,K8sAuth} (verified via upstream
+    # raw source — see evidences/.../logs/subtask-4b-argv0-verification.md).
+    # The argo-cd chart's templates/argocd-*/deployment.yaml hardcodes
+    # `args: [/usr/local/bin/argocd-<subcommand>, --port=..., ...]`; subtask
+    # 7b confirmed this is template-level hardcoded with no chartValues knob.
+    # By omitting `entrypoint:` and shipping the /usr/local/bin/argocd-* shim
+    # symlinks below, apko emits Entrypoint: null + Cmd: null; K8s with chart
+    # `command: nil` uses `args:` as the full argv. runc exec's
+    # /usr/local/bin/argocd-server (absolute path, resolves through symlink to
+    # /usr/bin/argocd) while preserving argv[0] as the literal symlink path.
+    # argo-cd's main reads filepath.Base(argv[0]) = "argocd-server" and
+    # dispatches to apiserver.NewCommand(). Same mechanism for the other 8
+    # subcommand symlinks. See SCR-2026-05-14-001 Bucket A.
     paths:
       - {path: /home/argocd, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
       - {path: /app/config, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
       # argo-cd helm chart hardcodes /usr/local/bin/argocd-<subcommand> in
-      # container `args:` (and downstream chartValues overrides may move it to
-      # `command:`). The apk already ships argv[0]-aware shim symlinks at
-      # /usr/bin/argocd-{server,repo-server,application-controller,...} —
-      # mirror them at /usr/local/bin/ so a chartValues fix that swaps `args:`
-      # for `command:` will pick up the correct subcommand via Cobra's argv[0]
-      # dispatch. Without the chartValues swap, these are harmless extras.
-      # See SCR-2026-05-14-001 Bucket A + subtask-7 hand-off note.
+      # container `args:` at template level. These shim symlinks paired with
+      # the omitted entrypoint above complete the argv[0]-aware Cobra dispatch
+      # for each sub-deployment. See SCR-2026-05-14-001 Bucket A.
       - {path: /usr/local/bin/argocd, type: symlink, source: /usr/bin/argocd, uid: 0, gid: 0}
       - {path: /usr/local/bin/argocd-server, type: symlink, source: /usr/bin/argocd, uid: 0, gid: 0}
       - {path: /usr/local/bin/argocd-repo-server, type: symlink, source: /usr/bin/argocd, uid: 0, gid: 0}
@@ -32,7 +43,9 @@ types:
   fips:
     base: wolfi-base
     packages: ["argo-cd-{{version}}"]
-    entrypoint: /usr/bin/argocd
+    # No `entrypoint:` — see default-type note above for the argv[0] dispatch
+    # mechanism. Identical to default type, only the GODEBUG=fips140=on env
+    # differs. See SCR-2026-05-14-001 Bucket A.
     environment:
       GODEBUG: "fips140=on"
     paths:
