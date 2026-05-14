@@ -386,6 +386,31 @@ chartValues:
     readinessProbe.initialDelaySeconds: 60
     readinessProbe.failureThreshold: 12
 
+  # opensearch 3.6.0 — Bucket G (JVM gc log path is unwritable in the
+  # rebuilt image).
+  # bucket-confirmation.md opensearch row: container exits with exit=1 and
+  # JVM error: `[error][logging] Error opening log file 'logs/gc.log':
+  # Permission denied / Invalid -Xlog option ... Could not create the
+  # Java Virtual Machine`. Chart-default `-Xlog:gc*:file=logs/gc.log` (in
+  # the image's `jvm.options` file) is incompatible with the rebuilt
+  # image's filesystem layout — writable workdir not provisioned for
+  # UID 1000.
+  #
+  # Chart exposes `opensearchJavaOpts` as a scalar (top-level, default
+  # `-Xmx512M -Xms512M`, rendered as the `OPENSEARCH_JAVA_OPTS` env var
+  # in templates/statefulset.yaml). The OS reads OPENSEARCH_JAVA_OPTS
+  # **after** jvm.options, so appending `-Xlog:disable` here turns off
+  # all JVM logging — including the gc-log directive that fails to open
+  # its file. This is the chartValues route called out in
+  # bucket-confirmation §opensearch (Proposed fix vector).
+  #
+  # Chart's `extraEnvs` is a YAML list and the verity chartValues
+  # mechanism is dotted-path scalar-only (charts.go
+  # ErrChartValueUnsupportedType), so `extraEnvs:` is not expressible
+  # here; setting `opensearchJavaOpts` directly is the only viable lever.
+  opensearch:
+    opensearchJavaOpts: "-Xmx512M -Xms512M -Xlog:disable"
+
   # kyverno 3.7.2: disable the post-upgrade `crds.migration` hook. It runs
   # `kubectl` from `registry.k8s.io/kubectl:v1.34.3`. Verity rebuilds kubectl
   # on the floating `1.34` minor track (`images/kubectl.yaml`) but does not
