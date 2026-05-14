@@ -173,6 +173,21 @@ chartValues:
     envoy.image.useDigest: false
     operator.replicas: 1
 
+  # etcd chart (cloudpirates-io 0.7.1) defaults to a 3-replica
+  # StatefulSet for quorum. Single-node kind can only place 1; the
+  # other 2 pods sit Pending forever (no anti-affinity required
+  # — there literally isn't a second node). The 10-minute helm
+  # install --wait budget then expires with:
+  #   resource StatefulSet/etcd/etcd not ready.
+  #   status: InProgress, message: Ready: 0/3
+  # Drop to 1 replica for CI smoke. Same kind-sizing pattern as
+  # loki / minio / cilium operator above. Trade-off: a 1-node etcd
+  # has no quorum redundancy (any restart loses the cluster), but
+  # the smoke test only verifies install + pod readiness, not HA.
+  # See verity-org/verity#322 for the kind-sizing methodology.
+  etcd:
+    replicaCount: 1
+
   # airflow chart bundles a `postgresql` sub-chart with image
   # `bitnamilegacy/postgresql:16.1.0-debian-11-r15`. chart-gen rewrites
   # the repository (`bitnamilegacy/postgresql` →

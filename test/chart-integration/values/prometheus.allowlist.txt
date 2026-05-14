@@ -1,0 +1,42 @@
+# prometheus upstream image allowlist (SCR-2026-04-30-001)
+#
+# The prometheus chart (29.6.0 from prometheus-community) pulls three
+# upstream images that chart-gen intentionally skips because the
+# images are in the `--exclude-names` list in the Chart Generation
+# workflow (`prometheus`, `prometheus-operator`, `alertmanager`):
+#
+#   quay.io/prometheus/prometheus:v3.11.3           — main prometheus
+#                                                     server
+#   quay.io/prometheus/alertmanager:v0.32.1         — alertmanager
+#                                                     bundled with the
+#                                                     stack
+#   quay.io/prometheus-operator/prometheus-config-reloader:v0.91.0
+#                                                   — config-reloader
+#                                                     sidecar that
+#                                                     reloads
+#                                                     prometheus.yml on
+#                                                     ConfigMap update
+#
+# These images do not have verity-org rebuilds (see verity.yaml
+# comment near `replacements:` about the prometheus chart being
+# dropped from the wave that adds verity coverage for prometheus-
+# operator and kube-webhook-certgen). chart-gen logs each as
+# `warning: skipping excluded image "prometheus/<image>"` and the
+# pod-spec reference stays at the upstream quay.io path.
+#
+# Allowlist these three until verity adds rebuilds for the
+# prometheus-stack ancillary images and the chart can be removed
+# from the chart-gen exclude list. Each prefix uses both `:` (tag
+# refs) and `@` (digest refs) so the rendered pod-spec image string
+# only matches its intended repo and never broadens to unrelated
+# `prometheus/<sibling>` repos.
+#
+# Format note: the isAccepted helper in test/chart-integration/
+# assertions.go uses strings.HasPrefix; `:` and `@` separators
+# ensure each prefix is scoped to one image.
+quay.io/prometheus/prometheus:
+quay.io/prometheus/prometheus@
+quay.io/prometheus/alertmanager:
+quay.io/prometheus/alertmanager@
+quay.io/prometheus-operator/prometheus-config-reloader:
+quay.io/prometheus-operator/prometheus-config-reloader@
