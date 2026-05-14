@@ -9,6 +9,12 @@ types:
     packages: ["velero"]
     entrypoint: /usr/bin/velero
     paths:
+      # Published `ghcr.io/verity-org/velero:latest` ships /usr/bin/velero with
+      # mode 0o000 — `runc` aborts with `exec: "/velero": permission denied`
+      # (chart resolves /velero via the symlink below to /usr/bin/velero, but
+      # the target lacks +x). Declaring the path forces apko to set +x.
+      # See SCR-2026-05-14-001 Bucket H.
+      - {path: /usr/bin/velero, type: hardened-binary, uid: 0, gid: 0, permissions: 0o755}
       # vmware-tanzu/velero helm chart's upgrade-crds Job runs `/velero install`
       # — chart hardcodes /velero in the Job command. Verity's wolfi rebuild
       # ships at /usr/bin/velero (FHS). Symlink keeps both layouts working.
