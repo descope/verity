@@ -144,3 +144,14 @@ Three slots held in reserve for {airflow, openbao, opensearch} if their respecti
 - Retry config: `MaxAttempts=3`, `Backoff=30s`. Wrapper logs `attempt N/3 failed: classification=<class>, retrying in 30s` / `..., NOT retrying`. Cleanup between attempts reuses existing `UninstallChart` path — no bespoke teardown.
 - Local unit test status: **PASS — 21 sub-tests, 0 failures, 0 skips** (evidence: `evidences/SCR-2026-05-14-001-chart-integration-recovery/logs/subtask-5-unit-tests.log`, exit 0).
 - Awaiting subtask 8 to validate against live nightly (the wrapper itself is opt-in via `InstallChartWithRetry` — `main_test.go` still calls plain `InstallChart` so this subtask is a pure addition; subtask 8 / a follow-up can flip the call site once the SKIPS.yaml + chartValues subtasks land and pull-class is the dominant remaining failure mode).
+
+## developer (subtask 6): Post Implementation Expectations
+- Files added: test/chart-integration/SKIPS.yaml, test/chart-integration/skips.go, test/chart-integration/skips_test.go
+- Files modified: test/chart-integration/main_test.go (TestMain loads SKIPS once + TestCharts gates on IsSkipped + sentinel writer), .github/workflows/chart-integration.yaml (-run regex extended with TestLoadSkips|TestIsSkipped|TestProductionSKIPSYAMLIsValid + Record-shard-outcome step renders success/failure/skipped distinctly via `_skip-<chart>.txt` sentinel)
+- Skip entries seeded: 2 (falco [#325](https://github.com/verity-org/verity/issues/325), nfs-subdir-external-provisioner — "needs new issue")
+- Skip budget remaining: 3 of 5 (RESERVED — do not pre-populate)
+- Hard cap enforced in code: `MaxSkippedCharts = 5` (constant in skips.go); loader fails closed on breach
+- Fail-closed invariants tested: malformed YAML, unknown top-level field (KnownFields=true), duplicate chart, >5 entries, each of the 6 required fields missing, unsafe chart names (slash, backslash, `..`, whitespace, newline), bad tracking_issue (non-github URL, scheme-less, free-text). All 9 test functions / 13 subtests pass.
+- Unit test status: **PASS — 9 functions, 13 subtests, 0 failures, 0 skips** (`VERITY_IT_SKIP_CLUSTER=1 go test -tags=integration -run 'TestLoadSkips|TestIsSkipped|TestProductionSKIPSYAMLIsValid' ./test/chart-integration/...` exit 0). Full workflow gate regex (allowlist + classifier + skips) also passes.
+- Lint: `golangci-lint run --build-tags=integration ./test/chart-integration/...` reports 0 issues in skips.go / skips_test.go / main_test.go. 4 pre-existing `modernize` nits remain in `harness_retry_test.go` (subtask 5's file) — flagged in subtask-9-handoff.md as cosmetic carry-over.
+- Awaiting subtask 8 to validate skip behavior under live workflow (sentinel file write, step-summary rendering, t.Skipf interaction with `make chart-integration` exit code).

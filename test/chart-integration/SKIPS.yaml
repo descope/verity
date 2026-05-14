@@ -1,0 +1,30 @@
+# SKIPS.yaml — institutional debt register for chart-integration smoke tests.
+#
+# Contract (SCR-2026-05-14-001, AC-1 + AC-3):
+#   - Hard cap: ≤5 entries. Loader fails closed if exceeded.
+#   - Fail-closed: any malformed YAML, missing required field, unknown structure,
+#     or duplicate chart name MUST cause the harness to exit non-zero.
+#   - Each entry requires a tracking_issue (github.com URL) OR the literal string
+#     "needs new issue" (audit script detects and reports these).
+#   - exit_criteria must be a concrete, testable condition for un-skipping.
+#
+# Adding a skip is NOT a convenience — it is technical debt with a tracking
+# issue, an exit criterion, and a peer review. Prefer chartValues tuning,
+# image fixes, or harness retries (subtask 5) before adding here.
+#
+# Reserved budget: 3 of 5 slots remaining. Do NOT pre-populate.
+
+skips:
+  - chart: falco
+    reason: kernel-incompat
+    tracking_issue: https://github.com/verity-org/verity/issues/325
+    exit_criteria: "modern_ebpf BPF capability denied on Azure runner kernel; revisit when GHA upgrades to kernel >=6.x or chart bumps to use legacy ebpf driver in CI mode"
+    added: 2026-05-14
+    added_by: SCR-2026-05-14-001
+
+  - chart: nfs-subdir-external-provisioner
+    reason: needs-external-infra
+    tracking_issue: "needs new issue"
+    exit_criteria: "harness gains a sidecar NFS server, OR chart bumps to use a CI-friendly NFS mock"
+    added: 2026-05-14
+    added_by: SCR-2026-05-14-001
