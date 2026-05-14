@@ -258,3 +258,11 @@ Three slots held in reserve for {airflow, openbao, opensearch} if their respecti
 - Net AC-1 impact: **+1 chart** (jenkins). Total candidate-green going into subtask 8: **15** (was 14 after argocd+dex).
 - Commit: `9b31d1a1f3 fix(images): jenkins — Bucket B — install jenkins-2-openjdk-21 subpackage that ships jenkins.war`.
 - Risk: if the chart's bundled plugins or jcasc config exercise a JDK-specific path (e.g. shipping classes that need a class-file version from JDK 25), running on openjdk-21 could fail at plugin-load time. Probability low (Jenkins 2.564 LTS line officially supports 21); subtask 8 will surface it if real.
+
+## developer (subtask 6b): Post Implementation Expectations
+- Files modified: test/chart-integration/SKIPS.yaml (header reflects 5-of-5 full; 3 entries appended: cilium, cert-manager-csi-driver, workload-identity-webhook).
+- Skip entries: **5 of 5 (file is at cap)**. Loader's MaxSkippedCharts=5 invariant will reject any 6th entry — by design.
+- All three new entries are chart-template-blocked per subtask 7b analysis: upstream Helm templates hardcode the failure-mode-relevant field with no values knob and no chartValues shape (even with subtask 7b's list/map extension) can override.
+- Tracking issues: all three carry "needs new issue" sentinel; audit script (future) will surface them for issue-creation backlog.
+- Unit test status: **PASS — `VERITY_IT_SKIP_CLUSTER=1 go test -tags=integration -run 'TestLoadSkips|TestIsSkipped|TestProductionSKIPSYAMLIsValid' ./test/chart-integration/...` exit 0**. Log: `evidences/SCR-2026-05-14-001-chart-integration-recovery/logs/subtask-6b-skips-add-tests.log`. `TestProductionSKIPSYAMLIsValid` confirms the live 5-entry file validates cleanly.
+- Subtask-9 doc handoff already accounts for this — no update needed; the architecture-doc text describes the cap and lifecycle, not the specific entries.

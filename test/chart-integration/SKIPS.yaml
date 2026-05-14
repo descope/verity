@@ -12,7 +12,10 @@
 # issue, an exit criterion, and a peer review. Prefer chartValues tuning,
 # image fixes, or harness retries (subtask 5) before adding here.
 #
-# Reserved budget: 3 of 5 slots remaining. Do NOT pre-populate.
+# Slot accounting: 5 of 5 slots used (full). Loader's MaxSkippedCharts=5
+# invariant will reject any 6th entry. Adding another skip requires either
+# (a) removing an existing entry whose exit_criteria has been met, or
+# (b) a new SCR raising the cap.
 
 skips:
   - chart: falco
@@ -26,5 +29,26 @@ skips:
     reason: needs-external-infra
     tracking_issue: "needs new issue"
     exit_criteria: "harness gains a sidecar NFS server, OR chart bumps to use a CI-friendly NFS mock"
+    added: 2026-05-14
+    added_by: SCR-2026-05-14-001
+
+  - chart: cilium
+    reason: kind-cluster-capability
+    tracking_issue: "needs new issue"
+    exit_criteria: "agent init container hits \"dial tcp 10.96.0.1:443: operation not permitted\" — kind cluster lacks capabilities for cilium's CNI. Revisit when smoke harness gains capability grants OR when cilium chart exposes a CI-friendly probe-disable knob."
+    added: 2026-05-14
+    added_by: SCR-2026-05-14-001
+
+  - chart: cert-manager-csi-driver
+    reason: chart-template-blocked
+    tracking_issue: "needs new issue"
+    exit_criteria: "chart hardcodes livenessProbe initialDelaySeconds with no values knob; smoke harness \"helm install --wait\" hits the probe before driver registers with cert-manager (which the harness also doesn't pre-install). Revisit when chart exposes app.livenessProbe knobs OR when harness pre-installs cert-manager CRDs."
+    added: 2026-05-14
+    added_by: SCR-2026-05-14-001
+
+  - chart: workload-identity-webhook
+    reason: chart-template-blocked
+    tracking_issue: "needs new issue"
+    exit_criteria: "chart hardcodes readinessProbe periodSeconds; pod self-heals after cert rotation but smoke harness times out first. Revisit when chart exposes startupProbe or readinessProbe.periodSeconds values knob."
     added: 2026-05-14
     added_by: SCR-2026-05-14-001
