@@ -430,6 +430,30 @@ chartValues:
     readinessProbe.initialDelaySeconds: 60
     readinessProbe.failureThreshold: 12
 
+  # falco 8.0.3 — Bucket H (kernel-driver init blocked in CI).
+  # Per verity-org/verity#325: falco's main container exits at boot
+  # with `libpman: ring buffer map type is not supported
+  # (errno: 1 | message: Operation not permitted)` because the BPF
+  # capability (CAP_BPF / CAP_PERFMON) is denied at runc-create time
+  # on the Azure GHA runner, regardless of kernel version. The
+  # `falco-driver-loader` init container completes fine; only the
+  # subsequent BPF map load fails.
+  #
+  # The chart exposes `driver.enabled: false` for exactly this
+  # scenario (per chart values comment: "Set it to false if you
+  # want to deploy Falco without the drivers"). With the driver
+  # disabled, falco still starts and exposes its metrics/gRPC
+  # endpoint via the container engine + k8s plugin paths, which is
+  # all the smoke test needs (we verify install + Ready, not event
+  # detection). Real users who need syscall monitoring deploy with
+  # the default `driver.enabled: true` on a non-locked-down kernel.
+  #
+  # The chart's collectors.containerEngine.enabled default is true,
+  # so falco still has an event source after this flip — it just
+  # comes from the container plugin instead of the kernel probe.
+  falco:
+    driver.enabled: false
+
   # opensearch 3.6.0 — Bucket G (JVM gc log path is unwritable in the
   # rebuilt image).
   # bucket-confirmation.md opensearch row: container exits with exit=1 and
