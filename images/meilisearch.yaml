@@ -23,6 +23,24 @@ types:
     environment:
       MEILI_DB_PATH: /meili_data
       MEILI_DUMP_DIR: /meili_data/dumps
+      # meilisearch binds to 127.0.0.1:7700 by default (verified
+      # against `meilisearch --help`: `--http-addr [env:
+      # MEILI_HTTP_ADDR=] [default: 127.0.0.1:7700]`). With the
+      # default, the pod's readiness probe from kubelet over the pod
+      # IP cannot reach the listener and the StatefulSet never
+      # becomes Ready — meilisearch logs show "starting service:
+      # actix-web-service-127.0.0.1:7700" and the smoke harness
+      # times out at 10m with `StatefulSet/meilisearch/meilisearch
+      # not ready. status: InProgress, message: Ready: 0/1`
+      # (chart-integration run 25934367685, meilisearch-0 pod logs).
+      #
+      # The upstream getmeili/meilisearch image sets
+      # `MEILI_HTTP_ADDR=0.0.0.0:7700` in its docker `ENV` so the
+      # chart's default readiness probe works out of the box. The
+      # wolfi rebuild was missing that override. Mirror upstream's
+      # default so the chart works without per-installation
+      # chartValues tuning.
+      MEILI_HTTP_ADDR: 0.0.0.0:7700
     paths:
       - {path: /meili_data, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
 
