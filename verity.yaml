@@ -132,8 +132,20 @@ chartValues:
 
   # workload-identity-webhook requires azureTenantID to render templates.
   # The wrapper chart consumers MUST override this to their actual tenant ID.
+  #
+  # replicaCount: 1 — chart default is 2 replicas. On the single-node
+  # kind cluster used by chart-integration, both pods race the
+  # controller-runtime cert-rotator state machine on first install
+  # (both write to the same Secret, both restart on rotation), and
+  # `/readyz` returns HTTP 500 until the rotator converges. With two
+  # replicas the race extends past the helm `--wait` 10-minute
+  # budget; single replica converges in ~30s (verified on a local
+  # kind run, see verity-org/verity#375). Production deployments
+  # should keep the default 2 replicas; this override is scoped to
+  # the verity wrapper chart for CI smoke.
   workload-identity-webhook:
     azureTenantID: verity-placeholder
+    replicaCount: 1
 
   # nfs-subdir-external-provisioner chart's Deployment requires `nfs.server`
   # to render — without it, helm install aborts with:
