@@ -102,6 +102,38 @@ func TestLoadSkipsUnknownField(t *testing.T) {
 	}
 }
 
+// TestLoadSkipsRejectsExtraDocument guards against the fail-closed
+// contract regression flagged on PR #365 (P1 review). Without the
+// extra Decode call, a SKIPS.yaml with a trailing `---` and a second
+// document would silently drop everything after the separator. The
+// loader must surface this as a fatal parse error so the maintainer
+// notices and merges the documents.
+func TestLoadSkipsRejectsExtraDocument(t *testing.T) {
+	body := `skips:
+  - chart: falco
+    reason: x
+    tracking_issue: "needs new issue"
+    exit_criteria: y
+    added: 2026-05-14
+    added_by: me
+---
+skips:
+  - chart: velero
+    reason: x
+    tracking_issue: "needs new issue"
+    exit_criteria: y
+    added: 2026-05-14
+    added_by: me
+`
+	_, err := LoadSkips(writeSkips(t, body))
+	if err == nil {
+		t.Fatal("expected error for multi-document SKIPS.yaml, got nil")
+	}
+	if !errors.Is(err, errSkipsMultiDocument) {
+		t.Fatalf("expected errSkipsMultiDocument, got: %v", err)
+	}
+}
+
 func TestLoadSkipsDuplicateChart(t *testing.T) {
 	body := `skips:
   - chart: falco

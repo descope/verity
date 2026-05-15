@@ -31,6 +31,7 @@ package integration
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -63,6 +64,7 @@ var (
 	errSkipsCapExceeded     = errors.New("skip entries exceed hard cap (SCR-2026-05-14-001 AC-1) — either remove an entry or open an SCR to raise the cap")
 	errSkipsDuplicateChart  = errors.New("duplicate skip entry for chart")
 	errSkipsMissingRequired = errors.New("required field is empty")
+	errSkipsMultiDocument   = errors.New("SKIPS.yaml must be a single YAML document — found extra `---` separator with content; merge into the first document")
 )
 
 // SkipEntry is one row of SKIPS.yaml. All fields are mandatory.
@@ -103,6 +105,24 @@ func LoadSkips(path string) (*SkipsConfig, error) {
 	dec.KnownFields(true) // reject typo'd top-level keys
 	if err := dec.Decode(cfg); err != nil {
 		return nil, fmt.Errorf("parse %s: %w", path, err)
+	}
+	// SKIPS.yaml is a single-document file by contract. A trailing
+	// `---` plus a second document would otherwise be silently
+	// dropped — the fail-closed contract requires that anything
+	// the maintainer thought they wrote is actually applied (and
+	// linted by the cap + per-entry validators below).
+	//
+	// io.EOF on the next Decode is the expected single-document
+	// case; any other outcome — either a second decode that
+	// succeeds, or a non-EOF parse error — is fatal.
+	var extra any
+	switch err := dec.Decode(&extra); {
+	case errors.Is(err, io.EOF):
+		// ok — single document, expected.
+	case err == nil:
+		return nil, fmt.Errorf("parse %s: %w", path, errSkipsMultiDocument)
+	default:
+		return nil, fmt.Errorf("parse %s: trailing content: %w", path, err)
 	}
 
 	if err := cfg.validate(path); err != nil {
