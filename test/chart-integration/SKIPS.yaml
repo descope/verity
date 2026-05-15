@@ -21,34 +21,34 @@ skips:
   - chart: falco
     reason: kernel-incompat
     tracking_issue: https://github.com/verity-org/verity/issues/325
-    exit_criteria: "modern_ebpf BPF capability denied on Azure runner kernel; revisit when GHA upgrades to kernel >=6.x or chart bumps to use legacy ebpf driver in CI mode"
+    exit_criteria: "falco's modern_ebpf driver fails to load (`libpman: ring buffer map type is not supported`) under the Azure GHA runner because the BPF capability is denied at runc create time, not because the kernel is too old (failing runs are on 6.17.0-1010-azure). Revisit when (a) the GHA runner image grants CAP_BPF / CAP_PERFMON to docker-in-docker kind nodes, OR (b) the chart exposes a `driver.kind: legacy_ebpf` / `driver.enabled: false` knob the wrapper can wire from chartValues without requiring a tools install in the image."
     added: 2026-05-14
     added_by: SCR-2026-05-14-001
 
   - chart: nfs-subdir-external-provisioner
     reason: needs-external-infra
-    tracking_issue: "needs new issue"
+    tracking_issue: https://github.com/verity-org/verity/issues/373
     exit_criteria: "harness gains a sidecar NFS server, OR chart bumps to use a CI-friendly NFS mock"
     added: 2026-05-14
     added_by: SCR-2026-05-14-001
 
   - chart: cilium
     reason: kind-cluster-capability
-    tracking_issue: "needs new issue"
+    tracking_issue: https://github.com/verity-org/verity/issues/372
     exit_criteria: "agent init container hits \"dial tcp 10.96.0.1:443: operation not permitted\" — kind cluster lacks capabilities for cilium's CNI. Revisit when smoke harness gains capability grants OR when cilium chart exposes a CI-friendly probe-disable knob."
     added: 2026-05-14
     added_by: SCR-2026-05-14-001
 
   - chart: cert-manager-csi-driver
     reason: chart-template-blocked
-    tracking_issue: "needs new issue"
+    tracking_issue: https://github.com/verity-org/verity/issues/374
     exit_criteria: "chart hardcodes livenessProbe initialDelaySeconds with no values knob; smoke harness \"helm install --wait\" hits the probe before driver registers with cert-manager (which the harness also doesn't pre-install). Revisit when chart exposes app.livenessProbe knobs OR when harness pre-installs cert-manager CRDs."
     added: 2026-05-14
     added_by: SCR-2026-05-14-001
 
   - chart: workload-identity-webhook
     reason: chart-template-blocked
-    tracking_issue: "needs new issue"
+    tracking_issue: https://github.com/verity-org/verity/issues/375
     exit_criteria: "chart hardcodes readinessProbe periodSeconds; pod self-heals after cert rotation but smoke harness times out first. Revisit when chart exposes startupProbe or readinessProbe.periodSeconds values knob."
     added: 2026-05-14
     added_by: SCR-2026-05-14-001

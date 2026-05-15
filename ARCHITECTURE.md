@@ -427,8 +427,8 @@ documented in full in
   in `harness_retry.go` are the source of truth).
 - **`chartgen` list/map `chartValues`** — `verity.yaml` `chartValues:` now
   accepts list and map values under dotted-path keys, with `helm template`
-  transparently switching between `--set` and `-f`; the image-override
-  precedence rule from PR [#361](https://github.com/verity-org/verity/pull/361)
+  transparently switching between `--set` (scalars) and `--set-json`
+  (lists/maps); the image-override precedence rule from PR [#361](https://github.com/verity-org/verity/pull/361)
   is preserved and regression-tested.
 - **Image entrypoint convention** — `images/<chart>.yaml` `entrypoint:` is
   omitted for multicall binaries that argv[0]-dispatch (argo-cd),

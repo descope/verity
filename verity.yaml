@@ -314,17 +314,23 @@ chartValues:
   # expected paths. **PO accepted the CVE-posture trade-off** (Bitnami
   # image is unpatched; verity-rebuilt CVE posture lost for this chart).
   #
-  # IMPORTANT — chartgen image-override interaction: chartgen's image-
-  # override pass writes `image.repository` and `image.tag` AFTER these
+  # chartgen image-override interaction: chartgen's image-override
+  # pass writes `image.repository` and `image.tag` AFTER these
   # chartValues are merged, and override keys win over same-key
-  # collisions on identical paths (per commit 0f12b6352541 #361). If
-  # gitea is still listed in the image-discovery replacements / Integer
-  # rebuilds, the override may overwrite `image.repository` back to
-  # `ghcr.io/verity-org/gitea`, defeating this fix. Subtask 8 must
-  # confirm via `verity chart-gen --dry-run` whether these chartValues
-  # survive into the published wrapper. If they don't, follow-up will
-  # need to either (a) remove gitea from images/*.yaml or (b) add a
-  # per-chart "skip-image-override" feature to chartgen.
+  # collisions (per commit 0f12b6352541 #361). To keep these values
+  # alive in the published wrapper, option (a) of the original design
+  # note was taken: the `"gitea"` replacement entry is removed from
+  # the `replacements:` block below, and `images/gitea.yaml` is
+  # deleted so Integer Orchestrator no longer rebuilds an unused
+  # `ghcr.io/verity-org/gitea` image. The chart now resolves to
+  # crane-mirrored `docker.io/bitnami/gitea` whose init scripts at
+  # `/usr/sbinx/init_directory_structure.sh` match the chart's
+  # expectations.
+  #
+  # `image.rootless: false` is the survives-as-sibling value that
+  # PR #361 made stable; the explicit registry/repository/tag entries
+  # are kept here as defense-in-depth so a future reintroduction of a
+  # `"gitea"` replacement does NOT silently undo the Bitnami switch.
   gitea:
     image.rootless: false
     image.registry: docker.io
@@ -401,9 +407,10 @@ chartValues:
   # healthy ('node reporting ready, exiting bootstrap process' →
   # 'leader_found') but `helm install --wait` timing out first. Chart
   # default readinessProbe.initialDelaySeconds is 3 (lines 235-237 of the
-  # chart's values.yaml). Triple to 60 so raft bootstrap has runway before
-  # the probe starts polling; bump readinessProbe.failureThreshold 3 → 12
-  # (~120s additional tolerance once started).
+  # chart's values.yaml). Raise 3s → 60s (20×) so raft bootstrap has
+  # runway before the probe starts polling; bump
+  # readinessProbe.failureThreshold 3 → 12 (4×, ~120s additional
+  # tolerance once started).
   weaviate:
     readinessProbe.initialDelaySeconds: 60
     readinessProbe.failureThreshold: 12
@@ -713,12 +720,23 @@ replacements:
     tag: "3"
 
   # Wave 6 charts (developer tooling).
-  # gitea 12.5.3 → gitea v1.25.x; chart's busybox helper falls through (excluded).
-  # Image is `docker.gitea.com/gitea` (root-level path under custom registry).
-  "gitea":
-    registry: "ghcr.io/verity-org"
-    image: "gitea"
-    tag: "1"
+  # gitea: NO image-rebuild replacement. Per SCR-2026-05-14-001 Bucket B
+  # (subtask 7) PO Option A, the gitea chart needs Bitnami's `gitea`
+  # image because its init-scripts live at the Bitnami-specific path
+  # `/usr/sbinx/init_directory_structure.sh`. The verity wolfi rebuild
+  # ships upstream gitea which has no such script — the rebuild is
+  # incompatible with the chart's init wiring.
+  #
+  # Leaving a `"gitea":` replacement here would make chartgen's image-
+  # override pass overwrite the chartValues block's
+  # `image.repository: bitnami/gitea` (per the PR #361 mergeMapValue
+  # rules: chartValues siblings survive, but same-key collisions resolve
+  # override-wins). Removing the replacement is option (a) of the
+  # chartValues block's IMPORTANT note — the chart now falls through to
+  # crane mirroring of `docker.io/bitnami/gitea`.
+  #
+  # `images/gitea.yaml` has been deleted in tandem so Integer Orchestrator
+  # no longer builds a verity-org/gitea image that nothing consumes.
   # crossplane 2.2.1 → crossplane v2.2.x; single image.
   "crossplane/crossplane":
     registry: "ghcr.io/verity-org"
