@@ -196,8 +196,26 @@ chartValues:
   # `image.registry` default so the rendered reference becomes the
   # clean `ghcr.io/verity-org/bitnamilegacy/postgresql:16.1.0-debian-11-r15`.
   # Same shape as the tempo-distributed fix. See verity-org/verity#318.
+  #
+  # Bucket E (probe-race) — bucket-confirmation.md (airflow row) shows
+  # `wait-for-airflow-migrations` init container looping `Waiting for
+  # migrations... NN second(s)` because the bundled `airflow-postgresql-0`
+  # is slow to become reachable inside the 10-minute `helm install --wait`
+  # budget. The chart converges to healthy given more time, but
+  # `helm install` exits first.
+  #
+  # Probe-race knobs:
+  # - `images.migrationsWaitTimeout` (default 60s) — wait budget for
+  #   `wait-for-airflow-migrations`. Raised 60s → 180s (3×) to give the
+  #   chained postgres init time to finish before the wait-job gives up.
+  # - `apiServer.startupProbe.failureThreshold` (default 6) — Airflow 3.x
+  #   chart renamed `webserver` → `apiServer`; 6 × 10s = 60s grace from
+  #   container start. Doubled to 12 (= 120s) so a freshly-migrated API
+  #   server isn't killed before it binds.
   airflow:
     postgresql.image.registry: ghcr.io
+    images.migrationsWaitTimeout: 180
+    apiServer.startupProbe.failureThreshold: 12
 
   # jenkins 5.9.18 otherwise renders an unpatched bats helm-test pod and a
   # default inbound agent image. Keep the wrapper focused on the controller and
@@ -335,8 +353,19 @@ chartValues:
   # chart's `environment:` ConfigMap routes meilisearch's writes to the
   # writable mount. See verity-org/verity#324 (carve-out, was probe-race
   # but actual root cause turned out to be db-path / read-only-rootfs).
+  #
+  # Bucket E (probe-race) — bucket-confirmation.md (meilisearch row): pod
+  # terminated exit=137 (SIGKILL) because k8s killed it while the
+  # `/health` HTTP endpoint was still binding. Default startupProbe is
+  # periodSeconds=1 × failureThreshold=60 → 60s grace. Process logged the
+  # Meili ASCII banner before SIGKILL, so the binary did start; it just
+  # needed more time to bind /health.
+  #
+  # Raise startupProbe.failureThreshold 60 → 180 (3×, period stays 1s so
+  # early-ready pods still flip Ready quickly). Total budget 180s.
   meilisearch:
     environment.MEILI_DB_PATH: /meili_data
+    startupProbe.failureThreshold: 180
 
   # metrics-server scrapes the kubelet's `/metrics/resource` endpoint over
   # TLS. In kind clusters the kubelet uses a self-signed cert without IP
@@ -365,38 +394,6 @@ chartValues:
   # connect-inject enabled need real cert-manager integration anyway.
   consul:
     connectInject.enabled: false
-
-  # airflow 1.21.0 — Bucket E (probe race on chained postgres+webserver init).
-  # bucket-confirmation.md (airflow row) shows `wait-for-airflow-migrations`
-  # init container looping `Waiting for migrations... NN second(s)` because
-  # the bundled `airflow-postgresql-0` is slow to become reachable inside the
-  # 10-minute `helm install --wait` budget. The chart converges to healthy
-  # given more time, but `helm install` exits first.
-  #
-  # Knobs (all scalar — chartValues mechanism is dotted-path scalar-only,
-  # see internal/discovery/charts.go ErrChartValueUnsupportedType):
-  # - `images.migrationsWaitTimeout` (default 60s) — wait budget for
-  #   `wait-for-airflow-migrations`. Doubled to 180s to give the chained
-  #   postgres init time to finish before the wait-job gives up.
-  # - `apiServer.startupProbe.failureThreshold` (default 6) — Airflow 3.x
-  #   chart renamed `webserver` → `apiServer`; 6 × 10s = 60s grace from
-  #   container start. Doubled to 12 (= 120s) so a freshly-migrated API
-  #   server isn't killed before it binds.
-  airflow:
-    images.migrationsWaitTimeout: 180
-    apiServer.startupProbe.failureThreshold: 12
-
-  # meilisearch 0.32.0 — Bucket E (startup probe too tight).
-  # bucket-confirmation.md (meilisearch row): pod terminated exit=137 (SIGKILL)
-  # because k8s killed it while the `/health` HTTP endpoint was still binding.
-  # Default startupProbe is periodSeconds=1 × failureThreshold=60 → 60s grace.
-  # Process logged the Meili ASCII banner before SIGKILL, so the binary did
-  # start; it just needed more time to bind /health.
-  #
-  # Triple the grace by raising failureThreshold 60 → 180 (period stays 1s so
-  # early-ready pods still flip Ready quickly). Total budget 180s.
-  meilisearch:
-    startupProbe.failureThreshold: 180
 
   # weaviate 17.8.0 — Bucket E (raft bootstrap is slower than the chart's
   # default readinessProbe tolerance).

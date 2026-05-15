@@ -19,12 +19,11 @@ types:
       - {path: /cluster-autoscaler, type: symlink, source: /usr/bin/cluster-autoscaler, uid: 0, gid: 0}
       # Published `ghcr.io/verity-org/cluster-autoscaler:latest` ships
       # `/usr/bin/cluster-autoscaler` with mode 0o000 — `runc` aborts with
-      # `exec: "./cluster-autoscaler": permission denied`. Declaring the path
-      # forces apko to apply +x during layer assembly. type: hardened-binary
-      # is apko's binary-mode marker (used for chmod-on-existing-file, not
-      # mkdir); the integer renderer forwards unknown types to apko as-is.
+      # `exec: "./cluster-autoscaler": permission denied`. Declaring the
+      # binary path with apko's `type: permissions` mutation forces +x on
+      # layer assembly.
       # See SCR-2026-05-14-001 Bucket H + image-mode-audit.md.
-      - {path: /usr/bin/cluster-autoscaler, type: hardened-binary, uid: 0, gid: 0, permissions: 0o755}
+      - {path: /usr/bin/cluster-autoscaler, type: permissions, uid: 0, gid: 0, permissions: 0o755}
 
 versions:
   "1.35": {}
