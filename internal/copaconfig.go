@@ -7,6 +7,13 @@ import (
 	"strings"
 )
 
+// defaultDockerRegistry is the canonical hostname Docker uses when an
+// image reference omits a registry. Extracted to a const so the same
+// literal isn't repeated in multiple sites within ParseImageRef /
+// NormalizeImageRef (which would otherwise trip golangci-lint's
+// goconst rule).
+const defaultDockerRegistry = "docker.io"
+
 // CopaOutputResult represents a single patch result from Copa's --output-json.
 type CopaOutputResult struct {
 	Name         string `json:"name"`
@@ -86,11 +93,11 @@ func NormalizeImageRef(ref string) string {
 
 	// Default to docker.io if no registry
 	if registry == "" {
-		registry = "docker.io"
+		registry = defaultDockerRegistry
 	}
 
 	// Add library/ prefix for official Docker images
-	if registry == "docker.io" && !strings.Contains(repository, "/") {
+	if registry == defaultDockerRegistry && !strings.Contains(repository, "/") {
 		repository = "library/" + repository
 	}
 

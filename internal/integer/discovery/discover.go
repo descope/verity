@@ -293,9 +293,12 @@ func FindLatestVersion(versions []string) string {
 	if len(versions) == 0 {
 		return ""
 	}
-	for i := len(versions) - 1; i >= 0; i-- {
-		if versions[i] != latestSentinel {
-			return versions[i]
+	// Backward iteration via slices.Backward so the modernize linter
+	// is satisfied while keeping the highest-numeric-first walk
+	// semantics (highest version is at the end of the sorted slice).
+	for _, v := range slices.Backward(versions) {
+		if v != latestSentinel {
+			return v
 		}
 	}
 	return versions[len(versions)-1]
