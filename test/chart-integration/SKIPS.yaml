@@ -12,19 +12,19 @@
 # issue, an exit criterion, and a peer review. Prefer chartValues tuning,
 # image fixes, or harness retries (subtask 5) before adding here.
 #
-# Slot accounting: 5 of 5 slots used (full). Loader's MaxSkippedCharts=5
+# Slot accounting: 4 of 5 slots used. Loader's MaxSkippedCharts=5
 # invariant will reject any 6th entry. Adding another skip requires either
 # (a) removing an existing entry whose exit_criteria has been met, or
 # (b) a new SCR raising the cap.
+#
+# Recent slot reclaims:
+#   - falco (#325): closed via `chartValues.falco.driver.enabled: false`
+#     in verity.yaml — option (b) of the falco exit_criteria. The chart
+#     still installs cleanly without a kernel driver; container-engine
+#     plugin remains the event source. Verified in the same PR that
+#     removed this row.
 
 skips:
-  - chart: falco
-    reason: kernel-incompat
-    tracking_issue: https://github.com/verity-org/verity/issues/325
-    exit_criteria: "falco's modern_ebpf driver fails to load (`libpman: ring buffer map type is not supported`) under the Azure GHA runner because the BPF capability is denied at runc create time, not because the kernel is too old (failing runs are on 6.17.0-1010-azure). Revisit when (a) the GHA runner image grants CAP_BPF / CAP_PERFMON to docker-in-docker kind nodes, OR (b) the chart exposes a `driver.kind: legacy_ebpf` / `driver.enabled: false` knob the wrapper can wire from chartValues without requiring a tools install in the image."
-    added: 2026-05-14
-    added_by: SCR-2026-05-14-001
-
   - chart: nfs-subdir-external-provisioner
     reason: needs-external-infra
     tracking_issue: https://github.com/verity-org/verity/issues/373
