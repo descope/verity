@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.69.3"
   },
-  "ReportID": "019e2863-b2b0-76a7-b132-6b4abacdd924",
-  "CreatedAt": "2026-05-14T21:28:02.992439085Z",
+  "ReportID": "019e2a42-2eb0-7135-86b5-b0ffc2f94f3f",
+  "CreatedAt": "2026-05-15T06:10:40.944082072Z",
   "ArtifactID": "sha256:6b7795d123593c1b57cf6ec85b5eaa2430510fe3e4e128ae5f9e9c2993012841",
   "ArtifactName": "docker.io/falcosecurity/falco-driver-loader:0.43.1",
   "ArtifactType": "container_image",
@@ -32353,7 +32353,7 @@
           ],
           "VendorSeverity": {
             "nvd": 3,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 1
           },
@@ -32379,6 +32379,63 @@
           ],
           "PublishedDate": "2026-05-13T13:01:56.307Z",
           "LastModifiedDate": "2026-05-13T19:13:14.097Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-6276",
+          "PkgID": "curl@7.88.1-10+deb12u14",
+          "PkgName": "curl",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/curl@7.88.1-10%2Bdeb12u14?arch=amd64\u0026distro=debian-12.13",
+            "UID": "8ea9e9ff5a34e734"
+          },
+          "InstalledVersion": "7.88.1-10+deb12u14",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:d91c60c385f55c40846721405941262b4f32be622ae01dc8283fdd05e28c310a",
+            "DiffID": "sha256:4c045ac3fb1b9ac8209b3b804ebefe127128270d8c6dc29e84a6e5ee3246139e"
+          },
+          "SeveritySource": "nvd",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-6276",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:c4a87c85e37724289c6f1a03ee44b8d78dd974255fb82dc45b402db480ad558b",
+          "Title": "curl: libcurl: Information disclosure due to cookie leak when reusing connections with custom Host headers",
+          "Description": "Using libcurl, when a custom `Host:` header is first set for an HTTP request\nand a second request is subsequently done using the same *easy handle* but\nwithout the custom `Host:` header set, the second request would use stale\ninformation and pass on cookies meant for the first host in the second\nrequest. Leak them.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-319"
+          ],
+          "VendorSeverity": {
+            "nvd": 3,
+            "photon": 3,
+            "redhat": 1,
+            "ubuntu": 1
+          },
+          "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N",
+              "V3Score": 3.7
+            }
+          },
+          "References": [
+            "http://www.openwall.com/lists/oss-security/2026/04/29/13",
+            "https://access.redhat.com/security/cve/CVE-2026-6276",
+            "https://curl.se/docs/CVE-2026-6276.html",
+            "https://curl.se/docs/CVE-2026-6276.json",
+            "https://hackerone.com/reports/3671818",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-6276",
+            "https://ubuntu.com/security/notices/USN-8227-1",
+            "https://www.cve.org/CVERecord?id=CVE-2026-6276"
+          ],
+          "PublishedDate": "2026-05-13T13:01:56.8Z",
+          "LastModifiedDate": "2026-05-14T14:21:06.997Z"
         },
         {
           "VulnerabilityID": "CVE-2025-10148",
@@ -32755,6 +32812,7 @@
           "Description": "A vulnerability exists where a connection requiring TLS incorrectly reuses an\nexisting unencrypted connection from the same connection pool. If an initial\ntransfer is made in clear-text (via IMAP, SMTP, or POP3), a subsequent request\nto that same host bypasses the TLS requirement and instead transmit data\nunencrypted.",
           "Severity": "MEDIUM",
           "CweIDs": [
+            "CWE-295",
             "CWE-319"
           ],
           "VendorSeverity": {
@@ -32779,7 +32837,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-4873"
           ],
           "PublishedDate": "2026-05-13T13:01:55.893Z",
-          "LastModifiedDate": "2026-05-13T20:16:23.353Z"
+          "LastModifiedDate": "2026-05-14T13:45:11.407Z"
         },
         {
           "VulnerabilityID": "CVE-2026-5545",
@@ -32811,7 +32869,7 @@
           ],
           "VendorSeverity": {
             "nvd": 2,
-            "photon": 3,
+            "photon": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -32861,8 +32919,11 @@
           "Title": "curl: curl: Proxy credential disclosure via redirects to unauthenticated proxies",
           "Description": "curl might erroneously pass on credentials for a first proxy to a second\nproxy.\n\nThis can happen when the following conditions are true:\n\n1. curl is setup to use specific different proxies for different URL schemes\n2. the first proxy needs credentials\n3. the second proxy uses no credentials\n4. while using the first proxy (using say `http://`), curl is asked to follow\n   a redirect to a URL using another scheme (say `https://`), accessed using a\n   second, different, proxy",
           "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-522"
+          ],
           "VendorSeverity": {
-            "photon": 3,
+            "photon": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -32883,7 +32944,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-6253"
           ],
           "PublishedDate": "2026-05-13T13:01:56.57Z",
-          "LastModifiedDate": "2026-05-13T18:16:20.09Z"
+          "LastModifiedDate": "2026-05-14T13:40:53.19Z"
         },
         {
           "VulnerabilityID": "CVE-2026-6429",
@@ -32910,7 +32971,7 @@
           "Description": "When asked to both use a `.netrc` file for credentials and to follow HTTP\nredirects, libcurl could leak the password used for the first host to the\nfollowed-to host under certain circumstances.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
-            "photon": 3,
+            "photon": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -32930,7 +32991,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-6429"
           ],
           "PublishedDate": "2026-05-13T13:01:56.93Z",
-          "LastModifiedDate": "2026-05-13T14:50:58.767Z"
+          "LastModifiedDate": "2026-05-14T14:18:02.24Z"
         },
         {
           "VulnerabilityID": "CVE-2026-7168",
@@ -32946,6 +33007,7 @@
             "Digest": "sha256:d91c60c385f55c40846721405941262b4f32be622ae01dc8283fdd05e28c310a",
             "DiffID": "sha256:4c045ac3fb1b9ac8209b3b804ebefe127128270d8c6dc29e84a6e5ee3246139e"
           },
+          "SeveritySource": "nvd",
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-7168",
           "DataSource": {
             "ID": "debian",
@@ -32953,10 +33015,21 @@
             "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
           },
           "Fingerprint": "sha256:e853a09db0c4c9a0fc73450a02b29ed6f61a97ae4d2b0cdea6956f9e47bb0663",
+          "Title": "Successfully using libcurl to do a transfer over a specific HTTP proxy ...",
           "Description": "Successfully using libcurl to do a transfer over a specific HTTP proxy\n(`proxyA`) with **Digest** authentication and then changing the proxy host to\na second one (`proxyB`) for a second transfer, reusing the same handle, makes\nlibcurl wrongly pass on the `Proxy-Authorization:` header field meant for\n`proxyA`, to `proxyB`.",
           "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-294"
+          ],
           "VendorSeverity": {
+            "nvd": 2,
             "ubuntu": 2
+          },
+          "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+              "V3Score": 5.3
+            }
           },
           "References": [
             "http://www.openwall.com/lists/oss-security/2026/04/29/14",
@@ -32967,7 +33040,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-7168"
           ],
           "PublishedDate": "2026-05-13T13:01:57.2Z",
-          "LastModifiedDate": "2026-05-13T16:17:02.437Z"
+          "LastModifiedDate": "2026-05-14T14:12:48.457Z"
         },
         {
           "VulnerabilityID": "CVE-2024-2379",
@@ -33336,54 +33409,6 @@
           ],
           "PublishedDate": "2026-01-08T10:15:47.207Z",
           "LastModifiedDate": "2026-01-20T14:47:52.71Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-6276",
-          "PkgID": "curl@7.88.1-10+deb12u14",
-          "PkgName": "curl",
-          "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/curl@7.88.1-10%2Bdeb12u14?arch=amd64\u0026distro=debian-12.13",
-            "UID": "8ea9e9ff5a34e734"
-          },
-          "InstalledVersion": "7.88.1-10+deb12u14",
-          "Status": "affected",
-          "Layer": {
-            "Digest": "sha256:d91c60c385f55c40846721405941262b4f32be622ae01dc8283fdd05e28c310a",
-            "DiffID": "sha256:4c045ac3fb1b9ac8209b3b804ebefe127128270d8c6dc29e84a6e5ee3246139e"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-6276",
-          "DataSource": {
-            "ID": "debian",
-            "Name": "Debian Security Tracker",
-            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
-          },
-          "Fingerprint": "sha256:c4a87c85e37724289c6f1a03ee44b8d78dd974255fb82dc45b402db480ad558b",
-          "Title": "curl: libcurl: Information disclosure due to cookie leak when reusing connections with custom Host headers",
-          "Description": "Using libcurl, when a custom `Host:` header is first set for an HTTP request\nand a second request is subsequently done using the same *easy handle* but\nwithout the custom `Host:` header set, the second request would use stale\ninformation and pass on cookies meant for the first host in the second\nrequest. Leak them.",
-          "Severity": "LOW",
-          "VendorSeverity": {
-            "photon": 2,
-            "redhat": 1,
-            "ubuntu": 1
-          },
-          "CVSS": {
-            "redhat": {
-              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N",
-              "V3Score": 3.7
-            }
-          },
-          "References": [
-            "http://www.openwall.com/lists/oss-security/2026/04/29/13",
-            "https://access.redhat.com/security/cve/CVE-2026-6276",
-            "https://curl.se/docs/CVE-2026-6276.html",
-            "https://curl.se/docs/CVE-2026-6276.json",
-            "https://hackerone.com/reports/3671818",
-            "https://nvd.nist.gov/vuln/detail/CVE-2026-6276",
-            "https://ubuntu.com/security/notices/USN-8227-1",
-            "https://www.cve.org/CVERecord?id=CVE-2026-6276"
-          ],
-          "PublishedDate": "2026-05-13T13:01:56.8Z",
-          "LastModifiedDate": "2026-05-13T18:16:20.403Z"
         },
         {
           "VulnerabilityID": "CVE-2025-30258",
@@ -35959,11 +35984,11 @@
             }
           },
           "References": [
-            "https://access.redhat.com/errata/RHSA-2026:16252",
+            "https://access.redhat.com/errata/RHSA-2026:16693",
             "https://access.redhat.com/security/cve/CVE-2026-40164",
             "https://bugzilla.redhat.com/2458077",
             "https://bugzilla.redhat.com/2458084",
-            "https://errata.almalinux.org/8/ALSA-2026-16252.html",
+            "https://errata.almalinux.org/9/ALSA-2026-16693.html",
             "https://github.com/jqlang/jq/commit/0c7d133c3c7e37c00b6d46b658a02244fdd3c784",
             "https://github.com/jqlang/jq/security/advisories/GHSA-wwj8-gxm6-jc29",
             "https://linux.oracle.com/cve/CVE-2026-40164.html",
@@ -36007,7 +36032,7 @@
           "VendorSeverity": {
             "azure": 2,
             "nvd": 2,
-            "photon": 3,
+            "photon": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -36178,7 +36203,7 @@
             "azure": 2,
             "nvd": 2,
             "oracle-oval": 3,
-            "photon": 3,
+            "photon": 2,
             "redhat": 3,
             "ubuntu": 2
           },
@@ -36193,11 +36218,11 @@
             }
           },
           "References": [
-            "https://access.redhat.com/errata/RHSA-2026:16252",
+            "https://access.redhat.com/errata/RHSA-2026:16693",
             "https://access.redhat.com/security/cve/CVE-2026-39979",
             "https://bugzilla.redhat.com/2458077",
             "https://bugzilla.redhat.com/2458084",
-            "https://errata.almalinux.org/8/ALSA-2026-16252.html",
+            "https://errata.almalinux.org/9/ALSA-2026-16693.html",
             "https://github.com/jqlang/jq/commit/2f09060afab23fe9390cce7cb860b10416e1bf5f",
             "https://github.com/jqlang/jq/security/advisories/GHSA-2hhh-px8h-355p",
             "https://linux.oracle.com/cve/CVE-2026-39979.html",
@@ -36232,23 +36257,31 @@
             "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
           },
           "Fingerprint": "sha256:4855bcf0ef49488113206dfc4ac8742e27342011bd341c4fca67e9f7f632163d",
-          "Title": "jq is a command-line JSON processor. In 1.8.1 and earlier, jv_contains ...",
+          "Title": "jq: stack overflow via unbounded recursion in jv_contains",
           "Description": "jq is a command-line JSON processor. In 1.8.1 and earlier, jv_contains recurses into nested arrays/objects with no depth limit. With a sufficiently nested input structure (built programmatically with reduce, since the JSON parser caps at depth 10000), the C stack is exhausted.",
           "Severity": "MEDIUM",
           "CweIDs": [
             "CWE-674"
           ],
           "VendorSeverity": {
-            "nvd": 2
+            "nvd": 2,
+            "redhat": 2
           },
           "CVSS": {
             "nvd": {
               "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
               "V3Score": 5.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+              "V3Score": 5.5
             }
           },
           "References": [
-            "https://github.com/jqlang/jq/security/advisories/GHSA-r7m6-x9c7-h69j"
+            "https://access.redhat.com/security/cve/CVE-2026-40612",
+            "https://github.com/jqlang/jq/security/advisories/GHSA-r7m6-x9c7-h69j",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-40612",
+            "https://www.cve.org/CVERecord?id=CVE-2026-40612"
           ],
           "PublishedDate": "2026-05-11T18:16:33.67Z",
           "LastModifiedDate": "2026-05-13T17:00:14.59Z"
@@ -36275,7 +36308,7 @@
             "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
           },
           "Fingerprint": "sha256:b6ee0d631196b69703a06b109ee667c043d478a93814f2810151a05381bcf0b7",
-          "Title": "jq is a command-line JSON processor. In 1.8.1 and earlier, the jq byte ...",
+          "Title": "jq: signed-int overflow in stack_reallocate",
           "Description": "jq is a command-line JSON processor. In 1.8.1 and earlier, the jq bytecode VM's data stack tracks its allocation size in a signed int. When the stack grows beyond ≈1 GiB (via deeply nested generator forks), the doubling arithmetic overflows. The wrapped value is passed to realloc and then used for a memmove with attacker-influenced offsets.",
           "Severity": "MEDIUM",
           "CweIDs": [
@@ -36283,16 +36316,24 @@
             "CWE-787"
           ],
           "VendorSeverity": {
-            "nvd": 2
+            "nvd": 2,
+            "redhat": 2
           },
           "CVSS": {
             "nvd": {
               "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
               "V3Score": 5.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+              "V3Score": 5.5
             }
           },
           "References": [
-            "https://github.com/jqlang/jq/security/advisories/GHSA-4jm8-m363-4539"
+            "https://access.redhat.com/security/cve/CVE-2026-41257",
+            "https://github.com/jqlang/jq/security/advisories/GHSA-4jm8-m363-4539",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-41257",
+            "https://www.cve.org/CVERecord?id=CVE-2026-41257"
           ],
           "PublishedDate": "2026-05-11T18:16:34.127Z",
           "LastModifiedDate": "2026-05-13T17:01:01.423Z"
@@ -36370,23 +36411,31 @@
             "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
           },
           "Fingerprint": "sha256:0205c6db04d506eb1203e534cbef48feaa1f22bad107ae32b5f7114f27c7a8ed",
-          "Title": "jq is a command-line JSON processor. In 1.8.1 and earlier, unbounded r ...",
+          "Title": "jq: stack overflow in recursive object merge",
           "Description": "jq is a command-line JSON processor. In 1.8.1 and earlier, unbounded recursion in jv_object_merge_recursive() allows a crafted jq program to crash the process with a segfault. The function is reachable through the * operator when both operands are objects.",
           "Severity": "MEDIUM",
           "CweIDs": [
             "CWE-674"
           ],
           "VendorSeverity": {
-            "nvd": 2
+            "nvd": 2,
+            "redhat": 2
           },
           "CVSS": {
             "nvd": {
               "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 5.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+              "V3Score": 5.5
             }
           },
           "References": [
-            "https://github.com/jqlang/jq/security/advisories/GHSA-mg96-6h3q-g846"
+            "https://access.redhat.com/security/cve/CVE-2026-43896",
+            "https://github.com/jqlang/jq/security/advisories/GHSA-mg96-6h3q-g846",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-43896",
+            "https://www.cve.org/CVERecord?id=CVE-2026-43896"
           ],
           "PublishedDate": "2026-05-11T18:16:37.53Z",
           "LastModifiedDate": "2026-05-13T22:34:34.033Z"
@@ -36413,23 +36462,31 @@
             "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
           },
           "Fingerprint": "sha256:f95f02f09ed20efda5b163e43c5126b12d47b2cbb5862698085da5db139cff5a",
-          "Title": "jq is a command-line JSON processor. In 1.8.2rc1 and earlier, the ordi ...",
+          "Title": "jq: stack overflow in module loading on mutual include",
           "Description": "jq is a command-line JSON processor. In 1.8.2rc1 and earlier, the ordinary module loader recurses without cycle detection when two\notherwise valid modules include each other.",
           "Severity": "MEDIUM",
           "CweIDs": [
             "CWE-674"
           ],
           "VendorSeverity": {
-            "nvd": 2
+            "nvd": 2,
+            "redhat": 2
           },
           "CVSS": {
             "nvd": {
               "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
               "V3Score": 5.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+              "V3Score": 5.5
             }
           },
           "References": [
-            "https://github.com/jqlang/jq/security/advisories/GHSA-rmpv-jgvr-wpr9"
+            "https://access.redhat.com/security/cve/CVE-2026-44777",
+            "https://github.com/jqlang/jq/security/advisories/GHSA-rmpv-jgvr-wpr9",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-44777",
+            "https://www.cve.org/CVERecord?id=CVE-2026-44777"
           ],
           "PublishedDate": "2026-05-11T18:16:38.517Z",
           "LastModifiedDate": "2026-05-13T17:05:31.31Z"
@@ -36661,6 +36718,8 @@
           ],
           "VendorSeverity": {
             "alma": 3,
+            "amazon": 2,
+            "oracle-oval": 3,
             "redhat": 2
           },
           "CVSS": {
@@ -36677,6 +36736,8 @@
             "https://cems.fun/2026/04/27/krb5-two-unauthenticated-network-vulnerabilities.html",
             "https://errata.almalinux.org/8/ALSA-2026-16799.html",
             "https://github.com/krb5/krb5/commit/2e75f0d9362fb979f5fc92829431a590a130929f",
+            "https://linux.oracle.com/cve/CVE-2026-40355.html",
+            "https://linux.oracle.com/errata/ELSA-2026-16799.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-40355",
             "https://web.mit.edu/kerberos/advisories/",
             "https://www.cve.org/CVERecord?id=CVE-2026-40355"
@@ -36713,6 +36774,8 @@
           ],
           "VendorSeverity": {
             "alma": 3,
+            "amazon": 2,
+            "oracle-oval": 3,
             "redhat": 3
           },
           "CVSS": {
@@ -36729,6 +36792,8 @@
             "https://cems.fun/2026/04/27/krb5-two-unauthenticated-network-vulnerabilities.html",
             "https://errata.almalinux.org/8/ALSA-2026-16799.html",
             "https://github.com/krb5/krb5/commit/2e75f0d9362fb979f5fc92829431a590a130929f",
+            "https://linux.oracle.com/cve/CVE-2026-40356.html",
+            "https://linux.oracle.com/errata/ELSA-2026-16799.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-40356",
             "https://web.mit.edu/kerberos/advisories/",
             "https://www.cve.org/CVERecord?id=CVE-2026-40356"
@@ -41231,7 +41296,7 @@
           ],
           "VendorSeverity": {
             "azure": 2,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -41281,7 +41346,7 @@
           ],
           "VendorSeverity": {
             "azure": 2,
-            "photon": 4,
+            "photon": 2,
             "redhat": 1,
             "ubuntu": 2
           },
@@ -42170,7 +42235,7 @@
           ],
           "VendorSeverity": {
             "azure": 2,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -42220,7 +42285,7 @@
           ],
           "VendorSeverity": {
             "azure": 2,
-            "photon": 4,
+            "photon": 2,
             "redhat": 1,
             "ubuntu": 2
           },
@@ -43109,7 +43174,7 @@
           ],
           "VendorSeverity": {
             "azure": 2,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -43159,7 +43224,7 @@
           ],
           "VendorSeverity": {
             "azure": 2,
-            "photon": 4,
+            "photon": 2,
             "redhat": 1,
             "ubuntu": 2
           },
@@ -44048,7 +44113,7 @@
           ],
           "VendorSeverity": {
             "azure": 2,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -44098,7 +44163,7 @@
           ],
           "VendorSeverity": {
             "azure": 2,
-            "photon": 4,
+            "photon": 2,
             "redhat": 1,
             "ubuntu": 2
           },
@@ -53411,7 +53476,7 @@
           ],
           "VendorSeverity": {
             "nvd": 3,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 1
           },
@@ -53437,6 +53502,63 @@
           ],
           "PublishedDate": "2026-05-13T13:01:56.307Z",
           "LastModifiedDate": "2026-05-13T19:13:14.097Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-6276",
+          "PkgID": "libcurl3-nss@7.88.1-10+deb12u14",
+          "PkgName": "libcurl3-nss",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libcurl3-nss@7.88.1-10%2Bdeb12u14?arch=amd64\u0026distro=debian-12.13",
+            "UID": "8af1a1ae711a3d84"
+          },
+          "InstalledVersion": "7.88.1-10+deb12u14",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:181beaa8f88bfb4bbb91c762df9a669aacb79f2c8a9b8f7681d685869be0619f",
+            "DiffID": "sha256:d0c77a21ba9c3c053a15863d1d4cb0a7f195658f23e9ef319aa305092e79325f"
+          },
+          "SeveritySource": "nvd",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-6276",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:cb2cf0f0649c4596037ea2ed1d2916ecbfe45b2e024d8d4e84c9b1712cf82efa",
+          "Title": "curl: libcurl: Information disclosure due to cookie leak when reusing connections with custom Host headers",
+          "Description": "Using libcurl, when a custom `Host:` header is first set for an HTTP request\nand a second request is subsequently done using the same *easy handle* but\nwithout the custom `Host:` header set, the second request would use stale\ninformation and pass on cookies meant for the first host in the second\nrequest. Leak them.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-319"
+          ],
+          "VendorSeverity": {
+            "nvd": 3,
+            "photon": 3,
+            "redhat": 1,
+            "ubuntu": 1
+          },
+          "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N",
+              "V3Score": 3.7
+            }
+          },
+          "References": [
+            "http://www.openwall.com/lists/oss-security/2026/04/29/13",
+            "https://access.redhat.com/security/cve/CVE-2026-6276",
+            "https://curl.se/docs/CVE-2026-6276.html",
+            "https://curl.se/docs/CVE-2026-6276.json",
+            "https://hackerone.com/reports/3671818",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-6276",
+            "https://ubuntu.com/security/notices/USN-8227-1",
+            "https://www.cve.org/CVERecord?id=CVE-2026-6276"
+          ],
+          "PublishedDate": "2026-05-13T13:01:56.8Z",
+          "LastModifiedDate": "2026-05-14T14:21:06.997Z"
         },
         {
           "VulnerabilityID": "CVE-2025-10148",
@@ -53813,6 +53935,7 @@
           "Description": "A vulnerability exists where a connection requiring TLS incorrectly reuses an\nexisting unencrypted connection from the same connection pool. If an initial\ntransfer is made in clear-text (via IMAP, SMTP, or POP3), a subsequent request\nto that same host bypasses the TLS requirement and instead transmit data\nunencrypted.",
           "Severity": "MEDIUM",
           "CweIDs": [
+            "CWE-295",
             "CWE-319"
           ],
           "VendorSeverity": {
@@ -53837,7 +53960,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-4873"
           ],
           "PublishedDate": "2026-05-13T13:01:55.893Z",
-          "LastModifiedDate": "2026-05-13T20:16:23.353Z"
+          "LastModifiedDate": "2026-05-14T13:45:11.407Z"
         },
         {
           "VulnerabilityID": "CVE-2026-5545",
@@ -53869,7 +53992,7 @@
           ],
           "VendorSeverity": {
             "nvd": 2,
-            "photon": 3,
+            "photon": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -53919,8 +54042,11 @@
           "Title": "curl: curl: Proxy credential disclosure via redirects to unauthenticated proxies",
           "Description": "curl might erroneously pass on credentials for a first proxy to a second\nproxy.\n\nThis can happen when the following conditions are true:\n\n1. curl is setup to use specific different proxies for different URL schemes\n2. the first proxy needs credentials\n3. the second proxy uses no credentials\n4. while using the first proxy (using say `http://`), curl is asked to follow\n   a redirect to a URL using another scheme (say `https://`), accessed using a\n   second, different, proxy",
           "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-522"
+          ],
           "VendorSeverity": {
-            "photon": 3,
+            "photon": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -53941,7 +54067,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-6253"
           ],
           "PublishedDate": "2026-05-13T13:01:56.57Z",
-          "LastModifiedDate": "2026-05-13T18:16:20.09Z"
+          "LastModifiedDate": "2026-05-14T13:40:53.19Z"
         },
         {
           "VulnerabilityID": "CVE-2026-6429",
@@ -53968,7 +54094,7 @@
           "Description": "When asked to both use a `.netrc` file for credentials and to follow HTTP\nredirects, libcurl could leak the password used for the first host to the\nfollowed-to host under certain circumstances.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
-            "photon": 3,
+            "photon": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -53988,7 +54114,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-6429"
           ],
           "PublishedDate": "2026-05-13T13:01:56.93Z",
-          "LastModifiedDate": "2026-05-13T14:50:58.767Z"
+          "LastModifiedDate": "2026-05-14T14:18:02.24Z"
         },
         {
           "VulnerabilityID": "CVE-2026-7168",
@@ -54004,6 +54130,7 @@
             "Digest": "sha256:181beaa8f88bfb4bbb91c762df9a669aacb79f2c8a9b8f7681d685869be0619f",
             "DiffID": "sha256:d0c77a21ba9c3c053a15863d1d4cb0a7f195658f23e9ef319aa305092e79325f"
           },
+          "SeveritySource": "nvd",
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-7168",
           "DataSource": {
             "ID": "debian",
@@ -54011,10 +54138,21 @@
             "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
           },
           "Fingerprint": "sha256:0c60066ff6ea3a1b605ea5c3f132fac0d9ae52784b6084acbe9eb34e6ed674fc",
+          "Title": "Successfully using libcurl to do a transfer over a specific HTTP proxy ...",
           "Description": "Successfully using libcurl to do a transfer over a specific HTTP proxy\n(`proxyA`) with **Digest** authentication and then changing the proxy host to\na second one (`proxyB`) for a second transfer, reusing the same handle, makes\nlibcurl wrongly pass on the `Proxy-Authorization:` header field meant for\n`proxyA`, to `proxyB`.",
           "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-294"
+          ],
           "VendorSeverity": {
+            "nvd": 2,
             "ubuntu": 2
+          },
+          "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+              "V3Score": 5.3
+            }
           },
           "References": [
             "http://www.openwall.com/lists/oss-security/2026/04/29/14",
@@ -54025,7 +54163,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-7168"
           ],
           "PublishedDate": "2026-05-13T13:01:57.2Z",
-          "LastModifiedDate": "2026-05-13T16:17:02.437Z"
+          "LastModifiedDate": "2026-05-14T14:12:48.457Z"
         },
         {
           "VulnerabilityID": "CVE-2024-2379",
@@ -54396,54 +54534,6 @@
           "LastModifiedDate": "2026-01-20T14:47:52.71Z"
         },
         {
-          "VulnerabilityID": "CVE-2026-6276",
-          "PkgID": "libcurl3-nss@7.88.1-10+deb12u14",
-          "PkgName": "libcurl3-nss",
-          "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/libcurl3-nss@7.88.1-10%2Bdeb12u14?arch=amd64\u0026distro=debian-12.13",
-            "UID": "8af1a1ae711a3d84"
-          },
-          "InstalledVersion": "7.88.1-10+deb12u14",
-          "Status": "affected",
-          "Layer": {
-            "Digest": "sha256:181beaa8f88bfb4bbb91c762df9a669aacb79f2c8a9b8f7681d685869be0619f",
-            "DiffID": "sha256:d0c77a21ba9c3c053a15863d1d4cb0a7f195658f23e9ef319aa305092e79325f"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-6276",
-          "DataSource": {
-            "ID": "debian",
-            "Name": "Debian Security Tracker",
-            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
-          },
-          "Fingerprint": "sha256:cb2cf0f0649c4596037ea2ed1d2916ecbfe45b2e024d8d4e84c9b1712cf82efa",
-          "Title": "curl: libcurl: Information disclosure due to cookie leak when reusing connections with custom Host headers",
-          "Description": "Using libcurl, when a custom `Host:` header is first set for an HTTP request\nand a second request is subsequently done using the same *easy handle* but\nwithout the custom `Host:` header set, the second request would use stale\ninformation and pass on cookies meant for the first host in the second\nrequest. Leak them.",
-          "Severity": "LOW",
-          "VendorSeverity": {
-            "photon": 2,
-            "redhat": 1,
-            "ubuntu": 1
-          },
-          "CVSS": {
-            "redhat": {
-              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N",
-              "V3Score": 3.7
-            }
-          },
-          "References": [
-            "http://www.openwall.com/lists/oss-security/2026/04/29/13",
-            "https://access.redhat.com/security/cve/CVE-2026-6276",
-            "https://curl.se/docs/CVE-2026-6276.html",
-            "https://curl.se/docs/CVE-2026-6276.json",
-            "https://hackerone.com/reports/3671818",
-            "https://nvd.nist.gov/vuln/detail/CVE-2026-6276",
-            "https://ubuntu.com/security/notices/USN-8227-1",
-            "https://www.cve.org/CVERecord?id=CVE-2026-6276"
-          ],
-          "PublishedDate": "2026-05-13T13:01:56.8Z",
-          "LastModifiedDate": "2026-05-13T18:16:20.403Z"
-        },
-        {
           "VulnerabilityID": "CVE-2026-5773",
           "PkgID": "libcurl4@7.88.1-10+deb12u14",
           "PkgName": "libcurl4",
@@ -54473,7 +54563,7 @@
           ],
           "VendorSeverity": {
             "nvd": 3,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 1
           },
@@ -54499,6 +54589,63 @@
           ],
           "PublishedDate": "2026-05-13T13:01:56.307Z",
           "LastModifiedDate": "2026-05-13T19:13:14.097Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-6276",
+          "PkgID": "libcurl4@7.88.1-10+deb12u14",
+          "PkgName": "libcurl4",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libcurl4@7.88.1-10%2Bdeb12u14?arch=amd64\u0026distro=debian-12.13",
+            "UID": "c022e2eb298ef0ff"
+          },
+          "InstalledVersion": "7.88.1-10+deb12u14",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:d91c60c385f55c40846721405941262b4f32be622ae01dc8283fdd05e28c310a",
+            "DiffID": "sha256:4c045ac3fb1b9ac8209b3b804ebefe127128270d8c6dc29e84a6e5ee3246139e"
+          },
+          "SeveritySource": "nvd",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-6276",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:52e3d65d91f24e99aebee39dab4009206060ddff698cd3014255dbdc4f0d7d8e",
+          "Title": "curl: libcurl: Information disclosure due to cookie leak when reusing connections with custom Host headers",
+          "Description": "Using libcurl, when a custom `Host:` header is first set for an HTTP request\nand a second request is subsequently done using the same *easy handle* but\nwithout the custom `Host:` header set, the second request would use stale\ninformation and pass on cookies meant for the first host in the second\nrequest. Leak them.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-319"
+          ],
+          "VendorSeverity": {
+            "nvd": 3,
+            "photon": 3,
+            "redhat": 1,
+            "ubuntu": 1
+          },
+          "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N",
+              "V3Score": 3.7
+            }
+          },
+          "References": [
+            "http://www.openwall.com/lists/oss-security/2026/04/29/13",
+            "https://access.redhat.com/security/cve/CVE-2026-6276",
+            "https://curl.se/docs/CVE-2026-6276.html",
+            "https://curl.se/docs/CVE-2026-6276.json",
+            "https://hackerone.com/reports/3671818",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-6276",
+            "https://ubuntu.com/security/notices/USN-8227-1",
+            "https://www.cve.org/CVERecord?id=CVE-2026-6276"
+          ],
+          "PublishedDate": "2026-05-13T13:01:56.8Z",
+          "LastModifiedDate": "2026-05-14T14:21:06.997Z"
         },
         {
           "VulnerabilityID": "CVE-2025-10148",
@@ -54875,6 +55022,7 @@
           "Description": "A vulnerability exists where a connection requiring TLS incorrectly reuses an\nexisting unencrypted connection from the same connection pool. If an initial\ntransfer is made in clear-text (via IMAP, SMTP, or POP3), a subsequent request\nto that same host bypasses the TLS requirement and instead transmit data\nunencrypted.",
           "Severity": "MEDIUM",
           "CweIDs": [
+            "CWE-295",
             "CWE-319"
           ],
           "VendorSeverity": {
@@ -54899,7 +55047,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-4873"
           ],
           "PublishedDate": "2026-05-13T13:01:55.893Z",
-          "LastModifiedDate": "2026-05-13T20:16:23.353Z"
+          "LastModifiedDate": "2026-05-14T13:45:11.407Z"
         },
         {
           "VulnerabilityID": "CVE-2026-5545",
@@ -54931,7 +55079,7 @@
           ],
           "VendorSeverity": {
             "nvd": 2,
-            "photon": 3,
+            "photon": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -54981,8 +55129,11 @@
           "Title": "curl: curl: Proxy credential disclosure via redirects to unauthenticated proxies",
           "Description": "curl might erroneously pass on credentials for a first proxy to a second\nproxy.\n\nThis can happen when the following conditions are true:\n\n1. curl is setup to use specific different proxies for different URL schemes\n2. the first proxy needs credentials\n3. the second proxy uses no credentials\n4. while using the first proxy (using say `http://`), curl is asked to follow\n   a redirect to a URL using another scheme (say `https://`), accessed using a\n   second, different, proxy",
           "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-522"
+          ],
           "VendorSeverity": {
-            "photon": 3,
+            "photon": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -55003,7 +55154,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-6253"
           ],
           "PublishedDate": "2026-05-13T13:01:56.57Z",
-          "LastModifiedDate": "2026-05-13T18:16:20.09Z"
+          "LastModifiedDate": "2026-05-14T13:40:53.19Z"
         },
         {
           "VulnerabilityID": "CVE-2026-6429",
@@ -55030,7 +55181,7 @@
           "Description": "When asked to both use a `.netrc` file for credentials and to follow HTTP\nredirects, libcurl could leak the password used for the first host to the\nfollowed-to host under certain circumstances.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
-            "photon": 3,
+            "photon": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -55050,7 +55201,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-6429"
           ],
           "PublishedDate": "2026-05-13T13:01:56.93Z",
-          "LastModifiedDate": "2026-05-13T14:50:58.767Z"
+          "LastModifiedDate": "2026-05-14T14:18:02.24Z"
         },
         {
           "VulnerabilityID": "CVE-2026-7168",
@@ -55066,6 +55217,7 @@
             "Digest": "sha256:d91c60c385f55c40846721405941262b4f32be622ae01dc8283fdd05e28c310a",
             "DiffID": "sha256:4c045ac3fb1b9ac8209b3b804ebefe127128270d8c6dc29e84a6e5ee3246139e"
           },
+          "SeveritySource": "nvd",
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-7168",
           "DataSource": {
             "ID": "debian",
@@ -55073,10 +55225,21 @@
             "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
           },
           "Fingerprint": "sha256:9d5c32f8feb9d45354d9786e96feaf21439fcc160580cf4b5e8204adc25f3979",
+          "Title": "Successfully using libcurl to do a transfer over a specific HTTP proxy ...",
           "Description": "Successfully using libcurl to do a transfer over a specific HTTP proxy\n(`proxyA`) with **Digest** authentication and then changing the proxy host to\na second one (`proxyB`) for a second transfer, reusing the same handle, makes\nlibcurl wrongly pass on the `Proxy-Authorization:` header field meant for\n`proxyA`, to `proxyB`.",
           "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-294"
+          ],
           "VendorSeverity": {
+            "nvd": 2,
             "ubuntu": 2
+          },
+          "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+              "V3Score": 5.3
+            }
           },
           "References": [
             "http://www.openwall.com/lists/oss-security/2026/04/29/14",
@@ -55087,7 +55250,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-7168"
           ],
           "PublishedDate": "2026-05-13T13:01:57.2Z",
-          "LastModifiedDate": "2026-05-13T16:17:02.437Z"
+          "LastModifiedDate": "2026-05-14T14:12:48.457Z"
         },
         {
           "VulnerabilityID": "CVE-2024-2379",
@@ -55456,54 +55619,6 @@
           ],
           "PublishedDate": "2026-01-08T10:15:47.207Z",
           "LastModifiedDate": "2026-01-20T14:47:52.71Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-6276",
-          "PkgID": "libcurl4@7.88.1-10+deb12u14",
-          "PkgName": "libcurl4",
-          "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/libcurl4@7.88.1-10%2Bdeb12u14?arch=amd64\u0026distro=debian-12.13",
-            "UID": "c022e2eb298ef0ff"
-          },
-          "InstalledVersion": "7.88.1-10+deb12u14",
-          "Status": "affected",
-          "Layer": {
-            "Digest": "sha256:d91c60c385f55c40846721405941262b4f32be622ae01dc8283fdd05e28c310a",
-            "DiffID": "sha256:4c045ac3fb1b9ac8209b3b804ebefe127128270d8c6dc29e84a6e5ee3246139e"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-6276",
-          "DataSource": {
-            "ID": "debian",
-            "Name": "Debian Security Tracker",
-            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
-          },
-          "Fingerprint": "sha256:52e3d65d91f24e99aebee39dab4009206060ddff698cd3014255dbdc4f0d7d8e",
-          "Title": "curl: libcurl: Information disclosure due to cookie leak when reusing connections with custom Host headers",
-          "Description": "Using libcurl, when a custom `Host:` header is first set for an HTTP request\nand a second request is subsequently done using the same *easy handle* but\nwithout the custom `Host:` header set, the second request would use stale\ninformation and pass on cookies meant for the first host in the second\nrequest. Leak them.",
-          "Severity": "LOW",
-          "VendorSeverity": {
-            "photon": 2,
-            "redhat": 1,
-            "ubuntu": 1
-          },
-          "CVSS": {
-            "redhat": {
-              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N",
-              "V3Score": 3.7
-            }
-          },
-          "References": [
-            "http://www.openwall.com/lists/oss-security/2026/04/29/13",
-            "https://access.redhat.com/security/cve/CVE-2026-6276",
-            "https://curl.se/docs/CVE-2026-6276.html",
-            "https://curl.se/docs/CVE-2026-6276.json",
-            "https://hackerone.com/reports/3671818",
-            "https://nvd.nist.gov/vuln/detail/CVE-2026-6276",
-            "https://ubuntu.com/security/notices/USN-8227-1",
-            "https://www.cve.org/CVERecord?id=CVE-2026-6276"
-          ],
-          "PublishedDate": "2026-05-13T13:01:56.8Z",
-          "LastModifiedDate": "2026-05-13T18:16:20.403Z"
         },
         {
           "VulnerabilityID": "CVE-2026-2219",
@@ -56648,9 +56763,14 @@
           ],
           "VendorSeverity": {
             "azure": 1,
+            "julia": 2,
             "redhat": 2
           },
           "CVSS": {
+            "julia": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:H",
+              "V3Score": 6.7
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 7.5
@@ -56659,6 +56779,7 @@
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-41989",
             "https://dev.gnupg.org/T8211",
+            "https://github.com/advisories/GHSA-wrv8-79m2-qg24",
             "https://lists.gnupg.org/pipermail/gnupg-announce/2026q2/000503.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-41989",
             "https://www.cve.org/CVERecord?id=CVE-2026-41989",
@@ -56885,13 +57006,14 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:13274",
             "https://access.redhat.com/security/cve/CVE-2026-42010",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2467289",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-42010",
             "https://www.cve.org/CVERecord?id=CVE-2026-42010"
           ],
           "PublishedDate": "2026-05-07T12:16:17.977Z",
-          "LastModifiedDate": "2026-05-13T13:54:56.233Z"
+          "LastModifiedDate": "2026-05-14T23:16:36.52Z"
         },
         {
           "VulnerabilityID": "CVE-2026-33846",
@@ -57029,13 +57151,14 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:13274",
             "https://access.redhat.com/security/cve/CVE-2026-42011",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2467437",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-42011",
             "https://www.cve.org/CVERecord?id=CVE-2026-42011"
           ],
           "PublishedDate": "2026-05-07T15:16:09.76Z",
-          "LastModifiedDate": "2026-05-07T15:48:55.55Z"
+          "LastModifiedDate": "2026-05-14T23:16:36.667Z"
         },
         {
           "VulnerabilityID": "CVE-2011-3389",
@@ -60964,6 +61087,8 @@
           ],
           "VendorSeverity": {
             "alma": 3,
+            "amazon": 2,
+            "oracle-oval": 3,
             "redhat": 2
           },
           "CVSS": {
@@ -60980,6 +61105,8 @@
             "https://cems.fun/2026/04/27/krb5-two-unauthenticated-network-vulnerabilities.html",
             "https://errata.almalinux.org/8/ALSA-2026-16799.html",
             "https://github.com/krb5/krb5/commit/2e75f0d9362fb979f5fc92829431a590a130929f",
+            "https://linux.oracle.com/cve/CVE-2026-40355.html",
+            "https://linux.oracle.com/errata/ELSA-2026-16799.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-40355",
             "https://web.mit.edu/kerberos/advisories/",
             "https://www.cve.org/CVERecord?id=CVE-2026-40355"
@@ -61016,6 +61143,8 @@
           ],
           "VendorSeverity": {
             "alma": 3,
+            "amazon": 2,
+            "oracle-oval": 3,
             "redhat": 3
           },
           "CVSS": {
@@ -61032,6 +61161,8 @@
             "https://cems.fun/2026/04/27/krb5-two-unauthenticated-network-vulnerabilities.html",
             "https://errata.almalinux.org/8/ALSA-2026-16799.html",
             "https://github.com/krb5/krb5/commit/2e75f0d9362fb979f5fc92829431a590a130929f",
+            "https://linux.oracle.com/cve/CVE-2026-40356.html",
+            "https://linux.oracle.com/errata/ELSA-2026-16799.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-40356",
             "https://web.mit.edu/kerberos/advisories/",
             "https://www.cve.org/CVERecord?id=CVE-2026-40356"
@@ -61452,11 +61583,11 @@
             }
           },
           "References": [
-            "https://access.redhat.com/errata/RHSA-2026:16252",
+            "https://access.redhat.com/errata/RHSA-2026:16693",
             "https://access.redhat.com/security/cve/CVE-2026-40164",
             "https://bugzilla.redhat.com/2458077",
             "https://bugzilla.redhat.com/2458084",
-            "https://errata.almalinux.org/8/ALSA-2026-16252.html",
+            "https://errata.almalinux.org/9/ALSA-2026-16693.html",
             "https://github.com/jqlang/jq/commit/0c7d133c3c7e37c00b6d46b658a02244fdd3c784",
             "https://github.com/jqlang/jq/security/advisories/GHSA-wwj8-gxm6-jc29",
             "https://linux.oracle.com/cve/CVE-2026-40164.html",
@@ -61500,7 +61631,7 @@
           "VendorSeverity": {
             "azure": 2,
             "nvd": 2,
-            "photon": 3,
+            "photon": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -61671,7 +61802,7 @@
             "azure": 2,
             "nvd": 2,
             "oracle-oval": 3,
-            "photon": 3,
+            "photon": 2,
             "redhat": 3,
             "ubuntu": 2
           },
@@ -61686,11 +61817,11 @@
             }
           },
           "References": [
-            "https://access.redhat.com/errata/RHSA-2026:16252",
+            "https://access.redhat.com/errata/RHSA-2026:16693",
             "https://access.redhat.com/security/cve/CVE-2026-39979",
             "https://bugzilla.redhat.com/2458077",
             "https://bugzilla.redhat.com/2458084",
-            "https://errata.almalinux.org/8/ALSA-2026-16252.html",
+            "https://errata.almalinux.org/9/ALSA-2026-16693.html",
             "https://github.com/jqlang/jq/commit/2f09060afab23fe9390cce7cb860b10416e1bf5f",
             "https://github.com/jqlang/jq/security/advisories/GHSA-2hhh-px8h-355p",
             "https://linux.oracle.com/cve/CVE-2026-39979.html",
@@ -61725,23 +61856,31 @@
             "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
           },
           "Fingerprint": "sha256:59e2e1ce8379503e4ac9ac337083a1cd53c74689d2b761d82d396f2ce314f952",
-          "Title": "jq is a command-line JSON processor. In 1.8.1 and earlier, jv_contains ...",
+          "Title": "jq: stack overflow via unbounded recursion in jv_contains",
           "Description": "jq is a command-line JSON processor. In 1.8.1 and earlier, jv_contains recurses into nested arrays/objects with no depth limit. With a sufficiently nested input structure (built programmatically with reduce, since the JSON parser caps at depth 10000), the C stack is exhausted.",
           "Severity": "MEDIUM",
           "CweIDs": [
             "CWE-674"
           ],
           "VendorSeverity": {
-            "nvd": 2
+            "nvd": 2,
+            "redhat": 2
           },
           "CVSS": {
             "nvd": {
               "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
               "V3Score": 5.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+              "V3Score": 5.5
             }
           },
           "References": [
-            "https://github.com/jqlang/jq/security/advisories/GHSA-r7m6-x9c7-h69j"
+            "https://access.redhat.com/security/cve/CVE-2026-40612",
+            "https://github.com/jqlang/jq/security/advisories/GHSA-r7m6-x9c7-h69j",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-40612",
+            "https://www.cve.org/CVERecord?id=CVE-2026-40612"
           ],
           "PublishedDate": "2026-05-11T18:16:33.67Z",
           "LastModifiedDate": "2026-05-13T17:00:14.59Z"
@@ -61768,7 +61907,7 @@
             "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
           },
           "Fingerprint": "sha256:d8271977d1cc2141938c5c38343d785ef707bb79286032ff4f5ff6ef0e9c8976",
-          "Title": "jq is a command-line JSON processor. In 1.8.1 and earlier, the jq byte ...",
+          "Title": "jq: signed-int overflow in stack_reallocate",
           "Description": "jq is a command-line JSON processor. In 1.8.1 and earlier, the jq bytecode VM's data stack tracks its allocation size in a signed int. When the stack grows beyond ≈1 GiB (via deeply nested generator forks), the doubling arithmetic overflows. The wrapped value is passed to realloc and then used for a memmove with attacker-influenced offsets.",
           "Severity": "MEDIUM",
           "CweIDs": [
@@ -61776,16 +61915,24 @@
             "CWE-787"
           ],
           "VendorSeverity": {
-            "nvd": 2
+            "nvd": 2,
+            "redhat": 2
           },
           "CVSS": {
             "nvd": {
               "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
               "V3Score": 5.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+              "V3Score": 5.5
             }
           },
           "References": [
-            "https://github.com/jqlang/jq/security/advisories/GHSA-4jm8-m363-4539"
+            "https://access.redhat.com/security/cve/CVE-2026-41257",
+            "https://github.com/jqlang/jq/security/advisories/GHSA-4jm8-m363-4539",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-41257",
+            "https://www.cve.org/CVERecord?id=CVE-2026-41257"
           ],
           "PublishedDate": "2026-05-11T18:16:34.127Z",
           "LastModifiedDate": "2026-05-13T17:01:01.423Z"
@@ -61863,23 +62010,31 @@
             "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
           },
           "Fingerprint": "sha256:a82e0f4434ccffa3ec6427e90145fc67982fce53699f5984e624e1ec4fbf73b8",
-          "Title": "jq is a command-line JSON processor. In 1.8.1 and earlier, unbounded r ...",
+          "Title": "jq: stack overflow in recursive object merge",
           "Description": "jq is a command-line JSON processor. In 1.8.1 and earlier, unbounded recursion in jv_object_merge_recursive() allows a crafted jq program to crash the process with a segfault. The function is reachable through the * operator when both operands are objects.",
           "Severity": "MEDIUM",
           "CweIDs": [
             "CWE-674"
           ],
           "VendorSeverity": {
-            "nvd": 2
+            "nvd": 2,
+            "redhat": 2
           },
           "CVSS": {
             "nvd": {
               "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 5.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+              "V3Score": 5.5
             }
           },
           "References": [
-            "https://github.com/jqlang/jq/security/advisories/GHSA-mg96-6h3q-g846"
+            "https://access.redhat.com/security/cve/CVE-2026-43896",
+            "https://github.com/jqlang/jq/security/advisories/GHSA-mg96-6h3q-g846",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-43896",
+            "https://www.cve.org/CVERecord?id=CVE-2026-43896"
           ],
           "PublishedDate": "2026-05-11T18:16:37.53Z",
           "LastModifiedDate": "2026-05-13T22:34:34.033Z"
@@ -61906,23 +62061,31 @@
             "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
           },
           "Fingerprint": "sha256:a5b530db62a60274327706bc0b6777c063325e89f0a37b97d79e78ec17c94e63",
-          "Title": "jq is a command-line JSON processor. In 1.8.2rc1 and earlier, the ordi ...",
+          "Title": "jq: stack overflow in module loading on mutual include",
           "Description": "jq is a command-line JSON processor. In 1.8.2rc1 and earlier, the ordinary module loader recurses without cycle detection when two\notherwise valid modules include each other.",
           "Severity": "MEDIUM",
           "CweIDs": [
             "CWE-674"
           ],
           "VendorSeverity": {
-            "nvd": 2
+            "nvd": 2,
+            "redhat": 2
           },
           "CVSS": {
             "nvd": {
               "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
               "V3Score": 5.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+              "V3Score": 5.5
             }
           },
           "References": [
-            "https://github.com/jqlang/jq/security/advisories/GHSA-rmpv-jgvr-wpr9"
+            "https://access.redhat.com/security/cve/CVE-2026-44777",
+            "https://github.com/jqlang/jq/security/advisories/GHSA-rmpv-jgvr-wpr9",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-44777",
+            "https://www.cve.org/CVERecord?id=CVE-2026-44777"
           ],
           "PublishedDate": "2026-05-11T18:16:38.517Z",
           "LastModifiedDate": "2026-05-13T17:05:31.31Z"
@@ -62154,6 +62317,8 @@
           ],
           "VendorSeverity": {
             "alma": 3,
+            "amazon": 2,
+            "oracle-oval": 3,
             "redhat": 2
           },
           "CVSS": {
@@ -62170,6 +62335,8 @@
             "https://cems.fun/2026/04/27/krb5-two-unauthenticated-network-vulnerabilities.html",
             "https://errata.almalinux.org/8/ALSA-2026-16799.html",
             "https://github.com/krb5/krb5/commit/2e75f0d9362fb979f5fc92829431a590a130929f",
+            "https://linux.oracle.com/cve/CVE-2026-40355.html",
+            "https://linux.oracle.com/errata/ELSA-2026-16799.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-40355",
             "https://web.mit.edu/kerberos/advisories/",
             "https://www.cve.org/CVERecord?id=CVE-2026-40355"
@@ -62206,6 +62373,8 @@
           ],
           "VendorSeverity": {
             "alma": 3,
+            "amazon": 2,
+            "oracle-oval": 3,
             "redhat": 3
           },
           "CVSS": {
@@ -62222,6 +62391,8 @@
             "https://cems.fun/2026/04/27/krb5-two-unauthenticated-network-vulnerabilities.html",
             "https://errata.almalinux.org/8/ALSA-2026-16799.html",
             "https://github.com/krb5/krb5/commit/2e75f0d9362fb979f5fc92829431a590a130929f",
+            "https://linux.oracle.com/cve/CVE-2026-40356.html",
+            "https://linux.oracle.com/errata/ELSA-2026-16799.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-40356",
             "https://web.mit.edu/kerberos/advisories/",
             "https://www.cve.org/CVERecord?id=CVE-2026-40356"
@@ -62453,6 +62624,8 @@
           ],
           "VendorSeverity": {
             "alma": 3,
+            "amazon": 2,
+            "oracle-oval": 3,
             "redhat": 2
           },
           "CVSS": {
@@ -62469,6 +62642,8 @@
             "https://cems.fun/2026/04/27/krb5-two-unauthenticated-network-vulnerabilities.html",
             "https://errata.almalinux.org/8/ALSA-2026-16799.html",
             "https://github.com/krb5/krb5/commit/2e75f0d9362fb979f5fc92829431a590a130929f",
+            "https://linux.oracle.com/cve/CVE-2026-40355.html",
+            "https://linux.oracle.com/errata/ELSA-2026-16799.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-40355",
             "https://web.mit.edu/kerberos/advisories/",
             "https://www.cve.org/CVERecord?id=CVE-2026-40355"
@@ -62505,6 +62680,8 @@
           ],
           "VendorSeverity": {
             "alma": 3,
+            "amazon": 2,
+            "oracle-oval": 3,
             "redhat": 3
           },
           "CVSS": {
@@ -62521,6 +62698,8 @@
             "https://cems.fun/2026/04/27/krb5-two-unauthenticated-network-vulnerabilities.html",
             "https://errata.almalinux.org/8/ALSA-2026-16799.html",
             "https://github.com/krb5/krb5/commit/2e75f0d9362fb979f5fc92829431a590a130929f",
+            "https://linux.oracle.com/cve/CVE-2026-40356.html",
+            "https://linux.oracle.com/errata/ELSA-2026-16799.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-40356",
             "https://web.mit.edu/kerberos/advisories/",
             "https://www.cve.org/CVERecord?id=CVE-2026-40356"
@@ -62752,6 +62931,8 @@
           ],
           "VendorSeverity": {
             "alma": 3,
+            "amazon": 2,
+            "oracle-oval": 3,
             "redhat": 2
           },
           "CVSS": {
@@ -62768,6 +62949,8 @@
             "https://cems.fun/2026/04/27/krb5-two-unauthenticated-network-vulnerabilities.html",
             "https://errata.almalinux.org/8/ALSA-2026-16799.html",
             "https://github.com/krb5/krb5/commit/2e75f0d9362fb979f5fc92829431a590a130929f",
+            "https://linux.oracle.com/cve/CVE-2026-40355.html",
+            "https://linux.oracle.com/errata/ELSA-2026-16799.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-40355",
             "https://web.mit.edu/kerberos/advisories/",
             "https://www.cve.org/CVERecord?id=CVE-2026-40355"
@@ -62804,6 +62987,8 @@
           ],
           "VendorSeverity": {
             "alma": 3,
+            "amazon": 2,
+            "oracle-oval": 3,
             "redhat": 3
           },
           "CVSS": {
@@ -62820,6 +63005,8 @@
             "https://cems.fun/2026/04/27/krb5-two-unauthenticated-network-vulnerabilities.html",
             "https://errata.almalinux.org/8/ALSA-2026-16799.html",
             "https://github.com/krb5/krb5/commit/2e75f0d9362fb979f5fc92829431a590a130929f",
+            "https://linux.oracle.com/cve/CVE-2026-40356.html",
+            "https://linux.oracle.com/errata/ELSA-2026-16799.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-40356",
             "https://web.mit.edu/kerberos/advisories/",
             "https://www.cve.org/CVERecord?id=CVE-2026-40356"
@@ -64838,6 +65025,9 @@
         },
         {
           "VulnerabilityID": "CVE-2026-27135",
+          "VendorIDs": [
+            "DSA-6266-1"
+          ],
           "PkgID": "libnghttp2-14@1.52.0-1+deb12u2",
           "PkgName": "libnghttp2-14",
           "PkgIdentifier": {
@@ -64845,7 +65035,8 @@
             "UID": "f550c77239f60f59"
           },
           "InstalledVersion": "1.52.0-1+deb12u2",
-          "Status": "affected",
+          "FixedVersion": "1.52.0-1+deb12u3",
+          "Status": "fixed",
           "Layer": {
             "Digest": "sha256:d91c60c385f55c40846721405941262b4f32be622ae01dc8283fdd05e28c310a",
             "DiffID": "sha256:4c045ac3fb1b9ac8209b3b804ebefe127128270d8c6dc29e84a6e5ee3246139e"
@@ -65161,6 +65352,7 @@
           ],
           "VendorSeverity": {
             "alma": 3,
+            "amazon": 3,
             "oracle-oval": 3,
             "redhat": 2,
             "rocky": 3,
@@ -65252,7 +65444,7 @@
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-6785",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-6786",
             "https://errata.almalinux.org/9/ALSA-2026-15892.html",
-            "https://errata.rockylinux.org/RLSA-2026:10757",
+            "https://errata.rockylinux.org/RLSA-2026:15892",
             "https://linux.oracle.com/cve/CVE-2026-6766.html",
             "https://linux.oracle.com/errata/ELSA-2026-15892.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-6766",
@@ -65298,6 +65490,7 @@
           ],
           "VendorSeverity": {
             "alma": 3,
+            "amazon": 3,
             "oracle-oval": 3,
             "redhat": 2,
             "rocky": 3,
@@ -65389,7 +65582,7 @@
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-6785",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-6786",
             "https://errata.almalinux.org/9/ALSA-2026-15892.html",
-            "https://errata.rockylinux.org/RLSA-2026:10757",
+            "https://errata.rockylinux.org/RLSA-2026:15892",
             "https://linux.oracle.com/cve/CVE-2026-6767.html",
             "https://linux.oracle.com/errata/ELSA-2026-15892.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-6767",
@@ -65436,6 +65629,7 @@
           ],
           "VendorSeverity": {
             "alma": 3,
+            "amazon": 3,
             "oracle-oval": 3,
             "redhat": 2,
             "rocky": 3,
@@ -65527,7 +65721,7 @@
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-6785",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-6786",
             "https://errata.almalinux.org/9/ALSA-2026-15892.html",
-            "https://errata.rockylinux.org/RLSA-2026:10757",
+            "https://errata.rockylinux.org/RLSA-2026:15892",
             "https://linux.oracle.com/cve/CVE-2026-6772.html",
             "https://linux.oracle.com/errata/ELSA-2026-15892.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-6772",
@@ -67153,7 +67347,7 @@
             "azure": 2,
             "cbl-mariner": 2,
             "oracle-oval": 2,
-            "photon": 3,
+            "photon": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -67217,6 +67411,7 @@
             "CWE-669"
           ],
           "VendorSeverity": {
+            "photon": 2,
             "redhat": 2
           },
           "CVSS": {
@@ -67262,6 +67457,7 @@
             "CWE-348"
           ],
           "VendorSeverity": {
+            "photon": 2,
             "redhat": 2
           },
           "CVSS": {
@@ -68033,7 +68229,7 @@
             "azure": 2,
             "cbl-mariner": 2,
             "oracle-oval": 2,
-            "photon": 3,
+            "photon": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -68097,6 +68293,7 @@
             "CWE-669"
           ],
           "VendorSeverity": {
+            "photon": 2,
             "redhat": 2
           },
           "CVSS": {
@@ -68142,6 +68339,7 @@
             "CWE-348"
           ],
           "VendorSeverity": {
+            "photon": 2,
             "redhat": 2
           },
           "CVSS": {
@@ -79007,7 +79205,7 @@
             "alma": 2,
             "nvd": 3,
             "oracle-oval": 2,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "rocky": 2,
             "ubuntu": 2
@@ -79189,7 +79387,7 @@
             "azure": 3,
             "nvd": 3,
             "oracle-oval": 2,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "rocky": 2,
             "ubuntu": 2
@@ -79607,7 +79805,7 @@
             "alma": 3,
             "amazon": 3,
             "oracle-oval": 3,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "rocky": 3,
             "ubuntu": 2
@@ -79646,7 +79844,7 @@
             "https://git.kernel.org/stable/c/bc4e5bb529823a09f02dbe96169de679a9db26e0",
             "https://git.kernel.org/stable/c/fb3c380a54e33d1fd272cc342faa906d787d7ef1",
             "https://linux.oracle.com/cve/CVE-2026-23270.html",
-            "https://linux.oracle.com/errata/ELSA-2026-13566.html",
+            "https://linux.oracle.com/errata/ELSA-2026-50271.html",
             "https://lore.kernel.org/linux-cve-announce/2026031847-CVE-2026-23270-cb9a@gregkh/T",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-23270",
             "https://www.cve.org/CVERecord?id=CVE-2026-23270"
@@ -79754,7 +79952,7 @@
           "VendorSeverity": {
             "azure": 3,
             "nvd": 3,
-            "photon": 1,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -79943,7 +80141,7 @@
             "amazon": 3,
             "azure": 3,
             "nvd": 3,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -80132,7 +80330,7 @@
           ],
           "VendorSeverity": {
             "nvd": 3,
-            "photon": 2,
+            "photon": 3,
             "ubuntu": 2
           },
           "CVSS": {
@@ -80193,7 +80391,7 @@
             "amazon": 3,
             "azure": 2,
             "nvd": 3,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -80259,7 +80457,7 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 3,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -80317,7 +80515,7 @@
           "VendorSeverity": {
             "azure": 4,
             "nvd": 3,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -80451,7 +80649,7 @@
           ],
           "VendorSeverity": {
             "nvd": 3,
-            "photon": 2
+            "photon": 3
           },
           "CVSS": {
             "nvd": {
@@ -80623,7 +80821,7 @@
           "Severity": "HIGH",
           "VendorSeverity": {
             "amazon": 3,
-            "photon": 3,
+            "photon": 4,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -80683,7 +80881,7 @@
             "alma": 3,
             "amazon": 3,
             "oracle-oval": 3,
-            "photon": 3,
+            "photon": 4,
             "redhat": 3,
             "rocky": 3,
             "ubuntu": 2
@@ -80722,7 +80920,7 @@
             "https://git.kernel.org/stable/c/dad0c3c0a8e5d1d6eb0fc455694ce3e25e6c57d0",
             "https://git.kernel.org/stable/c/f9fcb4441f6c02bb20c2eb340101e27dfe23607c",
             "https://linux.oracle.com/cve/CVE-2026-31402.html",
-            "https://linux.oracle.com/errata/ELSA-2026-13577.html",
+            "https://linux.oracle.com/errata/ELSA-2026-50271.html",
             "https://lore.kernel.org/linux-cve-announce/2026040327-CVE-2026-31402-3e6a@gregkh/T",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-31402",
             "https://www.cve.org/CVERecord?id=CVE-2026-31402"
@@ -81120,7 +81318,7 @@
             "amazon": 3,
             "azure": 2,
             "nvd": 3,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -81188,7 +81386,7 @@
             "amazon": 3,
             "azure": 2,
             "nvd": 3,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -82274,8 +82472,8 @@
           },
           "CVSS": {
             "redhat": {
-              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:H",
-              "V3Score": 7.3
+              "V3Vector": "CVSS:3.1/AV:A/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 7.5
             }
           },
           "References": [
@@ -82433,6 +82631,7 @@
             "CWE-416"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "nvd": 3,
             "redhat": 2,
             "ubuntu": 2
@@ -82646,13 +82845,13 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nsmb: client: validate the whole DACL before rewriting it in cifsacl\n\nbuild_sec_desc() and id_mode_to_cifs_acl() derive a DACL pointer from a\nserver-supplied dacloffset and then use the incoming ACL to rebuild the\nchmod/chown security descriptor.\n\nThe original fix only checked that the struct smb_acl header fits before\nreading dacl_ptr-\u003esize or dacl_ptr-\u003enum_aces.  That avoids the immediate\nheader-field OOB read, but the rewrite helpers still walk ACEs based on\npdacl-\u003enum_aces with no structural validation of the incoming DACL body.\n\nA malicious server can return a truncated DACL that still contains a\nheader, claims one or more ACEs, and then drive\nreplace_sids_and_copy_aces() or set_chmod_dacl() past the validated\nextent while they compare or copy attacker-controlled ACEs.\n\nFactor the DACL structural checks into validate_dacl(), extend them to\nvalidate each ACE against the DACL bounds, and use the shared validator\nbefore the chmod/chown rebuild paths.  parse_dacl() reuses the same\nvalidator so the read-side parser and write-side rewrite paths agree on\nwhat constitutes a well-formed incoming DACL.",
           "Severity": "HIGH",
           "VendorSeverity": {
-            "redhat": 2,
+            "redhat": 3,
             "ubuntu": 2
           },
           "CVSS": {
             "redhat": {
-              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:H",
-              "V3Score": 7.1
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 7.8
             }
           },
           "References": [
@@ -82990,6 +83189,7 @@
             "CWE-415"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "nvd": 3,
             "redhat": 2,
             "ubuntu": 2
@@ -84252,6 +84452,7 @@
             "CWE-415"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "nvd": 3,
             "redhat": 3,
             "ubuntu": 2
@@ -84428,6 +84629,7 @@
             "CWE-787"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -84484,6 +84686,7 @@
             "CWE-787"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "redhat": 3,
             "ubuntu": 2
           },
@@ -84656,6 +84859,7 @@
             "CWE-362"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "redhat": 3,
             "ubuntu": 2
           },
@@ -85093,6 +85297,7 @@
             "CWE-125"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "nvd": 3,
             "redhat": 2,
             "ubuntu": 2
@@ -85157,8 +85362,9 @@
           "VendorSeverity": {
             "alma": 3,
             "amazon": 3,
+            "azure": 3,
             "oracle-oval": 3,
-            "photon": 4,
+            "photon": 3,
             "redhat": 3
           },
           "CVSS": {
@@ -85170,6 +85376,8 @@
           "References": [
             "http://www.openwall.com/lists/oss-security/2026/05/08/7",
             "http://www.openwall.com/lists/oss-security/2026/05/13/6",
+            "http://www.openwall.com/lists/oss-security/2026/05/14/2",
+            "http://www.openwall.com/lists/oss-security/2026/05/14/4",
             "https://access.redhat.com/security/cve/CVE-2026-43284",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2467771",
             "https://dirtyfrag.io/",
@@ -85191,7 +85399,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-43284"
           ],
           "PublishedDate": "2026-05-08T08:16:43.827Z",
-          "LastModifiedDate": "2026-05-13T20:16:22.56Z"
+          "LastModifiedDate": "2026-05-14T17:16:22.13Z"
         },
         {
           "VulnerabilityID": "CVE-2026-43303",
@@ -85386,6 +85594,7 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-43500",
+            "https://git.kernel.org/stable/c/3711382a77342a9a1c3d2e7330dcfc7ea927f568",
             "https://git.kernel.org/stable/c/3eae0f4f9f7206a4801efa5e0235c25bbd5a412c",
             "https://git.kernel.org/stable/c/aa54b1d27fe0c2b78e664a34fd0fdf7cd1960d71",
             "https://git.kernel.org/stable/c/d45179f8795222ce858770dc619abe51f9d24411",
@@ -85397,7 +85606,46 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-43500"
           ],
           "PublishedDate": "2026-05-11T08:16:16.077Z",
-          "LastModifiedDate": "2026-05-11T17:16:34.29Z"
+          "LastModifiedDate": "2026-05-14T15:16:47.447Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-46300",
+          "PkgID": "linux-libc-dev@6.1.164-1",
+          "PkgName": "linux-libc-dev",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/linux-libc-dev@6.1.164-1?arch=amd64\u0026distro=debian-12.13",
+            "UID": "da2d793f5c62366b"
+          },
+          "InstalledVersion": "6.1.164-1",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:181beaa8f88bfb4bbb91c762df9a669aacb79f2c8a9b8f7681d685869be0619f",
+            "DiffID": "sha256:d0c77a21ba9c3c053a15863d1d4cb0a7f195658f23e9ef319aa305092e79325f"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-46300",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:c9f3f9dc6da0bd309d81fc44d99a471f1cfff86c29b797072a339da938bd8966",
+          "Title": "kernel: \"Fragnesia\" is a variant of Dirty Frag vulnerability in the ESP/XFRM leading to Local Privilege Escalation (LPE) vulnerability in the Linux kernel",
+          "Description": "A flaw was found in the Linux kernel's XFRM ESP-in-TCP subsystem. This vulnerability, known as Fragnesia, allows a local attacker to achieve arbitrary byte writes into the kernel page cache of read-only files.",
+          "Severity": "HIGH",
+          "VendorSeverity": {
+            "redhat": 3
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 7.8
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-46300",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-46300",
+            "https://www.cve.org/CVERecord?id=CVE-2026-46300"
+          ]
         },
         {
           "VulnerabilityID": "CVE-2019-15213",
@@ -125387,7 +125635,7 @@
             "azure": 2,
             "nvd": 2,
             "oracle-oval": 3,
-            "photon": 3,
+            "photon": 2,
             "redhat": 1,
             "ubuntu": 2
           },
@@ -125766,7 +126014,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nfs: ntfs3: fix infinite loop in attr_load_runs_range on inconsistent metadata\n\nWe found an infinite loop bug in the ntfs3 file system that can lead to a\nDenial-of-Service (DoS) condition.\n\nA malformed NTFS image can cause an infinite loop when an attribute header\nindicates an empty run list, while directory entries reference it as\ncontaining actual data. In NTFS, setting evcn=-1 with svcn=0 is a valid way\nto represent an empty run list, and run_unpack() correctly handles this by\nchecking if evcn + 1 equals svcn and returning early without parsing any run\ndata. However, this creates a problem when there is metadata inconsistency,\nwhere the attribute header claims to be empty (evcn=-1) but the caller\nexpects to read actual data. When run_unpack() immediately returns success\nupon seeing this condition, it leaves the runs_tree uninitialized with\nrun-\u003eruns as a NULL. The calling function attr_load_runs_range() assumes\nthat a successful return means that the runs were loaded and sets clen to 0,\nexpecting the next run_lookup_entry() call to succeed. Because runs_tree\nremains uninitialized, run_lookup_entry() continues to fail, and the loop\nincrements vcn by zero (vcn += 0), leading to an infinite loop.\n\nThis patch adds a retry counter to detect when run_lookup_entry() fails\nconsecutively after attr_load_runs_vcn(). If the run is still not found on\nthe second attempt, it indicates corrupted metadata and returns -EINVAL,\npreventing the Denial-of-Service (DoS) vulnerability.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
-            "amazon": 3,
+            "amazon": 2,
             "azure": 2,
             "photon": 2,
             "ubuntu": 2
@@ -125817,7 +126065,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nfs: ntfs3: check return value of indx_find to avoid infinite loop\n\nWe found an infinite loop bug in the ntfs3 file system that can lead to a\nDenial-of-Service (DoS) condition.\n\nA malformed dentry in the ntfs3 filesystem can cause the kernel to hang\nduring the lookup operations. By setting the HAS_SUB_NODE flag in an\nINDEX_ENTRY within a directory's INDEX_ALLOCATION block and manipulating the\nVCN pointer, an attacker can cause the indx_find() function to repeatedly\nread the same block, allocating 4 KB of memory each time. The kernel lacks\nVCN loop detection and depth limits, causing memory exhaustion and an OOM\ncrash.\n\nThis patch adds a return value check for fnd_push() to prevent a memory\nexhaustion vulnerability caused by infinite loops. When the index exceeds the\nsize of the fnd-\u003enodes array, fnd_push() returns -EINVAL. The indx_find()\nfunction checks this return value and stops processing, preventing further\nmemory allocation.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
-            "amazon": 3,
+            "amazon": 2,
             "azure": 2,
             "photon": 2,
             "ubuntu": 2
@@ -125868,7 +126116,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nfs: ntfs3: fix infinite loop triggered by zero-sized ATTR_LIST\n\nWe found an infinite loop bug in the ntfs3 file system that can lead to a\nDenial-of-Service (DoS) condition.\n\nA malformed NTFS image can cause an infinite loop when an ATTR_LIST attribute\nindicates a zero data size while the driver allocates memory for it.\n\nWhen ntfs_load_attr_list() processes a resident ATTR_LIST with data_size set\nto zero, it still allocates memory because of al_aligned(0). This creates an\ninconsistent state where ni-\u003eattr_list.size is zero, but ni-\u003eattr_list.le is\nnon-null. This causes ni_enum_attr_ex to incorrectly assume that no attribute\nlist exists and enumerates only the primary MFT record. When it finds\nATTR_LIST, the code reloads it and restarts the enumeration, repeating\nindefinitely. The mount operation never completes, hanging the kernel thread.\n\nThis patch adds validation to ensure that data_size is non-zero before memory\nallocation. When a zero-sized ATTR_LIST is detected, the function returns\n-EINVAL, preventing a DoS vulnerability.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
-            "amazon": 3,
+            "amazon": 2,
             "azure": 2,
             "photon": 2,
             "ubuntu": 2
@@ -126520,6 +126768,7 @@
             "Digest": "sha256:181beaa8f88bfb4bbb91c762df9a669aacb79f2c8a9b8f7681d685869be0619f",
             "DiffID": "sha256:d0c77a21ba9c3c053a15863d1d4cb0a7f195658f23e9ef319aa305092e79325f"
           },
+          "SeveritySource": "nvd",
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2025-71297",
           "DataSource": {
             "ID": "debian",
@@ -126531,9 +126780,14 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nwifi: rtw88: 8822b: Avoid WARNING in rtw8822b_config_trx_mode()\n\nrtw8822b_set_antenna() can be called from userspace when the chip is\npowered off. In that case a WARNING is triggered in\nrtw8822b_config_trx_mode() because trying to read the RF registers\nwhen the chip is powered off returns an unexpected value.\n\nCall rtw8822b_config_trx_mode() in rtw8822b_set_antenna() only when\nthe chip is powered on.\n\n------------[ cut here ]------------\nwrite RF mode table fail\nWARNING: CPU: 0 PID: 7183 at rtw8822b.c:824 rtw8822b_config_trx_mode.constprop.0+0x835/0x840 [rtw88_8822b]\nCPU: 0 UID: 0 PID: 7183 Comm: iw Tainted: G        W  OE       6.17.5-arch1-1 #1 PREEMPT(full)  01c39fc421df2af799dd5e9180b572af860b40c1\nTainted: [W]=WARN, [O]=OOT_MODULE, [E]=UNSIGNED_MODULE\nHardware name: LENOVO 82KR/LNVNB161216, BIOS HBCN18WW 08/27/2021\nRIP: 0010:rtw8822b_config_trx_mode.constprop.0+0x835/0x840 [rtw88_8822b]\nCall Trace:\n \u003cTASK\u003e\n rtw8822b_set_antenna+0x57/0x70 [rtw88_8822b 370206f42e5890d8d5f48eb358b759efa37c422b]\n rtw_ops_set_antenna+0x50/0x80 [rtw88_core 711c8fb4f686162be4625b1d0b8e8c6a5ac850fb]\n ieee80211_set_antenna+0x60/0x100 [mac80211 f1845d85d2ecacf3b71867635a050ece90486cf3]\n nl80211_set_wiphy+0x384/0xe00 [cfg80211 296485ee85696d2150309a6d21a7fbca83d3dbda]\n ? netdev_run_todo+0x63/0x550\n genl_family_rcv_msg_doit+0xfc/0x160\n genl_rcv_msg+0x1aa/0x2b0\n ? __pfx_nl80211_pre_doit+0x10/0x10 [cfg80211 296485ee85696d2150309a6d21a7fbca83d3dbda]\n ? __pfx_nl80211_set_wiphy+0x10/0x10 [cfg80211 296485ee85696d2150309a6d21a7fbca83d3dbda]\n ? __pfx_nl80211_post_doit+0x10/0x10 [cfg80211 296485ee85696d2150309a6d21a7fbca83d3dbda]\n ? __pfx_genl_rcv_msg+0x10/0x10\n netlink_rcv_skb+0x59/0x110\n genl_rcv+0x28/0x40\n netlink_unicast+0x285/0x3c0\n ? __alloc_skb+0xdb/0x1a0\n netlink_sendmsg+0x20d/0x430\n ____sys_sendmsg+0x39f/0x3d0\n ? import_iovec+0x2f/0x40\n ___sys_sendmsg+0x99/0xe0\n ? refill_obj_stock+0x12e/0x240\n __sys_sendmsg+0x8a/0xf0\n do_syscall_64+0x81/0x970\n ? do_syscall_64+0x81/0x970\n ? ksys_read+0x73/0xf0\n ? do_syscall_64+0x81/0x970\n ? count_memcg_events+0xc2/0x190\n ? handle_mm_fault+0x1d7/0x2d0\n ? do_user_addr_fault+0x21a/0x690\n ? exc_page_fault+0x7e/0x1a0\n entry_SYSCALL_64_after_hwframe+0x76/0x7e\n \u003c/TASK\u003e\n---[ end trace 0000000000000000 ]---",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "nvd": 2,
             "redhat": 2
           },
           "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 5.5
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 5.5
@@ -126552,7 +126806,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2025-71297"
           ],
           "PublishedDate": "2026-05-08T14:16:31Z",
-          "LastModifiedDate": "2026-05-12T14:10:27.343Z"
+          "LastModifiedDate": "2026-05-14T19:20:43.51Z"
         },
         {
           "VulnerabilityID": "CVE-2026-22996",
@@ -127596,7 +127850,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nespintcp: Fix race condition in espintcp_close()\n\nThis issue was discovered during a code audit.\n\nAfter cancel_work_sync() is called from espintcp_close(),\nespintcp_tx_work() can still be scheduled from paths such as\nthe Delayed ACK handler or ksoftirqd.\nAs a result, the espintcp_tx_work() worker may dereference a\nfreed espintcp ctx or sk.\n\nThe following is a simple race scenario:\n\n           cpu0                             cpu1\n\n  espintcp_close()\n    cancel_work_sync(\u0026ctx-\u003ework);\n                                     espintcp_write_space()\n                                       schedule_work(\u0026ctx-\u003ework);\n\nTo prevent this race condition, cancel_work_sync() is\nreplaced with disable_work_sync().",
           "Severity": "MEDIUM",
           "VendorSeverity": {
-            "amazon": 3,
+            "amazon": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -127645,7 +127899,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\ntls: Fix race condition in tls_sw_cancel_work_tx()\n\nThis issue was discovered during a code audit.\n\nAfter cancel_delayed_work_sync() is called from tls_sk_proto_close(),\ntx_work_handler() can still be scheduled from paths such as the\nDelayed ACK handler or ksoftirqd.\nAs a result, the tx_work_handler() worker may dereference a freed\nTLS object.\n\nThe following is a simple race scenario:\n\n          cpu0                         cpu1\n\ntls_sk_proto_close()\n  tls_sw_cancel_work_tx()\n                                 tls_write_space()\n                                   tls_sw_write_space()\n                                     if (!test_and_set_bit(BIT_TX_SCHEDULED, \u0026tx_ctx-\u003etx_bitmask))\n    set_bit(BIT_TX_SCHEDULED, \u0026ctx-\u003etx_bitmask);\n    cancel_delayed_work_sync(\u0026ctx-\u003etx_work.work);\n                                     schedule_delayed_work(\u0026tx_ctx-\u003etx_work.work, 0);\n\nTo prevent this race condition, cancel_delayed_work_sync() is\nreplaced with disable_delayed_work_sync().",
           "Severity": "MEDIUM",
           "VendorSeverity": {
-            "amazon": 3,
+            "amazon": 2,
             "oracle-oval": 3,
             "redhat": 2,
             "ubuntu": 2
@@ -127858,7 +128112,7 @@
           "Severity": "MEDIUM",
           "VendorSeverity": {
             "azure": 2,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -128178,7 +128432,7 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -128337,6 +128591,7 @@
           "Severity": "MEDIUM",
           "VendorSeverity": {
             "amazon": 3,
+            "oracle-oval": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -128352,6 +128607,8 @@
             "https://git.kernel.org/stable/c/7cb9a23d7ae40a702577d3d8bacb7026f04ac2a9",
             "https://git.kernel.org/stable/c/de47a88c6b807910f05703fb6605f7efdaa11417",
             "https://git.kernel.org/stable/c/eb0948fa13298212c5f8b30ee48efdae4389ab09",
+            "https://linux.oracle.com/cve/CVE-2026-23278.html",
+            "https://linux.oracle.com/errata/ELSA-2026-50270.html",
             "https://lore.kernel.org/linux-cve-announce/2026032036-CVE-2026-23278-4dcc@gregkh/T",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-23278",
             "https://www.cve.org/CVERecord?id=CVE-2026-23278"
@@ -129457,7 +129714,7 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -129691,7 +129948,7 @@
           "VendorSeverity": {
             "amazon": 3,
             "nvd": 2,
-            "photon": 1,
+            "photon": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -130487,7 +130744,7 @@
           "VendorSeverity": {
             "azure": 3,
             "nvd": 2,
-            "photon": 3,
+            "photon": 2,
             "redhat": 1,
             "ubuntu": 2
           },
@@ -130906,7 +131163,7 @@
             "amazon": 3,
             "azure": 2,
             "nvd": 2,
-            "photon": 3,
+            "photon": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -131144,7 +131401,7 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -131308,7 +131565,7 @@
           "VendorSeverity": {
             "azure": 2,
             "nvd": 2,
-            "photon": 3,
+            "photon": 2,
             "ubuntu": 2
           },
           "CVSS": {
@@ -131371,7 +131628,7 @@
             "amazon": 3,
             "azure": 2,
             "nvd": 2,
-            "photon": 3,
+            "photon": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -131898,7 +132155,7 @@
           ],
           "VendorSeverity": {
             "nvd": 2,
-            "photon": 3,
+            "photon": 2,
             "ubuntu": 2
           },
           "CVSS": {
@@ -132022,7 +132279,7 @@
           "VendorSeverity": {
             "azure": 2,
             "nvd": 2,
-            "photon": 3,
+            "photon": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -132082,7 +132339,7 @@
           "VendorSeverity": {
             "azure": 2,
             "nvd": 2,
-            "photon": 3,
+            "photon": 2,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -132303,7 +132560,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nnet/smc: fix NULL dereference and UAF in smc_tcp_syn_recv_sock()\n\nSyzkaller reported a panic in smc_tcp_syn_recv_sock() [1].\n\nsmc_tcp_syn_recv_sock() is called in the TCP receive path\n(softirq) via icsk_af_ops-\u003esyn_recv_sock on the clcsock (TCP\nlistening socket). It reads sk_user_data to get the smc_sock\npointer. However, when the SMC listen socket is being closed\nconcurrently, smc_close_active() sets clcsock-\u003esk_user_data\nto NULL under sk_callback_lock, and then the smc_sock itself\ncan be freed via sock_put() in smc_release().\n\nThis leads to two issues:\n\n1) NULL pointer dereference: sk_user_data is NULL when\n   accessed.\n2) Use-after-free: sk_user_data is read as non-NULL, but the\n   smc_sock is freed before its fields (e.g., queued_smc_hs,\n   ori_af_ops) are accessed.\n\nThe race window looks like this (the syzkaller crash [1]\ntriggers via the SYN cookie path: tcp_get_cookie_sock() -\u003e\nsmc_tcp_syn_recv_sock(), but the normal tcp_check_req() path\nhas the same race):\n\n  CPU A (softirq)              CPU B (process ctx)\n\n  tcp_v4_rcv()\n    TCP_NEW_SYN_RECV:\n    sk = req-\u003ersk_listener\n    sock_hold(sk)\n    /* No lock on listener */\n                               smc_close_active():\n                                 write_lock_bh(cb_lock)\n                                 sk_user_data = NULL\n                                 write_unlock_bh(cb_lock)\n                                 ...\n                                 smc_clcsock_release()\n                                 sock_put(smc-\u003esk) x2\n                                   -\u003e smc_sock freed!\n    tcp_check_req()\n      smc_tcp_syn_recv_sock():\n        smc = user_data(sk)\n          -\u003e NULL or dangling\n        smc-\u003equeued_smc_hs\n          -\u003e crash!\n\nNote that the clcsock and smc_sock are two independent objects\nwith separate refcounts. TCP stack holds a reference on the\nclcsock, which keeps it alive, but this does NOT prevent the\nsmc_sock from being freed.\n\nFix this by using RCU and refcount_inc_not_zero() to safely\naccess smc_sock. Since smc_tcp_syn_recv_sock() is called in\nthe TCP three-way handshake path, taking read_lock_bh on\nsk_callback_lock is too heavy and would not survive a SYN\nflood attack. Using rcu_read_lock() is much more lightweight.\n\n- Set SOCK_RCU_FREE on the SMC listen socket so that\n  smc_sock freeing is deferred until after the RCU grace\n  period. This guarantees the memory is still valid when\n  accessed inside rcu_read_lock().\n- Use rcu_read_lock() to protect reading sk_user_data.\n- Use refcount_inc_not_zero(\u0026smc-\u003esk.sk_refcnt) to pin the\n  smc_sock. If the refcount has already reached zero (close\n  path completed), it returns false and we bail out safely.\n\nNote: smc_hs_congested() has a similar lockless read of\nsk_user_data without rcu_read_lock(), but it only checks for\nNULL and accesses the global smc_hs_wq, never dereferencing\nany smc_sock field, so it is not affected.\n\nReproducer was verified with mdelay injection and smc_run,\nthe issue no longer occurs with this patch applied.\n\n[1] https://syzkaller.appspot.com/bug?extid=827ae2bfb3a3529333e9",
           "Severity": "MEDIUM",
           "VendorSeverity": {
-            "photon": 3,
+            "photon": 4,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -132474,7 +132731,7 @@
           "Severity": "MEDIUM",
           "VendorSeverity": {
             "amazon": 3,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -133057,7 +133314,7 @@
           "Severity": "MEDIUM",
           "VendorSeverity": {
             "amazon": 3,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -133162,7 +133419,7 @@
           "Severity": "MEDIUM",
           "VendorSeverity": {
             "amazon": 3,
-            "photon": 4,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -133736,7 +133993,7 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 3,
-            "photon": 2,
+            "photon": 4,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -134785,7 +135042,7 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
-            "photon": 1,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -134847,7 +135104,7 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 3,
-            "photon": 2,
+            "photon": 4,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -134959,7 +135216,7 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 3,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -135312,7 +135569,7 @@
             "CWE-125"
           ],
           "VendorSeverity": {
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -135441,7 +135698,7 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -137555,7 +137812,7 @@
           ],
           "VendorSeverity": {
             "azure": 3,
-            "photon": 3,
+            "photon": 4,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -141544,7 +141801,7 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 3,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -141701,6 +141958,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\ncrypto: af_alg - limit RX SG extraction by receive buffer budget\n\nMake af_alg_get_rsgl() limit each RX scatterlist extraction to the\nremaining receive buffer budget.\n\naf_alg_get_rsgl() currently uses af_alg_readable() only as a gate\nbefore extracting data into the RX scatterlist. Limit each extraction\nto the remaining af_alg_rcvbuf(sk) budget so that receive-side\naccounting matches the amount of data attached to the request.\n\nIf skcipher cannot obtain enough RX space for at least one chunk while\nmore data remains to be processed, reject the recvmsg call instead of\nrounding the request length down to zero.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "amazon": 3,
             "nvd": 2,
             "redhat": 1,
             "ubuntu": 2
@@ -141763,7 +142021,7 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -141820,7 +142078,7 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -141879,7 +142137,7 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
-            "photon": 2,
+            "photon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -141994,7 +142252,7 @@
           "VendorSeverity": {
             "amazon": 3,
             "azure": 2,
-            "photon": 2,
+            "photon": 4,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -142277,6 +142535,7 @@
             "CWE-416"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "ubuntu": 2
           },
           "References": [
@@ -144490,6 +144749,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\ndrm/ioc32: stop speculation on the drm_compat_ioctl path\n\nThe drm compat ioctl path takes a user controlled pointer, and then\ndereferences it into a table of function pointers, the signature method\nof spectre problems.  Fix this up by calling array_index_nospec() on the\nindex to the function pointer list.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "amazon": 3,
             "nvd": 2,
             "redhat": 2,
             "ubuntu": 2
@@ -145399,6 +145659,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\ncrypto: authencesn - Do not place hiseq at end of dst for out-of-place decryption\n\nWhen decrypting data that is not in-place (src != dst), there is\nno need to save the high-order sequence bits in dst as it could\nsimply be re-copied from the source.\n\nHowever, the data to be hashed need to be rearranged accordingly.\n\n\nThanks,",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "amazon": 3,
             "azure": 3,
             "oracle-oval": 3,
             "redhat": 2,
@@ -145996,6 +146257,7 @@
             "CWE-772"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "nvd": 2,
             "redhat": 2,
             "ubuntu": 2
@@ -146152,6 +146414,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nnetfilter: nft_ct: drop pending enqueued packets on removal\n\nPackets sitting in nfqueue might hold a reference to:\n\n- templates that specify the conntrack zone, because a percpu area is\n  used and module removal is possible.\n- conntrack timeout policies and helper, where object removal leave\n  a stale reference.\n\nSince these objects can just go away, drop enqueued packets to avoid\nstale reference to them.\n\nIf there is a need for finer grain removal, this logic can be revisited\nto make selective packet drop upon dependencies.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "amazon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -146205,6 +146468,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nserial: 8250: Fix TX deadlock when using DMA\n\n`dmaengine_terminate_async` does not guarantee that the\n`__dma_tx_complete` callback will run. The callback is currently the\nonly place where `dma-\u003etx_running` gets cleared. If the transaction is\ncanceled and the callback never runs, then `dma-\u003etx_running` will never\nget cleared and we will never schedule new TX DMA transactions again.\n\nThis change makes it so we clear `dma-\u003etx_running` after we terminate\nthe DMA transaction. This is \"safe\" because `serial8250_tx_dma_flush`\nis holding the UART port lock. The first thing the callback does is also\ngrab the UART port lock, so access to `dma-\u003etx_running` is serialized.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "amazon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -146362,6 +146626,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\next4: always drain queued discard work in ext4_mb_release()\n\nWhile reviewing recent ext4 patch[1], Sashiko raised the following\nconcern[2]:\n\n\u003e If the filesystem is initially mounted with the discard option,\n\u003e deleting files will populate sbi-\u003es_discard_list and queue\n\u003e s_discard_work. If it is then remounted with nodiscard, the\n\u003e EXT4_MOUNT_DISCARD flag is cleared, but the pending s_discard_work is\n\u003e neither cancelled nor flushed.\n\n[1] https://lore.kernel.org/r/20260319094545.19291-1-qiang.zhang@linux.dev/\n[2] https://sashiko.dev/#/patchset/20260319094545.19291-1-qiang.zhang%40linux.dev\n\nThe concern was valid, but it had nothing to do with the patch[1].\nOne of the problems with Sashiko in its current (early) form is that\nit will detect pre-existing issues and report it as a problem with the\npatch that it is reviewing.\n\nIn practice, it would be hard to hit deliberately (unless you are a\nmalicious syzkaller fuzzer), since it would involve mounting the file\nsystem with -o discard, and then deleting a large number of files,\nremounting the file system with -o nodiscard, and then immediately\nunmounting the file system before the queued discard work has a change\nto drain on its own.\n\nFix it because it's a real bug, and to avoid Sashiko from raising this\nconcern when analyzing future patches to mballoc.c.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "amazon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -146414,6 +146679,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\next4: fix iloc.bh leak in ext4_fc_replay_inode() error paths\n\nDuring code review, Joseph found that ext4_fc_replay_inode() calls\next4_get_fc_inode_loc() to get the inode location, which holds a\nreference to iloc.bh that must be released via brelse().\n\nHowever, several error paths jump to the 'out' label without\nreleasing iloc.bh:\n\n - ext4_handle_dirty_metadata() failure\n - sync_dirty_buffer() failure\n - ext4_mark_inode_used() failure\n - ext4_iget() failure\n\nFix this by introducing an 'out_brelse' label placed just before\nthe existing 'out' label to ensure iloc.bh is always released.\n\nAdditionally, make ext4_fc_replay_inode() propagate errors\nproperly instead of always returning 0.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "amazon": 3,
             "redhat": 1,
             "ubuntu": 2
           },
@@ -146467,6 +146733,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\next4: avoid allocate block from corrupted group in ext4_mb_find_by_goal()\n\nThere's issue as follows:\n...\nEXT4-fs (mmcblk0p1): Delayed block allocation failed for inode 206 at logical offset 0 with max blocks 1 with error 117\nEXT4-fs (mmcblk0p1): This should not happen!! Data will be lost\n\nEXT4-fs (mmcblk0p1): Delayed block allocation failed for inode 206 at logical offset 0 with max blocks 1 with error 117\nEXT4-fs (mmcblk0p1): This should not happen!! Data will be lost\n\nEXT4-fs (mmcblk0p1): Delayed block allocation failed for inode 206 at logical offset 0 with max blocks 1 with error 117\nEXT4-fs (mmcblk0p1): This should not happen!! Data will be lost\n\nEXT4-fs (mmcblk0p1): Delayed block allocation failed for inode 206 at logical offset 0 with max blocks 1 with error 117\nEXT4-fs (mmcblk0p1): This should not happen!! Data will be lost\n\nEXT4-fs (mmcblk0p1): Delayed block allocation failed for inode 2243 at logical offset 0 with max blocks 1 with error 117\nEXT4-fs (mmcblk0p1): This should not happen!! Data will be lost\n\nEXT4-fs (mmcblk0p1): Delayed block allocation failed for inode 2239 at logical offset 0 with max blocks 1 with error 117\nEXT4-fs (mmcblk0p1): This should not happen!! Data will be lost\n\nEXT4-fs (mmcblk0p1): error count since last fsck: 1\nEXT4-fs (mmcblk0p1): initial error at time 1765597433: ext4_mb_generate_buddy:760\nEXT4-fs (mmcblk0p1): last error at time 1765597433: ext4_mb_generate_buddy:760\n...\n\nAccording to the log analysis, blocks are always requested from the\ncorrupted block group. This may happen as follows:\next4_mb_find_by_goal\n  ext4_mb_load_buddy\n   ext4_mb_load_buddy_gfp\n     ext4_mb_init_cache\n      ext4_read_block_bitmap_nowait\n      ext4_wait_block_bitmap\n       ext4_validate_block_bitmap\n        if (!grp || EXT4_MB_GRP_BBITMAP_CORRUPT(grp))\n         return -EFSCORRUPTED; // There's no logs.\n if (err)\n  return err;  // Will return error\next4_lock_group(ac-\u003eac_sb, group);\n  if (unlikely(EXT4_MB_GRP_BBITMAP_CORRUPT(e4b-\u003ebd_info))) // Unreachable\n   goto out;\n\nAfter commit 9008a58e5dce (\"ext4: make the bitmap read routines return\nreal error codes\") merged, Commit 163a203ddb36 (\"ext4: mark block group\nas corrupt on block bitmap error\") is no real solution for allocating\nblocks from corrupted block groups. This is because if\n'EXT4_MB_GRP_BBITMAP_CORRUPT(e4b-\u003ebd_info)' is true, then\n'ext4_mb_load_buddy()' may return an error. This means that the block\nallocation will fail.\nTherefore, check block group if corrupted when ext4_mb_load_buddy()\nreturns error.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "amazon": 3,
             "redhat": 1,
             "ubuntu": 2
           },
@@ -147004,14 +147271,16 @@
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-43088",
             "https://git.kernel.org/linus/426c355742f02cf743b347d9d7dbdc1bfbfa31ef (7.0)",
+            "https://git.kernel.org/stable/c/11cbf294bac623bd57296f231199193087f57b4a",
             "https://git.kernel.org/stable/c/2e74f974359b5382ecbe8536abbb5b837eb6c724",
             "https://git.kernel.org/stable/c/426c355742f02cf743b347d9d7dbdc1bfbfa31ef",
+            "https://git.kernel.org/stable/c/edd446ee7cd3d02cac246168063d5b3e9ea68460",
             "https://lore.kernel.org/linux-cve-announce/2026050616-CVE-2026-43088-31b9@gregkh/T",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-43088",
             "https://www.cve.org/CVERecord?id=CVE-2026-43088"
           ],
           "PublishedDate": "2026-05-06T10:16:22.09Z",
-          "LastModifiedDate": "2026-05-06T13:08:07.97Z"
+          "LastModifiedDate": "2026-05-14T15:16:47.02Z"
         },
         {
           "VulnerabilityID": "CVE-2026-43089",
@@ -147223,6 +147492,7 @@
             "Digest": "sha256:181beaa8f88bfb4bbb91c762df9a669aacb79f2c8a9b8f7681d685869be0619f",
             "DiffID": "sha256:d0c77a21ba9c3c053a15863d1d4cb0a7f195658f23e9ef319aa305092e79325f"
           },
+          "SeveritySource": "nvd",
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-43098",
           "DataSource": {
             "ID": "debian",
@@ -147234,7 +147504,14 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nnfc: s3fwrn5: allocate rx skb before consuming bytes\n\ns3fwrn82_uart_read() reports the number of accepted bytes to the serdev\ncore. The current code consumes bytes into recv_skb and may already\ndeliver a complete frame before allocating a fresh receive buffer.\n\nIf that alloc_skb() fails, the callback returns 0 even though it has\nalready consumed bytes, and it leaves recv_skb as NULL for the next\nreceive callback. That breaks the receive_buf() accounting contract and\ncan also lead to a NULL dereference on the next skb_put_u8().\n\nAllocate the receive skb lazily before consuming the next byte instead.\nIf allocation fails, return the number of bytes already accepted.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "nvd": 2,
             "ubuntu": 2
+          },
+          "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 5.5
+            }
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-43098",
@@ -147249,7 +147526,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-43098"
           ],
           "PublishedDate": "2026-05-06T10:16:23.25Z",
-          "LastModifiedDate": "2026-05-06T13:08:07.97Z"
+          "LastModifiedDate": "2026-05-14T19:24:03.903Z"
         },
         {
           "VulnerabilityID": "CVE-2026-43099",
@@ -148058,6 +148335,7 @@
             "CWE-476"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "nvd": 2,
             "redhat": 2,
             "ubuntu": 2
@@ -148164,6 +148442,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nima: verify the previous kernel's IMA buffer lies in addressable RAM\n\nPatch series \"Address page fault in ima_restore_measurement_list()\", v3.\n\nWhen the second-stage kernel is booted via kexec with a limiting command\nline such as \"mem=\u003csize\u003e\" we observe a pafe fault that happens.\n\n    BUG: unable to handle page fault for address: ffff97793ff47000\n    RIP: ima_restore_measurement_list+0xdc/0x45a\n    #PF: error_code(0x0000)  not-present page\n\nThis happens on x86_64 only, as this is already fixed in aarch64 in\ncommit: cbf9c4b9617b (\"of: check previous kernel's ima-kexec-buffer\nagainst memory bounds\")\n\n\nThis patch (of 3):\n\nWhen the second-stage kernel is booted with a limiting command line (e.g. \n\"mem=\u003csize\u003e\"), the IMA measurement buffer handed over from the previous\nkernel may fall outside the addressable RAM of the new kernel.  Accessing\nsuch a buffer can fault during early restore.\n\nIntroduce a small generic helper, ima_validate_range(), which verifies\nthat a physical [start, end] range for the previous-kernel IMA buffer lies\nwithin addressable memory:\n\t- On x86, use pfn_range_is_mapped().\n\t- On OF based architectures, use page_is_ram().",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "amazon": 3,
             "nvd": 2,
             "redhat": 2,
             "ubuntu": 2
@@ -148219,6 +148498,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\niommu/vt-d: Flush dev-IOTLB only when PCIe device is accessible in scalable mode\n\nCommit 4fc82cd907ac (\"iommu/vt-d: Don't issue ATS Invalidation\nrequest when device is disconnected\") relies on\npci_dev_is_disconnected() to skip ATS invalidation for\nsafely-removed devices, but it does not cover link-down caused\nby faults, which can still hard-lock the system.\n\nFor example, if a VM fails to connect to the PCIe device,\n\"virsh destroy\" is executed to release resources and isolate\nthe fault, but a hard-lockup occurs while releasing the group fd.\n\nCall Trace:\n qi_submit_sync\n qi_flush_dev_iotlb\n intel_pasid_tear_down_entry\n device_block_translation\n blocking_domain_attach_dev\n __iommu_attach_device\n __iommu_device_set_domain\n __iommu_group_set_domain_internal\n iommu_detach_group\n vfio_iommu_type1_detach_group\n vfio_group_detach_container\n vfio_group_fops_release\n __fput\n\nAlthough pci_device_is_present() is slower than\npci_dev_is_disconnected(), it still takes only ~70 µs on a\nConnectX-5 (8 GT/s, x2) and becomes even faster as PCIe speed\nand width increase.\n\nBesides, devtlb_invalidation_with_pasid() is called only in the\npaths below, which are far less frequent than memory map/unmap.\n\n1. mm-struct release\n2. {attach,release}_dev\n3. set/remove PASID\n4. dirty-tracking setup\n\nThe gain in system stability far outweighs the negligible cost\nof using pci_device_is_present() instead of pci_dev_is_disconnected()\nto decide when to skip ATS invalidation, especially under GDR\nhigh-load conditions.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "amazon": 3,
             "nvd": 2,
             "redhat": 1,
             "ubuntu": 2
@@ -148278,6 +148558,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\ndm-verity: correctly handle dm_bufio_client_create() failure\n\nIf either of the calls to dm_bufio_client_create() in verity_fec_ctr()\nfails, then dm_bufio_client_destroy() is later called with an ERR_PTR()\nargument.  That causes a crash.  Fix this.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "amazon": 3,
             "nvd": 2,
             "redhat": 2,
             "ubuntu": 2
@@ -148336,6 +148617,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nKVM: nSVM: Always use vmcb01 in VMLOAD/VMSAVE emulation\n\nCommit cc3ed80ae69f (\"KVM: nSVM: always use vmcb01 to for vmsave/vmload\nof guest state\") made KVM always use vmcb01 for the fields controlled by\nVMSAVE/VMLOAD, but it missed updating the VMLOAD/VMSAVE emulation code\nto always use vmcb01.\n\nAs a result, if VMSAVE/VMLOAD is executed by an L2 guest and is not\nintercepted by L1, KVM will mistakenly use vmcb02. Always use vmcb01\ninstead of the current VMCB.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "amazon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -148735,6 +149017,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nmfd: core: Add locking around 'mfd_of_node_list'\n\nManipulating a list in the kernel isn't safe without some sort of\nmutual exclusion. Add a mutex any time we access / modify\n'mfd_of_node_list' to prevent possible crashes.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "amazon": 3,
             "nvd": 2,
             "redhat": 2,
             "ubuntu": 2
@@ -148851,6 +149134,7 @@
             "CWE-667"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "nvd": 2,
             "redhat": 1,
             "ubuntu": 2
@@ -149025,6 +149309,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nHID: hid-pl: handle probe errors\n\nErrors in init must be reported back or we'll\nfollow a NULL pointer the first time FF is used.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "amazon": 3,
             "nvd": 2,
             "redhat": 2,
             "ubuntu": 2
@@ -150065,6 +150350,7 @@
             "CWE-191"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -150544,6 +150830,7 @@
             "CWE-667"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "redhat": 1,
             "ubuntu": 2
           },
@@ -150691,6 +150978,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nKVM: x86: Add SRCU protection for reading PDPTRs in __get_sregs2()\n\nAdd SRCU read-side protection when reading PDPTR registers in\n__get_sregs2().\n\nReading PDPTRs may trigger access to guest memory:\nkvm_pdptr_read() -\u003e svm_cache_reg() -\u003e load_pdptrs() -\u003e\nkvm_vcpu_read_guest_page() -\u003e kvm_vcpu_gfn_to_memslot()\n\nkvm_vcpu_gfn_to_memslot() dereferences memslots via __kvm_memslots(),\nwhich uses srcu_dereference_check() and requires either kvm-\u003esrcu or\nkvm-\u003eslots_lock to be held. Currently only vcpu-\u003emutex is held,\ntriggering lockdep warning:\n\n=============================\nWARNING: suspicious RCU usage in kvm_vcpu_gfn_to_memslot\n6.12.59+ #3 Not tainted\n\ninclude/linux/kvm_host.h:1062 suspicious rcu_dereference_check() usage!\n\nother info that might help us debug this:\n\nrcu_scheduler_active = 2, debug_locks = 1\n1 lock held by syz.5.1717/15100:\n #0: ff1100002f4b00b0 (\u0026vcpu-\u003emutex){+.+.}-{3:3}, at: kvm_vcpu_ioctl+0x1d5/0x1590\n\nCall Trace:\n \u003cTASK\u003e\n __dump_stack lib/dump_stack.c:94 [inline]\n dump_stack_lvl+0xf0/0x120 lib/dump_stack.c:120\n lockdep_rcu_suspicious+0x1e3/0x270 kernel/locking/lockdep.c:6824\n __kvm_memslots include/linux/kvm_host.h:1062 [inline]\n __kvm_memslots include/linux/kvm_host.h:1059 [inline]\n kvm_vcpu_memslots include/linux/kvm_host.h:1076 [inline]\n kvm_vcpu_gfn_to_memslot+0x518/0x5e0 virt/kvm/kvm_main.c:2617\n kvm_vcpu_read_guest_page+0x27/0x50 virt/kvm/kvm_main.c:3302\n load_pdptrs+0xff/0x4b0 arch/x86/kvm/x86.c:1065\n svm_cache_reg+0x1c9/0x230 arch/x86/kvm/svm/svm.c:1688\n kvm_pdptr_read arch/x86/kvm/kvm_cache_regs.h:141 [inline]\n __get_sregs2 arch/x86/kvm/x86.c:11784 [inline]\n kvm_arch_vcpu_ioctl+0x3e20/0x4aa0 arch/x86/kvm/x86.c:6279\n kvm_vcpu_ioctl+0x856/0x1590 virt/kvm/kvm_main.c:4663\n vfs_ioctl fs/ioctl.c:51 [inline]\n __do_sys_ioctl fs/ioctl.c:907 [inline]\n __se_sys_ioctl fs/ioctl.c:893 [inline]\n __x64_sys_ioctl+0x18b/0x210 fs/ioctl.c:893\n do_syscall_x64 arch/x86/entry/common.c:52 [inline]\n do_syscall_64+0xbd/0x1d0 arch/x86/entry/common.c:83\n entry_SYSCALL_64_after_hwframe+0x77/0x7f\n\nFound by Linux Verification Center (linuxtesting.org) with Syzkaller.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "amazon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -150797,6 +151085,7 @@
             "CWE-476"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "nvd": 2,
             "redhat": 2,
             "ubuntu": 2
@@ -151346,6 +151635,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nteam: avoid NETDEV_CHANGEMTU event when unregistering slave\n\nsyzbot is reporting\n\n  unregister_netdevice: waiting for netdevsim0 to become free. Usage count = 3\n  ref_tracker: netdev@ffff88807dcf8618 has 1/2 users at\n       __netdev_tracker_alloc include/linux/netdevice.h:4400 [inline]\n       netdev_hold include/linux/netdevice.h:4429 [inline]\n       inetdev_init+0x201/0x4e0 net/ipv4/devinet.c:286\n       inetdev_event+0x251/0x1610 net/ipv4/devinet.c:1600\n       notifier_call_chain+0x19d/0x3a0 kernel/notifier.c:85\n       call_netdevice_notifiers_mtu net/core/dev.c:2318 [inline]\n       netif_set_mtu_ext+0x5aa/0x800 net/core/dev.c:9886\n       netif_set_mtu+0xd7/0x1b0 net/core/dev.c:9907\n       dev_set_mtu+0x126/0x260 net/core/dev_api.c:248\n       team_port_del+0xb07/0xcb0 drivers/net/team/team_core.c:1333\n       team_del_slave drivers/net/team/team_core.c:1936 [inline]\n       team_device_event+0x207/0x5b0 drivers/net/team/team_core.c:2929\n       notifier_call_chain+0x19d/0x3a0 kernel/notifier.c:85\n       call_netdevice_notifiers_extack net/core/dev.c:2281 [inline]\n       call_netdevice_notifiers net/core/dev.c:2295 [inline]\n       __dev_change_net_namespace+0xcb7/0x2050 net/core/dev.c:12592\n       do_setlink+0x2ce/0x4590 net/core/rtnetlink.c:3060\n       rtnl_changelink net/core/rtnetlink.c:3776 [inline]\n       __rtnl_newlink net/core/rtnetlink.c:3935 [inline]\n       rtnl_newlink+0x15a9/0x1be0 net/core/rtnetlink.c:4072\n       rtnetlink_rcv_msg+0x7d5/0xbe0 net/core/rtnetlink.c:6958\n       netlink_rcv_skb+0x232/0x4b0 net/netlink/af_netlink.c:2550\n       netlink_unicast_kernel net/netlink/af_netlink.c:1318 [inline]\n       netlink_unicast+0x80f/0x9b0 net/netlink/af_netlink.c:1344\n       netlink_sendmsg+0x813/0xb40 net/netlink/af_netlink.c:1894\n\nproblem. Ido Schimmel found steps to reproduce\n\n  ip link add name team1 type team\n  ip link add name dummy1 mtu 1499 master team1 type dummy\n  ip netns add ns1\n  ip link set dev dummy1 netns ns1\n  ip -n ns1 link del dev dummy1\n\nand also found that the same issue was fixed in the bond driver in\ncommit f51048c3e07b (\"bonding: avoid NETDEV_CHANGEMTU event when\nunregistering slave\").\n\nLet's do similar thing for the team driver, with commit ad7c7b2172c3 (\"net:\nhold netdev instance lock during sysfs operations\") and commit 303a8487a657\n(\"net: s/__dev_set_mtu/__netif_set_mtu/\") also applied.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "amazon": 3,
             "nvd": 2,
             "redhat": 2,
             "ubuntu": 2
@@ -151452,6 +151742,7 @@
             "CWE-369"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "nvd": 2,
             "redhat": 2,
             "ubuntu": 2
@@ -151507,6 +151798,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nsmb: client: prevent races in -\u003equery_interfaces()\n\nIt was possible for two query interface works to be concurrently trying\nto update the interfaces.\n\nPrevent this by checking and updating iface_last_update under\niface_lock.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "amazon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -151890,6 +152182,7 @@
             "CWE-667"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "nvd": 2,
             "redhat": 2,
             "ubuntu": 2
@@ -151948,6 +152241,7 @@
             "CWE-667"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "redhat": 1,
             "ubuntu": 2
           },
@@ -152729,6 +153023,7 @@
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nceph: supply snapshot context in ceph_zero_partial_object()\n\nThe ceph_zero_partial_object function was missing proper snapshot\ncontext for its OSD write operations, which could lead to data\ninconsistencies in snapshots.\n\nReproducer:\n../src/vstart.sh --new -x --localhost --bluestore\n./bin/ceph auth caps client.fs_a mds 'allow rwps fsname=a' mon 'allow r fsname=a' osd 'allow rw tag cephfs data=a'\nmount -t ceph fs_a@.a=/ /mnt/mycephfs/ -o conf=./ceph.conf\ndd if=/dev/urandom of=/mnt/mycephfs/foo bs=64K count=1\nmkdir /mnt/mycephfs/.snap/snap1\nmd5sum /mnt/mycephfs/.snap/snap1/foo\nfallocate -p -o 0 -l 4096 /mnt/mycephfs/foo\necho 3 \u003e /proc/sys/vm/drop/caches\nmd5sum /mnt/mycephfs/.snap/snap1/foo # get different md5sum!!",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "amazon": 3,
             "nvd": 2,
             "redhat": 2,
             "ubuntu": 2
@@ -152910,6 +153205,7 @@
             "CWE-415"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "redhat": 2,
             "ubuntu": 2
           },
@@ -153131,6 +153427,58 @@
           ],
           "PublishedDate": "2026-05-08T14:16:35.867Z",
           "LastModifiedDate": "2026-05-12T14:10:27.343Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-43295",
+          "PkgID": "linux-libc-dev@6.1.164-1",
+          "PkgName": "linux-libc-dev",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/linux-libc-dev@6.1.164-1?arch=amd64\u0026distro=debian-12.13",
+            "UID": "da2d793f5c62366b"
+          },
+          "InstalledVersion": "6.1.164-1",
+          "FixedVersion": "6.1.170-1",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:181beaa8f88bfb4bbb91c762df9a669aacb79f2c8a9b8f7681d685869be0619f",
+            "DiffID": "sha256:d0c77a21ba9c3c053a15863d1d4cb0a7f195658f23e9ef319aa305092e79325f"
+          },
+          "SeveritySource": "nvd",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-43295",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:2e16b4985529d20bb1f7006848ae85704083b401c56521cc53496a1b97bbc29f",
+          "Title": "kernel: rapidio: replace rio_free_net() with kfree() in rio_scan_alloc_net()",
+          "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nrapidio: replace rio_free_net() with kfree() in rio_scan_alloc_net()\n\nWhen idtab allocation fails, net is not registered with rio_add_net() yet,\nso kfree(net) is sufficient to release the memory.  Set mport-\u003enet to NULL\nto avoid dangling pointer.",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "nvd": 2
+          },
+          "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 5.5
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-43295",
+            "https://git.kernel.org/stable/c/34a4f233df5eef5f1f113b2196142c0568b387f8",
+            "https://git.kernel.org/stable/c/649c2e853608cad0b0cba545555d168e67f094b3",
+            "https://git.kernel.org/stable/c/666183dcdd9ad3b8156a1df7f204f728f720380f",
+            "https://git.kernel.org/stable/c/78812c4fb7ed242d5961bf1337a49070d6487c94",
+            "https://git.kernel.org/stable/c/83e579c2f7f6b1706323d744833b26470049dcc2",
+            "https://git.kernel.org/stable/c/87272e3e70ec4b666885bd520ff77463c11444ef",
+            "https://git.kernel.org/stable/c/e5a732bfe29451e16abf9c6f07ce5948b22f3d59",
+            "https://git.kernel.org/stable/c/fecf292c6691970897396190855aa38826b7104e",
+            "https://lore.kernel.org/linux-cve-announce/2026050854-CVE-2026-43295-f6c5@gregkh/T",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-43295",
+            "https://www.cve.org/CVERecord?id=CVE-2026-43295"
+          ],
+          "PublishedDate": "2026-05-08T14:16:36.593Z",
+          "LastModifiedDate": "2026-05-14T19:44:24.17Z"
         },
         {
           "VulnerabilityID": "CVE-2026-43296",
@@ -155866,6 +156214,149 @@
           ],
           "PublishedDate": "2026-05-08T15:17:00.687Z",
           "LastModifiedDate": "2026-05-12T14:10:27.343Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-43476",
+          "PkgID": "linux-libc-dev@6.1.164-1",
+          "PkgName": "linux-libc-dev",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/linux-libc-dev@6.1.164-1?arch=amd64\u0026distro=debian-12.13",
+            "UID": "da2d793f5c62366b"
+          },
+          "InstalledVersion": "6.1.164-1",
+          "FixedVersion": "6.1.170-1",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:181beaa8f88bfb4bbb91c762df9a669aacb79f2c8a9b8f7681d685869be0619f",
+            "DiffID": "sha256:d0c77a21ba9c3c053a15863d1d4cb0a7f195658f23e9ef319aa305092e79325f"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-43476",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:31c37f2d12b5b51a96d4e258cd750db8c0f97020e71e44fb66d14a9dbfe26d85",
+          "Title": "kernel: iio: chemical: sps30_i2c: fix buffer size in sps30_i2c_read_meas()",
+          "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\niio: chemical: sps30_i2c: fix buffer size in sps30_i2c_read_meas()\n\nsizeof(num) evaluates to sizeof(size_t) (8 bytes on 64-bit) instead\nof the intended __be32 element size (4 bytes). Use sizeof(*meas) to\ncorrectly match the buffer element type.",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-43476",
+            "https://git.kernel.org/stable/c/08881d82f94deaa51800360029908863e5c4c39d",
+            "https://git.kernel.org/stable/c/165f12b40901c6a7aca15796da239726ddcdc5ad",
+            "https://git.kernel.org/stable/c/216345f98cae7fcc84f49728c67478ac00321c87",
+            "https://git.kernel.org/stable/c/2a4d111a6a34afb8bb4f118009e7728ed2ec7e10",
+            "https://git.kernel.org/stable/c/90e978ace598567e6e30de79805bddf37cf892ac",
+            "https://git.kernel.org/stable/c/9aff2e9c2927ecd9652872a43a0725f101128104",
+            "https://git.kernel.org/stable/c/dcdf1e92674efb6692f4ebe189e0aa9fde23a541",
+            "https://lore.kernel.org/linux-cve-announce/2026051344-CVE-2026-43476-0f4f@gregkh/T",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-43476",
+            "https://www.cve.org/CVERecord?id=CVE-2026-43476"
+          ],
+          "PublishedDate": "2026-05-13T16:16:50.68Z",
+          "LastModifiedDate": "2026-05-13T16:16:50.68Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-43483",
+          "PkgID": "linux-libc-dev@6.1.164-1",
+          "PkgName": "linux-libc-dev",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/linux-libc-dev@6.1.164-1?arch=amd64\u0026distro=debian-12.13",
+            "UID": "da2d793f5c62366b"
+          },
+          "InstalledVersion": "6.1.164-1",
+          "FixedVersion": "6.1.170-1",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:181beaa8f88bfb4bbb91c762df9a669aacb79f2c8a9b8f7681d685869be0619f",
+            "DiffID": "sha256:d0c77a21ba9c3c053a15863d1d4cb0a7f195658f23e9ef319aa305092e79325f"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-43483",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:b85c71fa938944d25e81e77dae6f3b8973f81e2f88f9eb1a3367d685a59360db",
+          "Title": "kernel: KVM: SVM: Set/clear CR8 write interception when AVIC is (de)activated",
+          "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nKVM: SVM: Set/clear CR8 write interception when AVIC is (de)activated\n\nExplicitly set/clear CR8 write interception when AVIC is (de)activated to\nfix a bug where KVM leaves the interception enabled after AVIC is\nactivated.  E.g. if KVM emulates INIT=\u003eWFS while AVIC is deactivated, CR8\nwill remain intercepted in perpetuity.\n\nOn its own, the dangling CR8 intercept is \"just\" a performance issue, but\ncombined with the TPR sync bug fixed by commit d02e48830e3f (\"KVM: SVM:\nSync TPR from LAPIC into VMCB::V_TPR even if AVIC is active\"), the danging\nintercept is fatal to Windows guests as the TPR seen by hardware gets\nwildly out of sync with reality.\n\nNote, VMX isn't affected by the bug as TPR_THRESHOLD is explicitly ignored\nwhen Virtual Interrupt Delivery is enabled, i.e. when APICv is active in\nKVM's world.  I.e. there's no need to trigger update_cr8_intercept(), this\nis firmly an SVM implementation flaw/detail.\n\nWARN if KVM gets a CR8 write #VMEXIT while AVIC is active, as KVM should\nnever enter the guest with AVIC enabled and CR8 writes intercepted.\n\n[Squash fix to avic_deactivate_vmcb. - Paolo]",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "redhat": 1
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 5.5
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-43483",
+            "https://git.kernel.org/stable/c/01651e7751edbbc0fb4598f8367a3dabcfc8c182",
+            "https://git.kernel.org/stable/c/737410b32bd615b321da4fbeda490351b9af5e8b",
+            "https://git.kernel.org/stable/c/816fa1dfae4532e851b1fe6b2434c753ecbd86c7",
+            "https://git.kernel.org/stable/c/87d0f901a9bd8ae6be57249c737f20ac0cace93d",
+            "https://git.kernel.org/stable/c/a4123fe5d9122eef9852e4921f7cc463420f30d4",
+            "https://git.kernel.org/stable/c/ba3bca40f9f25c053f69413e5f4a41dd0fd762bf",
+            "https://lore.kernel.org/linux-cve-announce/2026051349-CVE-2026-43483-1337@gregkh/T",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-43483",
+            "https://www.cve.org/CVERecord?id=CVE-2026-43483"
+          ],
+          "PublishedDate": "2026-05-13T16:16:51.497Z",
+          "LastModifiedDate": "2026-05-13T16:16:51.497Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-43484",
+          "PkgID": "linux-libc-dev@6.1.164-1",
+          "PkgName": "linux-libc-dev",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/linux-libc-dev@6.1.164-1?arch=amd64\u0026distro=debian-12.13",
+            "UID": "da2d793f5c62366b"
+          },
+          "InstalledVersion": "6.1.164-1",
+          "FixedVersion": "6.1.170-1",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:181beaa8f88bfb4bbb91c762df9a669aacb79f2c8a9b8f7681d685869be0619f",
+            "DiffID": "sha256:d0c77a21ba9c3c053a15863d1d4cb0a7f195658f23e9ef319aa305092e79325f"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-43484",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:cd2f97fb69672ed0390e4be1f50e238ae6de4839426c0c9a181c21ab7c06e88d",
+          "Title": "kernel: mmc: core: Avoid bitfield RMW for claim/retune flags",
+          "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nmmc: core: Avoid bitfield RMW for claim/retune flags\n\nMove claimed and retune control flags out of the bitfield word to\navoid unrelated RMW side effects in asynchronous contexts.\n\nThe host-\u003eclaimed bit shared a word with retune flags. Writes to claimed\nin __mmc_claim_host() or retune_now in mmc_mq_queue_rq() can overwrite\nother bits when concurrent updates happen in other contexts, triggering\nspurious WARN_ON(!host-\u003eclaimed). Convert claimed, can_retune,\nretune_now and retune_paused to bool to remove shared-word coupling.",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "redhat": 1
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 5.5
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-43484",
+            "https://git.kernel.org/stable/c/0e06cc511c61cff1591e5435a207759adcc76b6d",
+            "https://git.kernel.org/stable/c/270277c2ab631044867adb1bd2f2433d3892de6e",
+            "https://git.kernel.org/stable/c/41dce4dae583a8ce06a7ebf4ce704c46a142957c",
+            "https://git.kernel.org/stable/c/45038e03f15e992c48603fff8c6b1c9be5397ac9",
+            "https://git.kernel.org/stable/c/901084c51a0a8fb42a3f37d2e9c62083c495f824",
+            "https://git.kernel.org/stable/c/bb7fc2498c3bb25fa6a91f22f4760005325cfbd5",
+            "https://git.kernel.org/stable/c/d3a3caf44c8ec26f5d63dc17c1c7242effa60ebc",
+            "https://lore.kernel.org/linux-cve-announce/2026051349-CVE-2026-43484-9ebf@gregkh/T",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-43484",
+            "https://www.cve.org/CVERecord?id=CVE-2026-43484"
+          ],
+          "PublishedDate": "2026-05-13T16:16:51.623Z",
+          "LastModifiedDate": "2026-05-13T16:16:51.623Z"
         },
         {
           "VulnerabilityID": "CVE-2004-0230",
@@ -160324,6 +160815,9 @@
           "Title": "kernel: net: nfc: nci: Fix parameter validation for packet data",
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nnet: nfc: nci: Fix parameter validation for packet data\n\nSince commit 9c328f54741b (\"net: nfc: nci: Add parameter validation for\npacket data\") communication with nci nfc chips is not working any more.\n\nThe mentioned commit tries to fix access of uninitialized data, but\nfailed to understand that in some cases the data packet is of variable\nlength and can therefore not be compared to the maximum packet length\ngiven by the sizeof(struct).",
           "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-908"
+          ],
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-43291",
             "https://git.kernel.org/stable/c/3b91160e9a91b5a2662875417dc42dc5b0bf03ea",
@@ -160338,49 +160832,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-43291"
           ],
           "PublishedDate": "2026-05-08T14:16:36.12Z",
-          "LastModifiedDate": "2026-05-12T14:10:27.343Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-43295",
-          "PkgID": "linux-libc-dev@6.1.164-1",
-          "PkgName": "linux-libc-dev",
-          "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/linux-libc-dev@6.1.164-1?arch=amd64\u0026distro=debian-12.13",
-            "UID": "da2d793f5c62366b"
-          },
-          "InstalledVersion": "6.1.164-1",
-          "FixedVersion": "6.1.170-1",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:181beaa8f88bfb4bbb91c762df9a669aacb79f2c8a9b8f7681d685869be0619f",
-            "DiffID": "sha256:d0c77a21ba9c3c053a15863d1d4cb0a7f195658f23e9ef319aa305092e79325f"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-43295",
-          "DataSource": {
-            "ID": "debian",
-            "Name": "Debian Security Tracker",
-            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
-          },
-          "Fingerprint": "sha256:2e16b4985529d20bb1f7006848ae85704083b401c56521cc53496a1b97bbc29f",
-          "Title": "kernel: rapidio: replace rio_free_net() with kfree() in rio_scan_alloc_net()",
-          "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nrapidio: replace rio_free_net() with kfree() in rio_scan_alloc_net()\n\nWhen idtab allocation fails, net is not registered with rio_add_net() yet,\nso kfree(net) is sufficient to release the memory.  Set mport-\u003enet to NULL\nto avoid dangling pointer.",
-          "Severity": "UNKNOWN",
-          "References": [
-            "https://access.redhat.com/security/cve/CVE-2026-43295",
-            "https://git.kernel.org/stable/c/34a4f233df5eef5f1f113b2196142c0568b387f8",
-            "https://git.kernel.org/stable/c/649c2e853608cad0b0cba545555d168e67f094b3",
-            "https://git.kernel.org/stable/c/666183dcdd9ad3b8156a1df7f204f728f720380f",
-            "https://git.kernel.org/stable/c/78812c4fb7ed242d5961bf1337a49070d6487c94",
-            "https://git.kernel.org/stable/c/83e579c2f7f6b1706323d744833b26470049dcc2",
-            "https://git.kernel.org/stable/c/87272e3e70ec4b666885bd520ff77463c11444ef",
-            "https://git.kernel.org/stable/c/e5a732bfe29451e16abf9c6f07ce5948b22f3d59",
-            "https://git.kernel.org/stable/c/fecf292c6691970897396190855aa38826b7104e",
-            "https://lore.kernel.org/linux-cve-announce/2026050854-CVE-2026-43295-f6c5@gregkh/T",
-            "https://nvd.nist.gov/vuln/detail/CVE-2026-43295",
-            "https://www.cve.org/CVERecord?id=CVE-2026-43295"
-          ],
-          "PublishedDate": "2026-05-08T14:16:36.593Z",
-          "LastModifiedDate": "2026-05-12T14:10:27.343Z"
+          "LastModifiedDate": "2026-05-14T21:08:45.257Z"
         },
         {
           "VulnerabilityID": "CVE-2026-43302",
@@ -161775,43 +162227,6 @@
           "LastModifiedDate": "2026-05-12T14:10:27.343Z"
         },
         {
-          "VulnerabilityID": "CVE-2026-43476",
-          "PkgID": "linux-libc-dev@6.1.164-1",
-          "PkgName": "linux-libc-dev",
-          "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/linux-libc-dev@6.1.164-1?arch=amd64\u0026distro=debian-12.13",
-            "UID": "da2d793f5c62366b"
-          },
-          "InstalledVersion": "6.1.164-1",
-          "FixedVersion": "6.1.170-1",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:181beaa8f88bfb4bbb91c762df9a669aacb79f2c8a9b8f7681d685869be0619f",
-            "DiffID": "sha256:d0c77a21ba9c3c053a15863d1d4cb0a7f195658f23e9ef319aa305092e79325f"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-43476",
-          "DataSource": {
-            "ID": "debian",
-            "Name": "Debian Security Tracker",
-            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
-          },
-          "Fingerprint": "sha256:31c37f2d12b5b51a96d4e258cd750db8c0f97020e71e44fb66d14a9dbfe26d85",
-          "Title": "[iio: chemical: sps30_i2c: fix buffer size in sps30_i2c_read_meas()]",
-          "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\niio: chemical: sps30_i2c: fix buffer size in sps30_i2c_read_meas()\n\nsizeof(num) evaluates to sizeof(size_t) (8 bytes on 64-bit) instead\nof the intended __be32 element size (4 bytes). Use sizeof(*meas) to\ncorrectly match the buffer element type.",
-          "Severity": "UNKNOWN",
-          "References": [
-            "https://git.kernel.org/stable/c/08881d82f94deaa51800360029908863e5c4c39d",
-            "https://git.kernel.org/stable/c/165f12b40901c6a7aca15796da239726ddcdc5ad",
-            "https://git.kernel.org/stable/c/216345f98cae7fcc84f49728c67478ac00321c87",
-            "https://git.kernel.org/stable/c/2a4d111a6a34afb8bb4f118009e7728ed2ec7e10",
-            "https://git.kernel.org/stable/c/90e978ace598567e6e30de79805bddf37cf892ac",
-            "https://git.kernel.org/stable/c/9aff2e9c2927ecd9652872a43a0725f101128104",
-            "https://git.kernel.org/stable/c/dcdf1e92674efb6692f4ebe189e0aa9fde23a541"
-          ],
-          "PublishedDate": "2026-05-13T16:16:50.68Z",
-          "LastModifiedDate": "2026-05-13T16:16:50.68Z"
-        },
-        {
           "VulnerabilityID": "CVE-2026-43480",
           "PkgID": "linux-libc-dev@6.1.164-1",
           "PkgName": "linux-libc-dev",
@@ -161833,10 +162248,11 @@
             "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
           },
           "Fingerprint": "sha256:8f31dcc6f3e43e645912b46a3a2fee8a9c1077d44852eea73c7e04cb6067413d",
-          "Title": "[ASoC: amd: acp3x-rt5682-max9836: Add missing error check for clock acquisition]",
+          "Title": "kernel: ASoC: amd: acp3x-rt5682-max9836: Add missing error check for clock acquisition",
           "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nASoC: amd: acp3x-rt5682-max9836: Add missing error check for clock acquisition\n\nThe acp3x_5682_init() function did not check the return value of\nclk_get(), which could lead to dereferencing error pointers in\nrt5682_clk_enable().\n\nFix this by:\n1. Changing clk_get() to the device-managed devm_clk_get().\n2. Adding proper IS_ERR() checks for both clock acquisitions.",
           "Severity": "UNKNOWN",
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-43480",
             "https://git.kernel.org/stable/c/092522621901b5e6af61db04a53f5b313903c6d0",
             "https://git.kernel.org/stable/c/2b0c4a399c8d27f20ecf17dda76751141d6dbb59",
             "https://git.kernel.org/stable/c/2dc43ac8da7b2bebc5a51a3d86a6275d78f27cff",
@@ -161844,140 +162260,13 @@
             "https://git.kernel.org/stable/c/35c7624d30cb45ec336cd16ce072acc32ae351cb",
             "https://git.kernel.org/stable/c/4d802f23fcbfec05134653fd001f6c7c3fd55196",
             "https://git.kernel.org/stable/c/53f3a900e9a383d47af7253076e19f510c5708d0",
-            "https://git.kernel.org/stable/c/790851ecc983c719fa2e6adb17b02f3acc1d217d"
+            "https://git.kernel.org/stable/c/790851ecc983c719fa2e6adb17b02f3acc1d217d",
+            "https://lore.kernel.org/linux-cve-announce/2026051348-CVE-2026-43480-da19@gregkh/T",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-43480",
+            "https://www.cve.org/CVERecord?id=CVE-2026-43480"
           ],
           "PublishedDate": "2026-05-13T16:16:51.163Z",
           "LastModifiedDate": "2026-05-13T16:16:51.163Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-43483",
-          "PkgID": "linux-libc-dev@6.1.164-1",
-          "PkgName": "linux-libc-dev",
-          "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/linux-libc-dev@6.1.164-1?arch=amd64\u0026distro=debian-12.13",
-            "UID": "da2d793f5c62366b"
-          },
-          "InstalledVersion": "6.1.164-1",
-          "FixedVersion": "6.1.170-1",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:181beaa8f88bfb4bbb91c762df9a669aacb79f2c8a9b8f7681d685869be0619f",
-            "DiffID": "sha256:d0c77a21ba9c3c053a15863d1d4cb0a7f195658f23e9ef319aa305092e79325f"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-43483",
-          "DataSource": {
-            "ID": "debian",
-            "Name": "Debian Security Tracker",
-            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
-          },
-          "Fingerprint": "sha256:b85c71fa938944d25e81e77dae6f3b8973f81e2f88f9eb1a3367d685a59360db",
-          "Title": "[KVM: SVM: Set/clear CR8 write interception when AVIC is (de)activated]",
-          "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nKVM: SVM: Set/clear CR8 write interception when AVIC is (de)activated\n\nExplicitly set/clear CR8 write interception when AVIC is (de)activated to\nfix a bug where KVM leaves the interception enabled after AVIC is\nactivated.  E.g. if KVM emulates INIT=\u003eWFS while AVIC is deactivated, CR8\nwill remain intercepted in perpetuity.\n\nOn its own, the dangling CR8 intercept is \"just\" a performance issue, but\ncombined with the TPR sync bug fixed by commit d02e48830e3f (\"KVM: SVM:\nSync TPR from LAPIC into VMCB::V_TPR even if AVIC is active\"), the danging\nintercept is fatal to Windows guests as the TPR seen by hardware gets\nwildly out of sync with reality.\n\nNote, VMX isn't affected by the bug as TPR_THRESHOLD is explicitly ignored\nwhen Virtual Interrupt Delivery is enabled, i.e. when APICv is active in\nKVM's world.  I.e. there's no need to trigger update_cr8_intercept(), this\nis firmly an SVM implementation flaw/detail.\n\nWARN if KVM gets a CR8 write #VMEXIT while AVIC is active, as KVM should\nnever enter the guest with AVIC enabled and CR8 writes intercepted.\n\n[Squash fix to avic_deactivate_vmcb. - Paolo]",
-          "Severity": "UNKNOWN",
-          "References": [
-            "https://git.kernel.org/stable/c/01651e7751edbbc0fb4598f8367a3dabcfc8c182",
-            "https://git.kernel.org/stable/c/737410b32bd615b321da4fbeda490351b9af5e8b",
-            "https://git.kernel.org/stable/c/816fa1dfae4532e851b1fe6b2434c753ecbd86c7",
-            "https://git.kernel.org/stable/c/87d0f901a9bd8ae6be57249c737f20ac0cace93d",
-            "https://git.kernel.org/stable/c/a4123fe5d9122eef9852e4921f7cc463420f30d4",
-            "https://git.kernel.org/stable/c/ba3bca40f9f25c053f69413e5f4a41dd0fd762bf"
-          ],
-          "PublishedDate": "2026-05-13T16:16:51.497Z",
-          "LastModifiedDate": "2026-05-13T16:16:51.497Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-43484",
-          "PkgID": "linux-libc-dev@6.1.164-1",
-          "PkgName": "linux-libc-dev",
-          "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/linux-libc-dev@6.1.164-1?arch=amd64\u0026distro=debian-12.13",
-            "UID": "da2d793f5c62366b"
-          },
-          "InstalledVersion": "6.1.164-1",
-          "FixedVersion": "6.1.170-1",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:181beaa8f88bfb4bbb91c762df9a669aacb79f2c8a9b8f7681d685869be0619f",
-            "DiffID": "sha256:d0c77a21ba9c3c053a15863d1d4cb0a7f195658f23e9ef319aa305092e79325f"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-43484",
-          "DataSource": {
-            "ID": "debian",
-            "Name": "Debian Security Tracker",
-            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
-          },
-          "Fingerprint": "sha256:cd2f97fb69672ed0390e4be1f50e238ae6de4839426c0c9a181c21ab7c06e88d",
-          "Title": "[mmc: core: Avoid bitfield RMW for claim/retune flags]",
-          "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nmmc: core: Avoid bitfield RMW for claim/retune flags\n\nMove claimed and retune control flags out of the bitfield word to\navoid unrelated RMW side effects in asynchronous contexts.\n\nThe host-\u003eclaimed bit shared a word with retune flags. Writes to claimed\nin __mmc_claim_host() or retune_now in mmc_mq_queue_rq() can overwrite\nother bits when concurrent updates happen in other contexts, triggering\nspurious WARN_ON(!host-\u003eclaimed). Convert claimed, can_retune,\nretune_now and retune_paused to bool to remove shared-word coupling.",
-          "Severity": "UNKNOWN",
-          "References": [
-            "https://git.kernel.org/stable/c/0e06cc511c61cff1591e5435a207759adcc76b6d",
-            "https://git.kernel.org/stable/c/270277c2ab631044867adb1bd2f2433d3892de6e",
-            "https://git.kernel.org/stable/c/41dce4dae583a8ce06a7ebf4ce704c46a142957c",
-            "https://git.kernel.org/stable/c/45038e03f15e992c48603fff8c6b1c9be5397ac9",
-            "https://git.kernel.org/stable/c/901084c51a0a8fb42a3f37d2e9c62083c495f824",
-            "https://git.kernel.org/stable/c/bb7fc2498c3bb25fa6a91f22f4760005325cfbd5",
-            "https://git.kernel.org/stable/c/d3a3caf44c8ec26f5d63dc17c1c7242effa60ebc"
-          ],
-          "PublishedDate": "2026-05-13T16:16:51.623Z",
-          "LastModifiedDate": "2026-05-13T16:16:51.623Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-43488",
-          "PkgID": "linux-libc-dev@6.1.164-1",
-          "PkgName": "linux-libc-dev",
-          "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/linux-libc-dev@6.1.164-1?arch=amd64\u0026distro=debian-12.13",
-            "UID": "da2d793f5c62366b"
-          },
-          "InstalledVersion": "6.1.164-1",
-          "Status": "affected",
-          "Layer": {
-            "Digest": "sha256:181beaa8f88bfb4bbb91c762df9a669aacb79f2c8a9b8f7681d685869be0619f",
-            "DiffID": "sha256:d0c77a21ba9c3c053a15863d1d4cb0a7f195658f23e9ef319aa305092e79325f"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-43488",
-          "DataSource": {
-            "ID": "debian",
-            "Name": "Debian Security Tracker",
-            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
-          },
-          "Fingerprint": "sha256:92e741250be032b72cde2664c62615a0be6418db9a1872c4ce3e857d4d0437af",
-          "Title": "[usb: xhci: Prevent interrupt storm on host controller error (HCE)]",
-          "Description": "In the Linux kernel, the following vulnerability has been resolved:\n\nusb: xhci: Prevent interrupt storm on host controller error (HCE)\n\nThe xHCI controller reports a Host Controller Error (HCE) in UAS Storage\nDevice plug/unplug scenarios on Android devices. HCE is checked in\nxhci_irq() function and causes an interrupt storm (since the interrupt\nisn’t cleared), leading to severe system-level faults.\n\nWhen the xHC controller reports HCE in the interrupt handler, the driver\nonly logs a warning and assumes xHC activity will stop as stated in xHCI\nspecification. An interrupt storm does however continue on some hosts\neven after HCE, and only ceases after manually disabling xHC interrupt\nand stopping the controller by calling xhci_halt().\n\nAdd xhci_halt() to xhci_irq() function where STS_HCE status is checked,\nmirroring the existing error handling pattern used for STS_FATAL errors.\n\nThis only fixes the interrupt storm. Proper HCE recovery requires resetting\nand re-initializing the xHC.",
-          "Severity": "UNKNOWN",
-          "References": [
-            "https://git.kernel.org/stable/c/09ff0099c6cf148ff1f7053b5b6c84beb1c2ef8d",
-            "https://git.kernel.org/stable/c/6f91f3f087194c114d6d8ea4591b850bb00672f8",
-            "https://git.kernel.org/stable/c/b2dd9abf8c06cfcbcf242321fd54ae51a4807705",
-            "https://git.kernel.org/stable/c/cd41e0d1df8fcf5eae294657da52b50d1ce03246",
-            "https://git.kernel.org/stable/c/d6d5febd12452b7fd951fdd15c3ec262f01901a4"
-          ],
-          "PublishedDate": "2026-05-13T16:16:52.107Z",
-          "LastModifiedDate": "2026-05-13T16:16:52.107Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-46300",
-          "PkgID": "linux-libc-dev@6.1.164-1",
-          "PkgName": "linux-libc-dev",
-          "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/linux-libc-dev@6.1.164-1?arch=amd64\u0026distro=debian-12.13",
-            "UID": "da2d793f5c62366b"
-          },
-          "InstalledVersion": "6.1.164-1",
-          "Status": "affected",
-          "Layer": {
-            "Digest": "sha256:181beaa8f88bfb4bbb91c762df9a669aacb79f2c8a9b8f7681d685869be0619f",
-            "DiffID": "sha256:d0c77a21ba9c3c053a15863d1d4cb0a7f195658f23e9ef319aa305092e79325f"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-46300",
-          "DataSource": {
-            "ID": "debian",
-            "Name": "Debian Security Tracker",
-            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
-          },
-          "Fingerprint": "sha256:c9f3f9dc6da0bd309d81fc44d99a471f1cfff86c29b797072a339da938bd8966",
-          "Severity": "UNKNOWN"
         },
         {
           "VulnerabilityID": "CVE-2023-26924",
