@@ -211,8 +211,26 @@ chartValues:
   # `image.registry` default so the rendered reference becomes the
   # clean `ghcr.io/verity-org/bitnamilegacy/postgresql:16.1.0-debian-11-r15`.
   # Same shape as the tempo-distributed fix. See verity-org/verity#318.
+  #
+  # Bucket E (probe-race) — bucket-confirmation.md (airflow row) shows
+  # `wait-for-airflow-migrations` init container looping `Waiting for
+  # migrations... NN second(s)` because the bundled `airflow-postgresql-0`
+  # is slow to become reachable inside the 10-minute `helm install --wait`
+  # budget. The chart converges to healthy given more time, but
+  # `helm install` exits first.
+  #
+  # Probe-race knobs:
+  # - `images.migrationsWaitTimeout` (default 60s) — wait budget for
+  #   `wait-for-airflow-migrations`. Raised 60s → 180s (3×) to give the
+  #   chained postgres init time to finish before the wait-job gives up.
+  # - `apiServer.startupProbe.failureThreshold` (default 6) — Airflow 3.x
+  #   chart renamed `webserver` → `apiServer`; 6 × 10s = 60s grace from
+  #   container start. Doubled to 12 (= 120s) so a freshly-migrated API
+  #   server isn't killed before it binds.
   airflow:
     postgresql.image.registry: ghcr.io
+    images.migrationsWaitTimeout: 180
+    apiServer.startupProbe.failureThreshold: 12
 
   # jenkins 5.9.18 otherwise renders an unpatched bats helm-test pod and a
   # default inbound agent image. Keep the wrapper focused on the controller and
@@ -270,8 +288,20 @@ chartValues:
   # smoke so the server boots fully unsealed and the smoke check can
   # complete. dev mode is in-memory only — never use in production.
   # See verity-org/verity#323.
+  #
+  # Bucket E probe-tune: bucket-confirmation.md openbao row shows the
+  # chart **functionally succeeded** (server-test pod exit=0, sealed=false)
+  # but the integration job's `helm install --wait` exceeded its 10-min
+  # budget before all pods crossed Ready. Chart's `server.readinessProbe`
+  # defaults to initialDelaySeconds=5, failureThreshold=2 (≈10s tolerance
+  # before the probe declares the pod NotReady). Stateful unseal warm-up
+  # is slower than that under kind. Raise initialDelaySeconds to 30s and
+  # failureThreshold to 6 (≈30s tolerance once started) so probes don't
+  # flap during the unseal warm-up window.
   openbao:
     server.dev.enabled: true
+    server.readinessProbe.initialDelaySeconds: 30
+    server.readinessProbe.failureThreshold: 6
 
   # vault — same pattern as openbao (vault is the upstream openbao forked
   # from). Standalone mode boots the server but leaves it sealed forever
@@ -288,8 +318,39 @@ chartValues:
   # chart pulls a tag that actually resolves. Trade-off: chart drops the
   # rootless-only security context default; acceptable for CI smoke.
   # See verity-org/verity#326.
+  #
+  # Bucket B (SCR-2026-05-14-001 subtask 7) — PO decision Option A:
+  # bucket-confirmation.md gitea row: `init-directories` initContainer
+  # crashes with `exec /usr/sbinx/init_directory_structure.sh: no such
+  # file or directory`. `/usr/sbinx/` (with the 'x') is Bitnami's
+  # deliberate init-script path; the verity wolfi rebuild ships upstream
+  # gitea, which has no such script. Per subtask-7-handoff §3 Option A,
+  # swap to Bitnami's gitea image so the chart's init scripts find their
+  # expected paths. **PO accepted the CVE-posture trade-off** (Bitnami
+  # image is unpatched; verity-rebuilt CVE posture lost for this chart).
+  #
+  # chartgen image-override interaction: chartgen's image-override
+  # pass writes `image.repository` and `image.tag` AFTER these
+  # chartValues are merged, and override keys win over same-key
+  # collisions (per commit 0f12b6352541 #361). To keep these values
+  # alive in the published wrapper, option (a) of the original design
+  # note was taken: the `"gitea"` replacement entry is removed from
+  # the `replacements:` block below, and `images/gitea.yaml` is
+  # deleted so Integer Orchestrator no longer rebuilds an unused
+  # `ghcr.io/verity-org/gitea` image. The chart now resolves to
+  # crane-mirrored `docker.io/bitnami/gitea` whose init scripts at
+  # `/usr/sbinx/init_directory_structure.sh` match the chart's
+  # expectations.
+  #
+  # `image.rootless: false` is the survives-as-sibling value that
+  # PR #361 made stable; the explicit registry/repository/tag entries
+  # are kept here as defense-in-depth so a future reintroduction of a
+  # `"gitea"` replacement does NOT silently undo the Bitnami switch.
   gitea:
     image.rootless: false
+    image.registry: docker.io
+    image.repository: bitnami/gitea
+    image.tag: "1"
 
   # cert-manager startupapicheck Job runs `cert-manager check api --wait=1m`
   # to verify webhook readiness post-install. The default 1-minute timeout
@@ -313,8 +374,19 @@ chartValues:
   # chart's `environment:` ConfigMap routes meilisearch's writes to the
   # writable mount. See verity-org/verity#324 (carve-out, was probe-race
   # but actual root cause turned out to be db-path / read-only-rootfs).
+  #
+  # Bucket E (probe-race) — bucket-confirmation.md (meilisearch row): pod
+  # terminated exit=137 (SIGKILL) because k8s killed it while the
+  # `/health` HTTP endpoint was still binding. Default startupProbe is
+  # periodSeconds=1 × failureThreshold=60 → 60s grace. Process logged the
+  # Meili ASCII banner before SIGKILL, so the binary did start; it just
+  # needed more time to bind /health.
+  #
+  # Raise startupProbe.failureThreshold 60 → 180 (3×, period stays 1s so
+  # early-ready pods still flip Ready quickly). Total budget 180s.
   meilisearch:
     environment.MEILI_DB_PATH: /meili_data
+    startupProbe.failureThreshold: 180
 
   # metrics-server scrapes the kubelet's `/metrics/resource` endpoint over
   # TLS. In kind clusters the kubelet uses a self-signed cert without IP
@@ -343,6 +415,45 @@ chartValues:
   # connect-inject enabled need real cert-manager integration anyway.
   consul:
     connectInject.enabled: false
+
+  # weaviate 17.8.0 — Bucket E (raft bootstrap is slower than the chart's
+  # default readinessProbe tolerance).
+  # bucket-confirmation.md weaviate row shows the pod's log converging to
+  # healthy ('node reporting ready, exiting bootstrap process' →
+  # 'leader_found') but `helm install --wait` timing out first. Chart
+  # default readinessProbe.initialDelaySeconds is 3 (lines 235-237 of the
+  # chart's values.yaml). Raise 3s → 60s (20×) so raft bootstrap has
+  # runway before the probe starts polling; bump
+  # readinessProbe.failureThreshold 3 → 12 (4×, ~120s additional
+  # tolerance once started).
+  weaviate:
+    readinessProbe.initialDelaySeconds: 60
+    readinessProbe.failureThreshold: 12
+
+  # opensearch 3.6.0 — Bucket G (JVM gc log path is unwritable in the
+  # rebuilt image).
+  # bucket-confirmation.md opensearch row: container exits with exit=1 and
+  # JVM error: `[error][logging] Error opening log file 'logs/gc.log':
+  # Permission denied / Invalid -Xlog option ... Could not create the
+  # Java Virtual Machine`. Chart-default `-Xlog:gc*:file=logs/gc.log` (in
+  # the image's `jvm.options` file) is incompatible with the rebuilt
+  # image's filesystem layout — writable workdir not provisioned for
+  # UID 1000.
+  #
+  # Chart exposes `opensearchJavaOpts` as a scalar (top-level, default
+  # `-Xmx512M -Xms512M`, rendered as the `OPENSEARCH_JAVA_OPTS` env var
+  # in templates/statefulset.yaml). The OS reads OPENSEARCH_JAVA_OPTS
+  # **after** jvm.options, so appending `-Xlog:disable` here turns off
+  # all JVM logging — including the gc-log directive that fails to open
+  # its file. This is the chartValues route called out in
+  # bucket-confirmation §opensearch (Proposed fix vector).
+  #
+  # Chart's `extraEnvs` is a YAML list and the verity chartValues
+  # mechanism is dotted-path scalar-only (charts.go
+  # ErrChartValueUnsupportedType), so `extraEnvs:` is not expressible
+  # here; setting `opensearchJavaOpts` directly is the only viable lever.
+  opensearch:
+    opensearchJavaOpts: "-Xmx512M -Xms512M -Xlog:disable"
 
   # kyverno 3.7.2: disable the post-upgrade `crds.migration` hook. It runs
   # `kubectl` from `registry.k8s.io/kubectl:v1.34.3`. Verity rebuilds kubectl
@@ -624,12 +735,23 @@ replacements:
     tag: "3"
 
   # Wave 6 charts (developer tooling).
-  # gitea 12.5.3 → gitea v1.25.x; chart's busybox helper falls through (excluded).
-  # Image is `docker.gitea.com/gitea` (root-level path under custom registry).
-  "gitea":
-    registry: "ghcr.io/verity-org"
-    image: "gitea"
-    tag: "1"
+  # gitea: NO image-rebuild replacement. Per SCR-2026-05-14-001 Bucket B
+  # (subtask 7) PO Option A, the gitea chart needs Bitnami's `gitea`
+  # image because its init-scripts live at the Bitnami-specific path
+  # `/usr/sbinx/init_directory_structure.sh`. The verity wolfi rebuild
+  # ships upstream gitea which has no such script — the rebuild is
+  # incompatible with the chart's init wiring.
+  #
+  # Leaving a `"gitea":` replacement here would make chartgen's image-
+  # override pass overwrite the chartValues block's
+  # `image.repository: bitnami/gitea` (per the PR #361 mergeMapValue
+  # rules: chartValues siblings survive, but same-key collisions resolve
+  # override-wins). Removing the replacement is option (a) of the
+  # chartValues block's IMPORTANT note — the chart now falls through to
+  # crane mirroring of `docker.io/bitnami/gitea`.
+  #
+  # `images/gitea.yaml` has been deleted in tandem so Integer Orchestrator
+  # no longer builds a verity-org/gitea image that nothing consumes.
   # crossplane 2.2.1 → crossplane v2.2.x; single image.
   "crossplane/crossplane":
     registry: "ghcr.io/verity-org"

@@ -7,7 +7,13 @@ types:
   default:
     base: wolfi-base
     packages: ["opensearch-dashboards-{{version}}"]
-    entrypoint: /usr/share/opensearch-dashboards/opensearch-dashboards-docker-entrypoint.sh
+    # The apk does not ship `opensearch-dashboards-docker-entrypoint.sh`
+    # (that script is a Docker-build artifact upstream, not an apk payload).
+    # Published image's entrypoint failed with `exec: no such file or
+    # directory`. Use the real CLI shipped by the apk at
+    # /usr/share/opensearch-dashboards/bin/opensearch-dashboards.
+    # See SCR-2026-05-14-001 Bucket B.
+    entrypoint: /usr/share/opensearch-dashboards/bin/opensearch-dashboards
     environment:
       OPENSEARCH_DASHBOARDS_HOME: /usr/share/opensearch-dashboards
     paths:

@@ -21,6 +21,7 @@ var (
 	testHarness *Harness
 	repoRoot    string
 	valuesDir   string
+	skipsCfg    *SkipsConfig
 )
 
 func TestMain(m *testing.M) {
@@ -36,6 +37,17 @@ func testMainImpl(m *testing.M) int {
 	}
 	repoRoot = root
 	valuesDir = filepath.Join(repoRoot, "test", "chart-integration", "values")
+
+	// SKIPS.yaml is loaded once per test binary. Missing file is OK
+	// (empty skip list). Malformed file is FATAL — silent skips are the
+	// worst possible failure mode for a smoke suite (SCR-2026-05-14-001
+	// AC-1, AC-3).
+	sc, sErr := LoadSkips(filepath.Join(repoRoot, "test", "chart-integration", "SKIPS.yaml"))
+	if sErr != nil {
+		fmt.Fprintf(os.Stderr, "[SKIPS.yaml] fail-closed: %v\n", sErr)
+		return 1
+	}
+	skipsCfg = sc
 
 	if os.Getenv("VERITY_IT_SKIP_CLUSTER") == "1" {
 		return m.Run()
@@ -85,6 +97,16 @@ func TestCharts(t *testing.T) {
 		}
 		matched++
 		t.Run(spec.Name, func(t *testing.T) {
+			if skip, entry := skipsCfg.IsSkipped(spec.Name); skip {
+				// Drop a sentinel for the workflow's Record-shard-outcome step
+				// so the GitHub Step Summary can render "skipped" distinctly
+				// from "success". The step grade gracefully degrades if the
+				// write fails — `make chart-integration` still exits 0 and
+				// `steps.smoke.outcome` still reports success in that case.
+				writeSkipSentinel(repoRoot, spec.Name, entry)
+				t.Skipf("SKIP per SKIPS.yaml: chart=%s reason=%s tracking=%s",
+					spec.Name, entry.Reason, entry.TrackingIssue)
+			}
 			runChart(t, spec)
 		})
 	}
@@ -98,7 +120,7 @@ func runChart(t *testing.T, spec config.ChartSpec) {
 	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Minute)
 	defer cancel()
 
-	cc, installErr := InstallChart(ctx, testHarness, spec, valuesDir)
+	cc, installErr := InstallChartWithRetry(ctx, testHarness, spec, valuesDir, defaultRetryConfig())
 	defer func() {
 		if t.Failed() {
 			dctx, dcancel := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -161,6 +183,26 @@ func (stdoutLogger) Logf(format string, args ...any) {
 }
 
 func (stdoutLogger) Helper() {}
+
+// writeSkipSentinel drops `_skip-<chart>` at the repo root. The workflow's
+// "Record shard outcome" step checks for this file to render a distinct
+// "skipped" status in $GITHUB_STEP_SUMMARY — without it, `steps.smoke.outcome`
+// would report "success" for skipped charts, which is misleading.
+//
+// Best-effort: a write failure is logged but does NOT fail the test. The
+// alternative (failing the chart that wanted to be skipped) defeats the
+// purpose of SKIPS.yaml. Workflow degrades gracefully to plain "success".
+func writeSkipSentinel(root, chart string, entry *SkipEntry) {
+	if root == "" || entry == nil {
+		return
+	}
+	body := fmt.Sprintf("chart=%s\nreason=%s\ntracking_issue=%s\nexit_criteria=%s\nadded=%s\nadded_by=%s\n",
+		chart, entry.Reason, entry.TrackingIssue, entry.ExitCriteria, entry.Added, entry.AddedBy)
+	path := filepath.Join(root, "_skip-"+chart+".txt")
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		fmt.Fprintf(os.Stderr, "[SKIPS.yaml] sentinel write %s: %v\n", path, err)
+	}
+}
 
 func findRepoRoot() (string, error) {
 	_, file, _, _ := runtime.Caller(0)

@@ -7,7 +7,23 @@ types:
   default:
     base: wolfi-base
     packages: ["dex"]
-    entrypoint: /usr/bin/dex
+    # Intentionally NO `entrypoint:` — dex's binary (cmd/dex/main.go) does
+    # NOT do argv[0]-basename dispatch (verified via upstream raw source —
+    # see evidences/.../logs/subtask-4b-argv0-verification.md). Its cobra
+    # rootCmd has `Use: "dex"` and reads argv[1] as the subcommand. The
+    # dexidp/helm-charts deployment.yaml hardcodes
+    # `args: [dex, serve, --web-http-addr, ...]` (verified at
+    # github.com/dexidp/helm-charts charts/dex/templates/deployment.yaml).
+    # Subtask 7b confirmed this is template-level hardcoded with no
+    # chartValues knob. By omitting `entrypoint:`, apko emits
+    # Entrypoint: null + Cmd: null in the OCI config; K8s with chart
+    # `command: nil` then uses `args:` as the full argv. argv[0]="dex" is
+    # PATH-resolved by runc to /usr/bin/dex while argv[0] is preserved as
+    # "dex" (matches dex's `Use: "dex"`), and argv[1]="serve" dispatches
+    # to the serve subcommand — identical to what upstream's
+    # /usr/local/bin/docker-entrypoint wrapper achieves, but without
+    # requiring a /bin/sh that the wolfi rebuild does not ship.
+    # See SCR-2026-05-14-001 Bucket A.
 
 versions:
   "2": {}

@@ -18,6 +18,10 @@ on:
       - 'mise.toml'
       - 'Makefile'
       - 'Chart.yaml'
+      - 'verity.yaml'
+      - 'images/**'
+      - 'internal/chartgen/**'
+      - 'internal/discovery/**'
   schedule:
     - cron: '0 5 * * *'
 
@@ -119,7 +123,7 @@ jobs:
           VERITY_IT_SKIP_CLUSTER: "1"
         run: |
           go test -tags=integration \
-            -run 'TestLoadAllowlist|TestLoadAllowlistMissing|TestLoadAllowlistPresentRegression|TestIsAccepted|TestClassifyMissingAllowlist|TestClassifyMissingAllowlistDoesNotConsultAllowlist|TestHarnessClusterCreatedFieldDefault|TestInstallChartRejectsArgumentInjection' \
+            -run 'TestLoadAllowlist|TestLoadAllowlistMissing|TestLoadAllowlistPresentRegression|TestIsAccepted|TestClassifyMissingAllowlist|TestClassifyMissingAllowlistDoesNotConsultAllowlist|TestHarnessClusterCreatedFieldDefault|TestInstallChartRejectsArgumentInjection|TestClassifyHelmFailure|TestClassifyHelmFailureStringer|TestClassifyHelmFailureParsesPodJSON|TestClassifyHelmFailureMalformedJSON|TestLoadSkips|TestIsSkipped|TestProductionSKIPSYAMLIsValid' \
             -v ./test/chart-integration/...
 
       - name: Run chart smoke test
@@ -142,12 +146,37 @@ jobs:
 
       - name: Record shard outcome
         if: always()
+        # SKIPS.yaml (SCR-2026-05-14-001 AC-1/AC-3) lets a chart be explicitly
+        # excluded from the smoke matrix. When that happens, the Go harness
+        # drops `_skip-<chart>.txt` at the repo root and `t.Skipf`s — which
+        # means `make chart-integration` still exits 0 and
+        # `steps.smoke.outcome` reports "success". That's misleading in the
+        # summary, so we check for the sentinel and render skipped charts
+        # distinctly (yellow ⚠) with the reason + tracking issue inline.
         run: |
+          set -euo pipefail
+          sentinel="_skip-${{ matrix.chart }}.txt"
+          outcome="${{ steps.smoke.outcome }}"
           {
-            echo "## ${{ matrix.chart }}: ${{ steps.smoke.outcome }}"
-            echo ""
-            if [ "${{ steps.smoke.outcome }}" = "failure" ]; then
+            if [ -f "$sentinel" ] && [ "$outcome" = "success" ]; then
+              reason=$(grep '^reason=' "$sentinel" | head -n1 | cut -d= -f2-)
+              tracking=$(grep '^tracking_issue=' "$sentinel" | head -n1 | cut -d= -f2-)
+              exitcrit=$(grep '^exit_criteria=' "$sentinel" | head -n1 | cut -d= -f2-)
+              echo "## ⚠️ ${{ matrix.chart }}: skipped (SKIPS.yaml)"
+              echo ""
+              echo "- **reason:** \`${reason}\`"
+              echo "- **tracking_issue:** ${tracking}"
+              echo "- **exit_criteria:** ${exitcrit}"
+              echo ""
+              echo "Skip is explicit and tracked. Remove from \`test/chart-integration/SKIPS.yaml\` once exit criteria are met."
+            elif [ "$outcome" = "success" ]; then
+              echo "## ✅ ${{ matrix.chart }}: success"
+            elif [ "$outcome" = "failure" ]; then
+              echo "## ❌ ${{ matrix.chart }}: failure"
+              echo ""
               echo "Smoke test reported a failure. Inspect the run log above and the uploaded \`diagnostics-${{ matrix.chart }}\` artifact for kubectl cluster-info dump and kind logs."
+            else
+              echo "## ${{ matrix.chart }}: ${outcome}"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 

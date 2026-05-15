@@ -18,11 +18,16 @@ types:
       # FHS-adapter pattern as etcd / fluent-bit / velero in verity-org/verity#330.
       # All 8 mimir components (alertmanager, compactor, distributor,
       # ingester×3, querier, etc.) run the same binary with different
-      # `-target=...` flags, so this one symlink unblocks the whole
-      # shard. Verified: `crane export ghcr.io/verity-org/mimir:3.0`
-      # shows `/usr/bin/grafana-mimir -rwxr-xr-x` (executable, no
-      # wolfi-perms bug). See verity-org/verity#318 (A.2 sub-cluster).
+      # `-target=...` flags, so this one symlink unblocks the whole shard.
+      # See verity-org/verity#318 (A.2 sub-cluster).
       - {path: /usr/bin/mimir, type: symlink, source: /usr/bin/grafana-mimir, uid: 0, gid: 0}
+      # `crane export ghcr.io/verity-org/mimir:latest` confirms the real
+      # binary at `/usr/bin/grafana-mimir` ships with mode `0o000` — `runc`
+      # aborts with `exec: "/usr/bin/mimir": permission denied`. Declaring
+      # the binary path with `type: permissions` (apko's canonical
+      # path-mode mutation type) forces +x on layer assembly.
+      # See SCR-2026-05-14-001 Bucket H + evidences/.../image-mode-audit.md.
+      - {path: /usr/bin/grafana-mimir, type: permissions, uid: 0, gid: 0, permissions: 0o755}
 
 versions:
   "3.0": {}

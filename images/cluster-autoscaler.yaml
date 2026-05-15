@@ -17,6 +17,13 @@ types:
       # working. Same shape as velero (#330) and etcd (#330).
       # See verity-org/verity#318 (A.2 FHS-path mismatch sub-cluster).
       - {path: /cluster-autoscaler, type: symlink, source: /usr/bin/cluster-autoscaler, uid: 0, gid: 0}
+      # Published `ghcr.io/verity-org/cluster-autoscaler:latest` ships
+      # `/usr/bin/cluster-autoscaler` with mode 0o000 — `runc` aborts with
+      # `exec: "./cluster-autoscaler": permission denied`. Declaring the
+      # binary path with apko's `type: permissions` mutation forces +x on
+      # layer assembly.
+      # See SCR-2026-05-14-001 Bucket H + image-mode-audit.md.
+      - {path: /usr/bin/cluster-autoscaler, type: permissions, uid: 0, gid: 0, permissions: 0o755}
 
 versions:
   "1.35": {}

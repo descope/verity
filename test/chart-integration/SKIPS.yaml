@@ -1,0 +1,54 @@
+# SKIPS.yaml — institutional debt register for chart-integration smoke tests.
+#
+# Contract (SCR-2026-05-14-001, AC-1 + AC-3):
+#   - Hard cap: ≤5 entries. Loader fails closed if exceeded.
+#   - Fail-closed: any malformed YAML, missing required field, unknown structure,
+#     or duplicate chart name MUST cause the harness to exit non-zero.
+#   - Each entry requires a tracking_issue (github.com URL) OR the literal string
+#     "needs new issue" (audit script detects and reports these).
+#   - exit_criteria must be a concrete, testable condition for un-skipping.
+#
+# Adding a skip is NOT a convenience — it is technical debt with a tracking
+# issue, an exit criterion, and a peer review. Prefer chartValues tuning,
+# image fixes, or harness retries (subtask 5) before adding here.
+#
+# Slot accounting: 5 of 5 slots used (full). Loader's MaxSkippedCharts=5
+# invariant will reject any 6th entry. Adding another skip requires either
+# (a) removing an existing entry whose exit_criteria has been met, or
+# (b) a new SCR raising the cap.
+
+skips:
+  - chart: falco
+    reason: kernel-incompat
+    tracking_issue: https://github.com/verity-org/verity/issues/325
+    exit_criteria: "falco's modern_ebpf driver fails to load (`libpman: ring buffer map type is not supported`) under the Azure GHA runner because the BPF capability is denied at runc create time, not because the kernel is too old (failing runs are on 6.17.0-1010-azure). Revisit when (a) the GHA runner image grants CAP_BPF / CAP_PERFMON to docker-in-docker kind nodes, OR (b) the chart exposes a `driver.kind: legacy_ebpf` / `driver.enabled: false` knob the wrapper can wire from chartValues without requiring a tools install in the image."
+    added: 2026-05-14
+    added_by: SCR-2026-05-14-001
+
+  - chart: nfs-subdir-external-provisioner
+    reason: needs-external-infra
+    tracking_issue: https://github.com/verity-org/verity/issues/373
+    exit_criteria: "harness gains a sidecar NFS server, OR chart bumps to use a CI-friendly NFS mock"
+    added: 2026-05-14
+    added_by: SCR-2026-05-14-001
+
+  - chart: cilium
+    reason: kind-cluster-capability
+    tracking_issue: https://github.com/verity-org/verity/issues/372
+    exit_criteria: "agent init container hits \"dial tcp 10.96.0.1:443: operation not permitted\" — kind cluster lacks capabilities for cilium's CNI. Revisit when smoke harness gains capability grants OR when cilium chart exposes a CI-friendly probe-disable knob."
+    added: 2026-05-14
+    added_by: SCR-2026-05-14-001
+
+  - chart: cert-manager-csi-driver
+    reason: chart-template-blocked
+    tracking_issue: https://github.com/verity-org/verity/issues/374
+    exit_criteria: "chart hardcodes livenessProbe initialDelaySeconds with no values knob; smoke harness \"helm install --wait\" hits the probe before driver registers with cert-manager (which the harness also doesn't pre-install). Revisit when chart exposes app.livenessProbe knobs OR when harness pre-installs cert-manager CRDs."
+    added: 2026-05-14
+    added_by: SCR-2026-05-14-001
+
+  - chart: workload-identity-webhook
+    reason: chart-template-blocked
+    tracking_issue: https://github.com/verity-org/verity/issues/375
+    exit_criteria: "chart hardcodes readinessProbe periodSeconds; pod self-heals after cert rotation but smoke harness times out first. Revisit when chart exposes startupProbe or readinessProbe.periodSeconds values knob."
+    added: 2026-05-14
+    added_by: SCR-2026-05-14-001
