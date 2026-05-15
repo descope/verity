@@ -120,7 +120,7 @@ func runChart(t *testing.T, spec config.ChartSpec) {
 	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Minute)
 	defer cancel()
 
-	cc, installErr := InstallChart(ctx, testHarness, spec, valuesDir)
+	cc, installErr := InstallChartWithRetry(ctx, testHarness, spec, valuesDir, defaultRetryConfig())
 	defer func() {
 		if t.Failed() {
 			dctx, dcancel := context.WithTimeout(context.Background(), 5*time.Minute)

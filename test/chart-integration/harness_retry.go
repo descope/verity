@@ -251,10 +251,30 @@ func InstallChartWithRetry(
 				spec.Name, attempt, cfg.MaxAttempts, class, cfg.Backoff)
 			// Best-effort cleanup before next attempt — reuse the
 			// existing teardown path so we don't reimplement it.
+			//
+			// UninstallChart uses `kubectl delete ns --wait=false` so
+			// the final teardown after runChart returns is fast. For
+			// the retry path that semantics is wrong: starting a
+			// fresh `helm install` against a namespace still in
+			// Terminating state fails with `namespace … is being
+			// terminated` or AlreadyExists, which the classifier
+			// would treat as an unrelated failure and abort the
+			// retry budget.
+			//
+			// Block here until the namespace is fully deleted (or
+			// the wait budget expires); only then start the backoff
+			// timer. The 90s budget accommodates kind's local-path
+			// PVC reclaim plus finalizer drain for stateful charts.
 			if cc != nil {
 				uctx, ucancel := context.WithTimeout(ctx, 3*time.Minute)
 				UninstallChart(uctx, h, cc)
 				ucancel()
+				wctx, wcancel := context.WithTimeout(ctx, 90*time.Second)
+				if err := waitNamespaceDeleted(wctx, h, cc.Namespace); err != nil {
+					h.t.Logf("chart-integration[%s]: attempt %d cleanup: namespace %q deletion did not complete within budget: %v (continuing)",
+						spec.Name, attempt, cc.Namespace, err)
+				}
+				wcancel()
 			}
 			select {
 			case <-ctx.Done():
@@ -350,4 +370,69 @@ func parsePodStatusJSON(raw []byte) podStatusSnapshot {
 		snap.Pods = append(snap.Pods, ps)
 	}
 	return snap
+}
+
+// waitNamespaceDeleted blocks until `kubectl get namespace <ns>` returns
+// NotFound, or the supplied context expires. Used by the retry path to
+// ensure a Terminating namespace from a previous attempt fully drains
+// (finalizers, PVC reclaim, helm release Secret removal) before the
+// next `helm install` runs, otherwise the next install would race
+// the still-terminating namespace and fail with
+//   `namespace "<ns>" is being terminated`
+// or AlreadyExists, neither of which is a pull-class failure and so
+// would abort the retry budget on a transient teardown lag.
+//
+// Errors are returned to the caller for logging only — the retry
+// loop continues into the backoff even on wait-budget exhaustion, so
+// the worst case is a redundant attempt that fails fast.
+func waitNamespaceDeleted(ctx context.Context, h *Harness, namespace string) error {
+	if namespace == "" {
+		return nil
+	}
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	// Probe once immediately so the common case (already deleted by
+	// the time we get here) returns without a 2s delay.
+	if missing, _ := namespaceIsGone(ctx, h, namespace); missing {
+		return nil
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("waiting for namespace %q deletion: %w", namespace, ctx.Err())
+		case <-ticker.C:
+			missing, err := namespaceIsGone(ctx, h, namespace)
+			if err != nil {
+				return fmt.Errorf("waiting for namespace %q deletion: %w", namespace, err)
+			}
+			if missing {
+				return nil
+			}
+		}
+	}
+}
+
+// namespaceIsGone returns (true, nil) when `kubectl get namespace`
+// reports NotFound. Any other error (including transient connection
+// failures) is returned as-is so the caller can decide whether to
+// keep polling. A present-but-Terminating namespace returns
+// (false, nil).
+func namespaceIsGone(ctx context.Context, h *Harness, namespace string) (bool, error) {
+	cmd := exec.CommandContext(ctx, "kubectl",
+		"--kubeconfig", h.KubeconfigPath,
+		"get", "namespace", namespace,
+		"--ignore-not-found",
+		"--output=jsonpath={.metadata.name}",
+	)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		// kubectl exits non-zero on connection errors etc. Surface
+		// the underlying message so retry-loop callers can log it.
+		return false, fmt.Errorf("kubectl get namespace %s: %s: %w",
+			namespace, strings.TrimSpace(string(out)), err)
+	}
+	// --ignore-not-found + jsonpath=.metadata.name returns empty
+	// when the namespace doesn't exist, and the namespace name
+	// when it does (whether or not it's Terminating).
+	return strings.TrimSpace(string(out)) == "", nil
 }
