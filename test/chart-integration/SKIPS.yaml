@@ -12,7 +12,7 @@
 # issue, an exit criterion, and a peer review. Prefer chartValues tuning,
 # image fixes, or harness retries (subtask 5) before adding here.
 #
-# Slot accounting: 4 of 5 slots used. Loader's MaxSkippedCharts=5
+# Slot accounting: 3 of 5 slots used. Loader's MaxSkippedCharts=5
 # invariant will reject any 6th entry. Adding another skip requires either
 # (a) removing an existing entry whose exit_criteria has been met, or
 # (b) a new SCR raising the cap.
@@ -23,6 +23,11 @@
 #     still installs cleanly without a kernel driver; container-engine
 #     plugin remains the event source. Verified in the same PR that
 #     removed this row.
+#   - workload-identity-webhook (#375): closed via
+#     `chartValues.workload-identity-webhook.replicaCount: 1` in
+#     verity.yaml. The chart's cert-rotator races between replicas on
+#     single-node kind; single replica converges fast enough to fit
+#     the helm `--wait` 10-minute budget.
 
 skips:
   - chart: nfs-subdir-external-provisioner
@@ -43,12 +48,5 @@ skips:
     reason: chart-template-blocked
     tracking_issue: https://github.com/verity-org/verity/issues/374
     exit_criteria: "chart hardcodes livenessProbe initialDelaySeconds with no values knob; smoke harness \"helm install --wait\" hits the probe before driver registers with cert-manager (which the harness also doesn't pre-install). Revisit when chart exposes app.livenessProbe knobs OR when harness pre-installs cert-manager CRDs."
-    added: 2026-05-14
-    added_by: SCR-2026-05-14-001
-
-  - chart: workload-identity-webhook
-    reason: chart-template-blocked
-    tracking_issue: https://github.com/verity-org/verity/issues/375
-    exit_criteria: "chart hardcodes readinessProbe periodSeconds; pod self-heals after cert rotation but smoke harness times out first. Revisit when chart exposes startupProbe or readinessProbe.periodSeconds values knob."
     added: 2026-05-14
     added_by: SCR-2026-05-14-001
