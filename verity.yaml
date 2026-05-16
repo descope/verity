@@ -82,11 +82,21 @@ chartValues:
 
   # mimir-distributed 6.0.6 can render as a single-image runtime if we turn off
   # optional bundled infra components (MinIO, Kafka, nginx gateway, rollout-operator).
+  #
+  # Additionally: with `kafka.enabled: false`, the chart's hardcoded
+  # `ingest_storage.enabled: true` template still tries to validate a
+  # Kafka address and aborts mimir components at startup with
+  # `invalid ingest storage config: the Kafka address has not been
+  # configured` (verified against chart-integration run 25961993442
+  # mimir-distributed-* pod logs). Override `ingest_storage.enabled:
+  # false` via `mimir.structuredConfig` — the chart's documented hook
+  # for overriding the rendered text-config.
   mimir-distributed:
     gateway.enabled: false
     kafka.enabled: false
     minio.enabled: false
     rollout_operator.enabled: false
+    mimir.structuredConfig.ingest_storage.enabled: false
 
   # tempo-distributed 1.61.3 defaults to a separate Memcached statefulset;
   # the minimal CI-friendly wrapper just runs the Tempo microservices
@@ -454,21 +464,6 @@ chartValues:
   dex:
     config.issuer: "http://dex.dex.svc.cluster.local:5556/dex"
     config.storage.type: "memory"
-
-  # mimir-distributed 6.0.6 — chart defaults `kafka.enabled: true` AND
-  # the mimir.config template hardcodes `ingest_storage.enabled: true`
-  # whether or not Kafka is actually deployed. With Kafka disabled the
-  # mimir components abort at startup:
-  #   error validating config: invalid ingest storage config: the Kafka
-  #   address has not been configured
-  # (chart-integration run 25961993442 mimir-distributed-* pod logs).
-  # Override ingest_storage via mimir.structuredConfig (the chart's
-  # documented override mechanism for the rendered text-config). Keep
-  # kafka.enabled: false to avoid deploying the bundled Kafka image,
-  # which would also need an allowlist entry.
-  mimir-distributed:
-    kafka.enabled: false
-    mimir.structuredConfig.ingest_storage.enabled: false
 
   # velero 12.0.1 — chart's default `configuration.backupStorageLocation`
   # is a one-element list with `provider: ""`. helm install then issues
