@@ -413,6 +413,15 @@ chartValues:
     valkey-cluster.enabled: false
     postgresql.enabled: true
     valkey.enabled: true
+    # NOTE: the kind-CI workaround for the `init-directories`
+    # initContainer's "Operation not permitted" chown failure
+    # (`chown 1000:1000 /data` cannot run when the chart's per-
+    # container default `runAsUser: 1000` is inherited and the kind
+    # local-path-provisioner mounts /data as root:root) is applied
+    # in `test/chart-integration/values/gitea.yaml`, NOT here, to
+    # avoid changing the production security posture (running the
+    # main gitea container as root). The chart-integration override
+    # only affects the smoke-test cluster.
 
   # cert-manager startupapicheck Job runs `cert-manager check api --wait=1m`
   # to verify webhook readiness post-install. The default 1-minute timeout
