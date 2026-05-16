@@ -370,9 +370,10 @@ chartValues:
   # the `replacements:` block below, and `images/gitea.yaml` is
   # deleted so Integer Orchestrator no longer rebuilds an unused
   # `ghcr.io/verity-org/gitea` image. The chart now resolves to
-  # crane-mirrored `docker.io/bitnami/gitea` whose init scripts at
-  # `/usr/sbinx/init_directory_structure.sh` match the chart's
-  # expectations.
+  # crane-mirrored `docker.io/bitnamilegacy/gitea` (Bitnami migrated
+  # the image to the bitnamilegacy namespace in late 2024) whose
+  # init scripts at `/usr/sbinx/init_directory_structure.sh` match
+  # the chart's expectations.
   #
   # `image.rootless: false` is the survives-as-sibling value that
   # PR #361 made stable; the explicit registry/repository/tag entries
@@ -381,7 +382,16 @@ chartValues:
   gitea:
     image.rootless: false
     image.registry: docker.io
-    image.repository: bitnami/gitea
+    # Bitnami migrated their gitea image (along with the postgresql
+    # and valkey subcharts) to the `bitnamilegacy` namespace as part
+    # of their late-2024 image reorganization. The old repo
+    # `docker.io/bitnami/gitea` now returns an empty manifest; the
+    # new repo `docker.io/bitnamilegacy/gitea:1` is the only published
+    # location. Without this switch, the gitea init container fails
+    # with `ErrImagePull` resolving the old `docker.io/bitnami/gitea:1`
+    # reference. See chart-integration run 25972171694 (gitea shard)
+    # diagnostic dump confirming the upstream 404.
+    image.repository: bitnamilegacy/gitea
     image.tag: "1"
     # The Bitnami gitea chart 12.5.3 defaults
     # `postgresql-ha.enabled: true` (3-replica HA postgres + repmgr) and
@@ -889,11 +899,12 @@ replacements:
   #
   # Leaving a `"gitea":` replacement here would make chartgen's image-
   # override pass overwrite the chartValues block's
-  # `image.repository: bitnami/gitea` (per the PR #361 mergeMapValue
+  # `image.repository: bitnamilegacy/gitea` (per the PR #361 mergeMapValue
   # rules: chartValues siblings survive, but same-key collisions resolve
   # override-wins). Removing the replacement is option (a) of the
   # chartValues block's IMPORTANT note — the chart now falls through to
-  # crane mirroring of `docker.io/bitnami/gitea`.
+  # crane mirroring of `docker.io/bitnamilegacy/gitea` (Bitnami migrated
+  # the image to the bitnamilegacy namespace in late 2024).
   #
   # `images/gitea.yaml` has been deleted in tandem so Integer Orchestrator
   # no longer builds a verity-org/gitea image that nothing consumes.
@@ -1113,32 +1124,36 @@ unpatchableImages:
   #   - upstream: /victoria-logs-prod, 23076128 bytes, statically linked
   #   - patched: /victoria-logs-prod, 22168512 bytes, dynamically linked
   - "victoriametrics/victoria-logs"
-  # bitnami/gitea — chart's `chartValues.gitea.image.repository:
-  # bitnami/gitea` switches the gitea chart off the verity-rebuilt
-  # gitea (whose wolfi base lacks Bitnami's
-  # `/usr/sbinx/init_directory_structure.sh` init script) and onto
-  # Bitnami's gitea image. chart-gen would otherwise try to mirror
-  # `bitnami/gitea` to `ghcr.io/verity-org/bitnami/gitea` — a repo
-  # that doesn't exist (verity has no Bitnami fork) — and fail at
-  # the `crane ls` tag-listing step. With this entry, chart-gen
-  # leaves the upstream `docker.io/bitnami/gitea` reference intact
-  # and the chart's chartValues block carries the override.
+  # bitnamilegacy/gitea is the chart's image-override target via
+  # chartValues.gitea.image.repository above. The chartValues switch
+  # routes the gitea chart off the verity-rebuilt gitea (whose wolfi
+  # base lacks Bitnami's `/usr/sbinx/init_directory_structure.sh`
+  # init script) and onto Bitnami's published image. Bitnami migrated
+  # this image from `bitnami/gitea` to the `bitnamilegacy` namespace
+  # in late 2024; the old repo now returns an empty manifest, so the
+  # chartValues block above points at `bitnamilegacy/gitea`. Without
+  # this unpatchableImages entry, chart-gen would try to mirror the
+  # upstream into a verity-org/bitnamilegacy/gitea repo that doesn't
+  # exist (verity has no Bitnami fork) and would fail at the
+  # `crane ls` tag-listing step. With this entry, chart-gen leaves
+  # the upstream reference intact and the chart's chartValues block
+  # carries the override.
   # See verity-org/verity#326 (PO Option A) for the Bitnami switch
   # rationale.
-  - "bitnami/gitea"
+  - "bitnamilegacy/gitea"
 
-  # NOTE: `bitnamilegacy/postgresql` is intentionally NOT in this list,
-  # even though gitea's single-node postgresql subchart pulls
-  # `docker.io/bitnamilegacy/postgresql:17.6.0-debian-12-r4` (verity
-  # has no rebuild for that tag). The airflow chart already depends
-  # on chart-gen rewriting its `bitnamilegacy/postgresql:16.1.0-
-  # debian-11-r15` to `ghcr.io/verity-org/bitnamilegacy/postgresql:
-  # 16.1.0-debian-11-r15` (see the airflow chartValues block above
-  # at lines 223-265). Globally excluding `bitnamilegacy/postgresql`
-  # would break airflow. The gitea-specific tag will fall through
-  # chart-gen's per-tag crane lookup (the tag does not exist in
-  # ghcr.io/verity-org/bitnamilegacy/postgresql, only the airflow
-  # tag does), producing a "tag not found" warning but leaving the
+  # NOTE: bitnamilegacy/postgresql is intentionally NOT in this list,
+  # even though gitea's single-node postgresql subchart pulls the
+  # `bitnamilegacy/postgresql:17.6.0-debian-12-r4` tag (verity has no
+  # rebuild for that tag). The airflow chart already depends on
+  # chart-gen rewriting its own pin of `bitnamilegacy/postgresql` (at
+  # the `:16.1.0-debian-11-r15` tag) into the verity-org mirror — see
+  # the airflow chartValues block above at lines 223-265. Globally
+  # excluding the bitnamilegacy/postgresql repo would break airflow.
+  # The gitea-specific tag will fall through chart-gen's per-tag
+  # crane lookup (the tag does not exist in the verity-org mirror of
+  # bitnamilegacy/postgresql; only the airflow tag does) and produce
+  # a "tag not found" warning while leaving the
   # upstream reference intact — which is admitted by the gitea
   # allowlist row at test/chart-integration/values/gitea.allowlist.txt.
   # Same reasoning applies to `bitnamilegacy/valkey` (currently
