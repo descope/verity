@@ -383,6 +383,26 @@ chartValues:
     image.registry: docker.io
     image.repository: bitnami/gitea
     image.tag: "1"
+    # The Bitnami gitea chart 12.5.3 defaults
+    # `postgresql-ha.enabled: true` (3-replica HA postgres + repmgr) and
+    # `valkey-cluster.enabled: true` (3-replica valkey cluster). On the
+    # kind-based chart-integration runners these subcharts pull in 6
+    # stateful pods (postgresql-ha-0/1/2, valkey-cluster-0/1/2) whose
+    # peer-discovery DNS resolves on a slow schedule — the helm
+    # `--wait --timeout 10m0s` blocks waiting for the postgresql-ha
+    # statefulset to converge, repeating "unable to resolve domain
+    # gitea-postgresql-ha-postgresql-N.gitea-postgresql-ha-postgresql-
+    # headless.gitea.svc.cluster.local" until the smoke harness's
+    # 10-minute install budget is exhausted three times in a row.
+    # Switch to the chart's single-node subchart variants for CI: the
+    # single `postgresql` subchart deploys one postgres pod and the
+    # single `valkey` subchart (architecture: standalone) deploys one
+    # valkey pod. The gitea workload pod can reach both via the simple
+    # ClusterIP service and helm install converges well within 10m.
+    postgresql-ha.enabled: false
+    valkey-cluster.enabled: false
+    postgresql.enabled: true
+    valkey.enabled: true
 
   # cert-manager startupapicheck Job runs `cert-manager check api --wait=1m`
   # to verify webhook readiness post-install. The default 1-minute timeout
@@ -1106,3 +1126,21 @@ unpatchableImages:
   # See verity-org/verity#326 (PO Option A) for the Bitnami switch
   # rationale.
   - "bitnami/gitea"
+
+  # NOTE: `bitnamilegacy/postgresql` is intentionally NOT in this list,
+  # even though gitea's single-node postgresql subchart pulls
+  # `docker.io/bitnamilegacy/postgresql:17.6.0-debian-12-r4` (verity
+  # has no rebuild for that tag). The airflow chart already depends
+  # on chart-gen rewriting its `bitnamilegacy/postgresql:16.1.0-
+  # debian-11-r15` to `ghcr.io/verity-org/bitnamilegacy/postgresql:
+  # 16.1.0-debian-11-r15` (see the airflow chartValues block above
+  # at lines 223-265). Globally excluding `bitnamilegacy/postgresql`
+  # would break airflow. The gitea-specific tag will fall through
+  # chart-gen's per-tag crane lookup (the tag does not exist in
+  # ghcr.io/verity-org/bitnamilegacy/postgresql, only the airflow
+  # tag does), producing a "tag not found" warning but leaving the
+  # upstream reference intact — which is admitted by the gitea
+  # allowlist row at test/chart-integration/values/gitea.allowlist.txt.
+  # Same reasoning applies to `bitnamilegacy/valkey` (currently
+  # unused by any other chart, but listed only in the gitea
+  # allowlist so a future airflow-style rewrite remains possible).

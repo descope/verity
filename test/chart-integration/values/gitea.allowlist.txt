@@ -7,12 +7,29 @@
 # `unpatchableImages` list) instead of trying to mirror it into the
 # non-existent `ghcr.io/verity-org/bitnami/gitea` repo.
 #
-# The chart-integration image-origin gate therefore needs to admit
-# `docker.io/bitnami/gitea:1` (plus any sibling Bitnami image the
-# chart pulls — e.g., `bitnami/git` for repo init).
+# The Bitnami subcharts pulled in by gitea (postgresql + valkey,
+# enabled via verity.yaml chartValues; we disable the much heavier
+# postgresql-ha/valkey-cluster HA variants so kind-based CI can
+# converge inside the 10-minute helm-install budget) ship images
+# under `docker.io/bitnamilegacy/*`. These aren't in verity's rebuild
+# pipeline and are intentionally left upstream. Add allowlist rows
+# for the postgresql and valkey single-node images.
 #
 # Format note: the isAccepted helper in test/chart-integration/
 # assertions.go uses strings.HasPrefix; the `:` and `@` separators
 # scope each prefix to its image's tag/digest refs.
 docker.io/bitnami/gitea:
 docker.io/bitnami/gitea@
+docker.io/bitnamilegacy/postgresql:
+docker.io/bitnamilegacy/postgresql@
+docker.io/bitnamilegacy/valkey:
+docker.io/bitnamilegacy/valkey@
+# The gitea chart's `init-directories` initContainer uses `busybox:
+# latest` (bare ref; kubelet resolves to `docker.io/library/busybox:
+# latest`). chart-gen excludes it from the patched pipeline via the
+# global busybox entry in exclude-names (images/busybox.yaml), so
+# the wrapper leaves the upstream reference intact and the image-
+# origin gate needs the allowlist row — same shape as the
+# meilisearch chart's busybox helper.
+docker.io/library/busybox:
+docker.io/library/busybox@
