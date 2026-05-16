@@ -307,17 +307,20 @@ func TestConfig_SymlinkBeforePermissions_ApkoChmodQuirk(t *testing.T) {
 
 	// The symlink whose source matches the permissions entry must come
 	// FIRST in the emitted order (rewritten from its source position).
-	first, _ := paths[0].(map[string]any)
+	first, ok := paths[0].(map[string]any)
+	require.True(t, ok, "paths[0] is map[string]any")
 	assert.Equal(t, "symlink", first["type"], "symlink that targets a permissions-mutated path must be emitted first")
 	assert.Equal(t, "/usr/local/bin/etcd", first["path"])
 	assert.Equal(t, "/usr/bin/etcd", first["source"])
 
 	// Other entries retain their relative ordering.
-	second, _ := paths[1].(map[string]any)
+	second, ok := paths[1].(map[string]any)
+	require.True(t, ok, "paths[1] is map[string]any")
 	assert.Equal(t, "directory", second["type"])
 	assert.Equal(t, "/var/lib/etcd", second["path"])
 
-	third, _ := paths[2].(map[string]any)
+	third, ok := paths[2].(map[string]any)
+	require.True(t, ok, "paths[2] is map[string]any")
 	assert.Equal(t, "permissions", third["type"])
 	assert.Equal(t, "/usr/bin/etcd", third["path"])
 }
@@ -346,10 +349,13 @@ func TestConfig_UnrelatedSymlinkOrderPreserved(t *testing.T) {
 	require.Len(t, paths, 3)
 
 	// Order is unchanged because no symlink target matches a permissions path.
-	first, _ := paths[0].(map[string]any)
+	first, ok := paths[0].(map[string]any)
+	require.True(t, ok, "paths[0] is map[string]any")
 	assert.Equal(t, "/var/lib/foo", first["path"])
-	second, _ := paths[1].(map[string]any)
+	second, ok := paths[1].(map[string]any)
+	require.True(t, ok, "paths[1] is map[string]any")
 	assert.Equal(t, "/usr/bin/foo", second["path"])
-	third, _ := paths[2].(map[string]any)
+	third, ok := paths[2].(map[string]any)
+	require.True(t, ok, "paths[2] is map[string]any")
 	assert.Equal(t, "/usr/local/bin/bar", third["path"])
 }
