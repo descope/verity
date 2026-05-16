@@ -1,11 +1,15 @@
 # gitea upstream image allowlist (SCR-2026-04-30-001)
 #
-# The gitea chart's `chartValues.gitea.image.repository: bitnami/gitea`
-# (verity.yaml, PO Option A from verity-org/verity#326) routes the
-# chart at Bitnami's gitea image. chart-gen now leaves the upstream
-# reference intact (via the `bitnami/gitea` entry in verity.yaml's
-# `unpatchableImages` list) instead of trying to mirror it into the
-# non-existent `ghcr.io/verity-org/bitnami/gitea` repo.
+# The gitea chart's
+# `chartValues.gitea.image.repository: bitnamilegacy/gitea`
+# (verity.yaml, PO Option A from verity-org/verity#326; namespace
+# updated from `bitnami` → `bitnamilegacy` after Bitnami's late-2024
+# image-repo migration left `docker.io/bitnami/gitea` returning an
+# empty manifest) routes the chart at Bitnami's gitea image.
+# chart-gen leaves the upstream reference intact (via the
+# `bitnamilegacy/gitea` entry in verity.yaml's `unpatchableImages`
+# list) instead of trying to mirror it into the non-existent
+# `ghcr.io/verity-org/bitnamilegacy/gitea` repo.
 #
 # The Bitnami subcharts pulled in by gitea (postgresql + valkey,
 # enabled via verity.yaml chartValues; we disable the much heavier
@@ -18,8 +22,8 @@
 # Format note: the isAccepted helper in test/chart-integration/
 # assertions.go uses strings.HasPrefix; the `:` and `@` separators
 # scope each prefix to its image's tag/digest refs.
-docker.io/bitnami/gitea:
-docker.io/bitnami/gitea@
+docker.io/bitnamilegacy/gitea:
+docker.io/bitnamilegacy/gitea@
 docker.io/bitnamilegacy/postgresql:
 docker.io/bitnamilegacy/postgresql@
 docker.io/bitnamilegacy/valkey:
