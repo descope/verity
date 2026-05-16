@@ -140,6 +140,92 @@ func enforceStrict(strict bool, total, skipped int, chartsFile string) error {
 		ErrStrictModeUnmappedCharts, skipped, total, filepath.Base(chartsFile))
 }
 
+// emptyMappingsAction enumerates the four ways processChart resolves a chart
+// whose image-mapping list is empty (no replacements: hits + no Copa-patched
+// targets in BuildImageMappings).
+type emptyMappingsAction int
+
+const (
+	// emitNormal indicates mappings are non-empty; the standard path runs.
+	emitNormal emptyMappingsAction = iota
+	// emitChartValuesOnly: no mappings, but verity.yaml chartValues
+	// exist for the chart. The wrapper carries the chartValues
+	// override (e.g., gitea pinning to bitnami/gitea).
+	emitChartValuesOnly
+	// emitPassthrough: no mappings, no chartValues, but the chart DID
+	// have at least one discovered image — they were all filtered by
+	// exclude-names / unpatchableImages. The chart still needs a
+	// wrapper so it ships on the chart registry; the wrapper is a
+	// passthrough (no overrides, no chartValues).
+	emitPassthrough
+	// emitSkip: no mappings, no chartValues, no images at all. This is
+	// a genuine config gap (e.g., chart added to Chart.yaml whose
+	// repository returned an empty manifest set); skip with a warning
+	// so strict mode catches it.
+	emitSkip
+)
+
+// logEmptyMappingsAction routes through decideEmptyMappingsAction and emits
+// the corresponding log line. Returns true when processChart should bail
+// (skip the chart). The early-return + logging are bundled here to keep
+// processChart's cyclomatic complexity bounded.
+//
+// The three non-normal branches encode three distinct config intents:
+//
+//   - emitChartValuesOnly: gitea-style — wrapper carries chartValues
+//   - emitPassthrough: victoria-logs-single-style — wrapper forwards
+//     upstream chart unchanged because every image is intentionally
+//     unpatchable
+//   - emitSkip: genuine config gap; strict mode should catch it
+func logEmptyMappingsAction(chart config.ChartSpec, numMappings, numChartValues, numImageRefs, intentionallyExcluded int) (skip bool) {
+	switch decideEmptyMappingsAction(numMappings, numChartValues, numImageRefs, intentionallyExcluded) {
+	case emitSkip:
+		if numImageRefs > 0 {
+			// Distinguish "no images discovered" (likely
+			// chart-extraction issue) from "images discovered
+			// but missing from patched registry" (real pipeline
+			// gap) so the operator sees which bucket they're in.
+			fmt.Fprintf(os.Stderr, "warning: chart %s@%s discovered %d image(s) but produced 0 mappings and only %d were intentionally excluded; skipping (likely missing from patched registry)\n", chart.Name, chart.Version, numImageRefs, intentionallyExcluded)
+		} else {
+			fmt.Fprintf(os.Stderr, "warning: no images discovered and no chartValues for chart %s@%s; skipping\n", chart.Name, chart.Version)
+		}
+		return true
+	case emitChartValuesOnly:
+		fmt.Fprintf(os.Stderr, "info: no patched image mappings for chart %s@%s; emitting chartValues-only wrapper\n", chart.Name, chart.Version)
+	case emitPassthrough:
+		fmt.Fprintf(os.Stderr, "info: all %d discovered images for chart %s@%s are intentionally filtered via exclude-names/unpatchableImages; emitting passthrough wrapper\n", numImageRefs, chart.Name, chart.Version)
+	case emitNormal:
+		// Standard path: mappings exist, no extra logging.
+	}
+	return false
+}
+
+// decideEmptyMappingsAction is the pure decision function for the
+// post-mappings switch in processChart. Extracted so the contract
+// (gitea → chartValues-only, victoria-logs-single → passthrough, truly
+// empty chart → skip) is unit-testable without standing up helm/crane.
+//
+// numImageRefs is the total discovered image count for the chart.
+// intentionallyExcluded is the count of discovered images filtered by
+// applyReplacements via the exclude-names path (which the Run() merge of
+// `unpatchableImages` makes the authoritative signal for "deliberately not
+// rebuilt"). Crucially, emitPassthrough requires EVERY discovered image
+// to be intentionally excluded — a chart where some images failed crane
+// lookup (real pipeline gap) still falls into emitSkip so strict mode
+// catches it.
+func decideEmptyMappingsAction(numMappings, numChartValues, numImageRefs, intentionallyExcluded int) emptyMappingsAction {
+	if numMappings > 0 {
+		return emitNormal
+	}
+	if numChartValues > 0 {
+		return emitChartValuesOnly
+	}
+	if numImageRefs > 0 && intentionallyExcluded == numImageRefs {
+		return emitPassthrough
+	}
+	return emitSkip
+}
+
 func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) (ChartResult, bool, error) {
 	fmt.Fprintf(os.Stderr, "info: processing chart %s@%s\n", chart.Name, chart.Version)
 
@@ -148,7 +234,7 @@ func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) 
 		return ChartResult{}, false, fmt.Errorf("extract images for chart %s: %w", chart.Name, err)
 	}
 
-	remainingRefs, replacementMappings := applyReplacements(imageRefs, vc, cfg.ExcludeNames)
+	remainingRefs, replacementMappings, intentionallyExcluded := applyReplacements(imageRefs, vc, cfg.ExcludeNames)
 
 	mappings, err := BuildImageMappings(remainingRefs, cfg.TargetRegistry, cfg.ExcludeNames)
 	if err != nil {
@@ -158,22 +244,8 @@ func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) 
 	allMappings = append(allMappings, replacementMappings...)
 	allMappings = append(allMappings, mappings...)
 
-	// Skip the chart only when there's NOTHING for the wrapper to
-	// carry — no image mappings AND no verity.yaml chartValues for
-	// the chart. The latter check matters for charts whose only
-	// reason to have a verity wrapper is a chartValues override
-	// (e.g., gitea pins `image.repository: bitnami/gitea` to switch
-	// off the verity-rebuild path because the wolfi rebuild lacks
-	// the Bitnami init scripts; the chart has no images to replace
-	// and yet still needs the wrapper to carry the chartValues
-	// override). Without this check, strict mode aborts chart-gen
-	// because gitea produces zero mappings.
-	if len(allMappings) == 0 && len(vc.ChartValues[chart.Name]) == 0 {
-		fmt.Fprintf(os.Stderr, "warning: no patched image mappings and no chartValues for chart %s@%s; skipping\n", chart.Name, chart.Version)
+	if skip := logEmptyMappingsAction(chart, len(allMappings), len(vc.ChartValues[chart.Name]), len(imageRefs), intentionallyExcluded); skip {
 		return ChartResult{}, false, nil
-	}
-	if len(allMappings) == 0 {
-		fmt.Fprintf(os.Stderr, "info: no patched image mappings for chart %s@%s; emitting chartValues-only wrapper\n", chart.Name, chart.Version)
 	}
 
 	valuesYAML, err := GetChartValues(chart)
@@ -236,9 +308,33 @@ func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) 
 	return chartResult, true, nil
 }
 
-func applyReplacements(imageRefs []string, vc *config.VerityConfig, excludeNames map[string]struct{}) ([]string, []ImageMapping) {
+// applyReplacements partitions the chart-discovered image references into:
+//   - remaining: refs that need a crane lookup against the patched registry
+//   - replacements: refs that matched an explicit verity.yaml `replacements:`
+//     entry (the authoritative re-targeting signal)
+//   - intentionallyExcluded: count of refs that were dropped because they
+//     matched the `--exclude-names` set (which includes verity.yaml
+//     `unpatchableImages` after the merge in Run()). This signal is
+//     consumed by the post-mappings emitPassthrough decision so that
+//     charts whose images are ALL intentionally filtered still ship,
+//     while charts whose images are missing from the patched registry
+//     (a real pipeline gap) continue to trip strict mode.
+func applyReplacements(imageRefs []string, vc *config.VerityConfig, excludeNames map[string]struct{}) (remaining []string, replacements []ImageMapping, intentionallyExcluded int) {
 	if vc == nil || len(vc.Replacements) == 0 {
-		return imageRefs, nil
+		// No replacements configured — still need to honor excludeNames
+		// so the intentionallyExcluded count is correct for charts
+		// whose only image is in unpatchableImages.
+		remaining = make([]string, 0, len(imageRefs))
+		for _, imageRef := range imageRefs {
+			name := repoPath(imageRef)
+			if isExcluded(name, excludeNames) {
+				fmt.Fprintf(os.Stderr, "warning: skipping excluded image %q (%s)\n", name, imageRef)
+				intentionallyExcluded++
+				continue
+			}
+			remaining = append(remaining, imageRef)
+		}
+		return remaining, nil, intentionallyExcluded
 	}
 
 	// Sort patterns longest-first so a more-specific pattern wins over a
@@ -260,8 +356,7 @@ func applyReplacements(imageRefs []string, vc *config.VerityConfig, excludeNames
 		return patterns[i] < patterns[j]
 	})
 
-	remaining := make([]string, 0, len(imageRefs))
-	var replacements []ImageMapping
+	remaining = make([]string, 0, len(imageRefs))
 
 	for _, imageRef := range imageRefs {
 		name := repoPath(imageRef)
@@ -306,13 +401,14 @@ func applyReplacements(imageRefs []string, vc *config.VerityConfig, excludeNames
 		// patched registry (where they don't exist).
 		if isExcluded(name, excludeNames) {
 			fmt.Fprintf(os.Stderr, "warning: skipping excluded image %q (%s)\n", name, imageRef)
+			intentionallyExcluded++
 			continue
 		}
 
 		remaining = append(remaining, imageRef)
 	}
 
-	return remaining, replacements
+	return remaining, replacements, intentionallyExcluded
 }
 
 func buildChartImageOverrides(chartName string, mappings []ImageMapping, vc *config.VerityConfig) ([]ValueOverride, error) {

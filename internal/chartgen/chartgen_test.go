@@ -165,7 +165,7 @@ func TestApplyReplacements(t *testing.T) {
 		},
 	}
 
-	remaining, replacements := applyReplacements(refs, vc, nil)
+	remaining, replacements, _ := applyReplacements(refs, vc, nil)
 
 	if len(remaining) != 1 {
 		t.Fatalf("remaining = %d, want 1", len(remaining))
@@ -199,7 +199,7 @@ func TestApplyReplacements(t *testing.T) {
 
 func TestApplyReplacementsNilConfig(t *testing.T) {
 	refs := []string{"quay.io/foo/bar:v1.0"}
-	remaining, replacements := applyReplacements(refs, nil, nil)
+	remaining, replacements, _ := applyReplacements(refs, nil, nil)
 	if len(remaining) != 1 || len(replacements) != 0 {
 		t.Fatalf("nil config: remaining=%d replacements=%d", len(remaining), len(replacements))
 	}
@@ -226,7 +226,7 @@ func TestApplyReplacementsLongestPatternWins(t *testing.T) {
 		},
 	}
 
-	_, replacements := applyReplacements(refs, vc, nil)
+	_, replacements, _ := applyReplacements(refs, vc, nil)
 
 	want := map[string]string{
 		"reg.kyverno.io/kyverno/kyverno":          "ghcr.io/verity-org/kyverno",
@@ -262,7 +262,7 @@ func TestApplyReplacementsExcludedWithoutReplacement(t *testing.T) {
 	}
 	exclude := map[string]struct{}{"pushgateway": {}}
 
-	remaining, replacements := applyReplacements(refs, vc, exclude)
+	remaining, replacements, _ := applyReplacements(refs, vc, exclude)
 	if len(remaining) != 0 {
 		t.Errorf("remaining = %d, want 0 (excluded)", len(remaining))
 	}
@@ -301,7 +301,7 @@ func TestApplyReplacementsWinsOverExclude(t *testing.T) {
 		"kyverno":        {},
 	}
 
-	remaining, replacements := applyReplacements(refs, vc, exclude)
+	remaining, replacements, _ := applyReplacements(refs, vc, exclude)
 
 	if len(remaining) != 0 {
 		t.Errorf("remaining = %d, want 0 (all should be replaced); remaining=%v", len(remaining), remaining)
