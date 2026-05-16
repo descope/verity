@@ -383,6 +383,26 @@ chartValues:
     image.registry: docker.io
     image.repository: bitnami/gitea
     image.tag: "1"
+    # The Bitnami gitea chart 12.5.3 defaults
+    # `postgresql-ha.enabled: true` (3-replica HA postgres + repmgr) and
+    # `valkey-cluster.enabled: true` (3-replica valkey cluster). On the
+    # kind-based chart-integration runners these subcharts pull in 6
+    # stateful pods (postgresql-ha-0/1/2, valkey-cluster-0/1/2) whose
+    # peer-discovery DNS resolves on a slow schedule — the helm
+    # `--wait --timeout 10m0s` blocks waiting for the postgresql-ha
+    # statefulset to converge, repeating "unable to resolve domain
+    # gitea-postgresql-ha-postgresql-N.gitea-postgresql-ha-postgresql-
+    # headless.gitea.svc.cluster.local" until the smoke harness's
+    # 10-minute install budget is exhausted three times in a row.
+    # Switch to the chart's single-node subchart variants for CI: the
+    # single `postgresql` subchart deploys one postgres pod and the
+    # single `valkey` subchart (architecture: standalone) deploys one
+    # valkey pod. The gitea workload pod can reach both via the simple
+    # ClusterIP service and helm install converges well within 10m.
+    postgresql-ha.enabled: false
+    valkey-cluster.enabled: false
+    postgresql.enabled: true
+    valkey.enabled: true
 
   # cert-manager startupapicheck Job runs `cert-manager check api --wait=1m`
   # to verify webhook readiness post-install. The default 1-minute timeout
@@ -1106,3 +1126,15 @@ unpatchableImages:
   # See verity-org/verity#326 (PO Option A) for the Bitnami switch
   # rationale.
   - "bitnami/gitea"
+
+  # The Bitnami gitea chart's single-node postgresql and valkey
+  # subcharts (enabled via verity.yaml chartValues to replace the
+  # default HA postgresql-ha + valkey-cluster which never converge
+  # in kind-based CI) ship images under `docker.io/bitnamilegacy/*`.
+  # verity has no rebuild for these — they're Bitnami's repackaged
+  # images. Keep them upstream (the chart-integration allowlist row
+  # in test/chart-integration/values/gitea.allowlist.txt admits
+  # them; this list keeps chart-gen from attempting to mirror them
+  # into the non-existent `ghcr.io/verity-org/bitnamilegacy/*` repos).
+  - "bitnamilegacy/postgresql"
+  - "bitnamilegacy/valkey"
