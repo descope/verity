@@ -1,0 +1,36 @@
+# gitea chart-integration smoke-test value overrides.
+#
+# The Bitnami gitea chart's `init-directories` initContainer runs
+# `/usr/sbinx/init_directory_structure.sh` which does
+# `chown 1000:1000 /data` on the mounted PVC. The chart's default
+# `containerSecurityContext` is empty, so the init container inherits
+# the chart's per-container default `securityContext.runAsUser: 1000`
+# — which means it cannot chown the PVC. The kind local-path-
+# provisioner creates the host-path mount as root:root, and the
+# chart's `podSecurityContext.fsGroup: 1000` is not reliably applied
+# before the init runs. Result (chart-integration run 25974769298
+# gitea shard diagnostic dump):
+#
+#   chown: changing ownership of '/data': Operation not permitted
+#   failed to change ownership of '/data' from root:root to 1000:1000
+#
+# → init-directories enters CrashLoopBackOff and helm install times
+# out at 10 minutes.
+#
+# This override runs ALL containers in the gitea pod as root. The
+# Bitnami chart uses one `containerSecurityContext` block for both
+# init and main containers, so we cannot scope the override to just
+# the init container without forking the chart. Running the main
+# gitea container as root is acceptable in the smoke-test cluster
+# (kind, ephemeral, no real data), but should NOT be the production
+# default — which is why this override lives in the chart-integration
+# values directory and NOT in `verity.yaml`'s gitea chartValues block.
+#
+# Production users who hit the same PVC-chown issue on their cluster
+# should either (a) switch to `image.rootless: true` (the upstream
+# chart's supported path for non-root containers) or (b) configure
+# their CSI driver / storage class to honor `fsGroup` recursively
+# before the init container runs.
+containerSecurityContext:
+  runAsUser: 0
+  runAsNonRoot: false
