@@ -273,25 +273,21 @@ func TestConfig_PathSourceOnNonSymlink_Errors(t *testing.T) {
 	assert.Contains(t, err.Error(), `type="directory"`) // ensure the actual type is reported
 }
 
-// TestConfig_SymlinkBeforePermissions_ApkoChmodQuirk regression-tests the
-// reorder in `convertPaths` for the apko `mutatePermissions on every
-// non-permissions entry` quirk (see the convertPaths docstring). When a
-// permissions mutation on `/usr/bin/X` is declared BEFORE a symlink
-// mutation pointing at `/usr/bin/X`, the rendered apko config MUST swap
-// them so apko's implicit Chmod(0) on the symlink doesn't follow the link
-// and reset the target's mode to 0o000.
+// TestConfig_SymlinkInheritsTargetPerms_ApkoChmodQuirk regression-tests
+// the permissions-propagation in `convertPaths` for the apko
+// `mutatePermissions on every non-permissions entry` quirk (see the
+// convertPaths docstring). When a permissions mutation on `/usr/bin/X`
+// declares mode 0o755 and a symlink points at `/usr/bin/X`, the rendered
+// apko config MUST copy that 0o755 onto the symlink entry so apko's
+// implicit Chmod on the symlink (which follows the link) writes 0o755
+// to the target instead of 0.
 //
-// The reorder is MINIMAL — only the offending permissions↔symlink pair is
-// swapped. Other entries (directories, other permissions mutations,
-// unrelated symlinks) keep their absolute positions. This matters because
-// charts like fluent-bit require a parent-directory entry to be created
-// before the symlink it hosts, and any "lift symlinks to the front"
-// strategy would invert that ordering.
-func TestConfig_SymlinkBeforePermissions_ApkoChmodQuirk(t *testing.T) {
+// This approach has zero ordering impact — parent-directory-before-
+// symlink invariants and same-target-permissions declaration order are
+// both preserved.
+func TestConfig_SymlinkInheritsTargetPerms_ApkoChmodQuirk(t *testing.T) {
 	tmpl := config.TypeTemplate{
 		Base: "wolfi-base",
-		// Source ORDER intentionally puts permissions before symlink —
-		// the test asserts the renderer swaps just those two entries.
 		Paths: []config.PathDef{
 			{Path: "/var/lib/etcd", Type: "directory", UID: 65532, GID: 65532, Permissions: "0o700"},
 			{Path: "/usr/bin/etcd", Type: "permissions", UID: 0, GID: 0, Permissions: "0o755"},
@@ -308,40 +304,39 @@ func TestConfig_SymlinkBeforePermissions_ApkoChmodQuirk(t *testing.T) {
 	require.True(t, ok)
 	require.Len(t, paths, 3)
 
-	// First entry stays as the unrelated directory — proving the
-	// reorder is local (no global "lift to front").
-	first, ok := paths[0].(map[string]any)
-	require.True(t, ok, "paths[0] is map[string]any")
-	assert.Equal(t, "directory", first["type"], "unrelated directory entry stays at its original position 0")
-	assert.Equal(t, "/var/lib/etcd", first["path"])
+	// Order is COMPLETELY UNCHANGED — every entry stays at its
+	// original index. The fix is permissions-propagation, not
+	// reordering.
+	p0, ok := paths[0].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "directory", p0["type"])
+	assert.Equal(t, "/var/lib/etcd", p0["path"])
 
-	// The symlink (originally at index 2) and the permissions entry
-	// (originally at index 1) get swapped — symlink now at the
-	// permissions entry's old position, permissions at the symlink's
-	// old position.
-	second, ok := paths[1].(map[string]any)
-	require.True(t, ok, "paths[1] is map[string]any")
-	assert.Equal(t, "symlink", second["type"], "symlink slot now holds the swapped symlink entry")
-	assert.Equal(t, "/usr/local/bin/etcd", second["path"])
-	assert.Equal(t, "/usr/bin/etcd", second["source"])
+	p1, ok := paths[1].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "permissions", p1["type"])
+	assert.Equal(t, "/usr/bin/etcd", p1["path"])
 
-	third, ok := paths[2].(map[string]any)
-	require.True(t, ok, "paths[2] is map[string]any")
-	assert.Equal(t, "permissions", third["type"], "permissions slot now holds the swapped permissions entry")
-	assert.Equal(t, "/usr/bin/etcd", third["path"])
+	p2, ok := paths[2].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "symlink", p2["type"])
+	assert.Equal(t, "/usr/local/bin/etcd", p2["path"])
+	assert.Equal(t, "/usr/bin/etcd", p2["source"])
+	// The symlink inherited the target's permissions 0o755 = 493
+	// decimal. apko's implicit Chmod on the symlink now writes 0o755
+	// to the target instead of 0.
+	assert.Equal(t, 493, p2["permissions"], "symlink inherits its target's permissions mutation value")
 }
 
-// TestConfig_ParentDirBeforeSymlink_StillRespected guards the fluent-bit
-// invariant: a parent-directory entry created right before a symlink
-// hosted in that directory must keep its position-before-symlink ordering
-// even when the symlink targets a permissions-mutated path. The reorder
-// only swaps the permissions↔symlink pair, never lifts the symlink past
-// an earlier directory entry.
-func TestConfig_ParentDirBeforeSymlink_StillRespected(t *testing.T) {
+// TestConfig_SymlinkParentDirAndPermsOrderingPreserved guards the
+// fluent-bit invariant: a parent-directory entry created before a
+// symlink hosted in that directory keeps its position-before-symlink
+// ordering. Since the fix is propagation (not reorder), all 4 entries
+// stay at their declared indices.
+func TestConfig_SymlinkParentDirAndPermsOrderingPreserved(t *testing.T) {
 	tmpl := config.TypeTemplate{
 		Base: "wolfi-base",
-		// Shape mirrors images/fluent-bit.yaml: parent dir is created
-		// FIRST, then permissions, then symlink hosted in that parent.
+		// Shape mirrors images/fluent-bit.yaml.
 		Paths: []config.PathDef{
 			{Path: "/etc/fluent-bit", Type: "directory", UID: 65532, GID: 65532, Permissions: "0o755"},
 			{Path: "/fluent-bit/bin", Type: "directory", UID: 0, GID: 0, Permissions: "0o755"},
@@ -359,33 +354,62 @@ func TestConfig_ParentDirBeforeSymlink_StillRespected(t *testing.T) {
 	require.True(t, ok)
 	require.Len(t, paths, 4)
 
-	// Directories keep their absolute positions 0 and 1.
-	p0, ok := paths[0].(map[string]any)
-	require.True(t, ok)
-	assert.Equal(t, "directory", p0["type"])
-	assert.Equal(t, "/etc/fluent-bit", p0["path"])
+	// Indices unchanged.
+	for i, want := range []struct {
+		ptype string
+		path  string
+	}{
+		{"directory", "/etc/fluent-bit"},
+		{"directory", "/fluent-bit/bin"},
+		{"permissions", "/usr/bin/fluent-bit"},
+		{"symlink", "/fluent-bit/bin/fluent-bit"},
+	} {
+		p, ok := paths[i].(map[string]any)
+		require.True(t, ok)
+		assert.Equal(t, want.ptype, p["type"], "paths[%d].type", i)
+		assert.Equal(t, want.path, p["path"], "paths[%d].path", i)
+	}
 
-	p1, ok := paths[1].(map[string]any)
+	// Symlink inherited the target's perms.
+	sym, ok := paths[3].(map[string]any)
 	require.True(t, ok)
-	assert.Equal(t, "directory", p1["type"], "parent /fluent-bit/bin dir must still come before its child symlink")
-	assert.Equal(t, "/fluent-bit/bin", p1["path"])
-
-	// Position 2 was permissions, position 3 was symlink — swap.
-	p2, ok := paths[2].(map[string]any)
-	require.True(t, ok)
-	assert.Equal(t, "symlink", p2["type"], "symlink swapped into the permissions slot")
-	assert.Equal(t, "/fluent-bit/bin/fluent-bit", p2["path"])
-
-	p3, ok := paths[3].(map[string]any)
-	require.True(t, ok)
-	assert.Equal(t, "permissions", p3["type"], "permissions swapped into the symlink slot")
-	assert.Equal(t, "/usr/bin/fluent-bit", p3["path"])
+	assert.Equal(t, 493, sym["permissions"])
 }
 
-// TestConfig_UnrelatedSymlinkOrderPreserved confirms the reorder only
-// touches symlinks whose source matches a permissions entry. A symlink
-// pointing at an unrelated path keeps its original position.
-func TestConfig_UnrelatedSymlinkOrderPreserved(t *testing.T) {
+// TestConfig_ExplicitSymlinkPermsRespected confirms the propagation only
+// fires when the symlink's own permissions are unset (mode 0). If a YAML
+// author explicitly set the symlink's permissions, that wins.
+func TestConfig_ExplicitSymlinkPermsRespected(t *testing.T) {
+	tmpl := config.TypeTemplate{
+		Base: "wolfi-base",
+		Paths: []config.PathDef{
+			{Path: "/usr/bin/foo", Type: "permissions", UID: 0, GID: 0, Permissions: "0o755"},
+			// Author explicitly set 0o700 on the symlink.
+			{Path: "/usr/local/bin/foo", Type: "symlink", Source: "/usr/bin/foo", UID: 0, GID: 0, Permissions: "0o700"},
+		},
+	}
+	out, err := render.Config(&tmpl, "latest", "_base")
+	require.NoError(t, err)
+
+	var cfg map[string]any
+	require.NoError(t, yaml.Unmarshal(out, &cfg))
+
+	paths, ok := cfg["paths"].([]any)
+	require.True(t, ok)
+	require.Len(t, paths, 2)
+
+	sym, ok := paths[1].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "symlink", sym["type"])
+	// 0o700 = 448 decimal. Author's explicit value wins over the
+	// propagation (which would have written 0o755 = 493).
+	assert.Equal(t, 448, sym["permissions"], "explicit symlink permissions are not overwritten by propagation")
+}
+
+// TestConfig_UnrelatedSymlinkPermsZero confirms a symlink that doesn't
+// target any permissions-mutated path stays at permissions: 0. This is
+// the prior behaviour for the common case (most symlinks).
+func TestConfig_UnrelatedSymlinkPermsZero(t *testing.T) {
 	tmpl := config.TypeTemplate{
 		Base: "wolfi-base",
 		Paths: []config.PathDef{
@@ -405,14 +429,14 @@ func TestConfig_UnrelatedSymlinkOrderPreserved(t *testing.T) {
 	require.True(t, ok)
 	require.Len(t, paths, 3)
 
-	// Order is unchanged because no symlink target matches a permissions path.
-	first, ok := paths[0].(map[string]any)
-	require.True(t, ok, "paths[0] is map[string]any")
-	assert.Equal(t, "/var/lib/foo", first["path"])
-	second, ok := paths[1].(map[string]any)
-	require.True(t, ok, "paths[1] is map[string]any")
-	assert.Equal(t, "/usr/bin/foo", second["path"])
-	third, ok := paths[2].(map[string]any)
-	require.True(t, ok, "paths[2] is map[string]any")
-	assert.Equal(t, "/usr/local/bin/bar", third["path"])
+	// Order unchanged.
+	p0, ok := paths[0].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "/var/lib/foo", p0["path"])
+	p2, ok := paths[2].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "/usr/local/bin/bar", p2["path"])
+	// Unrelated symlink keeps its zero permissions (no propagation
+	// source).
+	assert.NotContains(t, p2, "permissions", "unrelated symlink omits permissions key (zero value, omitempty)")
 }

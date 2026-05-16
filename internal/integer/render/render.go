@@ -125,23 +125,32 @@ func Config(tmpl *config.TypeTemplate, version, basePath string) ([]byte, error)
 //   - type=symlink requires Source (apko rejects symlinks without a target)
 //   - Source set on any non-symlink type is invalid (apko rejects it)
 //
-// It also REORDERS entries to defend against an apko quirk: apko's
-// mutatePaths (chainguard-dev/apko pkg/build/paths.go:146) runs
-// mutatePermissions on every non-permissions mutation AFTER its type-
-// specific mutator, using the mutation's `permissions:` field. A symlink
-// mutation with no explicit `permissions:` defaults to 0, so apko ends up
-// calling Chmod(0) on the SYMLINK PATH — and under Linux symlink-chmod
-// semantics that follows the link and resets the TARGET file's mode.
-// Concretely: if `/usr/bin/etcd` has a `permissions: 0o755` mutation and
-// `/usr/local/bin/etcd → /usr/bin/etcd` is mutated AFTER it, the symlink's
-// implicit Chmod(0) wipes the binary's executable bit and `runc exec`
-// aborts with permission denied at chart-integration time.
+// It also PROPAGATES permissions from a target-permissions entry onto a
+// matching symlink to defend against an apko quirk: apko's mutatePaths
+// (chainguard-dev/apko pkg/build/paths.go:146) runs mutatePermissions on
+// every non-permissions mutation AFTER its type-specific mutator, using
+// the mutation's `permissions:` field. A symlink mutation with no
+// explicit `permissions:` defaults to 0, so apko ends up calling
+// Chmod(0) on the SYMLINK PATH — and under Linux symlink-chmod semantics
+// that follows the link and resets the TARGET file's mode. Concretely:
+// if `/usr/bin/etcd` has a `permissions: 0o755` mutation and
+// `/usr/local/bin/etcd → /usr/bin/etcd` is mutated AFTER it, the
+// symlink's implicit Chmod(0) wipes the binary's executable bit and
+// `runc exec` aborts with permission denied at chart-integration time.
 //
-// To make this safe regardless of YAML ordering in images/*.yaml, we
-// reorder so every `symlink` entry comes BEFORE every `permissions`
-// entry whose `path:` is the symlink's `source:` (the link target). The
-// reorder is stable within each group — relative ordering of entries
-// that don't trigger the rule is preserved.
+// Defense: for each `symlink` entry whose `Source` equals the `Path` of
+// any `permissions` entry, COPY the permissions value (and the
+// permissions entry's UID/GID for consistency) onto the symlink. apko's
+// implicit Chmod still runs against the symlink, still follows the
+// link, but now writes the SAME mode the explicit permissions entry
+// asked for instead of wiping it to 0. This avoids reordering entries
+// entirely, so:
+//
+//   - parent-directory-before-symlink ordering (fluent-bit's
+//     /fluent-bit/bin before /fluent-bit/bin/fluent-bit) is preserved
+//   - multiple same-target permissions entries keep their declaration
+//     order (the last-write-wins semantics they already had under apko
+//     are unchanged)
 //
 // Failing fast at render keeps misconfigured YAML errors close to their YAML
 // source instead of surfacing as opaque apko/melange build failures.
@@ -171,42 +180,50 @@ func convertPaths(in []config.PathDef, version string) ([]apkoPath, error) {
 			Permissions: perms,
 		}
 	}
-	return reorderForApkoChmodQuirk(out), nil
+	propagateSymlinkPermsForApkoChmodQuirk(out)
+	return out, nil
 }
 
-// reorderForApkoChmodQuirk rewrites only the symlink ↔ permissions pairs
-// that would trigger the apko Chmod-via-symlink quirk, leaving every other
-// entry untouched. See the convertPaths docstring for the underlying apko
-// behaviour.
+// propagateSymlinkPermsForApkoChmodQuirk copies the permissions / uid /
+// gid from each `permissions` entry onto every `symlink` entry whose
+// `Source` matches that permissions entry's `Path`. See the convertPaths
+// docstring for the apko Chmod-via-symlink behaviour this works around.
 //
-// The implementation does a single in-place pass: for each `symlink` entry
-// whose `Source` equals the `Path` of an earlier `permissions` entry, swap
-// the symlink with that earlier permissions entry so the symlink runs
-// first at apko mutate time. Unrelated entries (directories, other
-// symlinks, other permissions mutations) keep their absolute positions —
-// this matters because fluent-bit's `/fluent-bit/bin` parent directory
-// MUST be created before the `/fluent-bit/bin/fluent-bit` symlink it
-// hosts, and a "lift symlinks to the front" reorder would invert that.
-func reorderForApkoChmodQuirk(in []apkoPath) []apkoPath {
-	out := append([]apkoPath(nil), in...)
-	for i := range out {
-		if out[i].Type != "permissions" {
-			continue
-		}
-		// Scan forward for a symlink whose Source is this permissions
-		// entry's Path. If found, swap them so the symlink runs first.
-		for j := i + 1; j < len(out); j++ {
-			if out[j].Type == "symlink" && out[j].Source == out[i].Path {
-				out[i], out[j] = out[j], out[i]
-				// Don't break — there could be more permissions
-				// entries later in the slice that need the same
-				// treatment. Continue the outer loop from the
-				// current index, which now holds the symlink.
-				break
-			}
+// Mutates `paths` in place. A symlink that already has a non-zero
+// Permissions is NOT overridden — the explicit value from the YAML wins.
+// If multiple permissions entries target the same path, the LAST-DECLARED
+// one is propagated (mirroring apko's last-write-wins semantics for
+// repeated permissions mutations).
+func propagateSymlinkPermsForApkoChmodQuirk(paths []apkoPath) {
+	// Build a `target Path → (perms, uid, gid)` map from permissions
+	// entries. Iterate in declared order so later entries overwrite
+	// earlier ones (matches apko's apply order).
+	type permsRecord struct {
+		perms    uint32
+		uid, gid int
+	}
+	byTarget := make(map[string]permsRecord)
+	for _, p := range paths {
+		if p.Type == "permissions" {
+			byTarget[p.Path] = permsRecord{p.Permissions, p.UID, p.GID}
 		}
 	}
-	return out
+	for i := range paths {
+		if paths[i].Type != "symlink" {
+			continue
+		}
+		if paths[i].Permissions != 0 {
+			// Explicit YAML value — respect it.
+			continue
+		}
+		rec, ok := byTarget[paths[i].Source]
+		if !ok {
+			continue
+		}
+		paths[i].Permissions = rec.perms
+		paths[i].UID = rec.uid
+		paths[i].GID = rec.gid
+	}
 }
 
 // sub replaces all occurrences of {{version}} in s with version.
