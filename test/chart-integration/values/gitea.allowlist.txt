@@ -24,3 +24,12 @@ docker.io/bitnamilegacy/postgresql:
 docker.io/bitnamilegacy/postgresql@
 docker.io/bitnamilegacy/valkey:
 docker.io/bitnamilegacy/valkey@
+# The gitea chart's `init-directories` initContainer uses `busybox:
+# latest` (bare ref; kubelet resolves to `docker.io/library/busybox:
+# latest`). chart-gen excludes it from the patched pipeline via the
+# global busybox entry in exclude-names (images/busybox.yaml), so
+# the wrapper leaves the upstream reference intact and the image-
+# origin gate needs the allowlist row — same shape as the
+# meilisearch chart's busybox helper.
+docker.io/library/busybox:
+docker.io/library/busybox@
