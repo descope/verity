@@ -1,0 +1,21 @@
+# victoria-logs-single upstream image allowlist (SCR-2026-04-30-001)
+#
+# The victoria-logs-single chart pulls `victoriametrics/victoria-logs:
+# v1.50.0` — a statically-linked Go binary in a FROM-SCRATCH base
+# image. verity has no rebuild for it; chart-gen would route it
+# through Copa, but `victoriametrics/victoria-logs` is now listed in
+# verity.yaml `unpatchableImages` (Copa was substituting a dynamically-
+# linked binary against a missing dynamic-linker on the scratch base,
+# breaking `runc exec` — see the unpatchableImages comment in
+# verity.yaml).
+#
+# With the chart's image pinned to `docker.io/victoriametrics/
+# victoria-logs:v1.50.0` (unpatched), the chart-integration image-
+# origin gate needs this allowlist row.
+#
+# Format note: the isAccepted helper in test/chart-integration/
+# assertions.go uses strings.HasPrefix; the `:` and `@` separator
+# forms scope each prefix to the image's tag/digest refs without
+# leaking to unrelated `victoriametrics/*` repos.
+docker.io/victoriametrics/victoria-logs:
+docker.io/victoriametrics/victoria-logs@

@@ -6,7 +6,15 @@ upstream:
 types:
   default:
     base: wolfi-base
-    packages: ["opensearch-dashboards-{{version}}"]
+    # busybox supplies `/bin/sh` plus basic coreutils. The apk-shipped
+    # `bin/opensearch-dashboards` is itself a POSIX shell script
+    # (`#!/bin/sh ...`) — without `/bin/sh` in the image, runc aborts
+    # at exec time with `exec /usr/share/opensearch-dashboards/bin/
+    # opensearch-dashboards: no such file or directory` (the missing
+    # file is the script's interpreter, not the script itself —
+    # verified against chart-integration run 25961993442). Same
+    # wolfi-baselayout shape as jenkins.yaml.
+    packages: ["opensearch-dashboards-{{version}}", "busybox"]
     # The apk does not ship `opensearch-dashboards-docker-entrypoint.sh`
     # (that script is a Docker-build artifact upstream, not an apk payload).
     # Published image's entrypoint failed with `exec: no such file or
