@@ -1,0 +1,18 @@
+# gitea upstream image allowlist (SCR-2026-04-30-001)
+#
+# The gitea chart's `chartValues.gitea.image.repository: bitnami/gitea`
+# (verity.yaml, PO Option A from verity-org/verity#326) routes the
+# chart at Bitnami's gitea image. chart-gen now leaves the upstream
+# reference intact (via the `bitnami/gitea` entry in verity.yaml's
+# `unpatchableImages` list) instead of trying to mirror it into the
+# non-existent `ghcr.io/verity-org/bitnami/gitea` repo.
+#
+# The chart-integration image-origin gate therefore needs to admit
+# `docker.io/bitnami/gitea:1` (plus any sibling Bitnami image the
+# chart pulls — e.g., `bitnami/git` for repo init).
+#
+# Format note: the isAccepted helper in test/chart-integration/
+# assertions.go uses strings.HasPrefix; the `:` and `@` separators
+# scope each prefix to its image's tag/digest refs.
+docker.io/bitnami/gitea:
+docker.io/bitnami/gitea@

@@ -158,9 +158,22 @@ func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) 
 	allMappings = append(allMappings, replacementMappings...)
 	allMappings = append(allMappings, mappings...)
 
-	if len(allMappings) == 0 {
-		fmt.Fprintf(os.Stderr, "warning: no patched image mappings for chart %s@%s; skipping\n", chart.Name, chart.Version)
+	// Skip the chart only when there's NOTHING for the wrapper to
+	// carry — no image mappings AND no verity.yaml chartValues for
+	// the chart. The latter check matters for charts whose only
+	// reason to have a verity wrapper is a chartValues override
+	// (e.g., gitea pins `image.repository: bitnami/gitea` to switch
+	// off the verity-rebuild path because the wolfi rebuild lacks
+	// the Bitnami init scripts; the chart has no images to replace
+	// and yet still needs the wrapper to carry the chartValues
+	// override). Without this check, strict mode aborts chart-gen
+	// because gitea produces zero mappings.
+	if len(allMappings) == 0 && len(vc.ChartValues[chart.Name]) == 0 {
+		fmt.Fprintf(os.Stderr, "warning: no patched image mappings and no chartValues for chart %s@%s; skipping\n", chart.Name, chart.Version)
 		return ChartResult{}, false, nil
+	}
+	if len(allMappings) == 0 {
+		fmt.Fprintf(os.Stderr, "info: no patched image mappings for chart %s@%s; emitting chartValues-only wrapper\n", chart.Name, chart.Version)
 	}
 
 	valuesYAML, err := GetChartValues(chart)
