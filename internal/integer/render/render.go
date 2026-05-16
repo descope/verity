@@ -125,6 +125,24 @@ func Config(tmpl *config.TypeTemplate, version, basePath string) ([]byte, error)
 //   - type=symlink requires Source (apko rejects symlinks without a target)
 //   - Source set on any non-symlink type is invalid (apko rejects it)
 //
+// It also REORDERS entries to defend against an apko quirk: apko's
+// mutatePaths (chainguard-dev/apko pkg/build/paths.go:146) runs
+// mutatePermissions on every non-permissions mutation AFTER its type-
+// specific mutator, using the mutation's `permissions:` field. A symlink
+// mutation with no explicit `permissions:` defaults to 0, so apko ends up
+// calling Chmod(0) on the SYMLINK PATH — and under Linux symlink-chmod
+// semantics that follows the link and resets the TARGET file's mode.
+// Concretely: if `/usr/bin/etcd` has a `permissions: 0o755` mutation and
+// `/usr/local/bin/etcd → /usr/bin/etcd` is mutated AFTER it, the symlink's
+// implicit Chmod(0) wipes the binary's executable bit and `runc exec`
+// aborts with permission denied at chart-integration time.
+//
+// To make this safe regardless of YAML ordering in images/*.yaml, we
+// reorder so every `symlink` entry comes BEFORE every `permissions`
+// entry whose `path:` is the symlink's `source:` (the link target). The
+// reorder is stable within each group — relative ordering of entries
+// that don't trigger the rule is preserved.
+//
 // Failing fast at render keeps misconfigured YAML errors close to their YAML
 // source instead of surfacing as opaque apko/melange build failures.
 func convertPaths(in []config.PathDef, version string) ([]apkoPath, error) {
@@ -153,7 +171,44 @@ func convertPaths(in []config.PathDef, version string) ([]apkoPath, error) {
 			Permissions: perms,
 		}
 	}
-	return out, nil
+	return reorderForApkoChmodQuirk(out), nil
+}
+
+// reorderForApkoChmodQuirk moves every `symlink` entry to come BEFORE every
+// `permissions` entry whose path equals the symlink's source. See the
+// convertPaths docstring for the underlying apko behaviour. Pure-data
+// reorder; no semantic change beyond mutation order.
+func reorderForApkoChmodQuirk(in []apkoPath) []apkoPath {
+	// Build a set of "symlink sources that will collide with permissions
+	// entries already past this point" so we know which symlinks to lift.
+	permsBefore := make(map[string]struct{})
+	for _, p := range in {
+		if p.Type == "permissions" {
+			permsBefore[p.Path] = struct{}{}
+		}
+	}
+	// Two-pass stable rebuild: first emit symlinks whose source matches
+	// a permissions entry's path (in their original relative order),
+	// then emit everything else (including any unrelated symlinks)
+	// in original order. This is the smallest reorder that satisfies
+	// the apko quirk.
+	out := make([]apkoPath, 0, len(in))
+	for _, p := range in {
+		if p.Type == "symlink" {
+			if _, hit := permsBefore[p.Source]; hit {
+				out = append(out, p)
+			}
+		}
+	}
+	for _, p := range in {
+		if p.Type == "symlink" {
+			if _, hit := permsBefore[p.Source]; hit {
+				continue
+			}
+		}
+		out = append(out, p)
+	}
+	return out
 }
 
 // sub replaces all occurrences of {{version}} in s with version.

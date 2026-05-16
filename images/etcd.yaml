@@ -10,17 +10,28 @@ types:
     entrypoint: /usr/bin/etcd
     paths:
       - {path: /var/lib/etcd, type: directory, uid: 65532, gid: 65532, permissions: 0o700}
+      # bitnami/etcd helm chart hardcodes /usr/local/bin/etcd in the StatefulSet
+      # command — verity's wolfi rebuild ships at /usr/bin/etcd (FHS).
+      # Symlink keeps both layouts working. See verity-org/verity#318 (A.2).
+      #
+      # ORDERING IS LOAD-BEARING: the symlink entry MUST come BEFORE the
+      # `permissions` mutation on /usr/bin/etcd below. apko's mutatePaths
+      # (pkg/build/paths.go:146) calls mutatePermissions on every non-
+      # permissions entry AFTER its type-specific mutator, using the
+      # mutation's `permissions:` field — and the symlink entry has no
+      # `permissions:` set, so it falls back to mode 0. The Chmod follows
+      # the symlink (Linux symlink chmod semantics) and resets the target
+      # /usr/bin/etcd to mode 0o000, undoing the explicit chmod above.
+      # Reordering symlink-before-permissions sidesteps the apko quirk
+      # without needing an upstream patch.
+      - {path: /usr/local/bin/etcd, type: symlink, source: /usr/bin/etcd, uid: 0, gid: 0}
       # Published `ghcr.io/verity-org/etcd:latest` ships /usr/bin/etcd with
       # mode 0o000; runc aborts with `exec: "/usr/local/bin/etcd": permission
-      # denied` after resolving the symlink below. The prior #318 (A.2) FHS
+      # denied` after resolving the symlink above. The prior #318 (A.2) FHS
       # symlink IS landing in the image, but the target binary lacks +x.
       # apko `type: permissions` is the canonical chmod-on-existing-file
       # mutation. See SCR-2026-05-14-001 Bucket H + image-mode-audit.md.
       - {path: /usr/bin/etcd, type: permissions, uid: 0, gid: 0, permissions: 0o755}
-      # bitnami/etcd helm chart hardcodes /usr/local/bin/etcd in the StatefulSet
-      # command — verity's wolfi rebuild ships at /usr/bin/etcd (FHS).
-      # Symlink keeps both layouts working. See verity-org/verity#318 (A.2).
-      - {path: /usr/local/bin/etcd, type: symlink, source: /usr/bin/etcd, uid: 0, gid: 0}
 
   fips:
     base: wolfi-fips
@@ -28,8 +39,10 @@ types:
     entrypoint: /usr/bin/etcd
     paths:
       - {path: /var/lib/etcd, type: directory, uid: 65532, gid: 65532, permissions: 0o700}
-      - {path: /usr/bin/etcd, type: permissions, uid: 0, gid: 0, permissions: 0o755}
+      # See the `default` types block above for the rationale on symlink-
+      # before-permissions ordering (apko chmod-via-symlink quirk).
       - {path: /usr/local/bin/etcd, type: symlink, source: /usr/bin/etcd, uid: 0, gid: 0}
+      - {path: /usr/bin/etcd, type: permissions, uid: 0, gid: 0, permissions: 0o755}
 
 versions:
   "3.5":
