@@ -1,0 +1,34 @@
+# workload-identity-webhook upstream image allowlist (SCR-2026-04-30-001)
+#
+# The Azure workload-identity-webhook chart 1.5.1 pulls one image
+# directly from MCR (Microsoft Container Registry):
+#
+#   mcr.microsoft.com/oss/azure/workload-identity/webhook:v1.5.1
+#                                                         — the
+#                                                           mutating
+#                                                           admission
+#                                                           webhook
+#                                                           binary
+#
+# verity has no rebuild for this image (chart-gen exclude-names
+# includes `azure-workload-identity-webhook`; the upstream image is
+# Azure-specific and CGO-free, low risk for Debian-CVE accumulation
+# that the wolfi-rebuild program targets). The chart's wrapper
+# therefore renders the upstream MCR path verbatim, so the
+# image-origin gate needs an allowlist row.
+#
+# This allowlist landed alongside `chartValues.workload-identity-
+# webhook.replicaCount: 1` in #379 which un-skipped the chart from
+# SKIPS.yaml — without an allowlist file, the freshly-un-skipped
+# chart would have failed the next nightly with
+#   `image-origin gate: workload-identity-webhook has 1 non-verity
+#    image(s) but no allowlist file`
+# (verified against chart-integration run 25954862160).
+#
+# Format note: the isAccepted helper in test/chart-integration/
+# assertions.go uses strings.HasPrefix; `:` and `@` separator
+# forms scope the prefix to one image's tag/digest refs without
+# bleeding to unrelated `mcr.microsoft.com/oss/azure/workload-
+# identity/*` repos.
+mcr.microsoft.com/oss/azure/workload-identity/webhook:
+mcr.microsoft.com/oss/azure/workload-identity/webhook@

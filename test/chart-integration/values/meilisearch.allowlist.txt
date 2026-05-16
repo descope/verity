@@ -1,0 +1,23 @@
+# meilisearch upstream image allowlist (SCR-2026-04-30-001)
+#
+# The meilisearch chart 0.32.0 launches a `docker.io/library/busybox:latest`
+# pod (chart-template-driven, used to chmod/initialize the data volume
+# before the main meilisearch container starts). chart-gen has
+# `busybox` in its `--exclude-names` list (the wolfi busybox is its
+# own integer rebuild that's intentionally NOT chart-rewritten —
+# many charts use `:latest` busybox refs that would not survive
+# rewrite without per-chart wiring), so the upstream Docker Hub
+# reference renders into the wrapper verbatim.
+#
+# Without this allowlist, the image-origin gate fails with
+#   `image-origin gate: meilisearch has 1 non-verity image(s) but
+#    no allowlist file at ...meilisearch.allowlist.txt`
+# (verified against chart-integration run 25954862160, the run that
+# first exercised the meilisearch un-skip after #377 fixed the
+# HTTP-listen-address bug that was causing readiness-probe timeouts).
+#
+# Format note: the isAccepted helper in test/chart-integration/
+# assertions.go uses strings.HasPrefix; `:` and `@` separator forms
+# scope the prefix to busybox's library tag/digest refs.
+docker.io/library/busybox:
+docker.io/library/busybox@

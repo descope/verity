@@ -442,29 +442,24 @@ chartValues:
     readinessProbe.initialDelaySeconds: 60
     readinessProbe.failureThreshold: 12
 
-  # falco 8.0.3 — Bucket H (kernel-driver init blocked in CI).
-  # Per verity-org/verity#325: falco's main container exits at boot
-  # with `libpman: ring buffer map type is not supported
-  # (errno: 1 | message: Operation not permitted)` because the BPF
-  # capability (CAP_BPF / CAP_PERFMON) is denied at runc-create time
-  # on the Azure GHA runner, regardless of kernel version. The
-  # `falco-driver-loader` init container completes fine; only the
-  # subsequent BPF map load fails.
+  # falco: NO chartValue tuning here — `driver.enabled: false`
+  # was attempted in #378 to bypass the BPF-capability denial on
+  # Azure GHA runners (verity-org/verity#325), but the May 16
+  # nightly (run 25954862160, falco pod log) revealed the chart's
+  # auto-injection of the `container` plugin into `falco.plugins`
+  # and `falco.load_plugins` is gated by `driver.enabled` in
+  # `_helpers.tpl:477` (`{{ if and .Values.driver.enabled
+  # .Values.collectors.enabled }}`). With the driver disabled
+  # AND no plugin auto-added, falco starts with no event source
+  # and exits with `Error: Must enable at least one event source`.
   #
-  # The chart exposes `driver.enabled: false` for exactly this
-  # scenario (per chart values comment: "Set it to false if you
-  # want to deploy Falco without the drivers"). With the driver
-  # disabled, falco still starts and exposes its metrics/gRPC
-  # endpoint via the container engine + k8s plugin paths, which is
-  # all the smoke test needs (we verify install + Ready, not event
-  # detection). Real users who need syscall monitoring deploy with
-  # the default `driver.enabled: true` on a non-locked-down kernel.
-  #
-  # The chart's collectors.containerEngine.enabled default is true,
-  # so falco still has an event source after this flip — it just
-  # comes from the container plugin instead of the kernel probe.
-  falco:
-    driver.enabled: false
+  # Properly fixing this requires explicitly wiring the container
+  # plugin via chartValues — both `falco.plugins[<dict>]` AND
+  # `falco.load_plugins: [container]` — and also overriding
+  # `falcoctl.config.artifact.install.refs` so the plugin artifact
+  # is pulled at install time. That's a much larger chart-config
+  # surface; deferred. falco re-skipped in test/chart-integration/
+  # SKIPS.yaml under #325 until the deeper wiring lands.
 
   # opensearch 3.6.0 — Bucket G (JVM gc log path is unwritable in the
   # rebuilt image).
@@ -700,10 +695,23 @@ replacements:
     registry: "ghcr.io/verity-org"
     image: "valkey"
     tag: "9.0"
+  # etcd: pin to the floating major.minor tag (`3.6`) instead of the
+  # specific patch (`3.6.10`). The Integer Orchestrator rebuilds the
+  # major.minor tag on every CI cycle, but only rebuilds the patch
+  # tag when the wolfi `etcd-3.6` package's version actually changes
+  # — which makes the patch tag "sticky" to whatever content was
+  # last published when the package version changed (currently
+  # commit 94ed8f9e, pre-#365 era). The chart-integration on
+  # 2026-05-16 was pulling `ghcr.io/verity-org/etcd:3.6.10` which
+  # still lacks the FHS symlink to `/usr/local/bin/etcd` added in
+  # `images/etcd.yaml` post-#365. The floating `:3.6` tag has the
+  # current build and the symlink. See verity-org/verity#318 (A.2)
+  # for the underlying chart-vs-image FHS-path mismatch the symlink
+  # exists to bridge.
   "etcd-development/etcd":
     registry: "ghcr.io/verity-org"
     image: "etcd"
-    tag: "3.6.10"
+    tag: "3.6"
   "velero/velero":
     registry: "ghcr.io/verity-org"
     image: "velero"

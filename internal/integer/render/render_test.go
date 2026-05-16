@@ -272,3 +272,90 @@ func TestConfig_PathSourceOnNonSymlink_Errors(t *testing.T) {
 	assert.Contains(t, err.Error(), "/usr/local/bin/etcd")
 	assert.Contains(t, err.Error(), `type="directory"`) // ensure the actual type is reported
 }
+
+// TestConfig_SymlinkBeforePermissions_ApkoChmodQuirk regression-tests the
+// reorder in `convertPaths` for the apko `mutatePermissions on every
+// non-permissions entry` quirk (see the convertPaths docstring). When a
+// permissions mutation on `/usr/bin/X` is declared BEFORE a symlink
+// mutation pointing at `/usr/bin/X`, the rendered apko config MUST emit
+// the symlink first so apko's implicit Chmod(0) on the symlink doesn't
+// follow the link and reset the target's mode to 0o000.
+//
+// This protects the etcd / velero / fluent-bit FHS-symlink images from
+// silently regressing if a maintainer reorders entries in images/*.yaml
+// to read more naturally.
+func TestConfig_SymlinkBeforePermissions_ApkoChmodQuirk(t *testing.T) {
+	tmpl := config.TypeTemplate{
+		Base: "wolfi-base",
+		// Source ORDER intentionally puts permissions before symlink —
+		// the test asserts the renderer rewrites it.
+		Paths: []config.PathDef{
+			{Path: "/var/lib/etcd", Type: "directory", UID: 65532, GID: 65532, Permissions: "0o700"},
+			{Path: "/usr/bin/etcd", Type: "permissions", UID: 0, GID: 0, Permissions: "0o755"},
+			{Path: "/usr/local/bin/etcd", Type: "symlink", Source: "/usr/bin/etcd", UID: 0, GID: 0},
+		},
+	}
+	out, err := render.Config(&tmpl, "latest", "_base")
+	require.NoError(t, err)
+
+	var cfg map[string]any
+	require.NoError(t, yaml.Unmarshal(out, &cfg))
+
+	paths, ok := cfg["paths"].([]any)
+	require.True(t, ok)
+	require.Len(t, paths, 3)
+
+	// The symlink whose source matches the permissions entry must come
+	// FIRST in the emitted order (rewritten from its source position).
+	first, ok := paths[0].(map[string]any)
+	require.True(t, ok, "paths[0] is map[string]any")
+	assert.Equal(t, "symlink", first["type"], "symlink that targets a permissions-mutated path must be emitted first")
+	assert.Equal(t, "/usr/local/bin/etcd", first["path"])
+	assert.Equal(t, "/usr/bin/etcd", first["source"])
+
+	// Other entries retain their relative ordering.
+	second, ok := paths[1].(map[string]any)
+	require.True(t, ok, "paths[1] is map[string]any")
+	assert.Equal(t, "directory", second["type"])
+	assert.Equal(t, "/var/lib/etcd", second["path"])
+
+	third, ok := paths[2].(map[string]any)
+	require.True(t, ok, "paths[2] is map[string]any")
+	assert.Equal(t, "permissions", third["type"])
+	assert.Equal(t, "/usr/bin/etcd", third["path"])
+}
+
+// TestConfig_UnrelatedSymlinkOrderPreserved confirms the reorder only
+// touches symlinks whose source matches a permissions entry. A symlink
+// pointing at an unrelated path keeps its original position.
+func TestConfig_UnrelatedSymlinkOrderPreserved(t *testing.T) {
+	tmpl := config.TypeTemplate{
+		Base: "wolfi-base",
+		Paths: []config.PathDef{
+			{Path: "/var/lib/foo", Type: "directory", UID: 65532, GID: 65532, Permissions: "0o755"},
+			{Path: "/usr/bin/foo", Type: "permissions", UID: 0, GID: 0, Permissions: "0o755"},
+			// Symlink pointing at /usr/bin/bar — NOT matching any permissions entry.
+			{Path: "/usr/local/bin/bar", Type: "symlink", Source: "/usr/bin/bar", UID: 0, GID: 0},
+		},
+	}
+	out, err := render.Config(&tmpl, "latest", "_base")
+	require.NoError(t, err)
+
+	var cfg map[string]any
+	require.NoError(t, yaml.Unmarshal(out, &cfg))
+
+	paths, ok := cfg["paths"].([]any)
+	require.True(t, ok)
+	require.Len(t, paths, 3)
+
+	// Order is unchanged because no symlink target matches a permissions path.
+	first, ok := paths[0].(map[string]any)
+	require.True(t, ok, "paths[0] is map[string]any")
+	assert.Equal(t, "/var/lib/foo", first["path"])
+	second, ok := paths[1].(map[string]any)
+	require.True(t, ok, "paths[1] is map[string]any")
+	assert.Equal(t, "/usr/bin/foo", second["path"])
+	third, ok := paths[2].(map[string]any)
+	require.True(t, ok, "paths[2] is map[string]any")
+	assert.Equal(t, "/usr/local/bin/bar", third["path"])
+}

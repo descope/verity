@@ -9,17 +9,26 @@ types:
     packages: ["velero"]
     entrypoint: /usr/bin/velero
     paths:
-      # Published `ghcr.io/verity-org/velero:latest` ships /usr/bin/velero with
-      # mode 0o000 — `runc` aborts with `exec: "/velero": permission denied`
-      # (chart resolves /velero via the symlink below to /usr/bin/velero, but
-      # the target lacks +x). apko `type: permissions` forces +x on layer
-      # assembly. See SCR-2026-05-14-001 Bucket H.
-      - {path: /usr/bin/velero, type: permissions, uid: 0, gid: 0, permissions: 0o755}
+      # ORDERING IS LOAD-BEARING — symlink entry comes BEFORE the permissions
+      # mutation on /usr/bin/velero. apko's mutatePaths calls
+      # mutatePermissions on every non-permissions mutation AFTER its
+      # type-specific mutator, and the symlink entry has no `permissions:`
+      # set (defaults to 0). The Chmod(0) follows the symlink (Linux
+      # symlink-chmod semantics) and resets the TARGET /usr/bin/velero to
+      # mode 0o000 — undoing the explicit chmod below. See SCR-2026-05-14-001
+      # Bucket H + the corresponding ordering note in images/etcd.yaml.
+      #
       # vmware-tanzu/velero helm chart's upgrade-crds Job runs `/velero install`
       # — chart hardcodes /velero in the Job command. Verity's wolfi rebuild
       # ships at /usr/bin/velero (FHS). Symlink keeps both layouts working.
       # See verity-org/verity#318 (A.2 FHS-path mismatch sub-cluster).
       - {path: /velero, type: symlink, source: /usr/bin/velero, uid: 0, gid: 0}
+      # Published `ghcr.io/verity-org/velero:latest` ships /usr/bin/velero with
+      # mode 0o000 — `runc` aborts with `exec: "/velero": permission denied`
+      # (chart resolves /velero via the symlink above to /usr/bin/velero, but
+      # the target lacks +x). apko `type: permissions` forces +x on layer
+      # assembly. See SCR-2026-05-14-001 Bucket H.
+      - {path: /usr/bin/velero, type: permissions, uid: 0, gid: 0, permissions: 0o755}
 
 versions:
   "1": {}
