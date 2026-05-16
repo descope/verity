@@ -277,18 +277,21 @@ func TestConfig_PathSourceOnNonSymlink_Errors(t *testing.T) {
 // reorder in `convertPaths` for the apko `mutatePermissions on every
 // non-permissions entry` quirk (see the convertPaths docstring). When a
 // permissions mutation on `/usr/bin/X` is declared BEFORE a symlink
-// mutation pointing at `/usr/bin/X`, the rendered apko config MUST emit
-// the symlink first so apko's implicit Chmod(0) on the symlink doesn't
-// follow the link and reset the target's mode to 0o000.
+// mutation pointing at `/usr/bin/X`, the rendered apko config MUST swap
+// them so apko's implicit Chmod(0) on the symlink doesn't follow the link
+// and reset the target's mode to 0o000.
 //
-// This protects the etcd / velero / fluent-bit FHS-symlink images from
-// silently regressing if a maintainer reorders entries in images/*.yaml
-// to read more naturally.
+// The reorder is MINIMAL — only the offending permissions↔symlink pair is
+// swapped. Other entries (directories, other permissions mutations,
+// unrelated symlinks) keep their absolute positions. This matters because
+// charts like fluent-bit require a parent-directory entry to be created
+// before the symlink it hosts, and any "lift symlinks to the front"
+// strategy would invert that ordering.
 func TestConfig_SymlinkBeforePermissions_ApkoChmodQuirk(t *testing.T) {
 	tmpl := config.TypeTemplate{
 		Base: "wolfi-base",
 		// Source ORDER intentionally puts permissions before symlink —
-		// the test asserts the renderer rewrites it.
+		// the test asserts the renderer swaps just those two entries.
 		Paths: []config.PathDef{
 			{Path: "/var/lib/etcd", Type: "directory", UID: 65532, GID: 65532, Permissions: "0o700"},
 			{Path: "/usr/bin/etcd", Type: "permissions", UID: 0, GID: 0, Permissions: "0o755"},
@@ -305,24 +308,78 @@ func TestConfig_SymlinkBeforePermissions_ApkoChmodQuirk(t *testing.T) {
 	require.True(t, ok)
 	require.Len(t, paths, 3)
 
-	// The symlink whose source matches the permissions entry must come
-	// FIRST in the emitted order (rewritten from its source position).
+	// First entry stays as the unrelated directory — proving the
+	// reorder is local (no global "lift to front").
 	first, ok := paths[0].(map[string]any)
 	require.True(t, ok, "paths[0] is map[string]any")
-	assert.Equal(t, "symlink", first["type"], "symlink that targets a permissions-mutated path must be emitted first")
-	assert.Equal(t, "/usr/local/bin/etcd", first["path"])
-	assert.Equal(t, "/usr/bin/etcd", first["source"])
+	assert.Equal(t, "directory", first["type"], "unrelated directory entry stays at its original position 0")
+	assert.Equal(t, "/var/lib/etcd", first["path"])
 
-	// Other entries retain their relative ordering.
+	// The symlink (originally at index 2) and the permissions entry
+	// (originally at index 1) get swapped — symlink now at the
+	// permissions entry's old position, permissions at the symlink's
+	// old position.
 	second, ok := paths[1].(map[string]any)
 	require.True(t, ok, "paths[1] is map[string]any")
-	assert.Equal(t, "directory", second["type"])
-	assert.Equal(t, "/var/lib/etcd", second["path"])
+	assert.Equal(t, "symlink", second["type"], "symlink slot now holds the swapped symlink entry")
+	assert.Equal(t, "/usr/local/bin/etcd", second["path"])
+	assert.Equal(t, "/usr/bin/etcd", second["source"])
 
 	third, ok := paths[2].(map[string]any)
 	require.True(t, ok, "paths[2] is map[string]any")
-	assert.Equal(t, "permissions", third["type"])
+	assert.Equal(t, "permissions", third["type"], "permissions slot now holds the swapped permissions entry")
 	assert.Equal(t, "/usr/bin/etcd", third["path"])
+}
+
+// TestConfig_ParentDirBeforeSymlink_StillRespected guards the fluent-bit
+// invariant: a parent-directory entry created right before a symlink
+// hosted in that directory must keep its position-before-symlink ordering
+// even when the symlink targets a permissions-mutated path. The reorder
+// only swaps the permissions↔symlink pair, never lifts the symlink past
+// an earlier directory entry.
+func TestConfig_ParentDirBeforeSymlink_StillRespected(t *testing.T) {
+	tmpl := config.TypeTemplate{
+		Base: "wolfi-base",
+		// Shape mirrors images/fluent-bit.yaml: parent dir is created
+		// FIRST, then permissions, then symlink hosted in that parent.
+		Paths: []config.PathDef{
+			{Path: "/etc/fluent-bit", Type: "directory", UID: 65532, GID: 65532, Permissions: "0o755"},
+			{Path: "/fluent-bit/bin", Type: "directory", UID: 0, GID: 0, Permissions: "0o755"},
+			{Path: "/usr/bin/fluent-bit", Type: "permissions", UID: 0, GID: 0, Permissions: "0o755"},
+			{Path: "/fluent-bit/bin/fluent-bit", Type: "symlink", Source: "/usr/bin/fluent-bit", UID: 0, GID: 0},
+		},
+	}
+	out, err := render.Config(&tmpl, "latest", "_base")
+	require.NoError(t, err)
+
+	var cfg map[string]any
+	require.NoError(t, yaml.Unmarshal(out, &cfg))
+
+	paths, ok := cfg["paths"].([]any)
+	require.True(t, ok)
+	require.Len(t, paths, 4)
+
+	// Directories keep their absolute positions 0 and 1.
+	p0, ok := paths[0].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "directory", p0["type"])
+	assert.Equal(t, "/etc/fluent-bit", p0["path"])
+
+	p1, ok := paths[1].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "directory", p1["type"], "parent /fluent-bit/bin dir must still come before its child symlink")
+	assert.Equal(t, "/fluent-bit/bin", p1["path"])
+
+	// Position 2 was permissions, position 3 was symlink — swap.
+	p2, ok := paths[2].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "symlink", p2["type"], "symlink swapped into the permissions slot")
+	assert.Equal(t, "/fluent-bit/bin/fluent-bit", p2["path"])
+
+	p3, ok := paths[3].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "permissions", p3["type"], "permissions swapped into the symlink slot")
+	assert.Equal(t, "/usr/bin/fluent-bit", p3["path"])
 }
 
 // TestConfig_UnrelatedSymlinkOrderPreserved confirms the reorder only

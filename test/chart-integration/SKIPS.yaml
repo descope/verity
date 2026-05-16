@@ -38,9 +38,27 @@ skips:
   - chart: falco
     reason: kernel-incompat
     tracking_issue: https://github.com/verity-org/verity/issues/325
-    exit_criteria: "falco's modern_ebpf driver fails to load (`libpman: ring buffer map type is not supported`) under the Azure GHA runner because the BPF capability is denied at runc create time. Bypassing via `driver.enabled: false` alone is NOT sufficient: the chart's auto-inject of the `container` plugin (_helpers.tpl:477 falco.containerPlugin) is gated by `driver.enabled` AND `collectors.enabled`, so disabling the driver also disables the only event source. Un-skipping requires either (a) GHA runner image grants CAP_BPF/CAP_PERFMON to docker-in-docker kind nodes, OR (b) chartValues wires the container plugin manually (set `falco.plugins`, `falco.load_plugins`, and `falcoctl.config.artifact.install.refs` to include the plugin artifact), OR (c) chart upstream provides a `driver.enabled: false` mode that does NOT also strip the container plugin."
-    added: 2026-05-14
-    added_by: SCR-2026-05-14-001
+    exit_criteria: |
+      falco's modern_ebpf driver fails to load (`libpman: ring buffer
+      map type is not supported`) under the Azure GHA runner because
+      the BPF capability is denied at runc create time. Bypassing via
+      `driver.enabled: false` alone is NOT sufficient: the chart's
+      auto-inject of the `container` plugin (_helpers.tpl:477
+      falco.containerPlugin) is gated by `driver.enabled` AND
+      `collectors.enabled`, so disabling the driver also disables the
+      only event source.
+
+      Un-skipping requires one of:
+      (a) GHA runner image grants CAP_BPF/CAP_PERFMON to
+          docker-in-docker kind nodes.
+      (b) chartValues wires the container plugin manually — set
+          `falco.plugins`, `falco.load_plugins`, AND
+          `falcoctl.config.artifact.install.refs` to include the
+          plugin artifact.
+      (c) chart upstream provides a `driver.enabled: false` mode that
+          does NOT also strip the container plugin.
+    added: 2026-05-16
+    added_by: SCR-2026-05-14-001 (re-added after #378 + #380 follow-up)
 
   - chart: nfs-subdir-external-provisioner
     reason: needs-external-infra

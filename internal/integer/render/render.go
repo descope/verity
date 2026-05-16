@@ -174,39 +174,37 @@ func convertPaths(in []config.PathDef, version string) ([]apkoPath, error) {
 	return reorderForApkoChmodQuirk(out), nil
 }
 
-// reorderForApkoChmodQuirk moves every `symlink` entry to come BEFORE every
-// `permissions` entry whose path equals the symlink's source. See the
-// convertPaths docstring for the underlying apko behaviour. Pure-data
-// reorder; no semantic change beyond mutation order.
+// reorderForApkoChmodQuirk rewrites only the symlink ↔ permissions pairs
+// that would trigger the apko Chmod-via-symlink quirk, leaving every other
+// entry untouched. See the convertPaths docstring for the underlying apko
+// behaviour.
+//
+// The implementation does a single in-place pass: for each `symlink` entry
+// whose `Source` equals the `Path` of an earlier `permissions` entry, swap
+// the symlink with that earlier permissions entry so the symlink runs
+// first at apko mutate time. Unrelated entries (directories, other
+// symlinks, other permissions mutations) keep their absolute positions —
+// this matters because fluent-bit's `/fluent-bit/bin` parent directory
+// MUST be created before the `/fluent-bit/bin/fluent-bit` symlink it
+// hosts, and a "lift symlinks to the front" reorder would invert that.
 func reorderForApkoChmodQuirk(in []apkoPath) []apkoPath {
-	// Build a set of "symlink sources that will collide with permissions
-	// entries already past this point" so we know which symlinks to lift.
-	permsBefore := make(map[string]struct{})
-	for _, p := range in {
-		if p.Type == "permissions" {
-			permsBefore[p.Path] = struct{}{}
+	out := append([]apkoPath(nil), in...)
+	for i := range out {
+		if out[i].Type != "permissions" {
+			continue
 		}
-	}
-	// Two-pass stable rebuild: first emit symlinks whose source matches
-	// a permissions entry's path (in their original relative order),
-	// then emit everything else (including any unrelated symlinks)
-	// in original order. This is the smallest reorder that satisfies
-	// the apko quirk.
-	out := make([]apkoPath, 0, len(in))
-	for _, p := range in {
-		if p.Type == "symlink" {
-			if _, hit := permsBefore[p.Source]; hit {
-				out = append(out, p)
+		// Scan forward for a symlink whose Source is this permissions
+		// entry's Path. If found, swap them so the symlink runs first.
+		for j := i + 1; j < len(out); j++ {
+			if out[j].Type == "symlink" && out[j].Source == out[i].Path {
+				out[i], out[j] = out[j], out[i]
+				// Don't break — there could be more permissions
+				// entries later in the slice that need the same
+				// treatment. Continue the outer loop from the
+				// current index, which now holds the symlink.
+				break
 			}
 		}
-	}
-	for _, p := range in {
-		if p.Type == "symlink" {
-			if _, hit := permsBefore[p.Source]; hit {
-				continue
-			}
-		}
-		out = append(out, p)
 	}
 	return out
 }
