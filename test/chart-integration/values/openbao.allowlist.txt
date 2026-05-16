@@ -1,0 +1,25 @@
+# openbao upstream image allowlist (SCR-2026-04-30-001)
+#
+# The openbao chart pulls two upstream images directly:
+#
+#   quay.io/openbao/openbao:2.5.3       — the openbao server binary
+#                                         (HashiCorp Vault fork by the
+#                                         OpenBao maintainers)
+#   docker.io/hashicorp/vault-k8s:1.7.2 — agent injector sidecar
+#                                         controller (chart reuses
+#                                         hashicorp/vault-k8s since
+#                                         openbao didn't fork it)
+#
+# verity has no rebuilds for these (no `openbao/*` or `hashicorp/vault-k8s`
+# entries in verity.yaml replacements). Chart-gen leaves the upstream
+# references verbatim. Allowlist the upstreams so the image-origin
+# gate can pass.
+#
+# Format note: the isAccepted helper in test/chart-integration/
+# assertions.go uses strings.HasPrefix; the `:` and `@` separator
+# forms ensure each prefix only matches its intended image's
+# tag or digest forms.
+quay.io/openbao/openbao:
+quay.io/openbao/openbao@
+docker.io/hashicorp/vault-k8s:
+docker.io/hashicorp/vault-k8s@

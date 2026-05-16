@@ -1,0 +1,26 @@
+# weaviate upstream image allowlist (SCR-2026-04-30-001)
+#
+# The weaviate chart pulls two upstream images:
+#
+#   cr.weaviate.io/semitechnologies/weaviate:1.37.0
+#                                       — main weaviate server binary
+#   docker.io/library/alpine:latest    — used as the init/utility
+#                                         pod for permission setup on
+#                                         the data volume (similar
+#                                         pattern to meilisearch's
+#                                         busybox init)
+#
+# verity has no rebuild for cr.weaviate.io/semitechnologies/weaviate
+# (the registry uses a custom hostname; no verity `weaviate` image
+# config exists). Chart-gen leaves both references verbatim.
+# `alpine` is intentionally excluded from chart-gen rewrite for the
+# same reason as `busybox` — short utility images that many charts
+# pull as `:latest` would not survive a tag rewrite.
+#
+# Format note: the isAccepted helper in test/chart-integration/
+# assertions.go uses strings.HasPrefix; `:` and `@` separator forms
+# scope each prefix to its image's tag/digest refs.
+cr.weaviate.io/semitechnologies/weaviate:
+cr.weaviate.io/semitechnologies/weaviate@
+docker.io/library/alpine:
+docker.io/library/alpine@

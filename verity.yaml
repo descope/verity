@@ -82,11 +82,21 @@ chartValues:
 
   # mimir-distributed 6.0.6 can render as a single-image runtime if we turn off
   # optional bundled infra components (MinIO, Kafka, nginx gateway, rollout-operator).
+  #
+  # Additionally: with `kafka.enabled: false`, the chart's hardcoded
+  # `ingest_storage.enabled: true` template still tries to validate a
+  # Kafka address and aborts mimir components at startup with
+  # `invalid ingest storage config: the Kafka address has not been
+  # configured` (verified against chart-integration run 25961993442
+  # mimir-distributed-* pod logs). Override `ingest_storage.enabled:
+  # false` via `mimir.structuredConfig` — the chart's documented hook
+  # for overriding the rendered text-config.
   mimir-distributed:
     gateway.enabled: false
     kafka.enabled: false
     minio.enabled: false
     rollout_operator.enabled: false
+    mimir.structuredConfig.ingest_storage.enabled: false
 
   # tempo-distributed 1.61.3 defaults to a separate Memcached statefulset;
   # the minimal CI-friendly wrapper just runs the Tempo microservices
@@ -441,6 +451,33 @@ chartValues:
   weaviate:
     readinessProbe.initialDelaySeconds: 60
     readinessProbe.failureThreshold: 12
+
+  # dex 0.24.0 — chart has empty `config: {}` default, but the dex
+  # binary refuses to start without `issuer` and `storage` set:
+  #   invalid Config:
+  #     - no issuer specified in config file
+  #     - no storage supplied in config file
+  # (verified against chart-integration run 25961993442 dex pod log).
+  # Provide a minimal CI-only config: a localhost issuer URL and an
+  # in-memory storage driver. Production deployments are expected to
+  # override both via their own values.yaml.
+  dex:
+    config.issuer: "http://dex.dex.svc.cluster.local:5556/dex"
+    config.storage.type: "memory"
+
+  # velero 12.0.1 — chart's default `configuration.backupStorageLocation`
+  # is a one-element list with `provider: ""`. helm install then issues
+  # a server-side apply on a `BackupStorageLocation` CR which fails
+  # validation:
+  #   BackupStorageLocation.velero.io "default" is invalid:
+  #     spec.provider in body must be of type string: "null"
+  #     spec.credential in body must be of type object: "null"
+  # (chart-integration run 25961993442 velero install log). Empty the
+  # BSL list so the chart skips the resource entirely. The smoke test
+  # only validates that the controller pod becomes Ready; real users
+  # provide their own provider/bucket via values.yaml.
+  velero:
+    configuration.backupStorageLocation: []
 
   # falco: NO chartValue tuning here — `driver.enabled: false`
   # was attempted in #378 to bypass the BPF-capability denial on
@@ -998,3 +1035,17 @@ unpatchableImages:
   # #227 but argo-cd still references redis upstream. Skipping the patch
   # is correct — chart-gen handles wrapper-chart routing separately.
   - "docker/library/redis"
+  # victoriametrics/victoria-logs is a statically-linked Go binary in a
+  # FROM-SCRATCH base image. Copa's "patch" step (sh.copa.image.patched
+  # annotation) replaces the binary with one that's dynamically linked
+  # against /lib64/ld-linux-x86-64.so.2 — which doesn't exist in the
+  # scratch base, so runc aborts with `exec /victoria-logs-prod: no
+  # such file or directory` (the missing file is actually the dynamic
+  # linker, not the binary). The upstream `docker.io/victoriametrics/
+  # victoria-logs:v1.50.0` works directly because the binary is
+  # statically linked. Skipping the patch keeps the chart pointed at
+  # the working upstream image. Verified via crane export of both
+  # the verity-patched and upstream images:
+  #   - upstream: /victoria-logs-prod, 23076128 bytes, statically linked
+  #   - patched: /victoria-logs-prod, 22168512 bytes, dynamically linked
+  - "victoriametrics/victoria-logs"
