@@ -97,6 +97,16 @@ chartValues:
     minio.enabled: false
     rollout_operator.enabled: false
     mimir.structuredConfig.ingest_storage.enabled: false
+    # mimir's usage-stats module is enabled by default and creates an
+    # S3 client at startup to upload anonymous installation telemetry.
+    # The chart's mimir.config template configures the storage backend
+    # as `s3` with no `endpoint:` value, so the binary aborts at init
+    # with:
+    #   error running application err="no s3 endpoint in config file"
+    # (chart-integration run 25964060759 mimir-distributed-* pod
+    # logs). Disabling usage_stats removes the S3 client and lets the
+    # binary boot.
+    mimir.structuredConfig.usage_stats.enabled: false
 
   # tempo-distributed 1.61.3 defaults to a separate Memcached statefulset;
   # the minimal CI-friendly wrapper just runs the Tempo microservices
@@ -464,6 +474,17 @@ chartValues:
   dex:
     config.issuer: "http://dex.dex.svc.cluster.local:5556/dex"
     config.storage.type: "memory"
+    # dex aborts at startup with `failed to initialize server: no
+    # connectors specified` when its `connectors` array is empty.
+    # Provide a minimal mock connector for CI — it doesn't actually
+    # do authentication, just satisfies the chart's startup
+    # validation. Real users override this with their actual OIDC /
+    # SAML / OAuth2 provider config. Verified against chart-
+    # integration run 25964060759 dex pod log.
+    config.connectors:
+      - type: mockCallback
+        id: mock
+        name: Mock
 
   # velero 12.0.1 — chart's default `configuration.backupStorageLocation`
   # is a one-element list with `provider: ""`. helm install then issues
@@ -478,6 +499,14 @@ chartValues:
   # provide their own provider/bucket via values.yaml.
   velero:
     configuration.backupStorageLocation: []
+    # velero's `configuration.volumeSnapshotLocation` has the same
+    # `provider: ""` / `credential: null` default as the BSL above
+    # and trips the same Kubernetes server-side-apply validation:
+    #   VolumeSnapshotLocation.velero.io "default" is invalid:
+    #     spec.provider in body must be of type string: "null"
+    # (chart-integration run 25964060759 velero install log).
+    # Empty the VSL list so the chart skips that resource too.
+    configuration.volumeSnapshotLocation: []
 
   # falco: NO chartValue tuning here — `driver.enabled: false`
   # was attempted in #378 to bypass the BPF-capability denial on
@@ -522,6 +551,21 @@ chartValues:
   # here; setting `opensearchJavaOpts` directly is the only viable lever.
   opensearch:
     opensearchJavaOpts: "-Xmx512M -Xms512M -Xlog:disable"
+
+  # opensearch-dashboards 3.6.0 — chart defaults `securityContext.
+  # runAsUser: 1000` (matching the upstream `opensearchproject/
+  # opensearch-dashboards` image's `dashboards` user uid). Verity's
+  # wolfi rebuild creates `/usr/share/opensearch-dashboards/{data,
+  # config}` owned by uid 65532 (the wolfi `nonroot` user). With
+  # chart's uid 1000 running, the dashboards binary cannot write its
+  # `data/uuid` file:
+  #   FATAL Error: Unable to write OpenSearch Dashboards UUID file ...
+  #         Error was: EACCES
+  # (chart-integration run 25964060759 dashboards pod log). Override
+  # the chart's runAsUser to verity's `nonroot` uid so the writable
+  # paths match.
+  opensearch-dashboards:
+    securityContext.runAsUser: 65532
 
   # kyverno 3.7.2: disable the post-upgrade `crds.migration` hook. It runs
   # `kubectl` from `registry.k8s.io/kubectl:v1.34.3`. Verity rebuilds kubectl

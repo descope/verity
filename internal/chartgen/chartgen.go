@@ -68,6 +68,29 @@ func Run(cfg *Config) (*DryRunResult, error) {
 		return nil, fmt.Errorf("load verity config: %w", err)
 	}
 
+	// Treat verity.yaml's `unpatchableImages` list as additional
+	// exclude-names so chart-gen does NOT generate a verity-org
+	// mapping for these chart-discovered images. Without this,
+	// chart-gen would crane-mirror an upstream image into
+	// `ghcr.io/verity-org/<repo>` even though the Copa pipeline
+	// also patches that image and may break it (notably:
+	// `victoriametrics/victoria-logs`, a statically-linked Go
+	// binary in a FROM-SCRATCH base that Copa converts to
+	// dynamically-linked, leaving runc unable to load the missing
+	// `/lib64/ld-linux-x86-64.so.2`). The chart's wrapper now keeps
+	// the upstream image reference intact, and the chart-integration
+	// allowlist files admit it explicitly.
+	//
+	// This mirrors the discovery package's semantics: an image in
+	// `unpatchableImages` is skipped in both the standalone-image
+	// pipeline and the chart-discovered-image pipeline.
+	if cfg.ExcludeNames == nil {
+		cfg.ExcludeNames = make(map[string]struct{})
+	}
+	for _, n := range vc.UnpatchableImages {
+		cfg.ExcludeNames[n] = struct{}{}
+	}
+
 	result := &DryRunResult{
 		GeneratedAt:   time.Now().UTC().Format(time.RFC3339),
 		ChartRegistry: cfg.ChartRegistry,
