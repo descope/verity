@@ -1093,3 +1093,16 @@ unpatchableImages:
   #   - upstream: /victoria-logs-prod, 23076128 bytes, statically linked
   #   - patched: /victoria-logs-prod, 22168512 bytes, dynamically linked
   - "victoriametrics/victoria-logs"
+  # bitnami/gitea — chart's `chartValues.gitea.image.repository:
+  # bitnami/gitea` switches the gitea chart off the verity-rebuilt
+  # gitea (whose wolfi base lacks Bitnami's
+  # `/usr/sbinx/init_directory_structure.sh` init script) and onto
+  # Bitnami's gitea image. chart-gen would otherwise try to mirror
+  # `bitnami/gitea` to `ghcr.io/verity-org/bitnami/gitea` — a repo
+  # that doesn't exist (verity has no Bitnami fork) — and fail at
+  # the `crane ls` tag-listing step. With this entry, chart-gen
+  # leaves the upstream `docker.io/bitnami/gitea` reference intact
+  # and the chart's chartValues block carries the override.
+  # See verity-org/verity#326 (PO Option A) for the Bitnami switch
+  # rationale.
+  - "bitnami/gitea"
