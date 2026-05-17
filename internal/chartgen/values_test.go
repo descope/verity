@@ -1602,6 +1602,26 @@ func TestResolveValuePathsComposeRegistryOnRegistryOnlyPath(t *testing.T) {
 	}
 }
 
+func TestResolveValuePathPairsConsumesDuplicateRepoPairs(t *testing.T) {
+	pairs := []repoTagPair{
+		{Path: "primary.image", Repo: "example/app", HasTag: true, HasRegistry: true, Registry: "docker.io"},
+		{Path: "sidecar.image", Repo: "example/app", HasTag: true, HasRegistry: true, Registry: "docker.io"},
+	}
+	mappings := []ImageMapping{
+		{OriginalRepo: "example/app", PatchedRepo: "ghcr.io/verity-org/example/app", PatchedTag: "1"},
+		{OriginalRepo: "example/app", PatchedRepo: "ghcr.io/verity-org/example/app", PatchedTag: "2"},
+	}
+
+	got := resolveValuePathPairs(pairs, nil, mappings, nil)
+	want := []ValueOverride{
+		{Path: "primary.image", Repository: "verity-org/example/app", Tag: "1", SetRegistry: "ghcr.io"},
+		{Path: "sidecar.image", Repository: "verity-org/example/app", Tag: "2", SetRegistry: "ghcr.io"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("resolveValuePathPairs() = %#v, want %#v", got, want)
+	}
+}
+
 func TestResolveValuePathsWithSubchartsErrorIdentifiesFailingSubchart(t *testing.T) {
 	parent := []byte(`image:
   repository: nginx
