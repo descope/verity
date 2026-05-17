@@ -117,15 +117,18 @@ gitea:
           set -euo pipefail
 
           args=()
+          timeout_seconds=2
           while [ "$#" -gt 0 ]; do
             case "$1" in
-              -v|-z)
+              -v|-z|-vz|-zv)
                 shift
                 ;;
               -w)
+                timeout_seconds="$2"
                 shift 2
                 ;;
               -w*)
+                timeout_seconds="${1#-w}"
                 shift
                 ;;
               *)
@@ -142,9 +145,7 @@ gitea:
 
           host="${args[0]}"
           port="${args[1]}"
-          exec 3<>"/dev/tcp/${host}/${port}"
-          exec 3>&-
-          exec 3<&-
+          timeout "${timeout_seconds}" bash -c 'exec 3<>"/dev/tcp/${1}/${2}"; exec 3>&-; exec 3<&-' _ "${host}" "${port}"
   extraVolumes:
     - name: env-to-ini
       configMap:
