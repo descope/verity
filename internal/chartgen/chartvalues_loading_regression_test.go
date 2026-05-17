@@ -47,6 +47,13 @@ func TestVerityConfigChartValuesLoading(t *testing.T) {
 	if got := vc2.ChartValues["fluent-bit"]["livenessProbe.initialDelaySeconds"]; got != 45 {
 		t.Fatalf("fluent-bit livenessProbe.initialDelaySeconds = %#v, want 45", got)
 	}
+	airflow := vc2.ChartValues["airflow"]
+	if airflow["postgresql.image.registry"] != "ghcr.io" {
+		t.Fatalf("airflow postgresql.image.registry=%v, want ghcr.io", airflow["postgresql.image.registry"])
+	}
+	if repo, ok := airflow["postgresql.image.repository"]; ok {
+		t.Fatalf("airflow must not pin postgresql.image.repository=%v; chart-gen rewrites that chartValues input into a double ghcr.io prefix", repo)
+	}
 
 	// victoria-logs-single has NO chartValues but its only image is in
 	// unpatchableImages — the new processChart passthrough branch must

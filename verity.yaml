@@ -324,12 +324,12 @@ chartValues:
   #
   # Supporting knobs:
   # - `postgresql.image.registry: ghcr.io` keeps the parent-level
-  #   postgresql image reference composable while image discovery still
-  #   sees the upstream repository path below. Do NOT pre-prefix the
-  #   repository with `verity-org/`: chart-gen derives the patched
-  #   target from discovered images, so pre-prefixing makes the source
-  #   name `verity-org/bitnamilegacy/postgresql` and renders the broken
-  #   `ghcr.io/verity-org/verity-org/bitnamilegacy/postgresql`.
+  #   postgresql image reference composable while chart-gen uses the
+  #   bundled subchart values to rewrite the repository. Do NOT also
+  #   set `postgresql.image.repository` here: chart-gen treats chartValues
+  #   image repositories as override inputs and rewrites the manual value
+  #   to `ghcr.io/verity-org/...`, which renders the broken
+  #   `ghcr.io/ghcr.io/verity-org/bitnamilegacy/postgresql`.
   # - `images.migrationsWaitTimeout: 300` (default 60s) — wait budget
   #   for `wait-for-airflow-migrations`. Kept generous so the init
   #   container still has headroom while the migrations Job runs.
@@ -346,7 +346,6 @@ chartValues:
   #   verifies install + pod readiness, not metric scraping).
   airflow:
     postgresql.image.registry: ghcr.io
-    postgresql.image.repository: bitnamilegacy/postgresql
     images.migrationsWaitTimeout: 300
     apiServer.startupProbe.failureThreshold: 12
     migrateDatabaseJob.useHelmHooks: false
