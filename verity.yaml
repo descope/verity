@@ -292,18 +292,31 @@ chartValues:
   #      install step succeeds — which it never does, because step 2
   #      times out first.
   #
-  # Fix: flip `migrateDatabaseJob.useHelmHooks` AND
-  # `createUserJob.useHelmHooks` to `false`. The Jobs then render as
-  # regular resources that helm applies in the first pass, so the
-  # migrations Job runs in parallel with the Deployments and the
-  # init container exits as soon as alembic finishes.
+  # Fix: flip `migrateDatabaseJob.useHelmHooks` to `false`. The Job
+  # renders as a regular resource that helm applies in the first pass,
+  # so the migrations Job runs in parallel with the Deployments and
+  # each Deployment's init container exits as soon as alembic finishes.
+  # `createUserJob.useHelmHooks` is LEFT at chart default `true`:
+  # post-install hooks run after `helm install --wait` has confirmed
+  # Deployments are ready (which already implies migrations finished),
+  # so create-user doesn't race the DB and the no-restart-during-settle
+  # gate stays clean.
   #
   # Supporting knobs:
-  # - `postgresql.image.registry: ghcr.io` — overrides the chart's
-  #   `image.registry: docker.io` default so the chart-gen-rewritten
-  #   `bitnamilegacy/postgresql` → `ghcr.io/verity-org/bitnamilegacy/postgresql`
-  #   reference doesn't collide with a stale `docker.io/` prefix. Same
-  #   shape as the tempo-distributed fix in verity-org/verity#318.
+  # - `postgresql.image.registry: ghcr.io` +
+  #   `postgresql.image.repository: verity-org/bitnamilegacy/postgresql`
+  #   — both siblings are set explicitly because the upstream airflow
+  #   chart's parent values.yaml pins the repository as a leaf scalar
+  #   (`postgresql.image.repository: bitnamilegacy/postgresql`). chart-gen
+  #   detects the override path at the parent scope, but the parent
+  #   path lacks a `registry` sibling so its `hasRegistry`-driven
+  #   stripping fallback leaves the repository unstripped. The
+  #   bundled postgresql subchart's template then renders
+  #   `{{ .Values.image.registry }}/{{ .Values.image.repository }}` →
+  #   the double-prefix `docker.io/ghcr.io/verity-org/bitnamilegacy/postgresql`.
+  #   Pinning BOTH siblings explicitly here side-steps that gap until
+  #   chart-gen learns to consult subchart values for registry-sibling
+  #   detection (verity-org/verity#318 covers the related tempo case).
   # - `images.migrationsWaitTimeout: 300` (default 60s) — wait budget
   #   for `wait-for-airflow-migrations`. Kept generous so the init
   #   container still has headroom while the migrations Job runs.
@@ -311,12 +324,20 @@ chartValues:
   #   Airflow 3.x chart renamed `webserver` → `apiServer`; 12 × 10s =
   #   120s grace from container start so a freshly-migrated API server
   #   isn't killed before it binds.
+  # - `statsd.enabled: false` — the chart bundles
+  #   `quay.io/prometheus/statsd-exporter:v0.29.0`, which has no
+  #   verity rebuild today. Disabling the optional StatsD sidecar
+  #   removes a non-verity image from the smoke namespace so the
+  #   image-origin gate stays clean WITHOUT an allowlist exception.
+  #   StatsD metrics are not required for the smoke test (which only
+  #   verifies install + pod readiness, not metric scraping).
   airflow:
     postgresql.image.registry: ghcr.io
+    postgresql.image.repository: verity-org/bitnamilegacy/postgresql
     images.migrationsWaitTimeout: 300
     apiServer.startupProbe.failureThreshold: 12
     migrateDatabaseJob.useHelmHooks: false
-    createUserJob.useHelmHooks: false
+    statsd.enabled: false
 
   # jenkins 5.9.18 otherwise renders an unpatched bats helm-test pod and a
   # default inbound agent image. Keep the wrapper focused on the controller and
