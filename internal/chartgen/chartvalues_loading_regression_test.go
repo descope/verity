@@ -44,6 +44,9 @@ func TestVerityConfigChartValuesLoading(t *testing.T) {
 	if gv := vc2.ChartValues["gitea"]; len(gv) == 0 {
 		t.Fatalf("LoadVerityConfig dropped gitea chartValues — chartgen would skip gitea")
 	}
+	if got := vc2.ChartValues["fluent-bit"]["livenessProbe.initialDelaySeconds"]; got != 45 {
+		t.Fatalf("fluent-bit livenessProbe.initialDelaySeconds = %#v, want 45", got)
+	}
 
 	// victoria-logs-single has NO chartValues but its only image is in
 	// unpatchableImages — the new processChart passthrough branch must
