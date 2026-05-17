@@ -54,6 +54,16 @@ func TestVerityConfigChartValuesLoading(t *testing.T) {
 	if airflow["postgresql.image.repository"] != "bitnamilegacy/postgresql" {
 		t.Fatalf("airflow postgresql.image.repository=%v, want bitnamilegacy/postgresql", airflow["postgresql.image.repository"])
 	}
+	valkey := vc2.ChartValues["valkey"]
+	if valkey["image.registry"] != "ghcr.io" {
+		t.Fatalf("valkey image.registry=%v, want ghcr.io", valkey["image.registry"])
+	}
+	if valkey["image.repository"] != "verity-org/valkey" {
+		t.Fatalf("valkey image.repository=%v, want verity-org/valkey", valkey["image.repository"])
+	}
+	if valkey["image.tag"] != "9.0" {
+		t.Fatalf("valkey image.tag=%v, want 9.0", valkey["image.tag"])
+	}
 
 	// victoria-logs-single has NO chartValues but its only image is in
 	// unpatchableImages — the new processChart passthrough branch must

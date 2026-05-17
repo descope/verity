@@ -270,6 +270,18 @@ chartValues:
   etcd:
     replicaCount: 1
 
+  # valkey 0.20.2 (cloudpirates chart) pins its default image tag to
+  # `9.0.0-alpine3.22@sha256:...`. chart-gen's replacement maps
+  # `valkey/valkey` to `ghcr.io/verity-org/valkey:9.0`, but the
+  # digest suffix can survive the wrapper render and force kubelet
+  # back to the upstream docker.io image, tripping the image-origin
+  # gate. Explicitly set the chart's image tuple to the Integer-backed
+  # rebuild tag so the wrapper renders only verity-org/valkey.
+  valkey:
+    image.registry: ghcr.io
+    image.repository: verity-org/valkey
+    image.tag: "9.0"
+
   # airflow chart bundles a `postgresql` sub-chart with image
   # `bitnamilegacy/postgresql:16.1.0-debian-11-r15`. chart-gen rewrites
   # the repository (`bitnamilegacy/postgresql` →
