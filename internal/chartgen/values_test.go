@@ -702,6 +702,45 @@ image:
 			},
 		},
 		{
+			// Airflow declares the same postgresql repository in parent
+			// values and in the bundled postgresql subchart. Prefer the
+			// subchart path because it declares image.registry, allowing
+			// chart-gen to split ghcr.io into the registry sibling instead
+			// of rendering ghcr.io/ghcr.io/... at template time.
+			name: "duplicate parent and subchart repo prefers registry sibling",
+			parentValues: `postgresql:
+  image:
+    repository: bitnamilegacy/postgresql
+    tag: 16.1.0-debian-11-r15
+`,
+			subchartValues: map[string]string{
+				"postgresql": `global:
+  imageRegistry: ""
+image:
+  registry: docker.io
+  repository: bitnamilegacy/postgresql
+  tag: 16.1.0-debian-11-r15
+`,
+			},
+			mappings: []ImageMapping{{
+				OriginalRepo: "bitnamilegacy/postgresql",
+				PatchedRepo:  "ghcr.io/verity-org/bitnamilegacy/postgresql",
+				PatchedTag:   "16.1.0-debian-11-r15",
+			}},
+			want: []ValueOverride{
+				{
+					Path:        "postgresql.image",
+					Repository:  "verity-org/bitnamilegacy/postgresql",
+					Tag:         "16.1.0-debian-11-r15",
+					SetRegistry: "ghcr.io",
+				},
+				{
+					Path:             "postgresql.global.imageRegistry",
+					IsScalarOverride: true,
+				},
+			},
+		},
+		{
 			// Tempo-distributed shape variant lifted into a sub-chart.
 			// Verifies that `global.image.registry` (under a `global.image`
 			// map, not a top-level scalar) is detected and prefixed

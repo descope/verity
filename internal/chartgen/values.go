@@ -162,29 +162,48 @@ func resolveValuePathPairs(pairs []repoTagPair, globalRegistryPaths []string, ma
 		}
 	}
 
-	for _, pair := range pairs {
-		if !pair.HasTag {
+	for i, m := range mappings {
+		if matched[i] {
 			continue
 		}
-		for i, m := range mappings {
-			if matched[i] {
-				continue
-			}
-			if matchesRepo(pair.Repo, m.OriginalRepo) {
-				result = append(result, buildValueOverride(
-					pair.Path,
-					m.PatchedRepo,
-					m.PatchedTag,
-					pair.HasRegistry,
-					pair.HasDefaultRegistry,
-				))
-				matched[i] = true
-				break
-			}
+		best := bestRepoTagPair(pairs, m.OriginalRepo)
+		if best == nil {
+			continue
 		}
+		result = append(result, buildValueOverride(
+			best.Path,
+			m.PatchedRepo,
+			m.PatchedTag,
+			best.HasRegistry,
+			best.HasDefaultRegistry,
+		))
+		matched[i] = true
 	}
 
 	return appendGlobalRegistryNeutralisations(result, globalRegistryPaths)
+}
+
+func bestRepoTagPair(pairs []repoTagPair, originalRepo string) *repoTagPair {
+	var best *repoTagPair
+	for idx := range pairs {
+		pair := &pairs[idx]
+		if !pair.HasTag || !matchesRepo(pair.Repo, originalRepo) {
+			continue
+		}
+		if best == nil || preferRepoTagPair(pair, best) {
+			best = pair
+		}
+	}
+	return best
+}
+
+func preferRepoTagPair(candidate, current *repoTagPair) bool {
+	candidateHasRegistry := candidate.HasRegistry || candidate.HasDefaultRegistry
+	currentHasRegistry := current.HasRegistry || current.HasDefaultRegistry
+	if candidateHasRegistry != currentHasRegistry {
+		return candidateHasRegistry
+	}
+	return len(candidate.Path) > len(current.Path)
 }
 
 // appendGlobalRegistryNeutralisations appends an IsScalarOverride entry
