@@ -1,0 +1,14 @@
+# mimir-distributed chart-integration smoke-test value overrides.
+
+mimir-distributed:
+  smoke_test:
+    # The disabled gateway would normally inject the chart's default no-auth
+    # tenant when X-Scope-OrgID is absent. Direct service calls need the same
+    # tenant header explicitly.
+    tenantId: anonymous
+    extraArgs:
+      # The wrapper disables the chart's gateway, but the chart's smoke-test Job
+      # still defaults to the gateway URL. Route the test directly to the Mimir
+      # services that exist in the minimal CI topology.
+      tests.write-endpoint: http://mimir-distributed-distributor.mimir-distributed.svc:8080
+      tests.read-endpoint: http://mimir-distributed-query-frontend.mimir-distributed.svc:8080/prometheus
