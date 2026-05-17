@@ -69,22 +69,27 @@ gitea:
 
           tmp="$(mktemp)"
           env | sort | awk -F= '
-            function decode(s) {
+            function decode_section(s) {
               gsub(/_0X2E_/, ".", s)
               gsub(/_0X2D_/, "-", s)
               return tolower(s)
             }
+            function decode_key(s) {
+              gsub(/_0X2E_/, ".", s)
+              gsub(/_0X2D_/, "-", s)
+              return s
+            }
             /^GITEA____/ {
               key = substr($1, 10)
-              root[decode(key)] = substr($0, length($1) + 2)
+              root[decode_key(key)] = substr($0, length($1) + 2)
               next
             }
             /^GITEA__/ {
               rest = substr($1, 8)
               sep = index(rest, "__")
               if (sep == 0) next
-              section = decode(substr(rest, 1, sep - 1))
-              key = decode(substr(rest, sep + 2))
+              section = decode_section(substr(rest, 1, sep - 1))
+              key = decode_key(substr(rest, sep + 2))
               value = substr($0, length($1) + 2)
               sections[section] = 1
               values[section SUBSEP key] = value
