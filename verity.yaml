@@ -131,12 +131,32 @@ chartValues:
     # `filesystem` — CI smoke just needs the binaries to boot; it
     # doesn't exercise persistence across pods. Real users override
     # to s3/gcs/azure via their own structuredConfig.
+    #
+    # `readOnlyRootFilesystem: true` is set on all mimir pods (chart
+    # `templates/*-statefulset.yaml`), so the ONLY writable path
+    # inside the container is the `storage` PVC mounted at `/data`.
+    # Both the filesystem storage dirs AND each component's data_dir
+    # must therefore live under `/data`, AND mimir's validator
+    # rejects any overlap between the two (e.g. `data_dir: /data`
+    # vs `filesystem.dir: /data/blocks` — chart-integration run
+    # 25982132035 alertmanager-0/compactor-0/ruler-* logs:
+    # "the configured ... data directory \"/data\" cannot overlap
+    # with the configured ... storage filesystem directory
+    # \"/data/blocks\""). Resolve by giving each component its own
+    # `/data/<component>` subdir AND putting filesystem storage in
+    # sibling `/data/storage-<kind>` subdirs that no component
+    # data_dir templates into.
+    mimir.structuredConfig.compactor.data_dir: /data/compactor
+    mimir.structuredConfig.alertmanager.data_dir: /data/alertmanager
+    mimir.structuredConfig.ruler.rule_path: /data/ruler
+    mimir.structuredConfig.blocks_storage.bucket_store.sync_dir: /data/tsdb-sync
+    mimir.structuredConfig.blocks_storage.tsdb.dir: /data/tsdb
     mimir.structuredConfig.blocks_storage.backend: filesystem
-    mimir.structuredConfig.blocks_storage.filesystem.dir: /data/blocks
+    mimir.structuredConfig.blocks_storage.filesystem.dir: /data/storage-blocks
     mimir.structuredConfig.alertmanager_storage.backend: filesystem
-    mimir.structuredConfig.alertmanager_storage.filesystem.dir: /data/alertmanager
+    mimir.structuredConfig.alertmanager_storage.filesystem.dir: /data/storage-alertmanager
     mimir.structuredConfig.ruler_storage.backend: filesystem
-    mimir.structuredConfig.ruler_storage.filesystem.dir: /data/ruler
+    mimir.structuredConfig.ruler_storage.filesystem.dir: /data/storage-ruler
 
   # tempo-distributed 1.61.3 defaults to a separate Memcached statefulset;
   # the minimal CI-friendly wrapper just runs the Tempo microservices
