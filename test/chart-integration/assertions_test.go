@@ -235,6 +235,220 @@ func TestHarnessClusterCreatedFieldDefault(t *testing.T) {
 	}
 }
 
+// makePodForRestartTest builds a single-pod podList for
+// TestCollectRestartFailures. Centralised here so each table-driven
+// case is a flat literal — keeps cyclomatic complexity / maintidx
+// low in the test function itself.
+func makePodForRestartTest(namespace, name string, main, init []containerStatus) *podList {
+	return &podList{Items: []struct {
+		Metadata struct {
+			Name      string `json:"name"`
+			Namespace string `json:"namespace"`
+		} `json:"metadata"`
+		Status struct {
+			ContainerStatuses     []containerStatus `json:"containerStatuses"`
+			InitContainerStatuses []containerStatus `json:"initContainerStatuses"`
+		} `json:"status"`
+	}{{
+		Metadata: struct {
+			Name      string `json:"name"`
+			Namespace string `json:"namespace"`
+		}{Name: name, Namespace: namespace},
+		Status: struct {
+			ContainerStatuses     []containerStatus `json:"containerStatuses"`
+			InitContainerStatuses []containerStatus `json:"initContainerStatuses"`
+		}{ContainerStatuses: main, InitContainerStatuses: init},
+	}}}
+}
+
+func mainCS(name string, restarts int, lastTermReason, lastTermMsg string) containerStatus {
+	var cs containerStatus
+	cs.Name = name
+	cs.RestartCount = restarts
+	if lastTermReason != "" || lastTermMsg != "" {
+		cs.LastTerminationState.Terminated = &struct {
+			Reason  string `json:"reason"`
+			Message string `json:"message"`
+		}{Reason: lastTermReason, Message: lastTermMsg}
+	}
+	return cs
+}
+
+func initCSCompleted(name string, restarts, exitCode int) containerStatus {
+	cs := mainCS(name, restarts, "Error", "first attempt failed")
+	cs.State.Terminated = &struct {
+		Reason   string `json:"reason"`
+		Message  string `json:"message"`
+		ExitCode int    `json:"exitCode"`
+	}{Reason: "Completed", ExitCode: exitCode}
+	return cs
+}
+
+func initCSWaiting(name string, restarts int, waitingReason string) containerStatus {
+	cs := mainCS(name, restarts, "Error", "exit code 1")
+	cs.State.Waiting = &struct {
+		Reason  string `json:"reason"`
+		Message string `json:"message"`
+	}{Reason: waitingReason}
+	return cs
+}
+
+// TestCollectRestartFailures pins the no-restart gate policy:
+//
+//   - Main containers: ANY restartCount>0 is a hard failure
+//     (CrashLoopBackOff / OOM during settle window — the gate's
+//     entire purpose).
+//   - InitContainers: restartCount>0 is exempted iff the init
+//     ultimately completed cleanly (state.terminated.exitCode==0).
+//     Charts like crossplane race the kube-apiserver during their
+//     init CRD wait and occasionally need one restart to succeed;
+//     the cluster is healthy in that case and the gate must not
+//     fire. A crash-looping init (waiting / non-zero terminated /
+//     still running) is NOT exempted — the gate fires as before.
+func TestCollectRestartFailures(t *testing.T) {
+	cases := []struct {
+		name            string
+		pods            *podList
+		wantFailCount   int
+		wantSubstrings  []string
+		bannedSubstring string
+	}{
+		{
+			name:          "main container with no restarts: clean",
+			pods:          makePodForRestartTest("ns", "pod-a", []containerStatus{{Name: "app", RestartCount: 0}}, nil),
+			wantFailCount: 0,
+		},
+		{
+			name:           "main container with restart: fails",
+			pods:           makePodForRestartTest("ns", "pod-b", []containerStatus{mainCS("app", 2, "OOMKilled", "out of memory")}, nil),
+			wantFailCount:  1,
+			wantSubstrings: []string{"container=app", "restarts=2", "OOMKilled"},
+		},
+		{
+			// Reproduces the crossplane case: init container
+			// restarted once due to a CRD-availability race, then
+			// completed cleanly. Main container is now running.
+			// Gate must NOT fire — the cluster is healthy.
+			name: "initContainer restarted but ultimately succeeded (exitCode 0): exempted",
+			pods: makePodForRestartTest("crossplane", "crossplane-xxx",
+				[]containerStatus{{Name: "crossplane", RestartCount: 0}},
+				[]containerStatus{initCSCompleted("crossplane-init", 1, 0)}),
+			wantFailCount: 0,
+		},
+		{
+			// Real crash loop in an init container is still a gate
+			// failure: the init has not succeeded, so the workload
+			// is not actually up. Gate MUST fire.
+			name:           "initContainer crash-looping (waiting CrashLoopBackOff): fails",
+			pods:           makePodForRestartTest("ns", "app-xxx", nil, []containerStatus{initCSWaiting("wait-for-db", 3, "CrashLoopBackOff")}),
+			wantFailCount:  1,
+			wantSubstrings: []string{"initContainer=wait-for-db", "restarts=3"},
+		},
+		{
+			// Final exit code non-zero means init truly failed
+			// (pod would be stuck). Gate MUST fire — exemption is
+			// narrow: exitCode==0 only.
+			name:          "initContainer non-zero terminated despite restartCount: fails",
+			pods:          makePodForRestartTest("ns", "app-yyy", nil, []containerStatus{initCSCompleted("migrate", 1, 1)}),
+			wantFailCount: 1,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := collectRestartFailures(c.pods)
+			if len(got) != c.wantFailCount {
+				t.Fatalf("got %d failures, want %d: %v", len(got), c.wantFailCount, got)
+			}
+			if c.wantFailCount == 0 {
+				return
+			}
+			for _, sub := range c.wantSubstrings {
+				if !strings.Contains(got[0], sub) {
+					t.Fatalf("failure %q missing substring %q", got[0], sub)
+				}
+			}
+		})
+	}
+}
+
+// TestCollectRestartFailures_MultiPodMix asserts the gate's
+// per-pod independence: a benign init flake on one pod and a real
+// crash on another pod are reported correctly as exactly one
+// failure attributed to the crashing pod.
+func TestCollectRestartFailures_MultiPodMix(t *testing.T) {
+	initOK := initCSCompleted("init", 1, 0)
+	mainBad := mainCS("worker", 5, "OOMKilled", "")
+
+	pods := &podList{Items: []struct {
+		Metadata struct {
+			Name      string `json:"name"`
+			Namespace string `json:"namespace"`
+		} `json:"metadata"`
+		Status struct {
+			ContainerStatuses     []containerStatus `json:"containerStatuses"`
+			InitContainerStatuses []containerStatus `json:"initContainerStatuses"`
+		} `json:"status"`
+	}{
+		// pod "good": clean main + exempted init flake
+		makePodForRestartTest("ns", "good", []containerStatus{{Name: "app", RestartCount: 0}}, []containerStatus{initOK}).Items[0],
+		// pod "bad": main crash-looping
+		makePodForRestartTest("ns", "bad", []containerStatus{mainBad}, nil).Items[0],
+	}}
+	got := collectRestartFailures(pods)
+	if len(got) != 1 {
+		t.Fatalf("expected exactly 1 failure (only the OOMKilled main container); got %d: %v", len(got), got)
+	}
+	if !strings.Contains(got[0], "pod=ns/bad") || !strings.Contains(got[0], "container=worker") {
+		t.Fatalf("wrong failure attributed: %q", got[0])
+	}
+}
+
+// TestInitContainerCompletedCleanly pins the predicate's narrow
+// semantics: ONLY terminated{exitCode:0} counts as a clean
+// completion. Anything else (still running, waiting, failed
+// terminated) returns false so the no-restart gate stays armed
+// against real init crash loops.
+func TestInitContainerCompletedCleanly(t *testing.T) {
+	mkTerm := func(code int) containerStatus {
+		var cs containerStatus
+		cs.State.Terminated = &struct {
+			Reason   string `json:"reason"`
+			Message  string `json:"message"`
+			ExitCode int    `json:"exitCode"`
+		}{ExitCode: code}
+		return cs
+	}
+	mkWait := func(reason string) containerStatus {
+		var cs containerStatus
+		cs.State.Waiting = &struct {
+			Reason  string `json:"reason"`
+			Message string `json:"message"`
+		}{Reason: reason}
+		return cs
+	}
+
+	cases := []struct {
+		name string
+		cs   containerStatus
+		want bool
+	}{
+		{"terminated exitCode 0", mkTerm(0), true},
+		{"terminated exitCode 1", mkTerm(1), false},
+		{"terminated exitCode 137 (SIGKILL)", mkTerm(137), false},
+		{"waiting CrashLoopBackOff", mkWait("CrashLoopBackOff"), false},
+		{"waiting PodInitializing", mkWait("PodInitializing"), false},
+		{"empty state (running, no fields populated)", containerStatus{}, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			cs := c.cs
+			if got := initContainerCompletedCleanly(&cs); got != c.want {
+				t.Fatalf("got %v, want %v", got, c.want)
+			}
+		})
+	}
+}
+
 func TestInstallChartRejectsArgumentInjection(t *testing.T) {
 	cases := []struct {
 		name string

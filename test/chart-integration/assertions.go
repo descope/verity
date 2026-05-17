@@ -65,9 +65,27 @@ type containerStatus struct {
 	// so allowlist matching MUST fall back to ImageID when Image is
 	// a bare digest. See isAccepted for the fallback logic and
 	// SCR-2026-04-30-001 for the policy rationale.
-	Image                string `json:"image"`
-	ImageID              string `json:"imageID"`
-	RestartCount         int    `json:"restartCount"`
+	Image        string `json:"image"`
+	ImageID      string `json:"imageID"`
+	RestartCount int    `json:"restartCount"`
+	// State is the container's CURRENT state — running / waiting /
+	// terminated. For initContainers we use this to distinguish
+	// "init flaked once but ultimately completed (exitCode 0)" from
+	// "init is still crash-looping". Only the latter trips the
+	// no-restart gate; the former is benign (the main container is
+	// already past the init phase and running). See
+	// collectRestartFailures.
+	State struct {
+		Terminated *struct {
+			Reason   string `json:"reason"`
+			Message  string `json:"message"`
+			ExitCode int    `json:"exitCode"`
+		} `json:"terminated"`
+		Waiting *struct {
+			Reason  string `json:"reason"`
+			Message string `json:"message"`
+		} `json:"waiting"`
+	} `json:"state"`
 	LastTerminationState struct {
 		Terminated *struct {
 			Reason  string `json:"reason"`
@@ -101,24 +119,73 @@ func AssertNoRestarts(ctx context.Context, h *Harness, namespace string) error {
 func collectRestartFailures(pods *podList) []string {
 	var failures []string
 	for _, p := range pods.Items {
-		all := append(append([]containerStatus{}, p.Status.ContainerStatuses...), p.Status.InitContainerStatuses...)
-		for _, cs := range all {
+		// Main containers: any restart is a hard failure. The whole
+		// point of the no-restart gate is to catch CrashLoopBackOff
+		// or OOMKill on long-running workload containers during the
+		// post-install settle window.
+		for i := range p.Status.ContainerStatuses {
+			cs := &p.Status.ContainerStatuses[i]
 			if cs.RestartCount == 0 {
 				continue
 			}
-			reason := "unknown"
-			msg := ""
-			if cs.LastTerminationState.Terminated != nil {
-				reason = cs.LastTerminationState.Terminated.Reason
-				msg = cs.LastTerminationState.Terminated.Message
+			failures = append(failures, formatRestartFailure(p.Metadata.Namespace, p.Metadata.Name, cs, "container"))
+		}
+		// InitContainers: a benign init flake (e.g. waiting for
+		// CRDs registered by a sibling pod, transient API server
+		// unavailability during cluster warm-up) shows up as
+		// restartCount>0 with the init STILL completing successfully
+		// (state.terminated.exitCode == 0). The main container is
+		// then running normally and the cluster is healthy — this
+		// is NOT what the no-restart gate is meant to catch.
+		//
+		// Real CrashLoopBackOff in an initContainer still trips the
+		// gate: it would have state.waiting.reason ==
+		// "CrashLoopBackOff" (or a still-running / failed-terminated
+		// state), so the exemption below intentionally does NOT
+		// apply.
+		//
+		// Charts that exhibit benign init flakes today:
+		//   - crossplane (init waits for CRDs that the chart's own
+		//     CoreCRDs step installs; first attempt sometimes loses
+		//     a race with kube-apiserver readiness and is restarted
+		//     once by the kubelet)
+		for i := range p.Status.InitContainerStatuses {
+			cs := &p.Status.InitContainerStatuses[i]
+			if cs.RestartCount == 0 {
+				continue
 			}
-			failures = append(failures, fmt.Sprintf(
-				"pod=%s/%s container=%s restarts=%d reason=%s msg=%q",
-				p.Metadata.Namespace, p.Metadata.Name, cs.Name, cs.RestartCount, reason, truncate(msg, 200),
-			))
+			if initContainerCompletedCleanly(cs) {
+				continue
+			}
+			failures = append(failures, formatRestartFailure(p.Metadata.Namespace, p.Metadata.Name, cs, "initContainer"))
 		}
 	}
 	return failures
+}
+
+// initContainerCompletedCleanly reports whether an initContainer is
+// currently in the terminated{exitCode:0} state — i.e. the init
+// succeeded, even if it took more than one attempt to get there.
+// Used by collectRestartFailures to exempt benign init-phase flakes
+// from the no-restart gate. A nil-terminated state (running /
+// waiting / failed-terminated) returns false, preserving the gate
+// for real crash loops.
+func initContainerCompletedCleanly(cs *containerStatus) bool {
+	t := cs.State.Terminated
+	return t != nil && t.ExitCode == 0
+}
+
+func formatRestartFailure(namespace, podName string, cs *containerStatus, kind string) string {
+	reason := "unknown"
+	msg := ""
+	if cs.LastTerminationState.Terminated != nil {
+		reason = cs.LastTerminationState.Terminated.Reason
+		msg = cs.LastTerminationState.Terminated.Message
+	}
+	return fmt.Sprintf(
+		"pod=%s/%s %s=%s restarts=%d reason=%s msg=%q",
+		namespace, podName, kind, cs.Name, cs.RestartCount, reason, truncate(msg, 200),
+	)
 }
 
 // CollectNamespaceImages returns the deduplicated list of container
