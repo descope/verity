@@ -17,20 +17,22 @@
 # → init-directories enters CrashLoopBackOff and helm install times
 # out at 10 minutes.
 #
-# This override runs ALL containers in the gitea pod as root. The
-# Bitnami chart uses one `containerSecurityContext` block for both
-# init and main containers, so we cannot scope the override to just
-# the init container without forking the chart. Running the main
-# gitea container as root is acceptable in the smoke-test cluster
-# (kind, ephemeral, no real data), but should NOT be the production
-# default — which is why this override lives in the chart-integration
-# values directory and NOT in `verity.yaml`'s gitea chartValues block.
+# This override runs the init-directories/init-app-ini containers and
+# the main gitea container as root. The Bitnami chart uses one
+# `containerSecurityContext` block for those containers, so we cannot
+# scope the override to just init-directories without forking the chart.
+# Running the main gitea container as root is acceptable in the smoke-
+# test cluster (kind, ephemeral, no real data), but should NOT be the
+# production default — which is why this override lives in the chart-
+# integration values directory and NOT in `verity.yaml`'s gitea
+# chartValues block.
 #
 # Production users who hit the same PVC-chown issue on their cluster
 # should either (a) switch to `image.rootless: true` (the upstream
 # chart's supported path for non-root containers) or (b) configure
 # their CSI driver / storage class to honor `fsGroup` recursively
 # before the init container runs.
-containerSecurityContext:
-  runAsUser: 0
-  runAsNonRoot: false
+gitea:
+  containerSecurityContext:
+    runAsUser: 0
+    runAsNonRoot: false
