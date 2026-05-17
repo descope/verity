@@ -697,9 +697,18 @@ chartValues:
         -Djava.io.tmpdir=${OPENSEARCH_TMPDIR}
 
         ## heap dumps
+        ## Note: the upstream file ships `${heap.dump.path}` and
+        ## `${error.file}` placeholders here that the `opensearch-env`
+        ## shell wrapper substitutes at entrypoint time. Because we
+        ## replace the entire jvm.options via ConfigMap, those
+        ## placeholders are NOT expanded by the launcher (JvmOptions-
+        ## Parser only resolves `${ENVVAR}` references, not these
+        ## opensearch-env-specific tokens) and would cause
+        ##   improperly formatted JVM option in [.../jvm.options] ...
+        ## startup errors. The JVM falls back to its built-in defaults
+        ## (heap dump in CWD, no separate fatal-error log file), which
+        ## is acceptable for the CI smoke test.
         -XX:+HeapDumpOnOutOfMemoryError
-        ${heap.dump.path}
-        ${error.file}
 
         ## JDK 20+ Incubating Vector Module for SIMD optimizations
         20-:--add-modules=jdk.incubator.vector
