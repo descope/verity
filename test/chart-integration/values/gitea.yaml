@@ -32,7 +32,92 @@
 # chart's supported path for non-root containers) or (b) configure
 # their CSI driver / storage class to honor `fsGroup` recursively
 # before the init container runs.
+#
+# The only published `bitnamilegacy/gitea` tag that matches the chart's
+# major-version reference is `:1`, but that legacy image does not ship
+# Gitea's newer `environment-to-ini` helper. The chart requires that
+# helper in `init-app-ini`; without it the init container exits 127.
+# Mount a smoke-only helper that implements the chart's env var encoding
+# for the generated app.ini.
 gitea:
   containerSecurityContext:
     runAsUser: 0
     runAsNonRoot: false
+  extraDeploy:
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: gitea-env-to-ini
+      data:
+        environment-to-ini: |-
+          #!/usr/bin/env sh
+          set -eu
+
+          out=""
+          while [ "$#" -gt 0 ]; do
+            case "$1" in
+              -o)
+                out="$2"
+                shift 2
+                ;;
+              *)
+                echo "unsupported argument: $1" >&2
+                exit 2
+                ;;
+            esac
+          done
+
+          if [ -z "$out" ]; then
+            echo "missing -o output path" >&2
+            exit 2
+          fi
+
+          tmp="$(mktemp)"
+          env | sort | awk -F= '
+            function decode(s) {
+              gsub(/_0X2E_/, ".", s)
+              gsub(/_0X2D_/, "-", s)
+              return tolower(s)
+            }
+            /^GITEA____/ {
+              key = substr($1, 10)
+              root[decode(key)] = substr($0, length($1) + 2)
+              next
+            }
+            /^GITEA__/ {
+              rest = substr($1, 8)
+              sep = index(rest, "__")
+              if (sep == 0) next
+              section = decode(substr(rest, 1, sep - 1))
+              key = decode(substr(rest, sep + 2))
+              value = substr($0, length($1) + 2)
+              sections[section] = 1
+              values[section SUBSEP key] = value
+              keys[section] = keys[section] key "\n"
+              next
+            }
+            END {
+              for (key in root) print key " = " root[key]
+              for (section in sections) {
+                print ""
+                print "[" section "]"
+                split(keys[section], sectionKeys, "\n")
+                for (i in sectionKeys) {
+                  key = sectionKeys[i]
+                  if (key != "") print key " = " values[section SUBSEP key]
+                }
+              }
+            }
+          ' > "$tmp"
+          mkdir -p "$(dirname "$out")"
+          mv "$tmp" "$out"
+  extraVolumes:
+    - name: env-to-ini
+      configMap:
+        name: gitea-env-to-ini
+        defaultMode: 365
+  extraInitVolumeMounts:
+    - name: env-to-ini
+      mountPath: /usr/local/bin/environment-to-ini
+      subPath: environment-to-ini
+      readOnly: true
