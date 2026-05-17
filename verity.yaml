@@ -654,6 +654,16 @@ chartValues:
   # surface; deferred. falco re-skipped in test/chart-integration/
   # SKIPS.yaml under #325 until the deeper wiring lands.
 
+  # fluent-bit 0.57.3 starts its Kubernetes filter by waiting 30s for
+  # cluster DNS before opening the HTTP server used by the chart's
+  # livenessProbe. The chart default has no liveness initial delay, so
+  # kubelet can hit the default 3 failures and SIGTERM fluent-bit just
+  # as it becomes healthy, producing a clean restart that fails the
+  # chart-integration no-restart gate (run 25987025840). Delay only
+  # liveness; readiness can still report startup progress normally.
+  fluent-bit:
+    livenessProbe.initialDelaySeconds: 45
+
   # opensearch 3.6.0 — Bucket G (JVM gc log path is unwritable in the
   # rebuilt image).
   #
