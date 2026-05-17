@@ -289,10 +289,11 @@ chartValues:
   # tag DOES exist in verity-org/ — the only thing wrong with the
   # generated wrapper is the extraneous `docker.io/` prefix.
   #
-  # Setting `postgresql.image.registry: ghcr.io` overrides the chart's
-  # `image.registry` default so the rendered reference becomes the
-  # clean `ghcr.io/verity-org/bitnamilegacy/postgresql:16.1.0-debian-11-r15`.
-  # Same shape as the tempo-distributed fix. See verity-org/verity#318.
+  # Clearing `postgresql.image.registry` prevents the parent chart's
+  # registry scalar from being prepended to chartgen's generated FQDN
+  # repository override, yielding the clean
+  # `ghcr.io/verity-org/bitnamilegacy/postgresql:16.1.0-debian-11-r15`.
+  # See verity-org/verity#318 for the related registry-composition class.
   #
   # Bucket E (probe-race) — bucket-confirmation.md (airflow row) shows
   # `wait-for-airflow-migrations` init container looping `Waiting for
@@ -323,13 +324,19 @@ chartValues:
   # gate stays clean.
   #
   # Supporting knobs:
-  # - `postgresql.image.registry: ghcr.io` keeps the parent-level
-  #   postgresql image reference composable while chart-gen uses the
-  #   bundled subchart values to rewrite the repository. Do NOT also
-  #   set `postgresql.image.repository` here: chart-gen treats chartValues
-  #   image repositories as override inputs and rewrites the manual value
-  #   to `ghcr.io/verity-org/...`, which renders the broken
+  # - `postgresql.image.registry: ""` prevents the parent-level
+  #   registry scalar from being prepended to the generated FQDN
+  #   repository override. Do NOT set it to `ghcr.io`: during chart
+  #   generation, chartgen overwrites
+  #   `airflow.postgresql.image.repository` with an FQDN repository for
+  #   this parent path, and a non-empty registry renders the broken
   #   `ghcr.io/ghcr.io/verity-org/bitnamilegacy/postgresql`.
+  # - `postgresql.image.repository: bitnamilegacy/postgresql` keeps
+  #   image discovery on the upstream source path. Do NOT pre-prefix
+  #   it with `verity-org/`: chartgen derives patched targets from
+  #   discovered images, so pre-prefixing makes the source name
+  #   `verity-org/bitnamilegacy/postgresql` and renders the broken
+  #   `ghcr.io/verity-org/verity-org/bitnamilegacy/postgresql`.
   # - `images.migrationsWaitTimeout: 300` (default 60s) — wait budget
   #   for `wait-for-airflow-migrations`. Kept generous so the init
   #   container still has headroom while the migrations Job runs.
@@ -345,7 +352,8 @@ chartValues:
   #   StatsD metrics are not required for the smoke test (which only
   #   verifies install + pod readiness, not metric scraping).
   airflow:
-    postgresql.image.registry: ghcr.io
+    postgresql.image.registry: ""
+    postgresql.image.repository: bitnamilegacy/postgresql
     images.migrationsWaitTimeout: 300
     apiServer.startupProbe.failureThreshold: 12
     migrateDatabaseJob.useHelmHooks: false

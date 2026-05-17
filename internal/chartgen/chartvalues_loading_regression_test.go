@@ -48,11 +48,11 @@ func TestVerityConfigChartValuesLoading(t *testing.T) {
 		t.Fatalf("fluent-bit livenessProbe.initialDelaySeconds = %#v, want 45", got)
 	}
 	airflow := vc2.ChartValues["airflow"]
-	if airflow["postgresql.image.registry"] != "ghcr.io" {
-		t.Fatalf("airflow postgresql.image.registry=%v, want ghcr.io", airflow["postgresql.image.registry"])
+	if airflow["postgresql.image.registry"] != "" {
+		t.Fatalf("airflow postgresql.image.registry=%v, want empty string", airflow["postgresql.image.registry"])
 	}
-	if repo, ok := airflow["postgresql.image.repository"]; ok {
-		t.Fatalf("airflow must not pin postgresql.image.repository=%v; chart-gen rewrites that chartValues input into a double ghcr.io prefix", repo)
+	if airflow["postgresql.image.repository"] != "bitnamilegacy/postgresql" {
+		t.Fatalf("airflow postgresql.image.repository=%v, want bitnamilegacy/postgresql", airflow["postgresql.image.repository"])
 	}
 
 	// victoria-logs-single has NO chartValues but its only image is in
