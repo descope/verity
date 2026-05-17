@@ -622,28 +622,87 @@ chartValues:
 
   # opensearch 3.6.0 — Bucket G (JVM gc log path is unwritable in the
   # rebuilt image).
-  # bucket-confirmation.md opensearch row: container exits with exit=1 and
-  # JVM error: `[error][logging] Error opening log file 'logs/gc.log':
-  # Permission denied / Invalid -Xlog option ... Could not create the
-  # Java Virtual Machine`. Chart-default `-Xlog:gc*:file=logs/gc.log` (in
-  # the image's `jvm.options` file) is incompatible with the rebuilt
-  # image's filesystem layout — writable workdir not provisioned for
-  # UID 1000.
   #
-  # Chart exposes `opensearchJavaOpts` as a scalar (top-level, default
-  # `-Xmx512M -Xms512M`, rendered as the `OPENSEARCH_JAVA_OPTS` env var
-  # in templates/statefulset.yaml). The OS reads OPENSEARCH_JAVA_OPTS
-  # **after** jvm.options, so appending `-Xlog:disable` here turns off
-  # all JVM logging — including the gc-log directive that fails to open
-  # its file. This is the chartValues route called out in
-  # bucket-confirmation §opensearch (Proposed fix vector).
+  # Root cause: the image ships `/usr/share/opensearch/config/jvm.options`
+  # (from the upstream `opensearch-3` wolfi package) which contains
+  #   9-:-Xlog:gc*,gc+age=trace,safepoint:file=${loggc}:utctime,pid,tags:filecount=32,filesize=64m
+  # `${loggc}` resolves to `logs/gc.log` (relative to OPENSEARCH_HOME).
+  # That directory is owned by the wolfi `nonroot` uid 65532 (see
+  # `images/opensearch.yaml`), but the chart's StatefulSet runs as uid
+  # 1000 (chart-default `securityContext.runAsUser`). JVM tries to
+  # create the gc log file on startup, gets EACCES, aborts with
+  #   [error][logging] Error opening log file 'logs/gc.log': Permission denied
+  #   Invalid -Xlog option ... Could not create the Java Virtual Machine
+  # and the pod crash-loops (chart-integration run 25974769298).
   #
-  # Chart's `extraEnvs` is a YAML list and the verity chartValues
-  # mechanism is dotted-path scalar-only (charts.go
-  # ErrChartValueUnsupportedType), so `extraEnvs:` is not expressible
-  # here; setting `opensearchJavaOpts` directly is the only viable lever.
+  # Earlier attempts to disable GC logging via `OPENSEARCH_JAVA_OPTS=
+  # -Xlog:disable` failed because `jvm.options` is parsed **before**
+  # env vars by `org.opensearch.tools.launchers.JvmOptionsParser`, so
+  # the `-Xlog:gc*:file=...` directive aborts the JVM startup before
+  # env-var overrides can take effect.
+  #
+  # Fix: replace the image's `jvm.options` outright via the chart's
+  # `config.jvm.options` key (rendered into the `opensearch-cluster-
+  # master-config` ConfigMap and mounted at
+  # `/usr/share/opensearch/config/jvm.options`, shadowing the image's
+  # file). Content mirrors the upstream OpenSearch 3.x defaults
+  # (G1GC, heap-dump-on-OOM, etc.) MINUS the gc-file logging directive.
+  # GC logging still goes to stdout via OpenSearch's normal log4j
+  # console appender — no observability lost for the smoke test.
+  #
+  # The `opensearchJavaOpts` env var sets heap via `OPENSEARCH_JAVA_OPTS`
+  # at runtime and is also necessary because `jvm.options` here omits
+  # the upstream `-Xms${heap.min}/-Xmx${heap.max}` placeholder lines
+  # (the upstream `opensearch-env` shell script substitutes those at
+  # entrypoint time, and we want explicit CI-sized heap regardless).
   opensearch:
-    opensearchJavaOpts: "-Xmx512M -Xms512M -Xlog:disable"
+    opensearchJavaOpts: "-Xmx512M -Xms512M"
+    # jvm.options is the upstream 3.x baseline with the `9-:-Xlog:gc*`
+    # gc-file logging directive removed. Keep this in sync with
+    # https://github.com/opensearch-project/OpenSearch/blob/<version>/
+    #   distribution/src/config/jvm.options when bumping the chart.
+    config:
+      jvm.options: |
+        ## JVM heap is set via OPENSEARCH_JAVA_OPTS (opensearchJavaOpts
+        ## above) so this file omits the upstream `-Xms${heap.min}` /
+        ## `-Xmx${heap.max}` placeholder lines.
+
+        ## G1GC Configuration (JDK 11+; bundled JDK is 25)
+        11-:-XX:+UseG1GC
+        11-:-XX:G1ReservePercent=25
+        11-:-XX:InitiatingHeapOccupancyPercent=30
+
+        ## JVM temporary directory
+        -Djava.io.tmpdir=${OPENSEARCH_TMPDIR}
+
+        ## heap dumps
+        -XX:+HeapDumpOnOutOfMemoryError
+        ${heap.dump.path}
+        ${error.file}
+
+        ## JDK 20+ Incubating Vector Module for SIMD optimizations
+        20-:--add-modules=jdk.incubator.vector
+
+        ## JDK 23 inlining workaround for MethodHandle.setAsTypeCache
+        ## (https://bugs.openjdk.org/browse/JDK-8341127)
+        23:-XX:CompileCommand=dontinline,java/lang/invoke/MethodHandle.setAsTypeCache
+        23:-XX:CompileCommand=dontinline,java/lang/invoke/MethodHandle.asTypeUncached
+
+        ## JDK 21+ agent + module opens for Arrow memory
+        21-:-javaagent:agent/opensearch-agent.jar
+        21-:--add-opens=java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED
+
+        ## Lucene MMapDirectory shared-arena pool size (default 1 for
+        ## stability under high mmap counts)
+        -Dorg.apache.lucene.store.MMapDirectory.sharedArenaMaxPermits=1
+
+        ## JDK 25+ compact object headers
+        25-:-XX:+UseCompactObjectHeaders
+
+        ## NOTE: the upstream `9-:-Xlog:gc*,gc+age=trace,safepoint:
+        ## file=${loggc}:utctime,pid,tags:filecount=32,filesize=64m`
+        ## directive is INTENTIONALLY OMITTED — see verity.yaml
+        ## comment block above for the EACCES / crash-loop rationale.
 
   # opensearch-dashboards 3.6.0 — chart defaults `securityContext.
   # runAsUser: 1000` (matching the upstream `opensearchproject/
