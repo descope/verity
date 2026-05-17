@@ -240,24 +240,52 @@ func TestHarnessClusterCreatedFieldDefault(t *testing.T) {
 // case is a flat literal — keeps cyclomatic complexity / maintidx
 // low in the test function itself.
 func makePodForRestartTest(namespace, name string, main, init []containerStatus) *podList {
+	return makePodWithOwnerForRestartTest(namespace, name, "", "", main, init)
+}
+
+// makePodWithOwnerForRestartTest builds a single-pod podList with
+// optional ownerReferences[0].kind + status.phase. Used by the
+// Job-owned-pod main-container exemption tests; passing empty
+// strings reduces to the default makePodForRestartTest shape.
+func makePodWithOwnerForRestartTest(namespace, name, ownerKind, phase string, main, init []containerStatus) *podList {
+	var owners []struct {
+		Kind string `json:"kind"`
+		Name string `json:"name"`
+	}
+	if ownerKind != "" {
+		owners = []struct {
+			Kind string `json:"kind"`
+			Name string `json:"name"`
+		}{{Kind: ownerKind, Name: name + "-owner"}}
+	}
 	return &podList{Items: []struct {
 		Metadata struct {
-			Name      string `json:"name"`
-			Namespace string `json:"namespace"`
+			Name            string `json:"name"`
+			Namespace       string `json:"namespace"`
+			OwnerReferences []struct {
+				Kind string `json:"kind"`
+				Name string `json:"name"`
+			} `json:"ownerReferences"`
 		} `json:"metadata"`
 		Status struct {
+			Phase                 string            `json:"phase"`
 			ContainerStatuses     []containerStatus `json:"containerStatuses"`
 			InitContainerStatuses []containerStatus `json:"initContainerStatuses"`
 		} `json:"status"`
 	}{{
 		Metadata: struct {
-			Name      string `json:"name"`
-			Namespace string `json:"namespace"`
-		}{Name: name, Namespace: namespace},
+			Name            string `json:"name"`
+			Namespace       string `json:"namespace"`
+			OwnerReferences []struct {
+				Kind string `json:"kind"`
+				Name string `json:"name"`
+			} `json:"ownerReferences"`
+		}{Name: name, Namespace: namespace, OwnerReferences: owners},
 		Status: struct {
+			Phase                 string            `json:"phase"`
 			ContainerStatuses     []containerStatus `json:"containerStatuses"`
 			InitContainerStatuses []containerStatus `json:"initContainerStatuses"`
-		}{ContainerStatuses: main, InitContainerStatuses: init},
+		}{Phase: phase, ContainerStatuses: main, InitContainerStatuses: init},
 	}}}
 }
 
@@ -381,10 +409,15 @@ func TestCollectRestartFailures_MultiPodMix(t *testing.T) {
 
 	pods := &podList{Items: []struct {
 		Metadata struct {
-			Name      string `json:"name"`
-			Namespace string `json:"namespace"`
+			Name            string `json:"name"`
+			Namespace       string `json:"namespace"`
+			OwnerReferences []struct {
+				Kind string `json:"kind"`
+				Name string `json:"name"`
+			} `json:"ownerReferences"`
 		} `json:"metadata"`
 		Status struct {
+			Phase                 string            `json:"phase"`
 			ContainerStatuses     []containerStatus `json:"containerStatuses"`
 			InitContainerStatuses []containerStatus `json:"initContainerStatuses"`
 		} `json:"status"`
@@ -400,6 +433,148 @@ func TestCollectRestartFailures_MultiPodMix(t *testing.T) {
 	}
 	if !strings.Contains(got[0], "pod=ns/bad") || !strings.Contains(got[0], "container=worker") {
 		t.Fatalf("wrong failure attributed: %q", got[0])
+	}
+}
+
+// jobCompletedMainCS builds a main containerStatus that mimics the
+// terminal state of a Job pod whose first container attempt failed
+// and second attempt succeeded: restartCount>0, current state is
+// terminated with exitCode 0.
+func jobCompletedMainCS(name string, restarts int) containerStatus {
+	cs := mainCS(name, restarts, "Error", "first attempt: connection refused")
+	cs.State.Terminated = &struct {
+		Reason   string `json:"reason"`
+		Message  string `json:"message"`
+		ExitCode int    `json:"exitCode"`
+	}{Reason: "Completed", ExitCode: 0}
+	return cs
+}
+
+// TestCollectRestartFailures_JobOwnedPodExemption pins the
+// Job-owned-pod main-container exemption: a one-shot Job pod whose
+// first container attempt failed and second attempt succeeded
+// (final exitCode 0, pod phase Succeeded) MUST NOT trip the
+// no-restart gate. The gate's purpose is to catch CrashLoopBackOff
+// / OOMKill on long-running workloads, not benign Job retries that
+// ultimately completed cleanly.
+//
+// Negative cases (Job pod where the final state is still Failed,
+// or non-Job pod with the same restart pattern) still trip the
+// gate — the exemption is narrow: kind=Job AND phase=Succeeded AND
+// terminated{exitCode:0}.
+func TestCollectRestartFailures_JobOwnedPodExemption(t *testing.T) {
+	cases := []struct {
+		name          string
+		ownerKind     string
+		phase         string
+		main          []containerStatus
+		wantFailCount int
+	}{
+		{
+			// The airflow run-airflow-migrations case: Job pod,
+			// first attempt failed (transient DB unavailability),
+			// second attempt succeeded, phase Succeeded.
+			name:          "Job-owned pod main container retried then succeeded: exempted",
+			ownerKind:     "Job",
+			phase:         "Succeeded",
+			main:          []containerStatus{jobCompletedMainCS("run-airflow-migrations", 1)},
+			wantFailCount: 0,
+		},
+		{
+			// Deployment-owned pod with the same restart pattern
+			// is NOT exempted — long-running workloads should not
+			// have any restarts during settle window.
+			name:          "Deployment-owned pod main container retried then succeeded: NOT exempted",
+			ownerKind:     "ReplicaSet",
+			phase:         "Running",
+			main:          []containerStatus{jobCompletedMainCS("api-server", 1)},
+			wantFailCount: 1,
+		},
+		{
+			// Job-owned pod still running / pod phase Failed is
+			// NOT exempted — the exemption is narrow: the Job
+			// must have reached Succeeded.
+			name:          "Job-owned pod main container crash-looping (phase Failed): NOT exempted",
+			ownerKind:     "Job",
+			phase:         "Failed",
+			main:          []containerStatus{mainCS("flaky", 3, "Error", "exit code 1")},
+			wantFailCount: 1,
+		},
+		{
+			// Job-owned pod, phase Succeeded, but the container's
+			// final state is non-zero exit — should NOT happen in
+			// practice (k8s would mark the pod Failed) but pin the
+			// narrowness of the exemption: terminated{exitCode:0}
+			// is REQUIRED.
+			name:      "Job-owned pod phase Succeeded but final exit non-zero: NOT exempted",
+			ownerKind: "Job",
+			phase:     "Succeeded",
+			main: []containerStatus{func() containerStatus {
+				cs := mainCS("weird", 1, "Error", "")
+				cs.State.Terminated = &struct {
+					Reason   string `json:"reason"`
+					Message  string `json:"message"`
+					ExitCode int    `json:"exitCode"`
+				}{Reason: "Error", ExitCode: 1}
+				return cs
+			}()},
+			wantFailCount: 1,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			pods := makePodWithOwnerForRestartTest("ns", "pod-x", c.ownerKind, c.phase, c.main, nil)
+			got := collectRestartFailures(pods)
+			if len(got) != c.wantFailCount {
+				t.Fatalf("got %d failures, want %d: %v", len(got), c.wantFailCount, got)
+			}
+		})
+	}
+}
+
+// TestIsOwnedByJob pins the predicate: only an ownerReference of
+// kind "Job" returns true; everything else (ReplicaSet, StatefulSet,
+// CronJob, nil) returns false. CronJob does NOT pass because pods
+// created by a CronJob run have a direct `Kind: Job` owner — the
+// CronJob is one level removed from the pod.
+func TestIsOwnedByJob(t *testing.T) {
+	mk := func(kinds ...string) []struct {
+		Kind string `json:"kind"`
+		Name string `json:"name"`
+	} {
+		out := make([]struct {
+			Kind string `json:"kind"`
+			Name string `json:"name"`
+		}, 0, len(kinds))
+		for _, k := range kinds {
+			out = append(out, struct {
+				Kind string `json:"kind"`
+				Name string `json:"name"`
+			}{Kind: k})
+		}
+		return out
+	}
+	cases := []struct {
+		name string
+		refs []struct {
+			Kind string `json:"kind"`
+			Name string `json:"name"`
+		}
+		want bool
+	}{
+		{"empty owners", nil, false},
+		{"single Job owner", mk("Job"), true},
+		{"single ReplicaSet owner", mk("ReplicaSet"), false},
+		{"CronJob owner (does NOT match — pods have direct Job owner)", mk("CronJob"), false},
+		{"multiple owners, includes Job", mk("StatefulSet", "Job"), true},
+		{"multiple owners, no Job", mk("StatefulSet", "ReplicaSet"), false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := isOwnedByJob(c.refs); got != c.want {
+				t.Fatalf("isOwnedByJob(%v) = %v, want %v", c.refs, got, c.want)
+			}
+		})
 	}
 }
 
