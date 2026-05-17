@@ -691,6 +691,14 @@ chartValues:
   # entrypoint time, and we want explicit CI-sized heap regardless).
   opensearch:
     opensearchJavaOpts: "-Xmx512M -Xms512M"
+    # The chart defaults to uid/gid 1000, but the verity wolfi image owns
+    # /usr/share/opensearch/config as uid/gid 65532. OpenSearch creates a
+    # temporary keystore file in that directory during bootstrap, so the chart
+    # must run as the image's nonroot user.
+    persistence.enableInitChown: false
+    podSecurityContext.fsGroup: 65532
+    podSecurityContext.runAsUser: 65532
+    securityContext.runAsUser: 65532
     # jvm.options is the upstream 3.x baseline with the `9-:-Xlog:gc*`
     # gc-file logging directive removed. Keep this in sync with
     # https://github.com/opensearch-project/OpenSearch/blob/<version>/
