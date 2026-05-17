@@ -1,0 +1,52 @@
+# Chart-integration override for opensearch-dashboards 3.6.0.
+#
+# The verity wolfi rebuild (images/opensearch-dashboards.yaml) installs the
+# upstream `opensearch-dashboards-3` apk, which ships
+# `/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml` with
+# four `opensearch_security.*` keys appended at the bottom:
+# multitenancy.enabled, multitenancy.tenants.preferred, readonly_mode.roles,
+# and cookie.secure. Those keys are owned by the `securityDashboards`
+# plugin — which is NOT in the apk and NOT in the rebuilt image
+# (`crane export ghcr.io/verity-org/opensearch-dashboards:3 | tar -tf - |
+# grep -i securityDashboards` returns nothing — `-f -` tells tar to read
+# the archive from stdin).
+#
+# OSD's bootstrap therefore aborts with
+#   FATAL InvalidConfigurationError: Unknown configuration key(s):
+#         "opensearch_security.multitenancy.enabled", ...
+#         processExitCode: 64
+# (chart-integration run 25974769298, dashboards pod log 5.log). The
+# container CrashLoopBackOff is observed by the harness as
+# classification=crash-class.
+#
+# This override replaces the rendered ConfigMap entry — the chart's
+# `templates/configmap.yaml` mounts `.Values.config.opensearch_dashboards.yml`
+# into `/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml`,
+# overlaying the broken apk default with a clean minimal config that points
+# at the in-cluster opensearch service but omits every `opensearch_security.*`
+# key.
+#
+# Long-term fix tracked under verity-org/verity#396: the image-build system
+# has no path-type for arbitrary file content (internal/integer/config/types.go
+# PathDef only models directory/symlink), so the apk-supplied yml cannot
+# currently be patched inside images/opensearch-dashboards.yaml. The follow-up
+# will either (a) extend PathDef with a `contents`/`source-file` field, or
+# (b) add a bespoke melange package that overwrites the file in the apk
+# install hook. Until then, every consumer of
+# ghcr.io/verity-org/opensearch-dashboards:3 must provide their own
+# `config.opensearch_dashboards.yml` override.
+
+config:
+  opensearch_dashboards.yml: |
+    server.host: "0.0.0.0"
+    server.name: dashboards
+    # The chart wires `opensearchHosts` (default
+    # https://opensearch-cluster-master:9200) into the OPENSEARCH_HOSTS env
+    # var on the dashboards container, which OSD reads in addition to this
+    # file. Setting the same value here keeps behaviour identical whether
+    # OSD reads the env var or the yml first.
+    opensearch.hosts: ["https://opensearch-cluster-master:9200"]
+    opensearch.ssl.verificationMode: none
+    opensearch.username: kibanaserver
+    opensearch.password: kibanaserver
+    opensearch.requestHeadersAllowlist: [authorization]
