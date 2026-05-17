@@ -246,23 +246,47 @@ chartValues:
   #
   # Bucket E (probe-race) — bucket-confirmation.md (airflow row) shows
   # `wait-for-airflow-migrations` init container looping `Waiting for
-  # migrations... NN second(s)` because the bundled `airflow-postgresql-0`
-  # is slow to become reachable inside the 10-minute `helm install --wait`
-  # budget. The chart converges to healthy given more time, but
-  # `helm install` exits first.
+  # migrations... NN second(s)`. Root cause is NOT just probe race — the
+  # upstream chart ships `migrateDatabaseJob.useHelmHooks: true` (chart
+  # default), which annotates the migrations Job with
+  # `helm.sh/hook: post-install,post-upgrade`. Under `helm install --wait`
+  # this creates a deadlock:
   #
-  # Probe-race knobs:
-  # - `images.migrationsWaitTimeout` (default 60s) — wait budget for
-  #   `wait-for-airflow-migrations`. Raised 60s → 180s (3×) to give the
-  #   chained postgres init time to finish before the wait-job gives up.
-  # - `apiServer.startupProbe.failureThreshold` (default 6) — Airflow 3.x
-  #   chart renamed `webserver` → `apiServer`; 6 × 10s = 60s grace from
-  #   container start. Doubled to 12 (= 120s) so a freshly-migrated API
-  #   server isn't killed before it binds.
+  #   1. helm applies non-hook resources (api-server / scheduler /
+  #      worker Deployments + StatefulSets).
+  #   2. helm `--wait` blocks until those Deployments become Ready.
+  #   3. Each Deployment's pod has a `wait-for-airflow-migrations`
+  #      init container that polls the DB for an applied alembic
+  #      revision and never exits.
+  #   4. The migrations Job (post-install hook) only runs AFTER the
+  #      install step succeeds — which it never does, because step 2
+  #      times out first.
+  #
+  # Fix: flip `migrateDatabaseJob.useHelmHooks` AND
+  # `createUserJob.useHelmHooks` to `false`. The Jobs then render as
+  # regular resources that helm applies in the first pass, so the
+  # migrations Job runs in parallel with the Deployments and the
+  # init container exits as soon as alembic finishes.
+  #
+  # Supporting knobs:
+  # - `postgresql.image.registry: ghcr.io` — overrides the chart's
+  #   `image.registry: docker.io` default so the chart-gen-rewritten
+  #   `bitnamilegacy/postgresql` → `ghcr.io/verity-org/bitnamilegacy/postgresql`
+  #   reference doesn't collide with a stale `docker.io/` prefix. Same
+  #   shape as the tempo-distributed fix in verity-org/verity#318.
+  # - `images.migrationsWaitTimeout: 300` (default 60s) — wait budget
+  #   for `wait-for-airflow-migrations`. Kept generous so the init
+  #   container still has headroom while the migrations Job runs.
+  # - `apiServer.startupProbe.failureThreshold: 12` (default 6) —
+  #   Airflow 3.x chart renamed `webserver` → `apiServer`; 12 × 10s =
+  #   120s grace from container start so a freshly-migrated API server
+  #   isn't killed before it binds.
   airflow:
     postgresql.image.registry: ghcr.io
-    images.migrationsWaitTimeout: 180
+    images.migrationsWaitTimeout: 300
     apiServer.startupProbe.failureThreshold: 12
+    migrateDatabaseJob.useHelmHooks: false
+    createUserJob.useHelmHooks: false
 
   # jenkins 5.9.18 otherwise renders an unpatched bats helm-test pod and a
   # default inbound agent image. Keep the wrapper focused on the controller and
