@@ -1,0 +1,23 @@
+# Chart-integration override for opensearch 3.6.0.
+#
+# The verity wolfi rebuild owns /usr/share/opensearch/config as uid/gid 65532.
+# The upstream chart defaults to uid/gid 1000, and OpenSearch 3.x attempts to
+# create /usr/share/opensearch/config/opensearch.keystore.tmp during bootstrap.
+# Running as the image's nonroot user keeps that config directory writable.
+opensearch:
+  # The chart's default init chown targets uid/gid 1000 and uses
+  # docker.io/library/busybox. With the pod running as 65532 and fsGroup set,
+  # kubelet volume ownership is sufficient for the smoke-test PVC.
+  persistence:
+    enableInitChown: false
+
+  podSecurityContext:
+    fsGroup: 65532
+    runAsUser: 65532
+
+  securityContext:
+    capabilities:
+      drop:
+        - ALL
+    runAsNonRoot: true
+    runAsUser: 65532
