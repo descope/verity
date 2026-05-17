@@ -702,6 +702,45 @@ image:
 			},
 		},
 		{
+			// Airflow declares the same postgresql repository in parent
+			// values and in the bundled postgresql subchart. Prefer the
+			// subchart path because it declares image.registry, allowing
+			// chart-gen to split ghcr.io into the registry sibling instead
+			// of rendering ghcr.io/ghcr.io/... at template time.
+			name: "duplicate parent and subchart repo prefers registry sibling",
+			parentValues: `postgresql:
+  image:
+    repository: bitnamilegacy/postgresql
+    tag: 16.1.0-debian-11-r15
+`,
+			subchartValues: map[string]string{
+				"postgresql": `global:
+  imageRegistry: ""
+image:
+  registry: docker.io
+  repository: bitnamilegacy/postgresql
+  tag: 16.1.0-debian-11-r15
+`,
+			},
+			mappings: []ImageMapping{{
+				OriginalRepo: "bitnamilegacy/postgresql",
+				PatchedRepo:  "ghcr.io/verity-org/bitnamilegacy/postgresql",
+				PatchedTag:   "16.1.0-debian-11-r15",
+			}},
+			want: []ValueOverride{
+				{
+					Path:        "postgresql.image",
+					Repository:  "verity-org/bitnamilegacy/postgresql",
+					Tag:         "16.1.0-debian-11-r15",
+					SetRegistry: "ghcr.io",
+				},
+				{
+					Path:             "postgresql.global.imageRegistry",
+					IsScalarOverride: true,
+				},
+			},
+		},
+		{
 			// Tempo-distributed shape variant lifted into a sub-chart.
 			// Verifies that `global.image.registry` (under a `global.image`
 			// map, not a top-level scalar) is detected and prefixed
@@ -1560,6 +1599,26 @@ func TestResolveValuePathsComposeRegistryOnRegistryOnlyPath(t *testing.T) {
 	}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("ResolveValuePaths() = %#v, want %#v", got, want)
+	}
+}
+
+func TestResolveValuePathPairsConsumesDuplicateRepoPairs(t *testing.T) {
+	pairs := []repoTagPair{
+		{Path: "primary.image", Repo: "example/app", HasTag: true, HasRegistry: true, Registry: "docker.io"},
+		{Path: "sidecar.image", Repo: "example/app", HasTag: true, HasRegistry: true, Registry: "docker.io"},
+	}
+	mappings := []ImageMapping{
+		{OriginalRepo: "example/app", PatchedRepo: "ghcr.io/verity-org/example/app", PatchedTag: "1"},
+		{OriginalRepo: "example/app", PatchedRepo: "ghcr.io/verity-org/example/app", PatchedTag: "2"},
+	}
+
+	got := resolveValuePathPairs(pairs, nil, mappings, nil)
+	want := []ValueOverride{
+		{Path: "primary.image", Repository: "verity-org/example/app", Tag: "1", SetRegistry: "ghcr.io"},
+		{Path: "sidecar.image", Repository: "verity-org/example/app", Tag: "2", SetRegistry: "ghcr.io"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("resolveValuePathPairs() = %#v, want %#v", got, want)
 	}
 }
 

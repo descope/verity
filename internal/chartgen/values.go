@@ -162,29 +162,64 @@ func resolveValuePathPairs(pairs []repoTagPair, globalRegistryPaths []string, ma
 		}
 	}
 
-	for _, pair := range pairs {
-		if !pair.HasTag {
+	usedPairs := make(map[int]bool, len(mappings))
+	for i, m := range mappings {
+		if matched[i] {
 			continue
 		}
-		for i, m := range mappings {
-			if matched[i] {
-				continue
-			}
-			if matchesRepo(pair.Repo, m.OriginalRepo) {
-				result = append(result, buildValueOverride(
-					pair.Path,
-					m.PatchedRepo,
-					m.PatchedTag,
-					pair.HasRegistry,
-					pair.HasDefaultRegistry,
-				))
-				matched[i] = true
-				break
-			}
+		best, bestIdx := bestRepoTagPair(pairs, m.OriginalRepo, usedPairs)
+		if best == nil {
+			continue
 		}
+		result = append(result, buildValueOverride(
+			best.Path,
+			m.PatchedRepo,
+			m.PatchedTag,
+			best.HasRegistry,
+			best.HasDefaultRegistry,
+		))
+		matched[i] = true
+		usedPairs[bestIdx] = true
 	}
 
 	return appendGlobalRegistryNeutralisations(result, globalRegistryPaths)
+}
+
+func bestRepoTagPair(pairs []repoTagPair, originalRepo string, used map[int]bool) (best *repoTagPair, bestIdx int) {
+	bestIdx = -1
+	for idx := range pairs {
+		if used[idx] {
+			continue
+		}
+		pair := &pairs[idx]
+		if !pair.HasTag || !matchesRepo(pair.Repo, originalRepo) {
+			continue
+		}
+		if best == nil || preferRepoTagPair(pair, best) {
+			best = pair
+			bestIdx = idx
+		}
+	}
+	return best, bestIdx
+}
+
+func preferRepoTagPair(candidate, current *repoTagPair) bool {
+	candidateHasRegistry := candidate.HasRegistry || candidate.HasDefaultRegistry
+	currentHasRegistry := current.HasRegistry || current.HasDefaultRegistry
+	if candidateHasRegistry != currentHasRegistry {
+		return candidateHasRegistry
+	}
+	if candidateDepth, currentDepth := pathDepth(candidate.Path), pathDepth(current.Path); candidateDepth != currentDepth {
+		return candidateDepth > currentDepth
+	}
+	return len(candidate.Path) > len(current.Path)
+}
+
+func pathDepth(path string) int {
+	if path == "" {
+		return 0
+	}
+	return strings.Count(path, ".") + 1
 }
 
 // appendGlobalRegistryNeutralisations appends an IsScalarOverride entry
