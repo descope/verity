@@ -36,17 +36,21 @@
 # ghcr.io/verity-org/opensearch-dashboards:3 must provide their own
 # `config.opensearch_dashboards.yml` override.
 
-config:
-  opensearch_dashboards.yml: |
-    server.host: "0.0.0.0"
-    server.name: dashboards
-    # The chart wires `opensearchHosts` (default
-    # https://opensearch-cluster-master:9200) into the OPENSEARCH_HOSTS env
-    # var on the dashboards container, which OSD reads in addition to this
-    # file. Setting the same value here keeps behaviour identical whether
-    # OSD reads the env var or the yml first.
-    opensearch.hosts: ["https://opensearch-cluster-master:9200"]
-    opensearch.ssl.verificationMode: none
-    opensearch.username: kibanaserver
-    opensearch.password: kibanaserver
-    opensearch.requestHeadersAllowlist: [authorization]
+# Must be nested under `opensearch-dashboards:` because the verity wrapper
+# chart makes the upstream chart a sub-dependency under that key. See PR #402
+# for the empirical confirmation (workflow run + dump artifact).
+opensearch-dashboards:
+  config:
+    opensearch_dashboards.yml: |
+      server.host: "0.0.0.0"
+      server.name: dashboards
+      # The chart wires `opensearchHosts` (default
+      # https://opensearch-cluster-master:9200) into the OPENSEARCH_HOSTS
+      # env var on the dashboards container, which OSD reads in addition
+      # to this file. Setting the same value here keeps behaviour
+      # identical whether OSD reads the env var or the yml first.
+      opensearch.hosts: ["https://opensearch-cluster-master:9200"]
+      opensearch.ssl.verificationMode: none
+      opensearch.username: kibanaserver
+      opensearch.password: kibanaserver
+      opensearch.requestHeadersAllowlist: [authorization]
