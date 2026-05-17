@@ -17,15 +17,10 @@
 # → init-directories enters CrashLoopBackOff and helm install times
 # out at 10 minutes.
 #
-# This override runs the init-directories/init-app-ini containers and
-# the main gitea container as root. The Bitnami chart uses one
-# `containerSecurityContext` block for those containers, so we cannot
-# scope the override to just init-directories without forking the chart.
-# Running the main gitea container as root is acceptable in the smoke-
-# test cluster (kind, ephemeral, no real data), but should NOT be the
-# production default — which is why this override lives in the chart-
-# integration values directory and NOT in `verity.yaml`'s gitea
-# chartValues block.
+# The chart's rootless mode skips the `chown` while keeping the Gitea
+# command/runtime containers non-root. Keep `image.fullOverride` pointed
+# at the only published legacy image tag (`bitnamilegacy/gitea:1`) so
+# `image.rootless: true` does not append an unavailable `-rootless` tag.
 #
 # Production users who hit the same PVC-chown issue on their cluster
 # should either (a) switch to `image.rootless: true` (the upstream
@@ -40,9 +35,9 @@
 # Mount a smoke-only helper that implements the chart's env var encoding
 # for the generated app.ini.
 gitea:
-  containerSecurityContext:
-    runAsUser: 0
-    runAsNonRoot: false
+  image:
+    rootless: true
+    fullOverride: docker.io/bitnamilegacy/gitea:1
   extraDeploy:
     - apiVersion: v1
       kind: ConfigMap
