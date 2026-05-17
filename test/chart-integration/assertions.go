@@ -39,8 +39,25 @@ type podList struct {
 		Metadata struct {
 			Name      string `json:"name"`
 			Namespace string `json:"namespace"`
+			// OwnerReferences lets the no-restart gate distinguish
+			// Job-owned pods (one-shot workloads that legitimately
+			// rerun a failed container in-place when restartPolicy
+			// is OnFailure) from Deployment / StatefulSet pods
+			// (long-running workloads where any restart is a hard
+			// signal). See collectRestartFailures for the
+			// Job-owned-pod exemption rationale.
+			OwnerReferences []struct {
+				Kind string `json:"kind"`
+				Name string `json:"name"`
+			} `json:"ownerReferences"`
 		} `json:"metadata"`
 		Status struct {
+			// Phase is the pod's lifecycle phase. For Job-owned
+			// pods we accept Succeeded as the terminal state when
+			// admitting a Job-pod main-container-restart exemption
+			// (the Job ran, the container retried, the final
+			// attempt exited 0, k8s marked the pod Succeeded).
+			Phase                 string            `json:"phase"`
 			ContainerStatuses     []containerStatus `json:"containerStatuses"`
 			InitContainerStatuses []containerStatus `json:"initContainerStatuses"`
 		} `json:"status"`
@@ -119,6 +136,32 @@ func AssertNoRestarts(ctx context.Context, h *Harness, namespace string) error {
 func collectRestartFailures(pods *podList) []string {
 	var failures []string
 	for _, p := range pods.Items {
+		// Job-owned pods are one-shot workloads. A Job with the
+		// default `restartPolicy: OnFailure` retries the container
+		// in-place when its first attempt exits non-zero (transient
+		// DB unavailability while the postgres subchart is still
+		// starting is a common cause). The final attempt exits 0,
+		// the pod transitions to Succeeded, and the Job is
+		// Complete — that's the success state. The no-restart gate
+		// is meant to catch CrashLoopBackOff / OOMKill on
+		// long-running workload containers, NOT a benign Job retry
+		// that ultimately succeeded.
+		//
+		// Real Job failures (backoff limit exhausted, pod
+		// Failed) are still caught: the pod phase would be Failed
+		// (not Succeeded) and the container's current state would
+		// not be terminated{exitCode:0}.
+		//
+		// Charts that exhibit benign Job retries today:
+		//   - airflow (run-airflow-migrations races postgres
+		//     readiness when rendered as a regular resource via
+		//     `migrateDatabaseJob.useHelmHooks: false`; first
+		//     attempt fails with a transient connection error,
+		//     restartPolicy:OnFailure retries, alembic completes,
+		//     exit 0). See verity-org/verity#400.
+		jobOwned := isOwnedByJob(p.Metadata.OwnerReferences)
+		podSucceeded := p.Status.Phase == "Succeeded"
+
 		// Main containers: any restart is a hard failure. The whole
 		// point of the no-restart gate is to catch CrashLoopBackOff
 		// or OOMKill on long-running workload containers during the
@@ -126,6 +169,9 @@ func collectRestartFailures(pods *podList) []string {
 		for i := range p.Status.ContainerStatuses {
 			cs := &p.Status.ContainerStatuses[i]
 			if cs.RestartCount == 0 {
+				continue
+			}
+			if jobOwned && podSucceeded && initContainerCompletedCleanly(cs) {
 				continue
 			}
 			failures = append(failures, formatRestartFailure(p.Metadata.Namespace, p.Metadata.Name, cs, "container"))
@@ -170,9 +216,33 @@ func collectRestartFailures(pods *podList) []string {
 // from the no-restart gate. A nil-terminated state (running /
 // waiting / failed-terminated) returns false, preserving the gate
 // for real crash loops.
+//
+// Also reused by collectRestartFailures for the Job-owned-pod
+// main-container exemption: the function's contract — "terminated
+// cleanly with exitCode 0" — applies equally to a main container
+// in a Succeeded Job pod whose first attempt failed and second
+// attempt succeeded.
 func initContainerCompletedCleanly(cs *containerStatus) bool {
 	t := cs.State.Terminated
 	return t != nil && t.ExitCode == 0
+}
+
+// isOwnedByJob reports whether a pod has a controller owner-reference
+// of kind "Job". Used by collectRestartFailures to admit
+// main-container restartCount>0 on one-shot Job pods that ultimately
+// succeeded. We intentionally do NOT match "CronJob" here — that
+// would be the CronJob controller, NOT the per-execution Job; pods
+// created by CronJob runs still have a direct `Kind: Job` owner.
+func isOwnedByJob(refs []struct {
+	Kind string `json:"kind"`
+	Name string `json:"name"`
+}) bool {
+	for _, ref := range refs {
+		if ref.Kind == "Job" {
+			return true
+		}
+	}
+	return false
 }
 
 func formatRestartFailure(namespace, podName string, cs *containerStatus, kind string) string {
