@@ -107,6 +107,36 @@ chartValues:
     # logs). Disabling usage_stats removes the S3 client and lets the
     # binary boot.
     mimir.structuredConfig.usage_stats.enabled: false
+    # The chart's `mimir.config` template hardcodes
+    # `ingester.push_grpc_method_enabled: false` (values.yaml L249,
+    # mimir-distributed 6.0.6) because the upstream architecture
+    # routes writes via Kafka under ingest_storage. With
+    # `ingest_storage.enabled: false`, the ingester binary validates
+    # the combination at startup and aborts with:
+    #   error validating config: cannot disable Push gRPC method in
+    #   ingester, while ingest storage (-ingest-storage.enabled) is
+    #   not enabled
+    # (chart-integration run 25974769298 mimir-distributed-ingester-*
+    # pod logs). Re-enable the Push gRPC method via structuredConfig.
+    mimir.structuredConfig.ingester.push_grpc_method_enabled: true
+    # With `minio.enabled: false`, the chart's `mimir.config` template
+    # still hardcodes `backend: s3` for blocks_storage,
+    # alertmanager_storage, and ruler_storage but emits NO `s3:`
+    # endpoint block (values.yaml L138-147, L180-187, L302-311 are
+    # `{{- if .Values.minio.enabled }}` gated). The mimir binary then
+    # aborts the store-gateway / querier / compactor / ruler with:
+    #   error running application err="no s3 endpoint in config file"
+    # (chart-integration run 25974769298 store-gateway, querier,
+    # compactor pod logs). Switch all three storage subsystems to
+    # `filesystem` — CI smoke just needs the binaries to boot; it
+    # doesn't exercise persistence across pods. Real users override
+    # to s3/gcs/azure via their own structuredConfig.
+    mimir.structuredConfig.blocks_storage.backend: filesystem
+    mimir.structuredConfig.blocks_storage.filesystem.dir: /data/blocks
+    mimir.structuredConfig.alertmanager_storage.backend: filesystem
+    mimir.structuredConfig.alertmanager_storage.filesystem.dir: /data/alertmanager
+    mimir.structuredConfig.ruler_storage.backend: filesystem
+    mimir.structuredConfig.ruler_storage.filesystem.dir: /data/ruler
 
   # tempo-distributed 1.61.3 defaults to a separate Memcached statefulset;
   # the minimal CI-friendly wrapper just runs the Tempo microservices
