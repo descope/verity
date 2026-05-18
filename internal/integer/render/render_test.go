@@ -453,7 +453,7 @@ func TestConfig_ArgoCDMarksBinaryExecutable(t *testing.T) {
 	for _, typeName := range []string{"default", "fips"} {
 		t.Run(typeName, func(t *testing.T) {
 			tmpl, ok := def.Types[typeName]
-			require.True(t, ok)
+			require.Truef(t, ok, "argocd type %q missing", typeName)
 
 			out, err := render.Config(&tmpl, "3.3", "_base")
 			require.NoError(t, err)
@@ -462,14 +462,14 @@ func TestConfig_ArgoCDMarksBinaryExecutable(t *testing.T) {
 			require.NoError(t, yaml.Unmarshal(out, &cfg))
 
 			paths, ok := cfg["paths"].([]any)
-			require.True(t, ok)
+			require.Truef(t, ok, "rendered argocd %s paths must be a list", typeName)
 
 			byPath := map[string]map[string]any{}
 			for _, raw := range paths {
 				p, ok := raw.(map[string]any)
-				require.True(t, ok)
+				require.Truef(t, ok, "rendered argocd %s path entry must be a map", typeName)
 				path, ok := p["path"].(string)
-				require.True(t, ok)
+				require.Truef(t, ok, "rendered argocd %s path entry missing string path: %#v", typeName, p)
 				byPath[path] = p
 			}
 
