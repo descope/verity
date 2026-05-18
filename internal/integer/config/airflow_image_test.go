@@ -23,7 +23,7 @@ func TestAirflowImageExposesConsoleScriptsOnPath(t *testing.T) {
 
 	tmpl := def.Types["default"]
 	path := tmpl.Environment["PATH"]
-	if !strings.Contains(path, "/opt/airflow/bin") {
+	if !pathHasEntry(path, "/opt/airflow/bin") {
 		t.Fatalf("PATH=%q must include /opt/airflow/bin for chart bash -c airflow commands", path)
 	}
 
@@ -37,4 +37,13 @@ func TestAirflowImageExposesConsoleScriptsOnPath(t *testing.T) {
 	if !foundSymlink {
 		t.Fatal("missing /usr/bin/airflow -> /opt/airflow/bin/airflow symlink")
 	}
+}
+
+func pathHasEntry(path, want string) bool {
+	for _, entry := range strings.Split(path, ":") {
+		if entry == want {
+			return true
+		}
+	}
+	return false
 }
