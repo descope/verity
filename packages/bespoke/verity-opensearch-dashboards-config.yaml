@@ -1,0 +1,38 @@
+package:
+  name: verity-opensearch-dashboards-config
+  version: "3.6.0"
+  epoch: 0
+  description: Runtime config guard for Verity OpenSearch Dashboards images
+  copyright:
+    - license: Apache-2.0
+
+environment:
+  contents:
+    packages:
+      - busybox
+
+pipeline:
+  - runs: |
+      mkdir -p "${{targets.destdir}}/usr/local/bin"
+      cat > "${{targets.destdir}}/usr/local/bin/verity-opensearch-dashboards-entrypoint" <<'EOF'
+      #!/bin/sh
+      set -eu
+
+      config="${OPENSEARCH_DASHBOARDS_CONFIG:-/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml}"
+
+      if [ -f "$config" ]; then
+        tmp="$(mktemp "${config}.verity.XXXXXX")"
+        sed '/^opensearch_security\./d' "$config" > "$tmp"
+        chmod 0644 "$tmp"
+        mv "$tmp" "$config"
+      fi
+
+      exec /usr/share/opensearch-dashboards/bin/opensearch-dashboards "$@"
+      EOF
+      chmod 0755 "${{targets.destdir}}/usr/local/bin/verity-opensearch-dashboards-entrypoint"
+
+test:
+  pipeline:
+    - runs: |
+        test -x /usr/local/bin/verity-opensearch-dashboards-entrypoint
+        grep -F "opensearch_security\\." /usr/local/bin/verity-opensearch-dashboards-entrypoint

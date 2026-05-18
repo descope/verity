@@ -14,19 +14,23 @@ types:
     # file is the script's interpreter, not the script itself —
     # verified against chart-integration run 25961993442). Same
     # wolfi-baselayout shape as jenkins.yaml.
-    packages: ["opensearch-dashboards-{{version}}", "busybox"]
-    # The apk does not ship `opensearch-dashboards-docker-entrypoint.sh`
-    # (that script is a Docker-build artifact upstream, not an apk payload).
-    # Published image's entrypoint failed with `exec: no such file or
-    # directory`. Use the real CLI shipped by the apk at
-    # /usr/share/opensearch-dashboards/bin/opensearch-dashboards.
-    # See SCR-2026-05-14-001 Bucket B.
-    entrypoint: /usr/share/opensearch-dashboards/bin/opensearch-dashboards
+    packages: ["opensearch-dashboards-{{version}}", "busybox", "verity-opensearch-dashboards-config"]
+    # The apk default config appends opensearch_security.* keys for the
+    # securityDashboards plugin, but that plugin is not included in the apk or
+    # rebuilt image. OpenSearch Dashboards aborts on those unknown keys at
+    # startup (processExitCode=64). Scrub those plugin-only defaults at runtime
+    # before exec so consumers do not need chart-level ConfigMap overrides. Use
+    # the real CLI shipped by the apk; the Docker-build entrypoint script is not
+    # part of the apk payload. See verity-org/verity#396 and
+    # SCR-2026-05-14-001 Bucket B.
+    entrypoint: /usr/local/bin/verity-opensearch-dashboards-entrypoint
     environment:
       OPENSEARCH_DASHBOARDS_HOME: /usr/share/opensearch-dashboards
     paths:
       - {path: /usr/share/opensearch-dashboards/data, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
       - {path: /usr/share/opensearch-dashboards/config, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+    melange:
+      bespoke: "verity-opensearch-dashboards-config.yaml"
 
 versions:
   "3": {}
