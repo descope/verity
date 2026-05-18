@@ -474,7 +474,7 @@ func TestConfig_ArgoCDMarksBinaryExecutable(t *testing.T) {
 			}
 
 			binary := byPath["/usr/bin/argocd"]
-			require.NotNil(t, binary)
+			require.NotNil(t, binary, "rendered argocd %s paths missing /usr/bin/argocd permissions entry", typeName)
 			assert.Equal(t, "permissions", binary["type"])
 			assert.EqualValues(t, 0o755, binary["permissions"])
 
