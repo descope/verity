@@ -164,7 +164,46 @@ jobs:
           cat > "$RUNNER_TEMP/images.json" <<'__IMAGES_JSON_EOF__'
           ${{ needs.discover.outputs.images }}
           __IMAGES_JSON_EOF__
-          jq -c '.[]' "$RUNNER_TEMP/images.json" | while IFS= read -r image; do
+          dispatch_build() {
+            local name="$1"
+            local version="$2"
+            local type="$3"
+            local tags="$4"
+            local registry="$5"
+
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if gh workflow run integer-build-image.yaml \
+                --repo "${{ github.repository }}" \
+                --ref "${{ github.ref_name }}" \
+                --field "image=${name}" \
+                --field "version=${version}" \
+                --field "type=${type}" \
+                --field "tags=${tags}" \
+                --field "registry=${registry}"; then
+                return 0
+              fi
+
+              # GitHub can return secondary-rate-limit or transient
+              # 5xx/transport failures when hundreds of workflow_dispatch
+              # calls are made in one job. Retry with bounded backoff so
+              # one transient dispatch does not fail the entire nightly.
+              if [ "$attempt" -lt 5 ]; then
+                local sleep_seconds=$((attempt * 10))
+                echo "Dispatch failed for ${name}:${version}-${type} (attempt ${attempt}/5); retrying in ${sleep_seconds}s" >&2
+                sleep "${sleep_seconds}"
+              fi
+            done
+
+            echo "Failed to dispatch ${name}:${version}-${type} after 5 attempts" >&2
+            return 1
+          }
+
+          jq -c '.[]' "$RUNNER_TEMP/images.json" > "$RUNNER_TEMP/images.ndjson"
+
+          expected_count="${{ needs.discover.outputs.count }}"
+          dispatched=0
+          while IFS= read -r image; do
             NAME=$(echo "$image" | jq -r '.name')
             VERSION=$(echo "$image" | jq -r '.version')
             TYPE=$(echo "$image" | jq -r '.type')
@@ -184,16 +223,15 @@ jobs:
             fi
 
             echo "Dispatching build for ${NAME}:${VERSION}-${TYPE}..."
-            gh workflow run integer-build-image.yaml \
-              --repo "${{ github.repository }}" \
-              --ref "${{ github.ref_name }}" \
-              --field "image=${NAME}" \
-              --field "version=${VERSION}" \
-              --field "type=${TYPE}" \
-              --field "tags=${TAGS}" \
-              --field "registry=${REGISTRY}"
+            dispatch_build "$NAME" "$VERSION" "$TYPE" "$TAGS" "$REGISTRY"
+            dispatched=$((dispatched + 1))
 
             # Throttle to avoid GitHub API rate limits
-            sleep 1
-          done
-          echo "✓ Dispatched ${{ needs.discover.outputs.count }} build runs"
+            sleep 2
+          done < "$RUNNER_TEMP/images.ndjson"
+
+          if [ "$dispatched" -ne "$expected_count" ]; then
+            echo "Dispatched ${dispatched}/${expected_count} build runs; expected all discovered images to dispatch" >&2
+            exit 1
+          fi
+          echo "✓ Dispatched ${dispatched}/${expected_count} build runs"
