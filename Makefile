@@ -45,6 +45,7 @@ lint-vuln:
 lint-workflows:
 	@which actionlint > /dev/null || (echo "actionlint not found. Run: make install-tools" && exit 1)
 	actionlint
+	python3 .github/scripts/validate-patch-image-workflow.py
 
 # Lint YAML files
 lint-yaml:

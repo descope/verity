@@ -110,11 +110,12 @@ jobs:
           cache: true
 
       - name: Login to GHCR
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+        id: ghcr-login
+        env:
+          DOCKER_REGISTRY: ghcr.io
+          DOCKER_USERNAME: ${{ github.actor }}
+          DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/retry-docker-login.sh
 
       - name: Parse inputs
         id: parse
@@ -292,11 +293,11 @@ jobs:
 
       - name: Login to GHCR
         if: steps.platform-check.outputs.enabled == 'true'
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          DOCKER_REGISTRY: ghcr.io
+          DOCKER_USERNAME: ${{ github.actor }}
+          DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/retry-docker-login.sh
 
       - name: Setup BuildKit
         if: steps.platform-check.outputs.enabled == 'true'
@@ -446,6 +447,7 @@ jobs:
             mise.toml
             mise.lock
             .github/scripts/push-reports.sh
+            .github/scripts/retry-docker-login.sh
           sparse-checkout-cone-mode: false
 
       - name: Install mise
@@ -455,11 +457,12 @@ jobs:
           cache: true
 
       - name: Login to GHCR
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+        id: ghcr-login
+        env:
+          DOCKER_REGISTRY: ghcr.io
+          DOCKER_USERNAME: ${{ github.actor }}
+          DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/retry-docker-login.sh
 
       - name: Download scan artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -755,10 +758,32 @@ jobs:
           SAFE_NAME: ${{ needs.scan.outputs.safe-name }}
           SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LOGIN_OUTCOME: ${{ steps.ghcr-login.outcome }}
+          MANIFEST_OUTCOME: ${{ steps.manifest.outcome }}
+          POSTSCAN_OUTCOME: ${{ steps.postscan.outcome }}
+          COMPARE_OUTCOME: ${{ steps.compare.outcome }}
+          PUSH_OUTCOME: ${{ steps.push.outcome }}
+          COSIGN_OUTCOME: ${{ steps.cosign-sign.outcome }}
+          SBOM_OUTCOME: ${{ steps.sbom.outcome }}
+          ATTEST_OUTCOME: ${{ steps.attest.outcome }}
         run: |
           set -euo pipefail
           OUT="metrics-${SAFE_NAME}-${SOURCE_TAG}.json"
           STARTED_AT=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq '.run_started_at' 2>/dev/null || true)
+          FINALIZE_CONCLUSION="success"
+          for outcome in \
+            "$LOGIN_OUTCOME" \
+            "$MANIFEST_OUTCOME" \
+            "$POSTSCAN_OUTCOME" \
+            "$COMPARE_OUTCOME" \
+            "$PUSH_OUTCOME" \
+            "$COSIGN_OUTCOME" \
+            "$SBOM_OUTCOME" \
+            "$ATTEST_OUTCOME"; do
+            if [ "$outcome" = "failure" ]; then
+              FINALIZE_CONCLUSION="failure"
+            fi
+          done
 
           SEVERITIES_BEFORE=$(jq -c '
             {CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNKNOWN: 0} +
@@ -780,7 +805,7 @@ jobs:
             --arg run_attempt "${{ github.run_attempt }}" \
             --arg started_at "${STARTED_AT}" \
             --arg ended_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --arg conclusion "${{ needs.patch.result }}" \
+            --arg conclusion "${FINALIZE_CONCLUSION}" \
             --arg image_name "${{ inputs.image-name }}" \
             --arg source_tag "${SOURCE_TAG}" \
             --arg target_ref "${{ steps.push.outputs.final-tag }}" \
