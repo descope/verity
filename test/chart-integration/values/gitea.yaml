@@ -18,9 +18,11 @@
 # out at 10 minutes.
 #
 # The chart's rootless mode skips the `chown` while keeping the Gitea
-# command/runtime containers non-root. Keep `image.fullOverride` pointed
-# at the only published legacy image tag (`bitnamilegacy/gitea:1`) so
-# `image.rootless: true` does not append an unavailable `-rootless` tag.
+# command/runtime containers non-root. For gitea chart 12.6.x, use the
+# chart's upstream `docker.gitea.com/gitea:1.26.1-rootless` image in
+# smoke tests because the legacy `bitnamilegacy/gitea:1` binary lacks
+# the newer `gitea config edit-ini` subcommand that the chart's
+# `init-app-ini` script now calls.
 #
 # Production users who hit the same PVC-chown issue on their cluster
 # should either (a) switch to `image.rootless: true` (the upstream
@@ -37,7 +39,7 @@
 gitea:
   image:
     rootless: true
-    fullOverride: docker.io/bitnamilegacy/gitea:1
+    fullOverride: docker.gitea.com/gitea:1.26.1-rootless
   deployment:
     env:
       - name: GITEA_DATABASE_HOST
