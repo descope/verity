@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	helmInstallTimeout = 10 * time.Minute
-	chartRegistry      = "oci://ghcr.io/verity-org/charts"
+	helmInstallTimeout            = 10 * time.Minute
+	certManagerHelmInstallTimeout = 15 * time.Minute
+	chartRegistry                 = "oci://ghcr.io/verity-org/charts"
 )
 
 type ChartContext struct {
@@ -83,6 +84,7 @@ func UninstallChart(ctx context.Context, h *Harness, cc *ChartContext) {
 }
 
 func helmInstall(ctx context.Context, h *Harness, cc *ChartContext) error {
+	timeout := chartHelmInstallTimeout(cc.Spec.Name)
 	args := []string{
 		"--kubeconfig", h.KubeconfigPath,
 		"install", cc.Spec.Name,
@@ -91,15 +93,22 @@ func helmInstall(ctx context.Context, h *Harness, cc *ChartContext) error {
 		"--namespace", cc.Namespace,
 		"--create-namespace",
 		"--wait",
-		"--timeout", helmInstallTimeout.String(),
+		"--timeout", timeout.String(),
 	}
 	if vals := valuesFile(cc); vals != "" {
 		args = append(args, "--values", vals)
 		h.t.Logf("[install] applying values fixture %s", vals)
 	}
-	ictx, cancel := context.WithTimeout(ctx, helmInstallTimeout+2*time.Minute)
+	ictx, cancel := context.WithTimeout(ctx, timeout+2*time.Minute)
 	defer cancel()
 	return runCmd(ictx, h.t, "", []string{"HELM_EXPERIMENTAL_OCI=1"}, "helm", args...)
+}
+
+func chartHelmInstallTimeout(chartName string) time.Duration {
+	if chartName == "cert-manager" {
+		return certManagerHelmInstallTimeout
+	}
+	return helmInstallTimeout
 }
 
 func HelmTest(ctx context.Context, h *Harness, cc *ChartContext) error {

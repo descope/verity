@@ -76,6 +76,7 @@ func (h *Harness) createCluster(ctx context.Context) error {
 			}
 		}
 	}
+	h.cleanupStaleKindNode(ctx)
 	cfg := filepath.Join(h.RepoRoot, "test", "chart-integration", "kind.yaml")
 	if err := runCmd(ctx, h.t, "", nil,
 		"kind", "create", "cluster",
@@ -83,10 +84,19 @@ func (h *Harness) createCluster(ctx context.Context) error {
 		"--config", cfg,
 		"--wait", "120s",
 	); err != nil {
+		h.cleanupStaleKindNode(ctx)
 		return err
 	}
 	h.clusterCreated = true
 	return nil
+}
+
+func (h *Harness) cleanupStaleKindNode(ctx context.Context) {
+	name := clusterName + "-control-plane"
+	out, err := exec.CommandContext(ctx, "docker", "rm", "-f", name).CombinedOutput()
+	if err == nil && len(out) > 0 {
+		h.t.Logf("[harness] removed stale kind node %s", name)
+	}
 }
 
 func (h *Harness) exportKubeconfig(ctx context.Context) error {
