@@ -11,6 +11,20 @@ set -euo pipefail
 MAX_ATTEMPTS="${DOCKER_LOGIN_ATTEMPTS:-4}"
 TIMEOUT_SECONDS="${DOCKER_LOGIN_TIMEOUT_SECONDS:-45}"
 
+case "$MAX_ATTEMPTS" in
+  ''|*[!0-9]*|0)
+    echo "::error::DOCKER_LOGIN_ATTEMPTS must be a positive integer"
+    exit 2
+    ;;
+esac
+
+case "$TIMEOUT_SECONDS" in
+  ''|*[!0-9]*|0)
+    echo "::error::DOCKER_LOGIN_TIMEOUT_SECONDS must be a positive integer"
+    exit 2
+    ;;
+esac
+
 for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
   echo "Logging into ${DOCKER_REGISTRY} (attempt ${attempt}/${MAX_ATTEMPTS})..."
   rc=0

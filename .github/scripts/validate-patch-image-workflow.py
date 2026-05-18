@@ -14,6 +14,23 @@ def require(condition: bool, message: str) -> None:
         sys.exit(1)
 
 
+def job_body(text: str, job: str) -> str:
+    lines = text.splitlines()
+    start = next(
+        (idx for idx, line in enumerate(lines) if line == f"  {job}:"),
+        None,
+    )
+    require(start is not None, f"missing {job} job")
+
+    end = len(lines)
+    for idx in range(start + 1, len(lines)):
+        line = lines[idx]
+        if line.startswith("  ") and not line.startswith("    ") and line.endswith(":"):
+            end = idx
+            break
+    return "\n".join(lines[start:end])
+
+
 def main() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
     uncommented = "\n".join(
@@ -24,9 +41,18 @@ def main() -> None:
         "docker/login-action" not in uncommented,
         "GHCR login must use retrying docker login, not one-shot docker/login-action",
     )
+    for job in ("scan", "patch", "finalize"):
+        body = job_body(uncommented, job)
+        require("- name: Login to GHCR" in body, f"{job} job must log in to GHCR")
+        require(
+            "bash .github/scripts/retry-docker-login.sh" in body,
+            f"{job} job must use retrying GHCR login helper",
+        )
+
+    finalize = job_body(uncommented, "finalize")
     require(
-        uncommented.count("bash .github/scripts/retry-docker-login.sh") >= 3,
-        "scan, patch, and finalize jobs must retry GHCR login",
+        ".github/scripts/retry-docker-login.sh" in finalize.split("- name: Install mise", 1)[0],
+        "finalize sparse checkout must include retry-docker-login.sh",
     )
     require(
         'LOGIN_OUTCOME: ${{ steps.ghcr-login.outcome }}' in uncommented,

@@ -437,11 +437,13 @@ jobs:
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
+        id: finalize-harden
         uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
         with:
           egress-policy: audit
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        id: finalize-checkout
         with:
           sparse-checkout: |
             mise.toml
@@ -451,6 +453,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Install mise
+        id: finalize-mise
         uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
         with:
           install: true
@@ -609,6 +612,7 @@ jobs:
           key: otel-cli-v${{ env.OTEL_CLI_VERSION }}-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install otel-cli
+        id: install-otel-finalize
         if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && steps.cache-otel-finalize.outputs.cache-hit != 'true' }}
         run: |
           set -euo pipefail
@@ -633,6 +637,7 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Emit Honeycomb span (per-image finalize)
+        id: emit-otel-finalize
         if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' }}
         env:
           HONEYCOMB_API_KEY: ${{ secrets.HONEYCOMB_API_KEY }}
@@ -763,6 +768,9 @@ jobs:
           SAFE_NAME: ${{ needs.scan.outputs.safe-name }}
           SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HARDEN_OUTCOME: ${{ steps.finalize-harden.outcome }}
+          CHECKOUT_OUTCOME: ${{ steps.finalize-checkout.outcome }}
+          MISE_OUTCOME: ${{ steps.finalize-mise.outcome }}
           LOGIN_OUTCOME: ${{ steps.ghcr-login.outcome }}
           SCAN_ARTIFACTS_OUTCOME: ${{ steps.scan-artifacts.outcome }}
           MANIFEST_OUTCOME: ${{ steps.manifest.outcome }}
@@ -772,6 +780,9 @@ jobs:
           COSIGN_OUTCOME: ${{ steps.cosign-sign.outcome }}
           SBOM_OUTCOME: ${{ steps.sbom.outcome }}
           ATTEST_OUTCOME: ${{ steps.attest.outcome }}
+          OTEL_CACHE_OUTCOME: ${{ steps.cache-otel-finalize.outcome }}
+          OTEL_INSTALL_OUTCOME: ${{ steps.install-otel-finalize.outcome }}
+          OTEL_EMIT_OUTCOME: ${{ steps.emit-otel-finalize.outcome }}
           PUSH_REPORTS_OUTCOME: ${{ steps.push-reports.outcome }}
           PREFLIGHT_OUTCOME: ${{ steps.preflight-manifest.outcome }}
           UPLOAD_PR_SCAN_OUTCOME: ${{ steps.upload-pr-scan.outcome }}
@@ -783,6 +794,9 @@ jobs:
           STARTED_AT=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq '.run_started_at' 2>/dev/null || true)
           FINALIZE_CONCLUSION="success"
           for outcome in \
+            "$HARDEN_OUTCOME" \
+            "$CHECKOUT_OUTCOME" \
+            "$MISE_OUTCOME" \
             "$LOGIN_OUTCOME" \
             "$SCAN_ARTIFACTS_OUTCOME" \
             "$MANIFEST_OUTCOME" \
@@ -792,6 +806,9 @@ jobs:
             "$COSIGN_OUTCOME" \
             "$SBOM_OUTCOME" \
             "$ATTEST_OUTCOME" \
+            "$OTEL_CACHE_OUTCOME" \
+            "$OTEL_INSTALL_OUTCOME" \
+            "$OTEL_EMIT_OUTCOME" \
             "$PUSH_REPORTS_OUTCOME" \
             "$PREFLIGHT_OUTCOME" \
             "$UPLOAD_PR_SCAN_OUTCOME" \
