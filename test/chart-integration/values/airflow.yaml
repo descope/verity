@@ -1,6 +1,12 @@
 # airflow chart-integration smoke-test value overrides.
 
 airflow:
+  # The published chart-under-test can lag this PR's generated wrapper until
+  # Chart Generation republishes it on main. Mirror verity.yaml's strategic
+  # routing here so the PR smoke test exercises the Verity Wolfi rebuild and
+  # does not require the removed apache/airflow allowlist.
+  defaultAirflowRepository: ghcr.io/verity-org/airflow
+  defaultAirflowTag: "3"
   postgresql:
     image:
       # The generated wrapper currently concentrates the GHCR host in the

@@ -1,0 +1,37 @@
+package:
+  name: airflow-compat-entrypoint
+  version: "0.1.0"
+  epoch: 0
+  description: Compatibility entrypoint for Verity Airflow chart images
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - bash
+
+environment:
+  contents:
+    packages:
+      - busybox
+
+pipeline:
+  - runs: |
+      mkdir -p "${{targets.destdir}}"
+      cat > "${{targets.destdir}}/entrypoint" <<'EOF'
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      if [[ "${1:-}" == "airflow" ]]; then
+        shift
+        exec airflow "$@"
+      fi
+
+      exec "$@"
+      EOF
+      chmod 0755 "${{targets.destdir}}/entrypoint"
+
+test:
+  pipeline:
+    - runs: |
+        test -x /entrypoint
+        /entrypoint bash -c 'exit 0'

@@ -6,15 +6,23 @@ upstream:
 types:
   default:
     base: wolfi-base
-    packages: ["airflow-{{version}}"]
-    entrypoint: /usr/bin/airflow
+    packages: ["airflow-{{version}}", "airflow-compat-entrypoint"]
+    entrypoint: /entrypoint
     environment:
       AIRFLOW_HOME: /opt/airflow
+      # Airflow's Python package installs the CLI under /opt/airflow/bin,
+      # while the upstream Helm chart runs `bash -c "exec airflow ..."`.
+      # Keep the bare `airflow` command resolvable when the chart is routed
+      # to the Verity Wolfi rebuild instead of docker.io/apache/airflow.
+      PATH: /opt/airflow/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin
     paths:
       - {path: /opt/airflow, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
       - {path: /opt/airflow/dags, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
       - {path: /opt/airflow/logs, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
       - {path: /opt/airflow/plugins, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+      - {path: /usr/bin/airflow, type: symlink, source: /opt/airflow/bin/airflow, uid: 0, gid: 0}
+    melange:
+      bespoke: airflow-compat-entrypoint.yaml
 
 versions:
   "3": {}

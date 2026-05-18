@@ -48,6 +48,12 @@ func TestVerityConfigChartValuesLoading(t *testing.T) {
 		t.Fatalf("fluent-bit livenessProbe.initialDelaySeconds = %#v, want 45", got)
 	}
 	airflow := vc2.ChartValues["airflow"]
+	if airflow["defaultAirflowRepository"] != "ghcr.io/verity-org/airflow" {
+		t.Fatalf("airflow defaultAirflowRepository=%v, want ghcr.io/verity-org/airflow", airflow["defaultAirflowRepository"])
+	}
+	if airflow["defaultAirflowTag"] != "3" {
+		t.Fatalf("airflow defaultAirflowTag=%v, want 3", airflow["defaultAirflowTag"])
+	}
 	if airflow["postgresql.image.registry"] != "" {
 		t.Fatalf("airflow postgresql.image.registry=%v, want empty string", airflow["postgresql.image.registry"])
 	}

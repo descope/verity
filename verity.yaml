@@ -282,6 +282,20 @@ chartValues:
     image.repository: verity-org/valkey
     image.tag: "9.0"
 
+  # airflow chart bundles a root application image plus a `postgresql`
+  # sub-chart. The root Airflow containers are controlled by chart-level
+  # scalars (`defaultAirflowRepository` / `defaultAirflowTag`), not by the
+  # usual image.repository / image.tag tuple. chart-gen therefore cannot
+  # discover and rewrite those scalars from the `apache/airflow` replacement
+  # below. Set them explicitly so api-server, scheduler, worker, triggerer,
+  # dag-processor, migrations, and create-user all use the Verity Wolfi
+  # rebuild (`ghcr.io/verity-org/airflow:3`) and the chart-integration
+  # image-origin gate no longer needs an upstream apache/airflow allowlist.
+  #
+  # The Wolfi image also needs `/opt/airflow/bin` on PATH (see
+  # images/airflow.yaml) because the chart invokes `airflow` as a bare command
+  # from `bash -c` job/deployment snippets.
+  #
   # airflow chart bundles a `postgresql` sub-chart with image
   # `bitnamilegacy/postgresql:16.1.0-debian-11-r15`. chart-gen rewrites
   # the repository (`bitnamilegacy/postgresql` →
@@ -364,6 +378,8 @@ chartValues:
   #   StatsD metrics are not required for the smoke test (which only
   #   verifies install + pod readiness, not metric scraping).
   airflow:
+    defaultAirflowRepository: ghcr.io/verity-org/airflow
+    defaultAirflowTag: "3"
     postgresql.image.registry: ""
     postgresql.image.repository: bitnamilegacy/postgresql
     images.migrationsWaitTimeout: 300
