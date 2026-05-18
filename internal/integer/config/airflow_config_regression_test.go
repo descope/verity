@@ -24,11 +24,11 @@ func TestAirflowImageCarriesChartEntrypointCompatibility(t *testing.T) {
 	if tmpl.Entrypoint != "/entrypoint" {
 		t.Fatalf("entrypoint=%q want /entrypoint", tmpl.Entrypoint)
 	}
-	if tmpl.Melange == nil || tmpl.Melange.Bespoke != "airflow-compat-entrypoint.yaml" {
-		t.Fatalf("melange=%#v want bespoke airflow-compat-entrypoint.yaml", tmpl.Melange)
+	if tmpl.Melange != nil {
+		t.Fatalf("melange=%#v want nil; upstream airflow package already ships /entrypoint", tmpl.Melange)
 	}
-	if !slices.Contains(tmpl.Packages, "airflow-compat-entrypoint") {
-		t.Fatalf("packages=%v missing airflow-compat-entrypoint", tmpl.Packages)
+	if !slices.Contains(tmpl.Packages, "airflow-{{version}}") {
+		t.Fatalf("packages=%v missing airflow-{{version}}", tmpl.Packages)
 	}
 	if !strings.HasPrefix(tmpl.Environment["PATH"], "/opt/airflow/bin:") {
 		t.Fatalf("PATH=%q missing /opt/airflow/bin prefix", tmpl.Environment["PATH"])
