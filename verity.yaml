@@ -282,6 +282,16 @@ chartValues:
     image.repository: verity-org/valkey
     image.tag: "9.0"
 
+  # airflow chart previously needed an upstream `apache/airflow` image
+  # allowlist because the chart sources its main application image from
+  # top-level scalars (`defaultAirflowRepository`, `defaultAirflowTag`) rather
+  # than an `image.repository` map that chart-gen can auto-rewrite. The Verity
+  # Wolfi rebuild also lacked `/opt/airflow/bin` on PATH, so the chart's
+  # `bash -c "exec airflow ..."` commands failed even when these scalars were
+  # pointed at `ghcr.io/verity-org/airflow`. Keep those scalars explicitly on
+  # the Verity rebuild now that images/airflow.yaml publishes PATH + /usr/bin
+  # compatibility.
+  #
   # airflow chart bundles a `postgresql` sub-chart with image
   # `bitnamilegacy/postgresql:16.1.0-debian-11-r15`. chart-gen rewrites
   # the repository (`bitnamilegacy/postgresql` →
@@ -364,6 +374,8 @@ chartValues:
   #   StatsD metrics are not required for the smoke test (which only
   #   verifies install + pod readiness, not metric scraping).
   airflow:
+    defaultAirflowRepository: ghcr.io/verity-org/airflow
+    defaultAirflowTag: "3"
     postgresql.image.registry: ""
     postgresql.image.repository: bitnamilegacy/postgresql
     images.migrationsWaitTimeout: 300

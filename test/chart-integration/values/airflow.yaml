@@ -1,6 +1,11 @@
 # airflow chart-integration smoke-test value overrides.
 
 airflow:
+  # The chart reads its main Airflow image from top-level scalar values instead
+  # of an image.repository map, so chart-integration pins it explicitly to the
+  # Verity Wolfi rebuild and no longer needs an apache/airflow allowlist.
+  defaultAirflowRepository: ghcr.io/verity-org/airflow
+  defaultAirflowTag: "3"
   postgresql:
     image:
       # The generated wrapper currently concentrates the GHCR host in the
