@@ -465,6 +465,7 @@ jobs:
         run: bash .github/scripts/retry-docker-login.sh
 
       - name: Download scan artifacts
+        id: scan-artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: scan-${{ needs.scan.outputs.safe-name }}-${{ needs.scan.outputs.source-tag }}${{ inputs.artifact-suffix }}
@@ -648,6 +649,7 @@ jobs:
             --attrs "image=${{ inputs.image-name }},source_tag=${{ needs.scan.outputs.source-tag }},manifest_digest=${{ steps.push.outputs.digest }},final_tag=${{ steps.push.outputs.final-tag }},final_repo=${{ steps.push.outputs.final-repo }},post_scan_vuln_count=${{ steps.postscan.outputs.vuln-count }},rekor_url=${{ steps.cosign-sign.outputs.rekor-url }},attestation_id=${{ steps.attest.outputs.attestation-id }},attestation_bundle_path=${{ steps.attest.outputs.bundle-path }},deployment.environment=verity-prod"
 
       - name: Push reports to reports branch
+        id: push-reports
         if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false
         env:
           IMAGE_NAME: ${{ inputs.image-name }}
@@ -659,6 +661,7 @@ jobs:
             "reports/${IMAGE_NAME}/${SOURCE_TAG}/post.json" post.json
 
       - name: Update preflight manifest
+        id: preflight-manifest
         if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false
         env:
           IMAGE_NAME: ${{ inputs.image-name }}
@@ -716,6 +719,7 @@ jobs:
           fi
 
       - name: Upload PR scan artifacts
+        id: upload-pr-scan
         if: inputs.is-pr == true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -728,6 +732,7 @@ jobs:
       # Companion artifacts follow _pl-${arch}-${safe-name}-${source-tag}.
       - name: Download per-platform metrics
         if: ${{ !cancelled() }}
+        id: pl-download
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: _pl-*-${{ needs.scan.outputs.safe-name }}-${{ needs.scan.outputs.source-tag }}
@@ -759,6 +764,7 @@ jobs:
           SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LOGIN_OUTCOME: ${{ steps.ghcr-login.outcome }}
+          SCAN_ARTIFACTS_OUTCOME: ${{ steps.scan-artifacts.outcome }}
           MANIFEST_OUTCOME: ${{ steps.manifest.outcome }}
           POSTSCAN_OUTCOME: ${{ steps.postscan.outcome }}
           COMPARE_OUTCOME: ${{ steps.compare.outcome }}
@@ -766,6 +772,11 @@ jobs:
           COSIGN_OUTCOME: ${{ steps.cosign-sign.outcome }}
           SBOM_OUTCOME: ${{ steps.sbom.outcome }}
           ATTEST_OUTCOME: ${{ steps.attest.outcome }}
+          PUSH_REPORTS_OUTCOME: ${{ steps.push-reports.outcome }}
+          PREFLIGHT_OUTCOME: ${{ steps.preflight-manifest.outcome }}
+          UPLOAD_PR_SCAN_OUTCOME: ${{ steps.upload-pr-scan.outcome }}
+          PL_DOWNLOAD_OUTCOME: ${{ steps.pl-download.outcome }}
+          PL_MERGE_OUTCOME: ${{ steps.pl-merged.outcome }}
         run: |
           set -euo pipefail
           OUT="metrics-${SAFE_NAME}-${SOURCE_TAG}.json"
@@ -773,13 +784,19 @@ jobs:
           FINALIZE_CONCLUSION="success"
           for outcome in \
             "$LOGIN_OUTCOME" \
+            "$SCAN_ARTIFACTS_OUTCOME" \
             "$MANIFEST_OUTCOME" \
             "$POSTSCAN_OUTCOME" \
             "$COMPARE_OUTCOME" \
             "$PUSH_OUTCOME" \
             "$COSIGN_OUTCOME" \
             "$SBOM_OUTCOME" \
-            "$ATTEST_OUTCOME"; do
+            "$ATTEST_OUTCOME" \
+            "$PUSH_REPORTS_OUTCOME" \
+            "$PREFLIGHT_OUTCOME" \
+            "$UPLOAD_PR_SCAN_OUTCOME" \
+            "$PL_DOWNLOAD_OUTCOME" \
+            "$PL_MERGE_OUTCOME"; do
             if [ "$outcome" = "failure" ]; then
               FINALIZE_CONCLUSION="failure"
             fi

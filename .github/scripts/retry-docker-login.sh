@@ -13,15 +13,17 @@ TIMEOUT_SECONDS="${DOCKER_LOGIN_TIMEOUT_SECONDS:-45}"
 
 for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
   echo "Logging into ${DOCKER_REGISTRY} (attempt ${attempt}/${MAX_ATTEMPTS})..."
+  rc=0
   if printf '%s' "$DOCKER_PASSWORD" \
     | timeout "${TIMEOUT_SECONDS}s" docker login "$DOCKER_REGISTRY" \
         --username "$DOCKER_USERNAME" \
         --password-stdin; then
     echo "✓ Logged into ${DOCKER_REGISTRY}"
     exit 0
+  else
+    rc=$?
   fi
 
-  rc=$?
   if [ "$attempt" -ge "$MAX_ATTEMPTS" ]; then
     echo "::error::Docker login to ${DOCKER_REGISTRY} failed after ${MAX_ATTEMPTS} attempts (exit ${rc})"
     exit "$rc"
