@@ -64,7 +64,7 @@ func InstallChartPrerequisites(ctx context.Context, h *Harness, spec config.Char
 	for _, name := range prereqNames {
 		candidate, ok := byName[name]
 		if !ok {
-			return installed, fmt.Errorf("%s prerequisite not found in Chart.yaml", name)
+			return installed, fmt.Errorf("prerequisite %q for %q not found in Chart.yaml", name, spec.Name)
 		}
 		h.t.Logf("[prereq] installing %s before %s", name, spec.Name)
 		cc, installErr := InstallChartWithRetry(ctx, h, candidate, valuesDir, defaultRetryConfig())

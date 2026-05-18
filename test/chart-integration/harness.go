@@ -93,9 +93,16 @@ func (h *Harness) createCluster(ctx context.Context) error {
 }
 
 func (h *Harness) cleanupStaleKindNode(ctx context.Context) {
-	_ = exec.CommandContext(ctx, "kind", "delete", "cluster", "--name", clusterName).Run()
 	name := clusterName + "-control-plane"
 	out, err := exec.CommandContext(ctx, "docker", "rm", "-f", name).CombinedOutput()
+	trimmed := strings.TrimSpace(string(out))
+	if err != nil {
+		if strings.Contains(trimmed, "No such container") {
+			return
+		}
+		h.t.Logf("[harness] stale kind node cleanup %s failed: %v: %s", name, err, trimmed)
+		return
+	}
 	if err == nil && len(out) > 0 {
 		h.t.Logf("[harness] removed stale kind node %s", name)
 	}
