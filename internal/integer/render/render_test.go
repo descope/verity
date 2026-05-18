@@ -440,3 +440,61 @@ func TestConfig_UnrelatedSymlinkPermsZero(t *testing.T) {
 	// source).
 	assert.NotContains(t, p2, "permissions", "unrelated symlink omits permissions key (zero value, omitempty)")
 }
+
+// TestConfig_ArgoCDMarksBinaryExecutable regression-tests verity-org/verity#391:
+// the published argocd apko image had /usr/bin/argocd mode 0000 because the
+// shim symlink path mutations inherited apko's default mode 0 and chmod
+// followed the link. The image YAML must explicitly set target mode 0o755 so
+// the binary and all /usr/local/bin/argocd* shims render executable.
+func TestConfig_ArgoCDMarksBinaryExecutable(t *testing.T) {
+	def, err := config.LoadImage("../../../images/argocd.yaml")
+	require.NoError(t, err)
+
+	for _, typeName := range []string{"default", "fips"} {
+		t.Run(typeName, func(t *testing.T) {
+			tmpl, ok := def.Types[typeName]
+			require.Truef(t, ok, "argocd type %q missing", typeName)
+
+			out, err := render.Config(&tmpl, "3.3", "_base")
+			require.NoError(t, err)
+
+			var cfg map[string]any
+			require.NoError(t, yaml.Unmarshal(out, &cfg))
+
+			paths, ok := cfg["paths"].([]any)
+			require.Truef(t, ok, "rendered argocd %s paths must be a list", typeName)
+
+			byPath := map[string]map[string]any{}
+			for _, raw := range paths {
+				p, ok := raw.(map[string]any)
+				require.Truef(t, ok, "rendered argocd %s path entry must be a map", typeName)
+				path, ok := p["path"].(string)
+				require.Truef(t, ok, "rendered argocd %s path entry missing string path: %#v", typeName, p)
+				byPath[path] = p
+			}
+
+			binary := byPath["/usr/bin/argocd"]
+			require.NotNil(t, binary, "rendered argocd %s paths missing /usr/bin/argocd permissions entry", typeName)
+			assert.Equal(t, "permissions", binary["type"])
+			assert.EqualValues(t, 0o755, binary["permissions"])
+
+			for _, shim := range []string{
+				"/usr/local/bin/argocd",
+				"/usr/local/bin/argocd-server",
+				"/usr/local/bin/argocd-repo-server",
+				"/usr/local/bin/argocd-application-controller",
+				"/usr/local/bin/argocd-applicationset-controller",
+				"/usr/local/bin/argocd-notifications",
+				"/usr/local/bin/argocd-cmp-server",
+				"/usr/local/bin/argocd-commit-server",
+				"/usr/local/bin/argocd-k8s-auth",
+			} {
+				sym := byPath[shim]
+				require.NotNil(t, sym, shim)
+				assert.Equal(t, "symlink", sym["type"], shim)
+				assert.Equal(t, "/usr/bin/argocd", sym["source"], shim)
+				assert.EqualValues(t, 0o755, sym["permissions"], shim)
+			}
+		})
+	}
+}
