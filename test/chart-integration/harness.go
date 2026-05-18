@@ -67,13 +67,14 @@ func (h *Harness) Teardown(ctx context.Context) {
 
 func (h *Harness) createCluster(ctx context.Context) error {
 	out, listErr := exec.CommandContext(ctx, "kind", "get", "clusters").CombinedOutput()
-	if listErr == nil {
-		for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
-			if strings.TrimSpace(line) == clusterName {
-				h.t.Logf("[harness] reusing pre-existing cluster %s (will not delete on teardown)", clusterName)
-				h.clusterCreated = false
-				return nil
-			}
+	if listErr != nil {
+		return fmt.Errorf("kind get clusters: %s: %w", strings.TrimSpace(string(out)), listErr)
+	}
+	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
+		if strings.TrimSpace(line) == clusterName {
+			h.t.Logf("[harness] reusing pre-existing cluster %s (will not delete on teardown)", clusterName)
+			h.clusterCreated = false
+			return nil
 		}
 	}
 	h.cleanupStaleKindNode(ctx)
@@ -92,6 +93,7 @@ func (h *Harness) createCluster(ctx context.Context) error {
 }
 
 func (h *Harness) cleanupStaleKindNode(ctx context.Context) {
+	_ = exec.CommandContext(ctx, "kind", "delete", "cluster", "--name", clusterName).Run()
 	name := clusterName + "-control-plane"
 	out, err := exec.CommandContext(ctx, "docker", "rm", "-f", name).CombinedOutput()
 	if err == nil && len(out) > 0 {

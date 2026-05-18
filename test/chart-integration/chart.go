@@ -21,6 +21,10 @@ const (
 	chartRegistry                 = "oci://ghcr.io/verity-org/charts"
 )
 
+var chartPrerequisites = map[string][]string{
+	"cert-manager-csi-driver": {"cert-manager"},
+}
+
 type ChartContext struct {
 	Spec      config.ChartSpec
 	Namespace string
@@ -43,7 +47,8 @@ func InstallChart(ctx context.Context, h *Harness, spec config.ChartSpec, values
 }
 
 func InstallChartPrerequisites(ctx context.Context, h *Harness, spec config.ChartSpec, valuesDir string) ([]*ChartContext, error) {
-	if spec.Name != "cert-manager-csi-driver" {
+	prereqNames := chartPrerequisites[spec.Name]
+	if len(prereqNames) == 0 {
 		return nil, nil
 	}
 
@@ -51,18 +56,24 @@ func InstallChartPrerequisites(ctx context.Context, h *Harness, spec config.Char
 	if err != nil {
 		return nil, fmt.Errorf("load chart list for prerequisites: %w", err)
 	}
+	byName := make(map[string]config.ChartSpec, len(charts))
 	for _, candidate := range charts {
-		if candidate.Name != "cert-manager" {
-			continue
-		}
-		h.t.Logf("[prereq] installing cert-manager before cert-manager-csi-driver")
-		cc, installErr := InstallChartWithRetry(ctx, h, candidate, valuesDir, defaultRetryConfig())
-		if installErr != nil {
-			return nil, fmt.Errorf("install cert-manager prerequisite: %w", installErr)
-		}
-		return []*ChartContext{cc}, nil
+		byName[candidate.Name] = candidate
 	}
-	return nil, fmt.Errorf("cert-manager prerequisite not found in Chart.yaml")
+	installed := make([]*ChartContext, 0, len(prereqNames))
+	for _, name := range prereqNames {
+		candidate, ok := byName[name]
+		if !ok {
+			return installed, fmt.Errorf("%s prerequisite not found in Chart.yaml", name)
+		}
+		h.t.Logf("[prereq] installing %s before %s", name, spec.Name)
+		cc, installErr := InstallChartWithRetry(ctx, h, candidate, valuesDir, defaultRetryConfig())
+		installed = append(installed, cc)
+		if installErr != nil {
+			return installed, fmt.Errorf("install %s prerequisite: %w", name, installErr)
+		}
+	}
+	return installed, nil
 }
 
 func UninstallChart(ctx context.Context, h *Harness, cc *ChartContext) {
