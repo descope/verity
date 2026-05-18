@@ -3,6 +3,7 @@ package config
 import (
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -40,10 +41,5 @@ func TestAirflowImageExposesConsoleScriptsOnPath(t *testing.T) {
 }
 
 func pathHasEntry(path, want string) bool {
-	for _, entry := range strings.Split(path, ":") {
-		if entry == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(strings.Split(path, ":"), want)
 }
