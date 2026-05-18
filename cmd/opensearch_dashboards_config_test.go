@@ -1,0 +1,37 @@
+package cmd
+
+import (
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	intconfig "github.com/verity-org/verity/internal/integer/config"
+)
+
+func TestOpenSearchDashboardsImageUsesConfigScrubbingEntrypoint(t *testing.T) {
+	repo := ".."
+	def, err := intconfig.LoadImage(filepath.Join(repo, "images", "opensearch-dashboards.yaml"))
+	require.NoError(t, err)
+
+	tmpl := def.Types["default"]
+	assert.Equal(t, "/usr/local/bin/verity-opensearch-dashboards-entrypoint", tmpl.Entrypoint)
+	assert.True(t, slices.Contains(tmpl.Packages, "verity-opensearch-dashboards-config"))
+	require.NotNil(t, tmpl.Melange)
+	assert.Equal(t, "verity-opensearch-dashboards-config.yaml", tmpl.Melange.Bespoke)
+
+	bespoke, err := os.ReadFile(filepath.Join(repo, "packages", "bespoke", tmpl.Melange.Bespoke))
+	require.NoError(t, err)
+	text := string(bespoke)
+	assert.Contains(t, text, "name: verity-opensearch-dashboards-config")
+	assert.Contains(t, text, "sed '/^opensearch_security\\./d'")
+	assert.Contains(t, text, "exec /usr/share/opensearch-dashboards/bin/opensearch-dashboards")
+	assert.False(t, strings.Contains(text, "opensearch_security.multitenancy.enabled: true"))
+
+	_, err = os.Stat(filepath.Join(repo, "test", "chart-integration", "values", "opensearch-dashboards.yaml"))
+	assert.True(t, os.IsNotExist(err), "smoke override should stay removed once image entrypoint fixes default config")
+}
