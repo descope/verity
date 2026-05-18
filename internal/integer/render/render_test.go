@@ -476,7 +476,7 @@ func TestConfig_ArgoCDMarksBinaryExecutable(t *testing.T) {
 			binary := byPath["/usr/bin/argocd"]
 			require.NotNil(t, binary)
 			assert.Equal(t, "permissions", binary["type"])
-			assert.Equal(t, 493, binary["permissions"])
+			assert.EqualValues(t, 0o755, binary["permissions"])
 
 			for _, shim := range []string{
 				"/usr/local/bin/argocd",
@@ -493,7 +493,7 @@ func TestConfig_ArgoCDMarksBinaryExecutable(t *testing.T) {
 				require.NotNil(t, sym, shim)
 				assert.Equal(t, "symlink", sym["type"], shim)
 				assert.Equal(t, "/usr/bin/argocd", sym["source"], shim)
-				assert.Equal(t, 493, sym["permissions"], shim)
+				assert.EqualValues(t, 0o755, sym["permissions"], shim)
 			}
 		})
 	}
