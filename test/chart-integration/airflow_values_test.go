@@ -24,7 +24,9 @@ func TestAirflowPostgresqlImageOverrideIsComposable(t *testing.T) {
 
 	var values struct {
 		Airflow struct {
-			Postgresql struct {
+			DefaultAirflowRepository string `yaml:"defaultAirflowRepository"`
+			DefaultAirflowTag        string `yaml:"defaultAirflowTag"`
+			Postgresql               struct {
 				Image struct {
 					Registry   string `yaml:"registry"`
 					Repository string `yaml:"repository"`
@@ -34,6 +36,12 @@ func TestAirflowPostgresqlImageOverrideIsComposable(t *testing.T) {
 	}
 	if err := yaml.Unmarshal(body, &values); err != nil {
 		t.Fatalf("parse %s: %v", valuesPath, err)
+	}
+	if values.Airflow.DefaultAirflowRepository != "ghcr.io/verity-org/airflow" {
+		t.Fatalf("defaultAirflowRepository=%q want ghcr.io/verity-org/airflow", values.Airflow.DefaultAirflowRepository)
+	}
+	if values.Airflow.DefaultAirflowTag != "3" {
+		t.Fatalf("defaultAirflowTag=%q want 3", values.Airflow.DefaultAirflowTag)
 	}
 	if values.Airflow.Postgresql.Image.Registry != "ghcr.io" {
 		t.Fatalf("registry=%q want ghcr.io", values.Airflow.Postgresql.Image.Registry)
