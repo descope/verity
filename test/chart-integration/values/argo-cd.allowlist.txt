@@ -1,28 +1,5 @@
 # argo-cd chart-integration upstream image allowlist.
 #
-# The chart-integration values fixture at
-# `test/chart-integration/values/argo-cd.yaml` redirects
-# `argo-cd.global.image` to the upstream `quay.io/argoproj/argocd:v3.4.1`
-# because the verity rebuild ships `/usr/bin/argocd` with mode 0000
-# (see verity-org/verity#391 and the comment in argo-cd.yaml).
-#
-# That override produces these upstream images in the argo-cd
-# namespace (rendered via `helm template … -f values/argo-cd.yaml`):
-#
-#   quay.io/argoproj/argocd:v3.4.1   — all eight argocd-binary
-#                                      components (server,
-#                                      repo-server, controller,
-#                                      applicationset, notifications,
-#                                      cmp-server, commit-server,
-#                                      k8s-auth) AND the
-#                                      redis-secret-init pre-install
-#                                      Job all exec through this one
-#                                      image via the chart's argv[0]-
-#                                      aware Cobra dispatch
-#
-# The wrapper chart's own pin for `argo-cd.dex.image` still points at
-# `ghcr.io/verity-org/dex:2` (untouched by the override).
-#
 # The chart's bundled `redis` subchart pulls
 # `ecr-public.aws.com/docker/library/redis:8.2.3-alpine`. This is
 # already declared `unpatchable` in `verity.yaml` (see the
@@ -38,11 +15,5 @@
 # image's tag or digest forms and does not broaden to unrelated
 # `quay.io/argoproj/*` repos.
 #
-# Remove this allowlist (and the matching values override) once
-# verity-org/verity#391 lands — at that point the verity rebuild's
-# argocd binary will be executable again and chart-integration can
-# fall back to `ghcr.io/verity-org/argocd:3.3` like every other chart.
-quay.io/argoproj/argocd:
-quay.io/argoproj/argocd@
 ecr-public.aws.com/docker/library/redis:
 ecr-public.aws.com/docker/library/redis@
