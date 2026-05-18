@@ -41,6 +41,29 @@ func InstallChart(ctx context.Context, h *Harness, spec config.ChartSpec, values
 	return cc, nil
 }
 
+func InstallChartPrerequisites(ctx context.Context, h *Harness, spec config.ChartSpec, valuesDir string) ([]*ChartContext, error) {
+	if spec.Name != "cert-manager-csi-driver" {
+		return nil, nil
+	}
+
+	charts, err := loadChartList(h.RepoRoot)
+	if err != nil {
+		return nil, fmt.Errorf("load chart list for prerequisites: %w", err)
+	}
+	for _, candidate := range charts {
+		if candidate.Name != "cert-manager" {
+			continue
+		}
+		h.t.Logf("[prereq] installing cert-manager before cert-manager-csi-driver")
+		cc, installErr := InstallChartWithRetry(ctx, h, candidate, valuesDir, defaultRetryConfig())
+		if installErr != nil {
+			return nil, fmt.Errorf("install cert-manager prerequisite: %w", installErr)
+		}
+		return []*ChartContext{cc}, nil
+	}
+	return nil, fmt.Errorf("cert-manager prerequisite not found in Chart.yaml")
+}
+
 func UninstallChart(ctx context.Context, h *Harness, cc *ChartContext) {
 	if cc == nil {
 		return

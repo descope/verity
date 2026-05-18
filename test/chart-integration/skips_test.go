@@ -344,4 +344,7 @@ func TestProductionSKIPSYAMLIsValid(t *testing.T) {
 	if len(cfg.Skips) > MaxSkippedCharts {
 		t.Fatalf("production SKIPS.yaml has %d entries, cap is %d", len(cfg.Skips), MaxSkippedCharts)
 	}
+	if skipped, entry := cfg.IsSkipped("cert-manager-csi-driver"); skipped {
+		t.Fatalf("cert-manager-csi-driver must run in chart-integration; unexpected skip entry: %#v", entry)
+	}
 }

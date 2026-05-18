@@ -120,6 +120,18 @@ func runChart(t *testing.T, spec config.ChartSpec) {
 	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Minute)
 	defer cancel()
 
+	prereqs, prereqErr := InstallChartPrerequisites(ctx, testHarness, spec, valuesDir)
+	defer func() {
+		for i := len(prereqs) - 1; i >= 0; i-- {
+			uctx, ucancel := context.WithTimeout(context.Background(), 3*time.Minute)
+			UninstallChart(uctx, testHarness, prereqs[i])
+			ucancel()
+		}
+	}()
+	if prereqErr != nil {
+		t.Fatalf("prerequisites: %v", prereqErr)
+	}
+
 	cc, installErr := InstallChartWithRetry(ctx, testHarness, spec, valuesDir, defaultRetryConfig())
 	defer func() {
 		if t.Failed() {

@@ -12,7 +12,7 @@
 # issue, an exit criterion, and a peer review. Prefer chartValues tuning,
 # image fixes, or harness retries (subtask 5) before adding here.
 #
-# Slot accounting: 5 of 5 slots used. Loader's MaxSkippedCharts=5
+# Slot accounting: 4 of 5 slots used. Loader's MaxSkippedCharts=5
 # invariant will reject any 6th entry. Adding another skip requires either
 # (a) removing an existing entry whose exit_criteria has been met, or
 # (b) a new SCR raising the cap.
@@ -71,13 +71,6 @@ skips:
     reason: kind-cluster-capability
     tracking_issue: https://github.com/verity-org/verity/issues/372
     exit_criteria: "agent init container hits \"dial tcp 10.96.0.1:443: operation not permitted\" — kind cluster lacks capabilities for cilium's CNI. Revisit when smoke harness gains capability grants OR when cilium chart exposes a CI-friendly probe-disable knob."
-    added: 2026-05-14
-    added_by: SCR-2026-05-14-001
-
-  - chart: cert-manager-csi-driver
-    reason: chart-template-blocked
-    tracking_issue: https://github.com/verity-org/verity/issues/374
-    exit_criteria: "chart hardcodes livenessProbe initialDelaySeconds with no values knob; smoke harness \"helm install --wait\" hits the probe before driver registers with cert-manager (which the harness also doesn't pre-install). Revisit when chart exposes app.livenessProbe knobs OR when harness pre-installs cert-manager CRDs."
     added: 2026-05-14
     added_by: SCR-2026-05-14-001
 

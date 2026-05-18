@@ -11,6 +11,13 @@ overrides:
     from: "distroless-libc"
     to: "debian"
     valuePath: "image"  # explicit hint for chart-gen value path resolution
+  # cert-manager-csi-driver chart computes image refs from imageRegistry +
+  # imageNamespace + image.name while leaving image.repository empty, so
+  # chart-gen cannot auto-detect the values path from repository/tag pairs.
+  # Pin the main driver override path explicitly; sidecar images remain
+  # upstream and are allowlisted in chart-integration.
+  "jetstack/cert-manager-csi-driver":
+    valuePath: "image"
 
 # Per-chart values injected both during helm template image discovery and into
 # generated wrapper-chart values.yaml defaults.
@@ -1235,7 +1242,7 @@ replacements:
     tag: "2"
   # cert-manager-csi-driver v0.14.0 (app v0.14.0) → exact tag match.
   # csi-node-driver-registrar and livenessprobe are different binaries under
-  # quay.io/jetstack and have no rebuilds; they fall through to crane.
+  # quay.io/jetstack and have no rebuilds; they stay upstream in smoke tests.
   "jetstack/cert-manager-csi-driver":
     registry: "ghcr.io/verity-org"
     image: "cert-manager-csi-driver"
