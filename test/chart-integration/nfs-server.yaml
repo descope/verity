@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: verity-it-infra
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nfs-server
+  namespace: verity-it-infra
+spec:
+  clusterIP: 10.96.0.250
+  selector:
+    app.kubernetes.io/name: nfs-server
+  ports:
+    - name: nfs
+      port: 2049
+      targetPort: nfs
+      protocol: TCP
+    - name: mountd
+      port: 20048
+      targetPort: mountd
+      protocol: TCP
+    - name: rpcbind-tcp
+      port: 111
+      targetPort: rpcbind
+      protocol: TCP
+    - name: rpcbind-udp
+      port: 111
+      targetPort: rpcbind
+      protocol: UDP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nfs-server
+  namespace: verity-it-infra
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nfs-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nfs-server
+    spec:
+      containers:
+        - name: nfs-server
+          image: kubevirtci/nfs-ganesha:latest@sha256:8c1fa882dddb2885c4152e9ce632c466f4b8dce29339455e9b6bfe71f0a3d3ef
+          env:
+            - name: EXPORT_PATH
+              value: /exports
+            - name: PSEUDO_PATH
+              value: /
+          ports:
+            - name: nfs
+              containerPort: 2049
+              protocol: TCP
+            - name: mountd
+              containerPort: 20048
+              protocol: TCP
+            - name: rpcbind
+              containerPort: 111
+              protocol: TCP
+            - name: rpcbind-udp
+              containerPort: 111
+              protocol: UDP
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: export
+              mountPath: /exports
+      volumes:
+        - name: export
+          emptyDir: {}
