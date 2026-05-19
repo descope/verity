@@ -25,6 +25,22 @@ var chartPrerequisites = map[string][]string{
 	"cert-manager-csi-driver": {"cert-manager"},
 }
 
+var chartFixtures = map[string][]string{
+	"cluster-autoscaler": {
+		filepath.Join("test", "chart-integration", "fixtures", "cluster-autoscaler", "capi-crds.yaml"),
+		filepath.Join("test", "chart-integration", "fixtures", "cluster-autoscaler", "capi-objects.yaml"),
+	},
+}
+
+var chartFixtureCRDs = map[string][]string{
+	"cluster-autoscaler": {
+		"clusters.cluster.x-k8s.io",
+		"machinedeployments.cluster.x-k8s.io",
+		"machinesets.cluster.x-k8s.io",
+		"machines.cluster.x-k8s.io",
+	},
+}
+
 type ChartContext struct {
 	Spec      config.ChartSpec
 	Namespace string
@@ -74,6 +90,47 @@ func InstallChartPrerequisites(ctx context.Context, h *Harness, spec config.Char
 		}
 	}
 	return installed, nil
+}
+
+func InstallChartFixtures(ctx context.Context, h *Harness, chartName string) error {
+	fixtures := chartFixtures[chartName]
+	if len(fixtures) == 0 {
+		return nil
+	}
+	for i, fixture := range fixtures {
+		path := filepath.Join(h.RepoRoot, fixture)
+		h.t.Logf("[fixture] applying %s for %s", path, chartName)
+		if err := runCmd(ctx, h.t, "", nil,
+			"kubectl", "--kubeconfig", h.KubeconfigPath,
+			"apply", "--validate=false", "-f", path,
+		); err != nil {
+			return fmt.Errorf("apply fixture %s: %w", fixture, err)
+		}
+		if i == 0 {
+			for _, crd := range chartFixtureCRDs[chartName] {
+				if err := runCmd(ctx, h.t, "", nil,
+					"kubectl", "--kubeconfig", h.KubeconfigPath,
+					"wait", "--for=condition=Established", "crd/"+crd, "--timeout=60s",
+				); err != nil {
+					return fmt.Errorf("wait for fixture CRD %s: %w", crd, err)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func UninstallChartFixtures(ctx context.Context, h *Harness, chartName string) {
+	fixtures := chartFixtures[chartName]
+	for i := len(fixtures) - 1; i >= 0; i-- {
+		path := filepath.Join(h.RepoRoot, fixtures[i])
+		if err := runCmd(ctx, h.t, "", nil,
+			"kubectl", "--kubeconfig", h.KubeconfigPath,
+			"delete", "-f", path, "--ignore-not-found=true", "--wait=true", "--timeout=120s",
+		); err != nil {
+			h.t.Logf("[fixture] cleanup %s failed (continuing): %v", path, err)
+		}
+	}
 }
 
 func UninstallChart(ctx context.Context, h *Harness, cc *ChartContext) {

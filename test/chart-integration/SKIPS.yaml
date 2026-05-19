@@ -12,7 +12,7 @@
 # issue, an exit criterion, and a peer review. Prefer chartValues tuning,
 # image fixes, or harness retries (subtask 5) before adding here.
 #
-# Slot accounting: 4 of 5 slots used. Loader's MaxSkippedCharts=5
+# Slot accounting: 3 of 5 slots used. Loader's MaxSkippedCharts=5
 # invariant will reject any 6th entry. Adding another skip requires either
 # (a) removing an existing entry whose exit_criteria has been met, or
 # (b) a new SCR raising the cap.
@@ -66,25 +66,3 @@ skips:
     exit_criteria: "agent init container hits \"dial tcp 10.96.0.1:443: operation not permitted\" — kind cluster lacks capabilities for cilium's CNI. Revisit when smoke harness gains capability grants OR when cilium chart exposes a CI-friendly probe-disable knob."
     added: 2026-05-14
     added_by: SCR-2026-05-14-001
-
-  - chart: cluster-autoscaler
-    reason: needs-cloud-credentials
-    tracking_issue: https://github.com/verity-org/verity/issues/384
-    exit_criteria: |
-      cluster-autoscaler's binary requires a real AWS region + creds
-      to call DescribeAutoScalingGroups. Without them it crashes with
-      `Failed to regenerate ASG cache: ... an AWS region is required`
-      and trips the no-restart-during-settle gate. Smoke testing in
-      single-node kind cannot provide real cloud creds.
-
-      Un-skipping requires one of:
-      (a) chart exposes a no-op cloud-provider mode that doesn't need
-          real cloud creds (`cloudProvider: externalgrpc` with a
-          stub backend, or similar).
-      (b) smoke harness provisions an in-cluster Cluster-API mock the
-          chart can target with `cloudProvider: clusterapi`.
-      (c) chart-integration smoke gate is relaxed to accept the
-          no-restart-during-settle failure mode for cloud-provider-
-          requiring charts.
-    added: 2026-05-16
-    added_by: SCR-2026-05-14-001 (added after #383 confirmed chronic)
