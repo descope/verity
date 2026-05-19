@@ -6,7 +6,7 @@ upstream:
 types:
   default:
     base: wolfi-base
-    packages: ["airflow-{{version}}", "bash"]
+    packages: ["airflow-{{version}}", "bash", "busybox"]
     # Intentionally NO `entrypoint:` — the upstream Airflow chart leaves
     # `command:` unset and supplies executable argv via `args:` such as
     # ["bash", "-c", "exec airflow scheduler"] and
@@ -19,8 +19,9 @@ types:
       # Airflow's CLI calls getpass.getuser(), so provide USER explicitly.
       USER: airflow
       # The Wolfi airflow package installs console scripts under
-      # /opt/airflow/bin. The upstream Helm chart invokes `airflow` via
-      # `bash -c` in Jobs/Deployments, so PATH must include that directory.
+      # /opt/airflow/bin. The upstream Helm chart invokes `airflow` via `bash`
+      # in Jobs/Deployments and `sh` in exec probes, so PATH must include that
+      # directory and the image must ship both shells.
       PATH: /opt/airflow/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     paths:
       # Keep absolute-path callers working while the chart uses PATH-based

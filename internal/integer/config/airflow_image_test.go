@@ -29,6 +29,9 @@ func TestAirflowImageExposesConsoleScriptsOnPath(t *testing.T) {
 	if !slices.Contains(tmpl.Packages, "bash") {
 		t.Fatalf("packages=%v must include bash for upstream Helm chart bash -c commands", tmpl.Packages)
 	}
+	if !slices.Contains(tmpl.Packages, "busybox") {
+		t.Fatalf("packages=%v must include busybox for upstream Helm chart sh-based exec probes", tmpl.Packages)
+	}
 	path := tmpl.Environment["PATH"]
 	if !pathHasEntry(path, "/opt/airflow/bin") {
 		t.Fatalf("PATH=%q must include /opt/airflow/bin for chart bash -c airflow commands", path)
