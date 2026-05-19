@@ -161,7 +161,7 @@ gitea:
 
           host="${args[0]}"
           port="${args[1]}"
-          timeout "${timeout_seconds}" bash -c 'exec 3<>"/dev/tcp/${1}/${2}"; exec 3>&-; exec 3<&-' _ "${host}" "${port}"
+          timeout "${timeout_seconds}" bash -c 'exec 3<>"/dev/tcp/${1}/${2}" && exec 3>&- && exec 3<&-' _ "${host}" "${port}"
   extraVolumes:
     - name: env-to-ini
       configMap:
