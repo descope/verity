@@ -44,8 +44,27 @@ func TestAirflowImageExposesConsoleScriptsOnPath(t *testing.T) {
 	if !foundSymlink {
 		t.Fatal("missing /usr/bin/airflow -> /opt/airflow/bin/airflow symlink")
 	}
+
+	for _, path := range []string{"/opt/airflow", "/opt/airflow/dags", "/opt/airflow/logs", "/opt/airflow/plugins"} {
+		p, ok := findPath(tmpl.Paths, path)
+		if !ok {
+			t.Fatalf("missing %s path entry", path)
+		}
+		if p.UID != 50000 || p.GID != 0 || p.Permissions != "0o775" {
+			t.Fatalf("%s ownership/perms = uid:%d gid:%d mode:%s, want uid:50000 gid:0 mode:0o775", path, p.UID, p.GID, p.Permissions)
+		}
+	}
 }
 
 func pathHasEntry(path, want string) bool {
 	return slices.Contains(strings.Split(path, ":"), want)
+}
+
+func findPath(paths []PathDef, want string) (PathDef, bool) {
+	for _, p := range paths {
+		if p.Path == want {
+			return p, true
+		}
+	}
+	return PathDef{}, false
 }
