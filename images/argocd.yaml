@@ -10,10 +10,12 @@ types:
     # `--update=none` plus `/bin/ln` for the upstream argo-cd chart's
     # repo-server and dex `copyutil` initContainers. gpg + gpg-agent supply the
     # key-generation helpers repo-server runs on startup to initialize
-    # /app/config/gpg/keys. The main argocd workload containers exec the
-    # argv[0]-aware symlinks below, but the chart and repo-server startup path
-    # hardcode these helper binaries before all components can become Ready.
-    packages: ["argo-cd-{{version}}", "busybox", "coreutils", "gpg", "gpg-agent"]
+    # /app/config/gpg/keys. verity-argocd-gpg-wrapper supplies upstream's
+    # /usr/local/bin/gpg-wrapper.sh compatibility script. The main argocd
+    # workload containers exec the argv[0]-aware symlinks below, but the chart
+    # and repo-server startup path hardcode these helper binaries before all
+    # components can become Ready.
+    packages: ["argo-cd-{{version}}", "busybox", "coreutils", "gpg", "gpg-agent", "verity-argocd-gpg-wrapper"]
     # Intentionally NO `entrypoint:` — argo-cd's binary (cmd/main.go) dispatches
     # by `filepath.Base(os.Args[0])` to one of common.Command{CLI,Server,
     # ApplicationController,ApplicationSetController,RepoServer,CMPServer,
@@ -52,11 +54,14 @@ types:
       - {path: /usr/local/bin/argocd-cmp-server, type: symlink, source: /usr/bin/argocd, uid: 0, gid: 0}
       - {path: /usr/local/bin/argocd-commit-server, type: symlink, source: /usr/bin/argocd, uid: 0, gid: 0}
       - {path: /usr/local/bin/argocd-k8s-auth, type: symlink, source: /usr/bin/argocd, uid: 0, gid: 0}
+    melange:
+      bespoke: "verity-argocd-gpg-wrapper.yaml"
 
   fips:
     base: wolfi-base
-    # busybox + coreutils + gpg/gpg-agent supply chart/repo-server helpers;
-    # see default type note above.
+    # busybox + coreutils + gpg/gpg-agent supply repo-server helpers; see
+    # default type note above. FIPS is skipped for the declared 3.3 version;
+    # if re-enabled, add a FIPS-compatible gpg-wrapper package path too.
     packages: ["argo-cd-{{version}}", "busybox", "coreutils", "gpg", "gpg-agent"]
     # No `entrypoint:` — see default-type note above for the argv[0] dispatch
     # mechanism. Identical to default type, only the GODEBUG=fips140=on env

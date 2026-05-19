@@ -1,0 +1,62 @@
+package:
+  name: verity-argocd-gpg-wrapper
+  version: "3.3.10"
+  epoch: 0
+  description: Argo CD gpg-wrapper.sh compatibility script
+  copyright:
+    - license: Apache-2.0
+
+environment:
+  contents:
+    packages:
+      - busybox
+
+pipeline:
+  - runs: |
+      mkdir -p "${{targets.destdir}}/usr/local/bin"
+      cat > "${{targets.destdir}}/usr/local/bin/gpg-wrapper.sh" <<'EOF'
+      #!/bin/sh
+      # Simple wrapper around gpg to prevent exit code 1 from aborting Argo CD
+      # repo-server secret-key checks. This mirrors upstream argocd's helper.
+      OUTPUT=$(gpg "$@" 2>&1)
+      RET=$?
+      IFS=''
+      case "$RET" in
+      0)
+        echo "$OUTPUT"
+        ;;
+      1)
+        echo "$OUTPUT"
+        RET=0
+        ;;
+      *)
+        echo "$OUTPUT" >&2
+        ;;
+      esac
+      exit $RET
+      EOF
+      chmod 0755 "${{targets.destdir}}/usr/local/bin/gpg-wrapper.sh"
+
+test:
+  pipeline:
+    - runs: |
+        test -x /usr/local/bin/gpg-wrapper.sh
+        tmp="$(mktemp -d)"
+        cat > "$tmp/gpg" <<'EOF'
+        #!/bin/sh
+        echo "fake gpg rc=${GPG_TEST_RC}"
+        exit "${GPG_TEST_RC}"
+        EOF
+        chmod 0755 "$tmp/gpg"
+
+        PATH="$tmp:$PATH" GPG_TEST_RC=0 /usr/local/bin/gpg-wrapper.sh >/tmp/gpg-wrapper-0.out
+        grep -F 'fake gpg rc=0' /tmp/gpg-wrapper-0.out
+
+        PATH="$tmp:$PATH" GPG_TEST_RC=1 /usr/local/bin/gpg-wrapper.sh >/tmp/gpg-wrapper-1.out
+        grep -F 'fake gpg rc=1' /tmp/gpg-wrapper-1.out
+
+        if PATH="$tmp:$PATH" GPG_TEST_RC=2 /usr/local/bin/gpg-wrapper.sh >/tmp/gpg-wrapper-2.out 2>/tmp/gpg-wrapper-2.err; then
+          echo "gpg-wrapper.sh must preserve gpg rc=2 failures" >&2
+          exit 1
+        fi
+        grep -F 'fake gpg rc=2' /tmp/gpg-wrapper-2.err
