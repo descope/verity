@@ -7,6 +7,12 @@ types:
   default:
     base: wolfi-base
     packages: ["airflow-{{version}}", "bash"]
+    # Intentionally NO `entrypoint:` — the upstream Airflow chart leaves
+    # `command:` unset and supplies executable argv via `args:` such as
+    # ["bash", "-c", "exec airflow scheduler"] and
+    # ["airflow", "db", "check-migrations", ...]. If this image sets an
+    # entrypoint to /usr/bin/airflow, Kubernetes appends those args and the
+    # chart runs invalid commands like `airflow airflow db check-migrations`.
     environment:
       AIRFLOW_HOME: /opt/airflow
       # The Wolfi airflow package installs console scripts under
