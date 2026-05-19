@@ -23,10 +23,14 @@ types:
       # Keep absolute-path callers working while the chart uses PATH-based
       # `airflow` invocations.
       - {path: /usr/bin/airflow, type: symlink, source: /opt/airflow/bin/airflow, uid: 0, gid: 0, permissions: 0o755}
-      - {path: /opt/airflow, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
-      - {path: /opt/airflow/dags, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
-      - {path: /opt/airflow/logs, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
-      - {path: /opt/airflow/plugins, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+      # The upstream chart runs Airflow containers as uid 50000 with fsGroup 0.
+      # Airflow creates /opt/airflow/airflow.cfg on first CLI use and writes
+      # runtime logs/plugins, so these directories must be writable by that
+      # chart user/group instead of only by the Wolfi nonroot uid.
+      - {path: /opt/airflow, type: directory, uid: 50000, gid: 0, permissions: 0o775}
+      - {path: /opt/airflow/dags, type: directory, uid: 50000, gid: 0, permissions: 0o775}
+      - {path: /opt/airflow/logs, type: directory, uid: 50000, gid: 0, permissions: 0o775}
+      - {path: /opt/airflow/plugins, type: directory, uid: 50000, gid: 0, permissions: 0o775}
 
 versions:
   "3": {}
