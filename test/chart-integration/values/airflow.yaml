@@ -6,6 +6,12 @@ airflow:
   # Verity Wolfi rebuild and no longer needs an apache/airflow allowlist.
   defaultAirflowRepository: ghcr.io/verity-org/airflow
   defaultAirflowTag: "3"
+  images:
+    # Airflow 3 metadata DB migrations can exceed the upstream chart's 300s
+    # init-container wait budget on GitHub hosted runners. Keep the smoke test
+    # bounded by the harness timeout, but let migrations finish instead of
+    # making every workload initContainer fail at exactly five minutes.
+    migrationsWaitTimeout: 900
   postgresql:
     image:
       # The generated wrapper currently concentrates the GHCR host in the
