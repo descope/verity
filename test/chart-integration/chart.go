@@ -21,8 +21,17 @@ const (
 	chartRegistry                 = "oci://ghcr.io/verity-org/charts"
 )
 
-var chartPrerequisites = map[string][]string{
-	"cert-manager-csi-driver": {"cert-manager"},
+type chartPrerequisite struct {
+	Name          string
+	SameNamespace bool
+}
+
+var chartPrerequisites = map[string][]chartPrerequisite{
+	"cert-manager-csi-driver": {{Name: "cert-manager"}},
+	// OpenSearch Dashboards blocks startup until it can query the default
+	// opensearch-cluster-master service. Install the OpenSearch prerequisite in
+	// the dashboard namespace so the chart default resolves during the smoke test.
+	"opensearch-dashboards": {{Name: "opensearch", SameNamespace: true}},
 }
 
 var chartCRDFixtures = map[string][]string{
@@ -53,12 +62,16 @@ type ChartContext struct {
 }
 
 func InstallChart(ctx context.Context, h *Harness, spec config.ChartSpec, valuesDir string) (*ChartContext, error) {
+	return installChartInNamespace(ctx, h, spec, valuesDir, sanitizeNamespace(spec.Name))
+}
+
+func installChartInNamespace(ctx context.Context, h *Harness, spec config.ChartSpec, valuesDir, namespace string) (*ChartContext, error) {
 	if err := discovery.ValidateChartSpec(spec); err != nil {
 		return nil, fmt.Errorf("validate chart spec: %w", err)
 	}
 	cc := &ChartContext{
 		Spec:      spec,
-		Namespace: sanitizeNamespace(spec.Name),
+		Namespace: namespace,
 		ValuesDir: valuesDir,
 	}
 	if err := helmInstall(ctx, h, cc); err != nil {
@@ -68,8 +81,8 @@ func InstallChart(ctx context.Context, h *Harness, spec config.ChartSpec, values
 }
 
 func InstallChartPrerequisites(ctx context.Context, h *Harness, spec config.ChartSpec, valuesDir string) ([]*ChartContext, error) {
-	prereqNames := chartPrerequisites[spec.Name]
-	if len(prereqNames) == 0 {
+	prereqs := chartPrerequisites[spec.Name]
+	if len(prereqs) == 0 {
 		return nil, nil
 	}
 
@@ -81,17 +94,21 @@ func InstallChartPrerequisites(ctx context.Context, h *Harness, spec config.Char
 	for _, candidate := range charts {
 		byName[candidate.Name] = candidate
 	}
-	installed := make([]*ChartContext, 0, len(prereqNames))
-	for _, name := range prereqNames {
-		candidate, ok := byName[name]
+	installed := make([]*ChartContext, 0, len(prereqs))
+	for _, prereq := range prereqs {
+		candidate, ok := byName[prereq.Name]
 		if !ok {
-			return installed, fmt.Errorf("prerequisite %q for %q not found in Chart.yaml", name, spec.Name)
+			return installed, fmt.Errorf("prerequisite %q for %q not found in Chart.yaml", prereq.Name, spec.Name)
 		}
-		h.t.Logf("[prereq] installing %s before %s", name, spec.Name)
-		cc, installErr := InstallChartWithRetry(ctx, h, candidate, valuesDir, defaultRetryConfig())
+		namespace := sanitizeNamespace(candidate.Name)
+		if prereq.SameNamespace {
+			namespace = sanitizeNamespace(spec.Name)
+		}
+		h.t.Logf("[prereq] installing %s before %s in namespace %s", prereq.Name, spec.Name, namespace)
+		cc, installErr := installChartWithRetryInNamespace(ctx, h, candidate, valuesDir, namespace, defaultRetryConfig())
 		installed = append(installed, cc)
 		if installErr != nil {
-			return installed, fmt.Errorf("install %s prerequisite: %w", name, installErr)
+			return installed, fmt.Errorf("install %s prerequisite: %w", prereq.Name, installErr)
 		}
 	}
 	return installed, nil

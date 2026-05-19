@@ -29,9 +29,15 @@ func TestOpenSearchDashboardsImageUsesConfigScrubbingEntrypoint(t *testing.T) {
 	text := string(bespoke)
 	assert.Contains(t, text, "name: verity-opensearch-dashboards-config")
 	assert.Contains(t, text, "sed '/^opensearch_security\\./d'")
+	assert.Contains(t, text, "OPENSEARCH_HOSTS")
+	assert.Contains(t, text, "opensearch.hosts")
+	assert.Contains(t, text, "SERVER_HOST")
+	assert.Contains(t, text, "opensearch.username")
 	assert.Contains(t, text, "exec /usr/share/opensearch-dashboards/bin/opensearch-dashboards")
 	assert.False(t, strings.Contains(text, "opensearch_security.multitenancy.enabled: true"))
 
-	_, err = os.Stat(filepath.Join(repo, "test", "chart-integration", "values", "opensearch-dashboards.yaml"))
-	assert.True(t, os.IsNotExist(err), "smoke override should stay removed once image entrypoint fixes default config")
+	values, err := os.ReadFile(filepath.Join(repo, "test", "chart-integration", "values", "opensearch-dashboards.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(values), "opensearch.hosts")
+	assert.Contains(t, string(values), "opensearch.ssl.verificationMode: none")
 }

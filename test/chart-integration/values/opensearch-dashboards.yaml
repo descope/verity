@@ -1,0 +1,31 @@
+# Chart-integration override for opensearch-dashboards 3.6.0.
+#
+# Verity's current published image entrypoint rewrites the config file in-place
+# before exec. Mount a writable config directory, seed it with the smoke-test
+# connection settings, and point Dashboards at the OpenSearch prerequisite that
+# the harness installs into this same namespace.
+opensearch-dashboards:
+  extraVolumes:
+    - name: verity-config
+      emptyDir: {}
+  extraVolumeMounts:
+    - name: verity-config
+      mountPath: /usr/share/opensearch-dashboards/config
+  extraInitContainers:
+    - name: write-verity-config
+      image: ghcr.io/verity-org/busybox:1
+      imagePullPolicy: IfNotPresent
+      command:
+        - /bin/sh
+        - -c
+        - |
+          cat > /config/opensearch_dashboards.yml <<'EOF'
+          server.host: "0.0.0.0"
+          opensearch.hosts: ["https://opensearch-cluster-master:9200"]
+          opensearch.ssl.verificationMode: none
+          opensearch.username: "admin"
+          opensearch.password: "admin"
+          EOF
+      volumeMounts:
+        - name: verity-config
+          mountPath: /config

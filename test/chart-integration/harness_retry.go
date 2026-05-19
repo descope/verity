@@ -221,13 +221,24 @@ func InstallChartWithRetry(
 	valuesDir string,
 	cfg retryConfig,
 ) (*ChartContext, error) {
+	return installChartWithRetryInNamespace(ctx, h, spec, valuesDir, sanitizeNamespace(spec.Name), cfg)
+}
+
+func installChartWithRetryInNamespace(
+	ctx context.Context,
+	h *Harness,
+	spec config.ChartSpec,
+	valuesDir string,
+	namespace string,
+	cfg retryConfig,
+) (*ChartContext, error) {
 	if cfg.MaxAttempts <= 0 {
 		cfg = defaultRetryConfig()
 	}
 	var lastCC *ChartContext
 	var lastErr error
 	for attempt := 1; attempt <= cfg.MaxAttempts; attempt++ {
-		cc, err := InstallChart(ctx, h, spec, valuesDir)
+		cc, err := installChartInNamespace(ctx, h, spec, valuesDir, namespace)
 		if err == nil {
 			if attempt > 1 {
 				h.t.Logf("chart-integration[%s]: install succeeded on attempt %d/%d", spec.Name, attempt, cfg.MaxAttempts)
@@ -378,7 +389,9 @@ func parsePodStatusJSON(raw []byte) podStatusSnapshot {
 // (finalizers, PVC reclaim, helm release Secret removal) before the
 // next `helm install` runs, otherwise the next install would race
 // the still-terminating namespace and fail with
-//   `namespace "<ns>" is being terminated`
+//
+//	`namespace "<ns>" is being terminated`
+//
 // or AlreadyExists, neither of which is a pull-class failure and so
 // would abort the retry budget on a transient teardown lag.
 //

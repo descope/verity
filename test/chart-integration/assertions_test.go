@@ -642,3 +642,16 @@ func TestInstallChartRejectsArgumentInjection(t *testing.T) {
 		})
 	}
 }
+
+func TestOpenSearchDashboardsInstallsOpenSearchPrerequisiteInSameNamespace(t *testing.T) {
+	prereqs := chartPrerequisites["opensearch-dashboards"]
+	if len(prereqs) != 1 {
+		t.Fatalf("opensearch-dashboards prereqs = %#v, want exactly one", prereqs)
+	}
+	if prereqs[0].Name != "opensearch" {
+		t.Fatalf("prereq name = %q, want opensearch", prereqs[0].Name)
+	}
+	if !prereqs[0].SameNamespace {
+		t.Fatalf("opensearch prerequisite must install in the dashboard namespace so opensearch-cluster-master resolves")
+	}
+}
