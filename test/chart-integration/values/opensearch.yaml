@@ -5,6 +5,19 @@
 # create /usr/share/opensearch/config/opensearch.keystore.tmp during bootstrap.
 # Running as the image's nonroot user keeps that config directory writable.
 opensearch:
+  # Keep the smoke cluster small enough for single-node kind runners and for
+  # charts (opensearch-dashboards) that install OpenSearch as a same-namespace
+  # prerequisite before scheduling their own pod.
+  singleNode: true
+
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+
   # The chart's default init chown targets uid/gid 1000 and uses
   # docker.io/library/busybox. With the pod running as 65532 and fsGroup set,
   # kubelet volume ownership is sufficient for the smoke-test PVC.
