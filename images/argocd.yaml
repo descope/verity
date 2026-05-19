@@ -11,7 +11,8 @@ types:
     # repo-server and dex `copyutil` initContainers. The main argocd workload
     # containers exec the argv[0]-aware symlinks below, but those initContainers
     # hardcode shell/coreutils paths before the main containers can start.
-    packages: ["argo-cd-{{version}}", "busybox", "coreutils"]
+    # repo-server also generates a transient keyring at startup via `gpg`.
+    packages: ["argo-cd-{{version}}", "busybox", "coreutils", "gnupg"]
     # Intentionally NO `entrypoint:` — argo-cd's binary (cmd/main.go) dispatches
     # by `filepath.Base(os.Args[0])` to one of common.Command{CLI,Server,
     # ApplicationController,ApplicationSetController,RepoServer,CMPServer,
@@ -55,7 +56,7 @@ types:
     base: wolfi-base
     # busybox + coreutils supply the chart copyutil initContainer shell/GNU
     # coreutils; see default type note above.
-    packages: ["argo-cd-{{version}}", "busybox", "coreutils"]
+    packages: ["argo-cd-{{version}}", "busybox", "coreutils", "gnupg"]
     # No `entrypoint:` — see default-type note above for the argv[0] dispatch
     # mechanism. Identical to default type, only the GODEBUG=fips140=on env
     # differs. See SCR-2026-05-14-001 Bucket A.
