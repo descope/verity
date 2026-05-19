@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -26,6 +27,9 @@ func TestAirflowPostgresqlImageOverrideIsComposable(t *testing.T) {
 		Airflow struct {
 			DefaultAirflowRepository string `yaml:"defaultAirflowRepository"`
 			DefaultAirflowTag        string `yaml:"defaultAirflowTag"`
+			Images                   struct {
+				MigrationsWaitTimeout int `yaml:"migrationsWaitTimeout"`
+			} `yaml:"images"`
 			Postgresql               struct {
 				Image struct {
 					Registry   string `yaml:"registry"`
@@ -43,10 +47,19 @@ func TestAirflowPostgresqlImageOverrideIsComposable(t *testing.T) {
 	if values.Airflow.DefaultAirflowTag != "3" {
 		t.Fatalf("defaultAirflowTag=%q want 3", values.Airflow.DefaultAirflowTag)
 	}
+	if values.Airflow.Images.MigrationsWaitTimeout < 900 {
+		t.Fatalf("migrationsWaitTimeout=%d want at least 900", values.Airflow.Images.MigrationsWaitTimeout)
+	}
 	if values.Airflow.Postgresql.Image.Registry != "ghcr.io" {
 		t.Fatalf("registry=%q want ghcr.io", values.Airflow.Postgresql.Image.Registry)
 	}
 	if values.Airflow.Postgresql.Image.Repository != "verity-org/bitnamilegacy/postgresql" {
 		t.Fatalf("repository=%q want verity-org/bitnamilegacy/postgresql", values.Airflow.Postgresql.Image.Repository)
+	}
+}
+
+func TestAirflowHasExtendedHelmInstallTimeout(t *testing.T) {
+	if got, want := chartHelmInstallTimeout("airflow"), 20*time.Minute; got != want {
+		t.Fatalf("chartHelmInstallTimeout(airflow)=%s want %s", got, want)
 	}
 }

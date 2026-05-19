@@ -17,6 +17,7 @@ import (
 
 const (
 	helmInstallTimeout            = 10 * time.Minute
+	airflowHelmInstallTimeout     = 20 * time.Minute
 	certManagerHelmInstallTimeout = 15 * time.Minute
 	chartRegistry                 = "oci://ghcr.io/verity-org/charts"
 )
@@ -243,6 +244,9 @@ func helmInstall(ctx context.Context, h *Harness, cc *ChartContext) error {
 }
 
 func chartHelmInstallTimeout(chartName string) time.Duration {
+	if chartName == "airflow" {
+		return airflowHelmInstallTimeout
+	}
 	if chartName == "cert-manager" {
 		return certManagerHelmInstallTimeout
 	}
