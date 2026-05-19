@@ -56,23 +56,25 @@ var chartFixtureCRDs = map[string][]string{
 }
 
 type ChartContext struct {
-	Spec      config.ChartSpec
-	Namespace string
-	ValuesDir string
+	Spec              config.ChartSpec
+	Namespace         string
+	ValuesDir         string
+	PreserveNamespace bool
 }
 
 func InstallChart(ctx context.Context, h *Harness, spec config.ChartSpec, valuesDir string) (*ChartContext, error) {
-	return installChartInNamespace(ctx, h, spec, valuesDir, sanitizeNamespace(spec.Name))
+	return installChartInNamespace(ctx, h, spec, valuesDir, sanitizeNamespace(spec.Name), false)
 }
 
-func installChartInNamespace(ctx context.Context, h *Harness, spec config.ChartSpec, valuesDir, namespace string) (*ChartContext, error) {
+func installChartInNamespace(ctx context.Context, h *Harness, spec config.ChartSpec, valuesDir, namespace string, preserveNamespace bool) (*ChartContext, error) {
 	if err := discovery.ValidateChartSpec(spec); err != nil {
 		return nil, fmt.Errorf("validate chart spec: %w", err)
 	}
 	cc := &ChartContext{
-		Spec:      spec,
-		Namespace: namespace,
-		ValuesDir: valuesDir,
+		Spec:              spec,
+		Namespace:         namespace,
+		ValuesDir:         valuesDir,
+		PreserveNamespace: preserveNamespace,
 	}
 	if err := helmInstall(ctx, h, cc); err != nil {
 		return cc, fmt.Errorf("helm install: %w", err)
@@ -105,7 +107,7 @@ func InstallChartPrerequisites(ctx context.Context, h *Harness, spec config.Char
 			namespace = sanitizeNamespace(spec.Name)
 		}
 		h.t.Logf("[prereq] installing %s before %s in namespace %s", prereq.Name, spec.Name, namespace)
-		cc, installErr := installChartWithRetryInNamespace(ctx, h, candidate, valuesDir, namespace, defaultRetryConfig())
+		cc, installErr := installChartWithRetryInNamespace(ctx, h, candidate, valuesDir, namespace, false, defaultRetryConfig())
 		installed = append(installed, cc)
 		if installErr != nil {
 			return installed, fmt.Errorf("install %s prerequisite: %w", prereq.Name, installErr)
@@ -199,12 +201,24 @@ func UninstallChart(ctx context.Context, h *Harness, cc *ChartContext) {
 	); err != nil {
 		h.t.Logf("[uninstall] helm uninstall %s: %v (continuing)", cc.Spec.Name, err)
 	}
+	if cc.PreserveNamespace {
+		return
+	}
 	if err := runCmd(ctx, h.t, "", nil,
 		"kubectl", "--kubeconfig", h.KubeconfigPath,
 		"delete", "namespace", cc.Namespace, "--ignore-not-found", "--wait=false",
 	); err != nil {
 		h.t.Logf("[uninstall] kubectl delete ns %s: %v (continuing)", cc.Namespace, err)
 	}
+}
+
+func preserveNamespaceOnRetry(chartName string) bool {
+	for _, prereq := range chartPrerequisites[chartName] {
+		if prereq.SameNamespace {
+			return true
+		}
+	}
+	return false
 }
 
 func helmInstall(ctx context.Context, h *Harness, cc *ChartContext) error {

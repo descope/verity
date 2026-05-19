@@ -221,7 +221,7 @@ func InstallChartWithRetry(
 	valuesDir string,
 	cfg retryConfig,
 ) (*ChartContext, error) {
-	return installChartWithRetryInNamespace(ctx, h, spec, valuesDir, sanitizeNamespace(spec.Name), cfg)
+	return installChartWithRetryInNamespace(ctx, h, spec, valuesDir, sanitizeNamespace(spec.Name), preserveNamespaceOnRetry(spec.Name), cfg)
 }
 
 func installChartWithRetryInNamespace(
@@ -230,6 +230,7 @@ func installChartWithRetryInNamespace(
 	spec config.ChartSpec,
 	valuesDir string,
 	namespace string,
+	preserveNamespace bool,
 	cfg retryConfig,
 ) (*ChartContext, error) {
 	if cfg.MaxAttempts <= 0 {
@@ -238,7 +239,7 @@ func installChartWithRetryInNamespace(
 	var lastCC *ChartContext
 	var lastErr error
 	for attempt := 1; attempt <= cfg.MaxAttempts; attempt++ {
-		cc, err := installChartInNamespace(ctx, h, spec, valuesDir, namespace)
+		cc, err := installChartInNamespace(ctx, h, spec, valuesDir, namespace, preserveNamespace)
 		if err == nil {
 			if attempt > 1 {
 				h.t.Logf("chart-integration[%s]: install succeeded on attempt %d/%d", spec.Name, attempt, cfg.MaxAttempts)

@@ -654,4 +654,7 @@ func TestOpenSearchDashboardsInstallsOpenSearchPrerequisiteInSameNamespace(t *te
 	if !prereqs[0].SameNamespace {
 		t.Fatalf("opensearch prerequisite must install in the dashboard namespace so opensearch-cluster-master resolves")
 	}
+	if !preserveNamespaceOnRetry("opensearch-dashboards") {
+		t.Fatalf("opensearch-dashboards retry cleanup must preserve namespace so same-namespace prerequisites survive")
+	}
 }
