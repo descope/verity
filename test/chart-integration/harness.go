@@ -14,10 +14,13 @@ import (
 
 const clusterName = "verity-it"
 
+const nfsSubdirChartName = "nfs-subdir-external-provisioner"
+
 type Harness struct {
 	KubeconfigPath string
 	RepoRoot       string
 	clusterCreated bool
+	nfsInstalled   bool
 	t              testLogger
 }
 
@@ -39,6 +42,12 @@ func (h *Harness) Setup(ctx context.Context) error {
 		{"create kind cluster", h.createCluster},
 		{"export kubeconfig", h.exportKubeconfig},
 	}
+	if needsNFSServer(os.Getenv("VERITY_CHART")) {
+		steps = append(steps, struct {
+			name string
+			fn   func(context.Context) error
+		}{"ensure in-cluster NFS server", h.ensureNFSServer})
+	}
 	for _, s := range steps {
 		h.t.Logf("[harness] %s", s.name)
 		if err := s.fn(ctx); err != nil {
@@ -48,8 +57,47 @@ func (h *Harness) Setup(ctx context.Context) error {
 	return nil
 }
 
+func needsNFSServer(chartFilter string) bool {
+	filter := strings.TrimSpace(chartFilter)
+	return filter == "" || filter == nfsSubdirChartName
+}
+
+func (h *Harness) ensureNFSServer(ctx context.Context) error {
+	if err := h.configureKindNFSClient(ctx); err != nil {
+		return err
+	}
+	manifest := filepath.Join(h.RepoRoot, "test", "chart-integration", "nfs-server.yaml")
+	if err := runCmd(ctx, h.t, "", nil,
+		"kubectl", "--kubeconfig", h.KubeconfigPath,
+		"apply", "-f", manifest,
+	); err != nil {
+		return err
+	}
+	if err := runCmd(ctx, h.t, "", nil,
+		"kubectl", "--kubeconfig", h.KubeconfigPath,
+		"-n", "verity-it-infra",
+		"rollout", "status", "deployment/nfs-server", "--timeout=120s",
+	); err != nil {
+		return err
+	}
+	h.nfsInstalled = true
+	return nil
+}
+
+func (h *Harness) configureKindNFSClient(ctx context.Context) error {
+	// nfs-ganesha in the smoke fixture reliably serves NFSv4.0/4.1 in kind,
+	// while mount.nfs defaults to trying v4.2 first on the current kind node
+	// image. Kubelet's in-tree NFS volume plugin does not expose per-volume
+	// mountOptions, so set the node-wide default before the chart pod mounts.
+	return runCmd(ctx, h.t, "", nil,
+		"docker", "exec", clusterName+"-control-plane", "sh", "-c",
+		"mkdir -p /etc/nfsmount.conf.d && printf '[ NFSMount_Global_Options ]\\nDefaultvers=4.1\\n' > /etc/nfsmount.conf.d/verity-nfs.conf",
+	)
+}
+
 func (h *Harness) Teardown(ctx context.Context) {
 	h.t.Helper()
+	h.deleteNFSServer(ctx)
 	if h.clusterCreated {
 		h.t.Logf("[harness] deleting kind cluster %s", clusterName)
 		if err := runCmd(ctx, h.t, "", nil, "kind", "delete", "cluster", "--name", clusterName); err != nil {
@@ -62,6 +110,19 @@ func (h *Harness) Teardown(ctx context.Context) {
 		if err := os.Remove(h.KubeconfigPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 			h.t.Logf("[harness] kubeconfig cleanup failed: %v", err)
 		}
+	}
+}
+
+func (h *Harness) deleteNFSServer(ctx context.Context) {
+	if !h.nfsInstalled || h.KubeconfigPath == "" {
+		return
+	}
+	manifest := filepath.Join(h.RepoRoot, "test", "chart-integration", "nfs-server.yaml")
+	if err := runCmd(ctx, h.t, "", nil,
+		"kubectl", "--kubeconfig", h.KubeconfigPath,
+		"delete", "-f", manifest, "--ignore-not-found=true", "--wait=true", "--timeout=120s",
+	); err != nil {
+		h.t.Logf("[harness] NFS server cleanup failed (continuing): %v", err)
 	}
 }
 

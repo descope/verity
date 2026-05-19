@@ -1,0 +1,11 @@
+# nfs-subdir-external-provisioner chart-integration smoke-test overrides.
+#
+# The harness creates this Service via test/chart-integration/nfs-server.yaml.
+# The chart's provisioner Deployment mounts the NFS export during startup, so
+# kind smoke needs a real endpoint rather than the verity.yaml render-time
+# placeholder used by image discovery. Use the Service's fixed ClusterIP instead
+# of DNS because kubelet performs the NFS mount from the kind node namespace.
+nfs-subdir-external-provisioner:
+  nfs:
+    server: 10.96.0.250
+    path: /
