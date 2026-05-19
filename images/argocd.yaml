@@ -10,9 +10,11 @@ types:
     # `--update=none` plus `/bin/ln` for the upstream argo-cd chart's
     # repo-server and dex `copyutil` initContainers. gpg + gpg-agent supply the
     # key-generation helpers repo-server runs on startup to initialize
-    # /app/config/gpg/keys. The main argocd workload containers exec the
-    # argv[0]-aware symlinks below, but the chart and repo-server startup path
-    # hardcode these helper binaries before all components can become Ready.
+    # /app/config/gpg/keys. The upstream image ships gpg-wrapper.sh; the Verity
+    # image maps it to gpg below because repo-server invokes it by name. The
+    # main argocd workload containers exec the argv[0]-aware symlinks below,
+    # but the chart and repo-server startup path hardcode these helper binaries
+    # before all components can become Ready.
     packages: ["argo-cd-{{version}}", "busybox", "coreutils", "gpg", "gpg-agent"]
     # Intentionally NO `entrypoint:` — argo-cd's binary (cmd/main.go) dispatches
     # by `filepath.Base(os.Args[0])` to one of common.Command{CLI,Server,
@@ -39,6 +41,7 @@ types:
       # the published image. Keep the binary executable and let render
       # propagate 0o755 to each shim.
       - {path: /usr/bin/argocd, type: permissions, permissions: 0o755}
+      - {path: /usr/bin/gpg, type: permissions, permissions: 0o755}
       # argo-cd helm chart hardcodes /usr/local/bin/argocd-<subcommand> in
       # container `args:` at template level. These shim symlinks paired with
       # the omitted entrypoint above complete the argv[0]-aware Cobra dispatch
@@ -52,6 +55,7 @@ types:
       - {path: /usr/local/bin/argocd-cmp-server, type: symlink, source: /usr/bin/argocd, uid: 0, gid: 0}
       - {path: /usr/local/bin/argocd-commit-server, type: symlink, source: /usr/bin/argocd, uid: 0, gid: 0}
       - {path: /usr/local/bin/argocd-k8s-auth, type: symlink, source: /usr/bin/argocd, uid: 0, gid: 0}
+      - {path: /usr/local/bin/gpg-wrapper.sh, type: symlink, source: /usr/bin/gpg, uid: 0, gid: 0}
 
   fips:
     base: wolfi-base
@@ -68,6 +72,7 @@ types:
       - {path: /app/config, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
       # Keep /usr/bin/argocd executable; see default type note above.
       - {path: /usr/bin/argocd, type: permissions, permissions: 0o755}
+      - {path: /usr/bin/gpg, type: permissions, permissions: 0o755}
       # Same /usr/local/bin shim symlinks as default — see note above.
       - {path: /usr/local/bin/argocd, type: symlink, source: /usr/bin/argocd, uid: 0, gid: 0}
       - {path: /usr/local/bin/argocd-server, type: symlink, source: /usr/bin/argocd, uid: 0, gid: 0}
@@ -78,6 +83,7 @@ types:
       - {path: /usr/local/bin/argocd-cmp-server, type: symlink, source: /usr/bin/argocd, uid: 0, gid: 0}
       - {path: /usr/local/bin/argocd-commit-server, type: symlink, source: /usr/bin/argocd, uid: 0, gid: 0}
       - {path: /usr/local/bin/argocd-k8s-auth, type: symlink, source: /usr/bin/argocd, uid: 0, gid: 0}
+      - {path: /usr/local/bin/gpg-wrapper.sh, type: symlink, source: /usr/bin/gpg, uid: 0, gid: 0}
     melange:
       upstream: "argocd"
       env-file: "fips.env"
