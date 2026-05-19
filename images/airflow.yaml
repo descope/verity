@@ -6,8 +6,13 @@ upstream:
 types:
   default:
     base: wolfi-base
-    packages: ["airflow-{{version}}"]
-    entrypoint: /usr/bin/airflow
+    packages: ["airflow-{{version}}", "bash"]
+    # Intentionally NO `entrypoint:` — the upstream Airflow chart leaves
+    # `command:` unset and supplies executable argv via `args:` such as
+    # ["bash", "-c", "exec airflow scheduler"] and
+    # ["airflow", "db", "check-migrations", ...]. If this image sets an
+    # entrypoint to /usr/bin/airflow, Kubernetes appends those args and the
+    # chart runs invalid commands like `airflow airflow db check-migrations`.
     environment:
       AIRFLOW_HOME: /opt/airflow
       # The Wolfi airflow package installs console scripts under
@@ -15,8 +20,8 @@ types:
       # `bash -c` in Jobs/Deployments, so PATH must include that directory.
       PATH: /opt/airflow/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     paths:
-      # Keep the image entrypoint and absolute-path callers working while the
-      # chart uses PATH-based `airflow` invocations.
+      # Keep absolute-path callers working while the chart uses PATH-based
+      # `airflow` invocations.
       - {path: /usr/bin/airflow, type: symlink, source: /opt/airflow/bin/airflow, uid: 0, gid: 0, permissions: 0o755}
       - {path: /opt/airflow, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
       - {path: /opt/airflow/dags, type: directory, uid: 65532, gid: 65532, permissions: 0o755}

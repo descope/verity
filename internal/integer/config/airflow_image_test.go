@@ -23,6 +23,12 @@ func TestAirflowImageExposesConsoleScriptsOnPath(t *testing.T) {
 	}
 
 	tmpl := def.Types["default"]
+	if tmpl.Entrypoint != "" {
+		t.Fatalf("entrypoint=%q, want empty so Helm chart args become the process command", tmpl.Entrypoint)
+	}
+	if !slices.Contains(tmpl.Packages, "bash") {
+		t.Fatalf("packages=%v must include bash for upstream Helm chart bash -c commands", tmpl.Packages)
+	}
 	path := tmpl.Environment["PATH"]
 	if !pathHasEntry(path, "/opt/airflow/bin") {
 		t.Fatalf("PATH=%q must include /opt/airflow/bin for chart bash -c airflow commands", path)
