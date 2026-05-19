@@ -6,12 +6,12 @@ upstream:
 types:
   default:
     base: wolfi-base
-    # busybox supplies `/bin/sh`, `/bin/cp`, and `/bin/ln` for the upstream
-    # argo-cd chart's repo-server and dex `copyutil` initContainers. The main
-    # argocd workload containers exec the argv[0]-aware symlinks below, but
-    # those initContainers hardcode shell/coreutils paths before the main
-    # containers can start.
-    packages: ["argo-cd-{{version}}", "busybox"]
+    # busybox supplies `/bin/sh`; coreutils supplies GNU `/bin/cp` with
+    # `--update=none` plus `/bin/ln` for the upstream argo-cd chart's
+    # repo-server and dex `copyutil` initContainers. The main argocd workload
+    # containers exec the argv[0]-aware symlinks below, but those initContainers
+    # hardcode shell/coreutils paths before the main containers can start.
+    packages: ["argo-cd-{{version}}", "busybox", "coreutils"]
     # Intentionally NO `entrypoint:` — argo-cd's binary (cmd/main.go) dispatches
     # by `filepath.Base(os.Args[0])` to one of common.Command{CLI,Server,
     # ApplicationController,ApplicationSetController,RepoServer,CMPServer,
@@ -53,9 +53,9 @@ types:
 
   fips:
     base: wolfi-base
-    # busybox supplies the chart copyutil initContainer shell/coreutils; see
-    # default type note above.
-    packages: ["argo-cd-{{version}}", "busybox"]
+    # busybox + coreutils supply the chart copyutil initContainer shell/GNU
+    # coreutils; see default type note above.
+    packages: ["argo-cd-{{version}}", "busybox", "coreutils"]
     # No `entrypoint:` — see default-type note above for the argv[0] dispatch
     # mechanism. Identical to default type, only the GODEBUG=fips140=on env
     # differs. See SCR-2026-05-14-001 Bucket A.
