@@ -264,7 +264,7 @@ func installChartWithRetryInNamespace(
 			// Best-effort cleanup before next attempt — reuse the
 			// existing teardown path so we don't reimplement it.
 			//
-			// UninstallChart uses `kubectl delete ns --wait=false` so
+			// UninstallChart normally uses `kubectl delete ns --wait=false` so
 			// the final teardown after runChart returns is fast. For
 			// the retry path that semantics is wrong: starting a
 			// fresh `helm install` against a namespace still in
@@ -275,18 +275,23 @@ func installChartWithRetryInNamespace(
 			//
 			// Block here until the namespace is fully deleted (or
 			// the wait budget expires); only then start the backoff
-			// timer. The 90s budget accommodates kind's local-path
-			// PVC reclaim plus finalizer drain for stateful charts.
+			// timer. Charts with same-namespace prerequisites set
+			// PreserveNamespace, so UninstallChart removes only the main
+			// release and leaves the namespace/prerequisite live; those retries
+			// must skip the deletion wait. The 90s budget accommodates kind's
+			// local-path PVC reclaim plus finalizer drain for stateful charts.
 			if cc != nil {
 				uctx, ucancel := context.WithTimeout(ctx, 3*time.Minute)
 				UninstallChart(uctx, h, cc)
 				ucancel()
-				wctx, wcancel := context.WithTimeout(ctx, 90*time.Second)
-				if err := waitNamespaceDeleted(wctx, h, cc.Namespace); err != nil {
-					h.t.Logf("chart-integration[%s]: attempt %d cleanup: namespace %q deletion did not complete within budget: %v (continuing)",
-						spec.Name, attempt, cc.Namespace, err)
+				if !cc.PreserveNamespace {
+					wctx, wcancel := context.WithTimeout(ctx, 90*time.Second)
+					if err := waitNamespaceDeleted(wctx, h, cc.Namespace); err != nil {
+						h.t.Logf("chart-integration[%s]: attempt %d cleanup: namespace %q deletion did not complete within budget: %v (continuing)",
+							spec.Name, attempt, cc.Namespace, err)
+					}
+					wcancel()
 				}
-				wcancel()
 			}
 			select {
 			case <-ctx.Done():
