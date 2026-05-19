@@ -45,13 +45,13 @@ func TestAirflowImageExposesConsoleScriptsOnPath(t *testing.T) {
 		t.Fatal("missing /usr/bin/airflow -> /opt/airflow/bin/airflow symlink")
 	}
 
-	for _, path := range []string{"/opt/airflow", "/opt/airflow/dags", "/opt/airflow/logs", "/opt/airflow/plugins"} {
-		p, ok := findPath(tmpl.Paths, path)
+	for _, dirPath := range []string{"/opt/airflow", "/opt/airflow/dags", "/opt/airflow/logs", "/opt/airflow/plugins"} {
+		p, ok := findPath(tmpl.Paths, dirPath)
 		if !ok {
-			t.Fatalf("missing %s path entry", path)
+			t.Fatalf("missing %s path entry", dirPath)
 		}
 		if p.UID != 50000 || p.GID != 0 || p.Permissions != "0o775" {
-			t.Fatalf("%s ownership/perms = uid:%d gid:%d mode:%s, want uid:50000 gid:0 mode:0o775", path, p.UID, p.GID, p.Permissions)
+			t.Fatalf("%s ownership/perms = uid:%d gid:%d mode:%s, want uid:50000 gid:0 mode:0o775", dirPath, p.UID, p.GID, p.Permissions)
 		}
 	}
 }
