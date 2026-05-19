@@ -47,6 +47,9 @@ func TestVerityConfigChartValuesLoading(t *testing.T) {
 	if got := vc2.ChartValues["fluent-bit"]["livenessProbe.initialDelaySeconds"]; got != 45 {
 		t.Fatalf("fluent-bit livenessProbe.initialDelaySeconds = %#v, want 45", got)
 	}
+	if got := vc2.Overrides["jetstack/cert-manager-csi-driver"].ValuePath; got != "image" {
+		t.Fatalf("cert-manager-csi-driver valuePath = %q, want image", got)
+	}
 	airflow := vc2.ChartValues["airflow"]
 	if airflow["postgresql.image.registry"] != "" {
 		t.Fatalf("airflow postgresql.image.registry=%v, want empty string", airflow["postgresql.image.registry"])
