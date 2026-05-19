@@ -25,9 +25,14 @@ var chartPrerequisites = map[string][]string{
 	"cert-manager-csi-driver": {"cert-manager"},
 }
 
-var chartFixtures = map[string][]string{
+var chartCRDFixtures = map[string][]string{
 	"cluster-autoscaler": {
 		filepath.Join("test", "chart-integration", "fixtures", "cluster-autoscaler", "capi-crds.yaml"),
+	},
+}
+
+var chartObjectFixtures = map[string][]string{
+	"cluster-autoscaler": {
 		filepath.Join("test", "chart-integration", "fixtures", "cluster-autoscaler", "capi-objects.yaml"),
 	},
 }
@@ -93,11 +98,12 @@ func InstallChartPrerequisites(ctx context.Context, h *Harness, spec config.Char
 }
 
 func InstallChartFixtures(ctx context.Context, h *Harness, chartName string) error {
-	fixtures := chartFixtures[chartName]
-	if len(fixtures) == 0 {
+	crdFixtures := chartCRDFixtures[chartName]
+	objectFixtures := chartObjectFixtures[chartName]
+	if len(crdFixtures) == 0 && len(objectFixtures) == 0 {
 		return nil
 	}
-	for i, fixture := range fixtures {
+	for _, fixture := range crdFixtures {
 		path := filepath.Join(h.RepoRoot, fixture)
 		h.t.Logf("[fixture] applying %s for %s", path, chartName)
 		if err := runCmd(ctx, h.t, "", nil,
@@ -106,22 +112,55 @@ func InstallChartFixtures(ctx context.Context, h *Harness, chartName string) err
 		); err != nil {
 			return fmt.Errorf("apply fixture %s: %w", fixture, err)
 		}
-		if i == 0 {
-			for _, crd := range chartFixtureCRDs[chartName] {
-				if err := runCmd(ctx, h.t, "", nil,
-					"kubectl", "--kubeconfig", h.KubeconfigPath,
-					"wait", "--for=condition=Established", "crd/"+crd, "--timeout=60s",
-				); err != nil {
-					return fmt.Errorf("wait for fixture CRD %s: %w", crd, err)
-				}
-			}
+	}
+	for _, crd := range chartFixtureCRDs[chartName] {
+		if err := runCmd(ctx, h.t, "", nil,
+			"kubectl", "--kubeconfig", h.KubeconfigPath,
+			"wait", "--for=condition=Established", "crd/"+crd, "--timeout=60s",
+		); err != nil {
+			return fmt.Errorf("wait for fixture CRD %s: %w", crd, err)
+		}
+	}
+	for _, fixture := range objectFixtures {
+		path := filepath.Join(h.RepoRoot, fixture)
+		h.t.Logf("[fixture] applying %s for %s", path, chartName)
+		if err := runCmd(ctx, h.t, "", nil,
+			"kubectl", "--kubeconfig", h.KubeconfigPath,
+			"apply", "--validate=false", "-f", path,
+		); err != nil {
+			return fmt.Errorf("apply fixture %s: %w", fixture, err)
+		}
+	}
+	if err := seedChartFixtureStatus(ctx, h, chartName); err != nil {
+		return err
+	}
+	return nil
+}
+
+func seedChartFixtureStatus(ctx context.Context, h *Harness, chartName string) error {
+	switch chartName {
+	case "cluster-autoscaler":
+		// Normal kubectl apply cannot write status when the CRD exposes a status
+		// subresource. Seed the scale paths that cluster-autoscaler reads from
+		// the MachineDeployment /scale endpoint; no CAPI controller runs in this
+		// bounded smoke fixture to populate them for us.
+		if err := runCmd(ctx, h.t, "", nil,
+			"kubectl", "--kubeconfig", h.KubeconfigPath,
+			"-n", "cluster-autoscaler",
+			"patch", "machinedeployment.cluster.x-k8s.io/verity-it-smoke-md",
+			"--subresource=status",
+			"--type=merge",
+			"-p", `{"status":{"replicas":0,"selector":"cluster.x-k8s.io/cluster-name=verity-it,cluster.x-k8s.io/deployment-name=verity-it-smoke-md"}}`,
+		); err != nil {
+			return fmt.Errorf("seed cluster-autoscaler fixture status: %w", err)
 		}
 	}
 	return nil
 }
 
 func UninstallChartFixtures(ctx context.Context, h *Harness, chartName string) {
-	fixtures := chartFixtures[chartName]
+	fixtures := append([]string{}, chartCRDFixtures[chartName]...)
+	fixtures = append(fixtures, chartObjectFixtures[chartName]...)
 	for i := len(fixtures) - 1; i >= 0; i-- {
 		path := filepath.Join(h.RepoRoot, fixtures[i])
 		if err := runCmd(ctx, h.t, "", nil,

@@ -131,14 +131,14 @@ func runChart(t *testing.T, spec config.ChartSpec) {
 	if prereqErr != nil {
 		t.Fatalf("prerequisites: %v", prereqErr)
 	}
-	if err := InstallChartFixtures(ctx, testHarness, spec.Name); err != nil {
-		t.Fatalf("fixtures: %v", err)
-	}
 	defer func() {
 		fctx, fcancel := context.WithTimeout(context.Background(), 3*time.Minute)
 		UninstallChartFixtures(fctx, testHarness, spec.Name)
 		fcancel()
 	}()
+	if err := InstallChartFixtures(ctx, testHarness, spec.Name); err != nil {
+		t.Fatalf("fixtures: %v", err)
+	}
 
 	cc, installErr := InstallChartWithRetry(ctx, testHarness, spec, valuesDir, defaultRetryConfig())
 	defer func() {
