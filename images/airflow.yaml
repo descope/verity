@@ -15,6 +15,9 @@ types:
     # chart runs invalid commands like `airflow airflow db check-migrations`.
     environment:
       AIRFLOW_HOME: /opt/airflow
+      # The chart runs containers as numeric uid 50000 without a passwd entry.
+      # Airflow's CLI calls getpass.getuser(), so provide USER explicitly.
+      USER: airflow
       # The Wolfi airflow package installs console scripts under
       # /opt/airflow/bin. The upstream Helm chart invokes `airflow` via
       # `bash -c` in Jobs/Deployments, so PATH must include that directory.

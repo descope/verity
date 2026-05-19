@@ -33,6 +33,9 @@ func TestAirflowImageExposesConsoleScriptsOnPath(t *testing.T) {
 	if !pathHasEntry(path, "/opt/airflow/bin") {
 		t.Fatalf("PATH=%q must include /opt/airflow/bin for chart bash -c airflow commands", path)
 	}
+	if tmpl.Environment["USER"] != "airflow" {
+		t.Fatalf("USER=%q want airflow so Airflow CLI getpass.getuser works under chart uid 50000", tmpl.Environment["USER"])
+	}
 
 	foundSymlink := false
 	for _, p := range tmpl.Paths {
