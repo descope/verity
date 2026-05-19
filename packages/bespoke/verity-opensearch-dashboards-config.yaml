@@ -20,11 +20,45 @@ pipeline:
 
       config="${OPENSEARCH_DASHBOARDS_CONFIG:-/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml}"
 
+      yaml_quote() {
+        printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+      }
+
       if [ -f "$config" ]; then
+        config_writable=1
         tmp="$(mktemp "${config}.verity.XXXXXX")"
         sed '/^opensearch_security\./d' "$config" > "$tmp"
         chmod 0644 "$tmp"
-        mv "$tmp" "$config"
+        if ! mv "$tmp" "$config"; then
+          # ConfigMap subPath mounts cannot be atomically replaced. Fall back to
+          # in-place copy when possible; if the mount is read-only, keep the
+          # caller-provided config and continue.
+          cat "$tmp" > "$config" 2>/dev/null || config_writable=0
+          rm -f "$tmp"
+        fi
+
+        if [ "$config_writable" -eq 1 ]; then
+          if [ -n "${SERVER_HOST:-}" ]; then
+            printf 'server.host: "%s"\n' "$(yaml_quote "$SERVER_HOST")" >> "$config"
+          fi
+
+          if [ -n "${OPENSEARCH_HOSTS:-}" ]; then
+            case "$OPENSEARCH_HOSTS" in
+              \[* ) printf 'opensearch.hosts: %s\n' "$OPENSEARCH_HOSTS" >> "$config" ;;
+              * ) printf 'opensearch.hosts: ["%s"]\n' "$(yaml_quote "$OPENSEARCH_HOSTS")" >> "$config" ;;
+            esac
+          elif [ -n "${OPENSEARCH_URL:-}" ]; then
+            printf 'opensearch.hosts: ["%s"]\n' "$(yaml_quote "$OPENSEARCH_URL")" >> "$config"
+          fi
+
+          if [ -n "${OPENSEARCH_USERNAME:-}" ]; then
+            printf 'opensearch.username: "%s"\n' "$(yaml_quote "$OPENSEARCH_USERNAME")" >> "$config"
+          fi
+
+          if [ -n "${OPENSEARCH_PASSWORD:-}" ]; then
+            printf 'opensearch.password: "%s"\n' "$(yaml_quote "$OPENSEARCH_PASSWORD")" >> "$config"
+          fi
+        fi
       fi
 
       exec /usr/share/opensearch-dashboards/bin/opensearch-dashboards "$@"
