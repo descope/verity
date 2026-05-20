@@ -73,7 +73,7 @@ func Generate(imagesDir, reportsDir, registry string, pkgs []apkindex.Package, e
 		return nil, fmt.Errorf("reading images dir %q: %w", imagesDir, err)
 	}
 
-	var images []Image
+	images := []Image{}
 
 	for _, entry := range entries {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".yaml" {
@@ -109,6 +109,7 @@ func buildImage(def *config.ImageDef, registry, reportsDir string, pkgs []apkind
 	img := Image{
 		Name:        def.Name,
 		Description: def.Description,
+		Versions:    []Version{},
 	}
 
 	// Fetch EOL data from endoflife.date API if client is available.
@@ -141,8 +142,9 @@ func buildImage(def *config.ImageDef, registry, reportsDir string, pkgs []apkind
 		baseTags := discovery.DeriveTags(v, "", fullVersion)
 
 		ver := Version{
-			Version: v,
-			EOL:     eolDate,
+			Version:  v,
+			EOL:      eolDate,
+			Variants: []Variant{},
 		}
 
 		typeNames := sortedKeys(def.Types)
@@ -175,7 +177,13 @@ func buildImage(def *config.ImageDef, registry, reportsDir string, pkgs []apkind
 }
 
 func buildVariant(imageName, version, typeName, registry, reportsDir string, baseTags []string) Variant {
+	if len(baseTags) == 0 && version != "" {
+		baseTags = []string{version}
+	}
 	typeTags := discovery.ApplyTypeSuffix(baseTags, typeName)
+	if len(typeTags) == 0 {
+		typeTags = []string{typeName}
+	}
 	ref := fmt.Sprintf("%s/%s:%s", registry, imageName, typeTags[0])
 	variant := Variant{
 		Type:   typeName,
