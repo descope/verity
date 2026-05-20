@@ -16,14 +16,14 @@ MAX_ATTEMPTS="${REGISTRY_COMMAND_ATTEMPTS:-4}"
 BASE_DELAY_SECONDS="${REGISTRY_COMMAND_BASE_DELAY_SECONDS:-10}"
 
 case "$MAX_ATTEMPTS" in
-  ''|*[!0-9]*|0)
+  ''|*[!0-9]*|0|0[0-9]*)
     echo "::error::REGISTRY_COMMAND_ATTEMPTS must be a positive integer" >&2
     exit 2
     ;;
 esac
 
 case "$BASE_DELAY_SECONDS" in
-  ''|*[!0-9]*|0)
+  ''|*[!0-9]*|0|0[0-9]*)
     echo "::error::REGISTRY_COMMAND_BASE_DELAY_SECONDS must be a positive integer" >&2
     exit 2
     ;;

@@ -12,14 +12,14 @@ MAX_ATTEMPTS="${DOCKER_LOGIN_ATTEMPTS:-4}"
 TIMEOUT_SECONDS="${DOCKER_LOGIN_TIMEOUT_SECONDS:-45}"
 
 case "$MAX_ATTEMPTS" in
-  ''|*[!0-9]*|0)
+  ''|*[!0-9]*|0|0[0-9]*)
     echo "::error::DOCKER_LOGIN_ATTEMPTS must be a positive integer"
     exit 2
     ;;
 esac
 
 case "$TIMEOUT_SECONDS" in
-  ''|*[!0-9]*|0)
+  ''|*[!0-9]*|0|0[0-9]*)
     echo "::error::DOCKER_LOGIN_TIMEOUT_SECONDS must be a positive integer"
     exit 2
     ;;
