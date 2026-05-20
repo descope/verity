@@ -6,23 +6,23 @@ import type { IntegerImage, IntegerVariant, IntegerVersion } from "../lib/catalo
 interface RawIntegerCatalog {
   generatedAt: string;
   registry: string;
-  images: Array<{
+  images?: Array<{
     name: string;
     description: string;
-    versions: Array<{
+    versions?: Array<{
       version: string;
       latest?: boolean;
       eol?: string;
-      variants: Array<{
+      variants?: Array<{
         type: string;
-        tags: string[];
+        tags?: string[] | null;
         ref: string;
         digest: string;
         builtAt: string;
         status: "success" | "failure" | "unknown";
-      }>;
-    }>;
-  }>;
+      }> | null;
+    }> | null;
+  }> | null;
 }
 
 interface CatalogResult {

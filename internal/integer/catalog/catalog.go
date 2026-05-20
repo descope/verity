@@ -177,9 +177,12 @@ func buildImage(def *config.ImageDef, registry, reportsDir string, pkgs []apkind
 }
 
 func buildVariant(imageName, version, typeName, registry, reportsDir string, baseTags []string) Variant {
+	if len(baseTags) == 0 && version != "" {
+		baseTags = []string{version}
+	}
 	typeTags := discovery.ApplyTypeSuffix(baseTags, typeName)
 	if len(typeTags) == 0 {
-		typeTags = []string{version}
+		typeTags = []string{typeName}
 	}
 	ref := fmt.Sprintf("%s/%s:%s", registry, imageName, typeTags[0])
 	variant := Variant{
