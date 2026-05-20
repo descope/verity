@@ -3,8 +3,13 @@
 # Verity's current published image entrypoint rewrites the config file in-place
 # before exec. Mount a writable config directory, seed it with the smoke-test
 # connection settings, and point Dashboards at the OpenSearch prerequisite that
-# the harness installs into this same namespace.
+# the harness installs into this same namespace. Disable the chart-provided env
+# equivalents so the currently published entrypoint does not append duplicate
+# YAML keys into the persistent emptyDir config across restarts.
 opensearch-dashboards:
+  opensearchHosts: ""
+  serverHost: ""
+
   extraVolumes:
     - name: verity-config
       emptyDir: {}
