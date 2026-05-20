@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -86,6 +87,33 @@ func TestGenerate_NoReports(t *testing.T) {
 
 	assert.Equal(t, "ghcr.io/verity-org", cat.Registry)
 	assert.NotEmpty(t, cat.GeneratedAt)
+}
+
+func TestGenerate_MarshalsEmptySlicesAsArrays(t *testing.T) {
+	imagesDir := t.TempDir()
+	writeFile(t, imagesDir, "empty.yaml", `
+name: empty
+description: "No versions yet"
+upstream:
+  package: "empty"
+types:
+  default:
+    base: wolfi-base
+    packages: ["empty"]
+versions: {}
+`)
+
+	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", nil, nil)
+	require.NoError(t, err)
+
+	out, err := json.Marshal(cat)
+	require.NoError(t, err)
+	jsonText := string(out)
+	assert.True(t, strings.Contains(jsonText, `"images":[`), jsonText)
+	assert.True(t, strings.Contains(jsonText, `"versions":[]`), jsonText)
+	assert.NotContains(t, jsonText, `"images":null`)
+	assert.NotContains(t, jsonText, `"versions":null`)
+	assert.NotContains(t, jsonText, `"variants":null`)
 }
 
 func TestGenerate_WithReports(t *testing.T) {

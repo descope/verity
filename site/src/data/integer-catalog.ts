@@ -51,18 +51,18 @@ function loadCatalog(): CatalogResult {
     return { images: [], registry: "" };
   }
 
-  const images = data.images.map((img) => ({
+  const images = (data.images ?? []).map((img) => ({
     name: img.name,
     description: img.description,
-    versions: img.versions.map(
+    versions: (img.versions ?? []).map(
       (v): IntegerVersion => ({
         version: v.version,
         latest: v.latest,
         eol: v.eol,
-        variants: v.variants.map(
+        variants: (v.variants ?? []).map(
           (r): IntegerVariant => ({
             type: r.type,
-            tags: r.tags,
+            tags: r.tags ?? [],
             ref: r.ref,
             digest: r.digest,
             builtAt: r.builtAt,
