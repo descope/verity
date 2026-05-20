@@ -323,11 +323,11 @@ jobs:
           check registry "$INPUT_REGISTRY" '^[a-zA-Z0-9./:_-]+$'
 
       - name: Log in to GHCR
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          DOCKER_REGISTRY: ghcr.io
+          DOCKER_USERNAME: ${{ github.actor }}
+          DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/retry-docker-login.sh
 
       - name: Cache Go modules
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -481,12 +481,16 @@ jobs:
 
           APKO_ARGS+=("$tmpconfig" "${REFSARR[@]}")
 
-          apko "${APKO_ARGS[@]}"
+          bash .github/scripts/retry-registry-command.sh \
+            "apko publish" \
+            apko "${APKO_ARGS[@]}"
 
           rm -f "$tmpconfig"
 
           # Capture the digest of the published index for signing
-          digest=$(crane digest "${INPUT_REGISTRY}/${INPUT_IMAGE}:${PRIMARY_TAG}")
+          digest=$(bash .github/scripts/retry-registry-command.sh \
+            "crane digest" \
+            crane digest "${INPUT_REGISTRY}/${INPUT_IMAGE}:${PRIMARY_TAG}")
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
       # ── Security scan ──────────────────────────────────────────────────────
@@ -523,7 +527,9 @@ jobs:
           DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           # Sign by digest — immutable reference that covers all tags pointing to this image.
-          cosign sign --yes "${INPUT_REGISTRY}/${INPUT_IMAGE}@${DIGEST}"
+          bash .github/scripts/retry-registry-command.sh \
+            "cosign sign" \
+            cosign sign --yes "${INPUT_REGISTRY}/${INPUT_IMAGE}@${DIGEST}"
 
       - name: Attest SBOM
         if: hashFiles('sbom-amd64.spdx.json') != ''
