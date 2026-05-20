@@ -7,6 +7,7 @@ export default defineConfig({
   output: 'static',
   integrations: [sitemap()],
   vite: {
+    cacheDir: process.env.VITE_CACHE_DIR ?? 'node_modules/.vite',
     plugins: [tailwindcss()],
   },
 });

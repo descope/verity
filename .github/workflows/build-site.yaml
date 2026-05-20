@@ -170,6 +170,10 @@ jobs:
 
       - name: Build site
         working-directory: site
+        env:
+          # Keep Vite/Astro dependency prebundle writes out of the checked-out
+          # source tree so Harden Runner does not flag them as source overwrites.
+          VITE_CACHE_DIR: ${{ runner.temp }}/verity-site-vite-cache
         run: npm ci && npm run build
 
       - name: Upload Pages artifact
