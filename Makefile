@@ -47,6 +47,7 @@ lint-workflows:
 	actionlint
 	python3 .github/scripts/validate-patch-image-workflow.py
 	python3 .github/scripts/validate-integer-build-image-workflow.py
+	bash .github/scripts/validate-retry-helpers.sh
 
 # Lint YAML files
 lint-yaml:

@@ -442,6 +442,7 @@ jobs:
           BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           export BUILD_TIMESTAMP
           tmpconfig=$(mktemp --suffix=.apko.yaml)
+          trap 'rm -f "$tmpconfig"' EXIT
           cp "$CONFIG_PATH" "$tmpconfig"
           yq -i '
             .annotations["org.opencontainers.image.title"]       = strenv(OCI_TITLE) |
@@ -484,8 +485,6 @@ jobs:
           bash .github/scripts/retry-registry-command.sh \
             "apko publish" \
             apko "${APKO_ARGS[@]}"
-
-          rm -f "$tmpconfig"
 
           # Capture the digest of the published index for signing
           digest=$(bash .github/scripts/retry-registry-command.sh \

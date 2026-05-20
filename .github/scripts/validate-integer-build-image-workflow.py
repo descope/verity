@@ -50,6 +50,14 @@ def main() -> None:
         "retry helper must default to a bounded number of attempts",
     )
     require(
+        "|0|0[0-9]*)" in helper,
+        "retry helper numeric guards must reject zero and leading-zero values",
+    )
+    require(
+        "else\n    rc=$?" in helper,
+        "retry helper must capture the failing command status inside the else branch",
+    )
+    require(
         "sleep \"$wait_seconds\"" in helper and "RANDOM" in helper,
         "retry helper must back off with jitter between attempts",
     )
