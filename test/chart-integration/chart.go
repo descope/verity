@@ -4,7 +4,14 @@ package integration
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/base64"
+	"encoding/pem"
 	"fmt"
+	"math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -45,6 +52,14 @@ var chartObjectFixtures = map[string][]string{
 	"cluster-autoscaler": {
 		filepath.Join("test", "chart-integration", "fixtures", "cluster-autoscaler", "capi-objects.yaml"),
 	},
+}
+
+var chartTakeOwnership = map[string]bool{
+	// workload-identity-webhook's fixture pre-seeds the server-cert Secret with
+	// well-formed CI-only cert data before Helm renders the chart's otherwise empty
+	// Secret. --take-ownership lets Helm adopt that Secret instead of failing on an
+	// existing resource.
+	"workload-identity-webhook": true,
 }
 
 var chartFixtureCRDs = map[string][]string{
@@ -120,9 +135,6 @@ func InstallChartPrerequisites(ctx context.Context, h *Harness, spec config.Char
 func InstallChartFixtures(ctx context.Context, h *Harness, chartName string) error {
 	crdFixtures := chartCRDFixtures[chartName]
 	objectFixtures := chartObjectFixtures[chartName]
-	if len(crdFixtures) == 0 && len(objectFixtures) == 0 {
-		return nil
-	}
 	for _, fixture := range crdFixtures {
 		path := filepath.Join(h.RepoRoot, fixture)
 		h.t.Logf("[fixture] applying %s for %s", path, chartName)
@@ -174,8 +186,91 @@ func seedChartFixtureStatus(ctx context.Context, h *Harness, chartName string) e
 		); err != nil {
 			return fmt.Errorf("seed cluster-autoscaler fixture status: %w", err)
 		}
+	case "workload-identity-webhook":
+		if err := seedWorkloadIdentityWebhookCertSecret(ctx, h, sanitizeNamespace(chartName)); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+func seedWorkloadIdentityWebhookCertSecret(ctx context.Context, h *Harness, namespace string) error {
+	manifest, err := workloadIdentityWebhookCertSecretManifest(namespace, time.Now())
+	if err != nil {
+		return fmt.Errorf("build workload-identity-webhook cert secret fixture: %w", err)
+	}
+	tmp, err := os.CreateTemp("", "workload-identity-webhook-cert-secret-*.yaml")
+	if err != nil {
+		return fmt.Errorf("create cert secret fixture: %w", err)
+	}
+	path := tmp.Name()
+	defer os.Remove(path)
+	if _, err := tmp.WriteString(manifest); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("write cert secret fixture: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("close cert secret fixture: %w", err)
+	}
+	h.t.Logf("[fixture] seeding workload-identity-webhook server cert Secret in namespace %s", namespace)
+	if err := runCmd(ctx, h.t, "", nil,
+		"kubectl", "--kubeconfig", h.KubeconfigPath,
+		"apply", "--validate=false", "-f", path,
+	); err != nil {
+		return fmt.Errorf("apply workload-identity-webhook cert secret fixture: %w", err)
+	}
+	return nil
+}
+
+func workloadIdentityWebhookCertSecretManifest(namespace string, now time.Time) (string, error) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return "", err
+	}
+	service := "azure-wi-webhook-webhook-service"
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(now.UnixNano()),
+		Subject: pkix.Name{
+			CommonName: service,
+		},
+		DNSNames: []string{
+			service,
+			service + "." + namespace,
+			service + "." + namespace + ".svc",
+		},
+		NotBefore:             now.Add(-1 * time.Hour),
+		NotAfter:              now.Add(365 * 24 * time.Hour),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	if err != nil {
+		return "", err
+	}
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
+	return fmt.Sprintf(`apiVersion: v1
+kind: Namespace
+metadata:
+  name: %s
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azure-wi-webhook-server-cert
+  namespace: %s
+type: kubernetes.io/tls
+data:
+  ca.crt: %s
+  tls.crt: %s
+  tls.key: %s
+`, namespace, namespace,
+		base64.StdEncoding.EncodeToString(certPEM),
+		base64.StdEncoding.EncodeToString(certPEM),
+		base64.StdEncoding.EncodeToString(keyPEM),
+	), nil
 }
 
 func UninstallChartFixtures(ctx context.Context, h *Harness, chartName string) {
@@ -237,6 +332,9 @@ func helmInstall(ctx context.Context, h *Harness, cc *ChartContext) error {
 	if vals := valuesFile(cc); vals != "" {
 		args = append(args, "--values", vals)
 		h.t.Logf("[install] applying values fixture %s", vals)
+	}
+	if chartTakeOwnership[cc.Spec.Name] {
+		args = append(args, "--take-ownership")
 	}
 	ictx, cancel := context.WithTimeout(ctx, timeout+2*time.Minute)
 	defer cancel()
