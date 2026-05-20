@@ -102,6 +102,19 @@ types:
     packages: ["empty"]
 versions: {}
 `)
+	writeFile(t, imagesDir, "skipped.yaml", `
+name: skipped
+description: "All variants skipped"
+upstream:
+  package: "skipped-{{version}}"
+types:
+  default:
+    base: wolfi-base
+    packages: ["skipped-{{version}}"]
+versions:
+  "1":
+    skip-types: ["default"]
+`)
 
 	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", nil, nil)
 	require.NoError(t, err)
@@ -111,6 +124,7 @@ versions: {}
 	jsonText := string(out)
 	assert.True(t, strings.Contains(jsonText, `"images":[`), jsonText)
 	assert.True(t, strings.Contains(jsonText, `"versions":[]`), jsonText)
+	assert.True(t, strings.Contains(jsonText, `"variants":[]`), jsonText)
 	assert.NotContains(t, jsonText, `"images":null`)
 	assert.NotContains(t, jsonText, `"versions":null`)
 	assert.NotContains(t, jsonText, `"variants":null`)
