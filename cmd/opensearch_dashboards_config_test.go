@@ -31,6 +31,8 @@ func TestOpenSearchDashboardsImageUsesConfigScrubbingEntrypoint(t *testing.T) {
 	assert.Contains(t, text, "sed '/^opensearch_security\\./d'")
 	assert.Contains(t, text, "OPENSEARCH_HOSTS")
 	assert.Contains(t, text, "opensearch.hosts")
+	assert.Contains(t, text, "has_yaml_key 'opensearch\\.hosts'")
+	assert.Contains(t, text, "has_yaml_key 'server\\.host'")
 	assert.Contains(t, text, "SERVER_HOST")
 	assert.Contains(t, text, "opensearch.username")
 	assert.Contains(t, text, "exec /usr/share/opensearch-dashboards/bin/opensearch-dashboards")
@@ -40,4 +42,6 @@ func TestOpenSearchDashboardsImageUsesConfigScrubbingEntrypoint(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(values), "opensearch.hosts")
 	assert.Contains(t, string(values), "opensearch.ssl.verificationMode: none")
+	assert.Contains(t, string(values), "opensearchHosts: \"\"")
+	assert.Contains(t, string(values), "serverHost: \"\"")
 }
