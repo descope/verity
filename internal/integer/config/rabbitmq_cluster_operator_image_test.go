@@ -24,6 +24,13 @@ func TestRabbitMQClusterOperatorImageHasChartManagerPath(t *testing.T) {
 	if tmpl.Entrypoint != "/usr/bin/manager" {
 		t.Fatalf("entrypoint=%q, want /usr/bin/manager", tmpl.Entrypoint)
 	}
+	manager, ok := findPath(tmpl.Paths, "/usr/bin/manager")
+	if !ok {
+		t.Fatal("missing /usr/bin/manager permissions entry")
+	}
+	if manager.Type != "permissions" || manager.Permissions != "0o755" {
+		t.Fatalf("/usr/bin/manager path entry = type:%q mode:%q, want permissions 0o755", manager.Type, manager.Permissions)
+	}
 
 	found := false
 	for _, p := range tmpl.Paths {
