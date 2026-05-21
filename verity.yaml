@@ -875,6 +875,17 @@ replacements:
     image: "tempo"
     tag: "2"
 
+  # rabbitmq-cluster-operator 0.2.3 renders the cluster operator image as
+  # `ghcr.io/rabbitmq/cluster-operator:2.21.0`. Verity's rebuild is named
+  # `rabbitmq-cluster-operator` (images/rabbitmq-cluster-operator.yaml)
+  # and publishes floating-major tag `2`; without this explicit mapping the
+  # wrapper leaves the upstream ghcr.io/rabbitmq image in place and the
+  # chart-integration image-origin gate fails.
+  "rabbitmq/cluster-operator":
+    registry: "ghcr.io/verity-org"
+    image: "rabbitmq-cluster-operator"
+    tag: "2"
+
   # kyverno chart (3.7.2). Chart renders images under
   # `reg.kyverno.io/kyverno/*` (Kyverno's pull-through mirror); repoPath
   # strips the host so keys match `kyverno/<name>`. The cleanup-controller,
