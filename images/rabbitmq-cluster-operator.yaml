@@ -9,6 +9,10 @@ types:
     packages: ["rabbitmq-cluster-operator"]
     entrypoint: /usr/bin/manager
     paths:
+      # apko applies chmod to symlink path mutations and follows links. Pair
+      # the chart shim below with an explicit executable target permission so
+      # /usr/bin/manager cannot be left non-executable in the published image.
+      - { path: /usr/bin/manager, type: permissions, permissions: 0o755 }
       # cloudpirates rabbitmq-cluster-operator chart 0.3.0 hardcodes
       # command: /manager (matching upstream image layout). Wolfi's
       # package installs the binary at /usr/bin/manager. Keep the
