@@ -67,7 +67,13 @@ func TestVerityConfigChartValuesLoading(t *testing.T) {
 	if valkey["image.tag"] != "9.0" {
 		t.Fatalf("valkey image.tag=%v, want 9.0", valkey["image.tag"])
 	}
-	rabbitmqClusterOperator := vc2.Replacements["rabbitmq/cluster-operator"]
+	rabbitmqClusterOperator, ok := vc2.Replacements["rabbitmq/cluster-operator"]
+	if !ok {
+		t.Fatalf("missing replacement for rabbitmq/cluster-operator")
+	}
+	if rabbitmqClusterOperator.Registry != "ghcr.io/verity-org" {
+		t.Fatalf("rabbitmq/cluster-operator replacement registry=%q, want ghcr.io/verity-org", rabbitmqClusterOperator.Registry)
+	}
 	if rabbitmqClusterOperator.Image != "rabbitmq-cluster-operator" {
 		t.Fatalf("rabbitmq/cluster-operator replacement image=%q, want rabbitmq-cluster-operator", rabbitmqClusterOperator.Image)
 	}
