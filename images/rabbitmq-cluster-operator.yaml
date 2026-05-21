@@ -8,6 +8,12 @@ types:
     base: wolfi-base
     packages: ["rabbitmq-cluster-operator"]
     entrypoint: /usr/bin/manager
+    paths:
+      # cloudpirates rabbitmq-cluster-operator chart 0.3.0 hardcodes
+      # command: /manager (matching upstream image layout). Wolfi's
+      # package installs the binary at /usr/bin/manager. Keep the
+      # rebuild drop-in compatible with the chart.
+      - { path: /manager, type: symlink, source: /usr/bin/manager, uid: 0, gid: 0 }
 
 versions:
   "2": {}
