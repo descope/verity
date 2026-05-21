@@ -67,6 +67,13 @@ func TestVerityConfigChartValuesLoading(t *testing.T) {
 	if valkey["image.tag"] != "9.0" {
 		t.Fatalf("valkey image.tag=%v, want 9.0", valkey["image.tag"])
 	}
+	rabbitmqClusterOperator := vc2.Replacements["rabbitmq/cluster-operator"]
+	if rabbitmqClusterOperator.Image != "rabbitmq-cluster-operator" {
+		t.Fatalf("rabbitmq/cluster-operator replacement image=%q, want rabbitmq-cluster-operator", rabbitmqClusterOperator.Image)
+	}
+	if rabbitmqClusterOperator.Tag != "2" {
+		t.Fatalf("rabbitmq/cluster-operator replacement tag=%q, want 2", rabbitmqClusterOperator.Tag)
+	}
 
 	// victoria-logs-single has NO chartValues but its only image is in
 	// unpatchableImages — the new processChart passthrough branch must
