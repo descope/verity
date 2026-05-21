@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
-	"strings"
 	"testing"
 )
 
@@ -63,17 +62,4 @@ func TestAirflowImageExposesConsoleScriptsOnPath(t *testing.T) {
 			t.Fatalf("%s ownership/perms = uid:%d gid:%d mode:%s, want uid:50000 gid:0 mode:0o775", dirPath, p.UID, p.GID, p.Permissions)
 		}
 	}
-}
-
-func pathHasEntry(path, want string) bool {
-	return slices.Contains(strings.Split(path, ":"), want)
-}
-
-func findPath(paths []PathDef, want string) (PathDef, bool) {
-	for _, p := range paths {
-		if p.Path == want {
-			return p, true
-		}
-	}
-	return PathDef{}, false
 }
