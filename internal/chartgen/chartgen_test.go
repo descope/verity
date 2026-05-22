@@ -15,8 +15,10 @@ import (
 
 var (
 	errTransientTagRace  = errors.New(`helm push: failed to perform "Tag" on destination: sha256:abc: not found`)
+	errGenericNotFound   = errors.New("helm push: 404 not found")
 	errUnauthorizedPush  = errors.New("helm push: unauthorized: authentication required")
 	errTemporaryRegistry = errors.New("temporary registry error")
+	errRetrySleep        = errors.New("retry sleep interrupted")
 )
 
 func TestPushChartWithRetrySucceedsAfterTransientTagRace(t *testing.T) {
@@ -80,6 +82,29 @@ func TestPushChartWithRetryStopsOnPermanentError(t *testing.T) {
 	}
 }
 
+func TestPushChartWithRetryDoesNotRetryGenericNotFound(t *testing.T) {
+	var attempts int
+	runner := func(context.Context, time.Duration, string, ...string) (string, error) {
+		attempts++
+		return "", errGenericNotFound
+	}
+	sleeper := func(context.Context, time.Duration) error {
+		t.Fatal("sleeper should not be called for generic not found errors")
+		return nil
+	}
+
+	err := pushChartWithRetry(context.Background(), "/tmp/wrapper.tgz", "oci://ghcr.io/verity-org/charts", runner, sleeper, 4)
+	if err == nil {
+		t.Fatal("pushChartWithRetry() error = nil, want error")
+	}
+	if attempts != 1 {
+		t.Fatalf("attempts = %d, want 1", attempts)
+	}
+	if !strings.Contains(err.Error(), "404 not found") {
+		t.Fatalf("error = %v, want original not found detail", err)
+	}
+}
+
 func TestPushChartWithRetryPreservesErrorsAfterExhaustion(t *testing.T) {
 	var attempts int
 	runner := func(context.Context, time.Duration, string, ...string) (string, error) {
@@ -99,6 +124,38 @@ func TestPushChartWithRetryPreservesErrorsAfterExhaustion(t *testing.T) {
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("error = %v, missing %q", err, want)
 		}
+	}
+}
+
+func TestPushChartWithRetryLabelsSleepErrorsWithoutFakeAttempt(t *testing.T) {
+	runner := func(context.Context, time.Duration, string, ...string) (string, error) {
+		return "", errTemporaryRegistry
+	}
+	sleeper := func(context.Context, time.Duration) error { return errRetrySleep }
+
+	err := pushChartWithRetry(context.Background(), "/tmp/wrapper.tgz", "oci://ghcr.io/verity-org/charts", runner, sleeper, 4)
+	if err == nil {
+		t.Fatal("pushChartWithRetry() error = nil, want error")
+	}
+	for _, want := range []string{"attempt 1: temporary registry error", "wait before retry after attempt 1: retry sleep interrupted"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error = %v, missing %q", err, want)
+		}
+	}
+	if strings.Contains(err.Error(), "attempt 2") {
+		t.Fatalf("error = %v, should not invent attempt 2 for sleep failure", err)
+	}
+}
+
+func TestHelmPushBackoffCapsWithoutOverflow(t *testing.T) {
+	if got := helmPushBackoff(1); got != 5*time.Second {
+		t.Fatalf("helmPushBackoff(1) = %s, want 5s", got)
+	}
+	if got := helmPushBackoff(2); got != 10*time.Second {
+		t.Fatalf("helmPushBackoff(2) = %s, want 10s", got)
+	}
+	if got := helmPushBackoff(99); got != helmPushMaxBackoff {
+		t.Fatalf("helmPushBackoff(99) = %s, want %s", got, helmPushMaxBackoff)
 	}
 }
 

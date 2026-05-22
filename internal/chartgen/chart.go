@@ -145,31 +145,37 @@ func pushChartWithRetry(ctx context.Context, tgzPath, registry string, runner co
 		maxAttempts = 1
 	}
 
-	errs := make([]error, 0, maxAttempts)
+	details := make([]string, 0, maxAttempts)
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		_, err := runner(ctx, helmPushTimeout, "helm", "push", tgzPath, registry)
 		if err == nil {
 			return nil
 		}
 
-		errs = append(errs, err)
+		details = append(details, fmt.Sprintf("attempt %d: %v", attempt, err))
 		if attempt == maxAttempts || !isRetriableHelmPushError(err) {
-			return helmPushError(tgzPath, registry, attempt, maxAttempts, errs)
+			return helmPushError(tgzPath, registry, attempt, maxAttempts, details)
 		}
 
 		delay := helmPushBackoff(attempt)
 		fmt.Fprintf(os.Stderr, "warning: helm push %s to %s failed on attempt %d/%d; retrying in %s: %v\n", tgzPath, registry, attempt, maxAttempts, delay, err)
 		if sleepErr := sleeper(ctx, delay); sleepErr != nil {
-			errs = append(errs, fmt.Errorf("wait before retry: %w", sleepErr))
-			return helmPushError(tgzPath, registry, attempt, maxAttempts, errs)
+			details = append(details, fmt.Sprintf("wait before retry after attempt %d: %v", attempt, sleepErr))
+			return helmPushError(tgzPath, registry, attempt, maxAttempts, details)
 		}
 	}
 
-	return helmPushError(tgzPath, registry, maxAttempts, maxAttempts, errs)
+	return helmPushError(tgzPath, registry, maxAttempts, maxAttempts, details)
 }
 
 func helmPushBackoff(failedAttempt int) time.Duration {
-	delay := helmPushBaseBackoff << max(failedAttempt-1, 0)
+	delay := helmPushBaseBackoff
+	for i := 1; i < failedAttempt; i++ {
+		if delay >= helmPushMaxBackoff/2 {
+			return helmPushMaxBackoff
+		}
+		delay *= 2
+	}
 	if delay > helmPushMaxBackoff {
 		return helmPushMaxBackoff
 	}
@@ -183,7 +189,6 @@ func isRetriableHelmPushError(err error) bool {
 	msg := strings.ToLower(err.Error())
 	retriableFragments := []string{
 		`failed to perform "tag" on destination`,
-		"not found",
 		"timeout",
 		"temporary",
 		"connection reset",
@@ -204,15 +209,8 @@ func isRetriableHelmPushError(err error) bool {
 	return false
 }
 
-func helmPushError(tgzPath, registry string, attempts, maxAttempts int, errs []error) error {
-	parts := make([]string, 0, len(errs))
-	for i, err := range errs {
-		if err == nil {
-			continue
-		}
-		parts = append(parts, fmt.Sprintf("attempt %d: %v", i+1, err))
-	}
-	return fmt.Errorf("%w: %s to %s after %d/%d attempt(s): %s", errHelmPushFailed, tgzPath, registry, attempts, maxAttempts, strings.Join(parts, "; "))
+func helmPushError(tgzPath, registry string, attempts, maxAttempts int, details []string) error {
+	return fmt.Errorf("%w: %s to %s after %d/%d attempt(s): %s", errHelmPushFailed, tgzPath, registry, attempts, maxAttempts, strings.Join(details, "; "))
 }
 
 func sleepContext(ctx context.Context, delay time.Duration) error {
