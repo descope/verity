@@ -61,7 +61,16 @@ if [[ ${#SOURCES[@]} -eq 0 ]]; then
   SOURCES=("packages/repo" "apk-artifacts")
 fi
 
-if [[ -z "$OUTPUT_DIR" ]] || [[ "$OUTPUT_DIR" == "/" ]] || [[ "$OUTPUT_DIR" == "." ]]; then
+has_parent_traversal() {
+  local path="$1" segment
+  IFS='/' read -ra segments <<< "$path"
+  for segment in "${segments[@]}"; do
+    [[ "$segment" == ".." ]] && return 0
+  done
+  return 1
+}
+
+if [[ -z "$OUTPUT_DIR" ]] || [[ "$OUTPUT_DIR" == "/" ]] || [[ "$OUTPUT_DIR" == "." ]] || has_parent_traversal "$OUTPUT_DIR"; then
   echo "unsafe output directory: ${OUTPUT_DIR}" >&2
   exit 2
 fi

@@ -116,6 +116,15 @@ func TestAssembleAPKRepositoryRejectsDuplicateDestinations(t *testing.T) {
 	assert.Contains(t, output, "duplicate APK destination x86_64/demo.apk")
 }
 
+func TestAssembleAPKRepositoryRejectsTraversalOutputDirectory(t *testing.T) {
+	repoRoot := t.TempDir()
+
+	output, err := runGithubScript(t, repoRoot, "assemble-apk-repository.sh", "--output", "../apk-repo", "missing-source")
+
+	require.Error(t, err)
+	assert.Contains(t, output, "unsafe output directory")
+}
+
 func TestAssembleAPKRepositoryRequiresRSAKeyName(t *testing.T) {
 	repoRoot := t.TempDir()
 
