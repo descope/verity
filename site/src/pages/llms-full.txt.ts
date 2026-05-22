@@ -9,6 +9,7 @@ import {
   integerCount,
 } from "../data/full-catalog";
 import type { FullCatalogImage } from "../data/full-catalog";
+import { apkRepository } from "../data/apk-repository";
 import { getChartsCatalog } from "../lib/charts";
 
 /** Format a single catalog image as a markdown list item. */
@@ -104,13 +105,14 @@ export const GET: APIRoute = ({ site }) => {
 2. [Quick Start](#quick-start)
 3. [How It Works](#how-it-works)
 4. [Image Catalog](#image-catalog) (${totalImages} images across ${totalCategories} categories)
-5. [Helm Charts](#helm-charts)
-6. [Supply Chain Compliance](#supply-chain-compliance)
-7. [Architecture](#architecture)
-8. [CLI Reference](#cli-reference)
-9. [Configuration Format](#configuration-format)
-10. [Verification Commands](#verification-commands)
-11. [Contributing](#contributing)
+5. [Experimental APK Repository](#experimental-apk-repository)
+6. [Helm Charts](#helm-charts)
+7. [Supply Chain Compliance](#supply-chain-compliance)
+8. [Architecture](#architecture)
+9. [CLI Reference](#cli-reference)
+10. [Configuration Format](#configuration-format)
+11. [Verification Commands](#verification-commands)
+12. [Contributing](#contributing)
 
 ---
 
@@ -218,6 +220,44 @@ Verity maintains ${totalImages} container images across ${totalCategories} categ
 - **Variants**: \`default\` (standard), \`dev\` (includes build tools/shell), \`fips\` (FIPS 140-2 compliant)
 
 ${catalogSections}
+
+---
+
+## Experimental APK Repository
+
+Status: **${apkRepository.status}**. ${apkRepository.caveat}
+
+Verity's planned APK repository will expose package-level artifacts for Wolfi/Alpine-compatible consumers after the publish workflow produces signed per-architecture indexes and the repository verification task confirms availability.
+
+### Repository layout
+
+| APK arch | Platform | Repository URL | Static metadata |
+|----------|----------|----------------|-----------------|
+${apkRepository.architectures
+  .map(
+    (arch) =>
+      `| \`${arch.apk}\` | \`${arch.platform}\` | \`${siteUrl}/${apkRepository.basePath}/${arch.apk}\` | \`${siteUrl}/${apkRepository.basePath}/${arch.apk}/APKINDEX.tar.gz\` |`
+  )
+  .join("\n")}
+
+**Signing key**: \`${siteUrl}/${apkRepository.basePath}/${apkRepository.keyFile}\`
+
+**Fingerprint**: \`${apkRepository.keyFingerprint}\`
+
+### Install flow after verification
+
+\`\`\`sh
+apk_arch="$(apk --print-arch)"
+wget -O "/etc/apk/keys/${apkRepository.keyFile}" "${siteUrl}/${apkRepository.basePath}/${apkRepository.keyFile}"
+echo "${siteUrl}/${apkRepository.basePath}/\${apk_arch}" >> /etc/apk/repositories
+apk update
+\`\`\`
+
+Trust notes: APK clients trust packages through public keys in \`/etc/apk/keys/\`; verify the published fingerprint before use. During key rotation, install old and new keys through the overlap window, refresh with \`apk update\`, then remove the retired key after Verity announces completion. Keep APK trust separate from OCI image cosign/SLSA attestations.
+
+Experimental caveats: package names, versions, repository paths, and signing keys may change; the repository may be empty or return 404 until publish/verification completes; use only in ephemeral tests until general availability.
+
+Full page: ${siteUrl}/${apkRepository.basePath}/index.md
 
 ---
 

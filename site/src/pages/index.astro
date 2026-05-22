@@ -3,6 +3,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import HeroSection from "../components/HeroSection.astro";
 import ImageCatalog from "../components/ImageCatalog.astro";
 import SeverityBadges from "../components/SeverityBadges.astro";
+import { apkRepository } from "../data/apk-repository";
 import { getChartsCatalog } from "../lib/charts";
 import { getChartVulns } from "../lib/chart-vulns";
 
@@ -13,6 +14,38 @@ const charts = chartsCatalog.charts;
 
 <BaseLayout title="Verity — Security-Patched Container Registry" mdUrl={`${base}index.md`}>
   <HeroSection />
+
+  <section class="mb-12">
+    <a
+      href={`${base}apk/`}
+      class="group block overflow-hidden rounded-xl border border-amber-500/30 bg-linear-to-br from-amber-500/10 via-verity-surface to-verity-void p-5 transition-colors hover:border-amber-400/60"
+    >
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <div class="mb-2 flex flex-wrap items-center gap-2">
+            <span
+              class="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-amber-300"
+            >
+              Experimental
+            </span>
+            <span class="font-mono text-xs text-verity-text-muted">{apkRepository.status}</span>
+          </div>
+          <h2 class="text-xl font-semibold tracking-wider text-verity-text-primary">
+            APK Repository Preview
+          </h2>
+          <p class="mt-2 max-w-3xl text-sm text-verity-text-secondary">
+            Planned Wolfi/Alpine-compatible package repository metadata, install flow, trust model,
+            key-rotation notes, and supported architectures.
+          </p>
+        </div>
+        <div
+          class="font-mono text-sm text-amber-200 transition-transform group-hover:translate-x-1"
+        >
+          View docs &rarr;
+        </div>
+      </div>
+    </a>
+  </section>
 
   {
     charts.length > 0 && (
