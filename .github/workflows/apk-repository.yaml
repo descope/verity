@@ -3,9 +3,6 @@ name: APK Repository
 on:
   workflow_dispatch:
     inputs:
-      source_run_id:
-        description: "Integer Build Image run id that uploaded melange-packages-* artifacts"
-        required: false
       publish_pages:
         description: "Deploy the assembled site artifact to GitHub Pages"
         required: true
@@ -16,7 +13,6 @@ on:
           - "true"
 
 permissions:
-  actions: read
   contents: read
   pages: write
   id-token: write
@@ -38,36 +34,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Validate inputs
-        env:
-          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
-        run: |
-          if [ -n "$SOURCE_RUN_ID" ] && [[ ! "$SOURCE_RUN_ID" =~ ^[0-9]+$ ]]; then
-            echo "source_run_id must be numeric" >&2
-            exit 1
-          fi
-
       - name: Install mise
         uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
         with:
           install: true
           cache: true
 
-      - name: Download Integer Melange package artifacts
-        if: inputs.source_run_id != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+      - name: Prepare artifact source directory
         run: |
           mkdir -p apk-artifacts
-          if gh run download "$SOURCE_RUN_ID" \
-            --repo "$GITHUB_REPOSITORY" \
-            --pattern 'melange-packages-*' \
-            --dir apk-artifacts; then
-            find apk-artifacts -type f -name '*.apk' -print | sort
-          else
-            echo "::warning::No melange package artifacts downloaded from run ${SOURCE_RUN_ID}"
-          fi
+          echo "Repository assembly will scan packages/repo and apk-artifacts."
+          echo "Cross-run artifact download is intentionally not performed in this privileged workflow."
 
       - name: Build site shell
         working-directory: site

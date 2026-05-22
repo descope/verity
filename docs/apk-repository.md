@@ -12,8 +12,14 @@ Integer image builds already create Melange package artifacts in
 - `melange-packages-aarch64`
 
 Each artifact contains a `packages/repo/` tree with architecture-specific
-subdirectories. The APK repository workflow downloads those artifacts from a
-caller-provided workflow run id and indexes any `.apk` files it finds.
+subdirectories. The repository assembly scripts scan `packages/repo/` and
+`apk-artifacts/` for those layouts.
+
+The privileged Pages workflow does **not** download artifacts from arbitrary
+workflow runs. Doing so would allow artifact poisoning if a caller selected an
+untrusted run. A follow-up should add a trusted handoff (for example, a same-run
+build-and-assemble job chain, provenance checks, or a protected package storage
+decision) before cross-run artifacts are published automatically.
 
 ## Signing
 

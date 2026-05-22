@@ -153,5 +153,5 @@ for arch_dir in "$OUTPUT_DIR"/*; do
   if [[ -n "$private_key" ]]; then
     abuild-sign -k "$private_key" "$arch_dir/APKINDEX.tar.gz"
   fi
-  echo "Assembled ${arch_dir#${OUTPUT_DIR}/}/APKINDEX.tar.gz (${#arch_apks[@]} packages)"
+  echo "Assembled ${arch_dir#"${OUTPUT_DIR}"/}/APKINDEX.tar.gz (${#arch_apks[@]} packages)"
 done
