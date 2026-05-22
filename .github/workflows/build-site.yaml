@@ -28,6 +28,8 @@ jobs:
     runs-on: ubuntu-24.04
     environment:
       name: github-pages
+    env:
+      HAS_APK_REPOSITORY_PRIVATE_KEY: ${{ secrets.APK_REPOSITORY_PRIVATE_KEY != '' }}
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -173,6 +175,18 @@ jobs:
         env:
           VITE_CACHE_DIR: ${{ runner.temp }}/verity-vite-cache
         run: npm ci && npm run build
+
+      - name: Assemble APK repository overlay
+        env:
+          APK_REPOSITORY_PRIVATE_KEY: ${{ secrets.APK_REPOSITORY_PRIVATE_KEY }}
+        run: bash .github/scripts/assemble-apk-repository.sh --output site/dist/apk packages/repo apk-artifacts
+
+      - name: Validate APK repository overlay
+        run: bash .github/scripts/validate-apk-repository.sh site/dist/apk
+
+      - name: Validate signed APK repository overlay
+        if: env.HAS_APK_REPOSITORY_PRIVATE_KEY == 'true'
+        run: bash .github/scripts/validate-apk-repository.sh --require-signature site/dist/apk
 
       - name: Upload Pages artifact
         uses: ./.github/actions/upload-pages-artifact
