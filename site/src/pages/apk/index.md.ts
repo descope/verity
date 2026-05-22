@@ -15,10 +15,6 @@ export const GET: APIRoute = ({ site }) => {
     )
     .join("\n");
 
-  const repositoryLines = apkRepository.architectures
-    .map((arch) => `${repoRoot}/${arch.apk}`)
-    .join("\n");
-
   const content = `# Experimental APK Repository — Verity
 
 > Status: **${apkRepository.status}**. ${apkRepository.caveat}
@@ -48,7 +44,7 @@ apk_arch="$(apk --print-arch)"
 repo_url="${repoRoot}/\${apk_arch}"
 
 wget -O "/etc/apk/keys/${apkRepository.keyFile}" "${keyUrl}"
-printf '%s\n' "${repositoryLines}" >> /etc/apk/repositories
+printf '%s\n' "${repoRoot}/\${apk_arch}" >> /etc/apk/repositories
 apk update
 
 # Example, once packages are published:
