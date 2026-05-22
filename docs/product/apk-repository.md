@@ -14,7 +14,7 @@ wrapper charts, and the web catalog.
   their architecture. There are no date snapshots or stable/edge channels in the
   MVP.
 - **Signed repository metadata:** clients must trust the Verity APK public key
-  before installing packages.
+  and verify its published SHA-256 fingerprint before installing packages.
 - **Static delivery:** repository files are served by GitHub Pages under the
   same domain as the catalog.
 
@@ -25,7 +25,7 @@ wrapper charts, and the web catalog.
 | Base URL | `https://verity.supply/apk/` |
 | Architectures | `x86_64`, `aarch64` |
 | Channels | Rolling `latest` only; no explicit channel segment |
-| Public key | `https://verity.supply/apk/verity.rsa.pub` |
+| Public key | `https://verity.supply/apk/verity.rsa.pub` current-key alias; fingerprinted key files may be published during rotation |
 | Per-arch repository | `https://verity.supply/apk/<arch>` |
 | Index | `/apk/<arch>/APKINDEX.tar.gz`, signed with Verity APK signing key |
 | Packages | Current Verity-built `.apk` files referenced by the index |

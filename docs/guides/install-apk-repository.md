@@ -14,6 +14,10 @@ channel graduates from experimental status.
 
 Public key: `https://verity.supply/apk/verity.rsa.pub`
 
+SHA-256 fingerprint: `TBD` until the implementation publishes the production
+key. Do not use the repository until this value is replaced by a real
+fingerprint on `verity.supply` and in this guide.
+
 ## Install
 
 Run these commands as root inside the Alpine-compatible system:
@@ -29,7 +33,10 @@ esac
 wget -O /etc/apk/keys/verity.rsa.pub \
   https://verity.supply/apk/verity.rsa.pub
 
-printf '%s\n' "https://verity.supply/apk/$arch" >> /etc/apk/repositories
+repo="https://verity.supply/apk/$arch"
+if ! grep -qxF "$repo" /etc/apk/repositories; then
+  printf '%s\n' "$repo" >> /etc/apk/repositories
+fi
 
 apk update
 ```
@@ -42,8 +49,9 @@ apk add <package-name>
 
 ## Verify repository state
 
-After implementation creates the production public key, compare the documented
-SHA-256 fingerprint with the installed key:
+Before trusting the repository, confirm this guide or `verity.supply` publishes
+a non-`TBD` SHA-256 fingerprint for the production key. Then compare that value
+with the installed key:
 
 ```sh
 sha256sum /etc/apk/keys/verity.rsa.pub

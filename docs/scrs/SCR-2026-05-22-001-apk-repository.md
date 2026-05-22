@@ -95,12 +95,17 @@ See `docs/architecture/apk-repository.md` for the steady-state contract and
 
 - The private APK signing key is a GitHub Actions secret available only to the
   repository-publish workflow.
-- The public key is committed or generated into the Pages artifact at
-  `/apk/verity.rsa.pub` and documented with a SHA-256 fingerprint.
+- The current public key is committed or generated into the Pages artifact at
+  `/apk/verity.rsa.pub` and documented with a SHA-256 fingerprint before use.
+- Rotation may also publish fingerprinted key files such as
+  `/apk/verity-<fingerprint>.rsa.pub` so clients can trust old and new keys
+  during an overlap window.
 - Index signing fails closed: no unsigned `APKINDEX.tar.gz` is published.
-- Rotation uses additive trust first: publish the new public key, sign new
-  indexes with the new key, keep the old public key documented during the
-  overlap window, then remove the retired key after the announced cutoff.
+- Rotation uses additive trust first: publish the new fingerprinted public key,
+  ask clients to install both keys, move `/apk/verity.rsa.pub` to the new key for
+  future installs, sign new indexes with the new key, keep the old public key
+  documented during the overlap window, then remove the retired key after the
+  announced cutoff.
 
 ## 7. Retention
 

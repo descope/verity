@@ -11,7 +11,8 @@ The MVP repository is static and published through GitHub Pages:
 
 ```text
 https://verity.supply/apk/
-├── verity.rsa.pub
+├── verity.rsa.pub               # current-key alias
+├── verity-<fingerprint>.rsa.pub # optional rotation/overlap key
 ├── x86_64/
 │   ├── APKINDEX.tar.gz
 │   └── *.apk
@@ -26,8 +27,10 @@ Rules:
 - Each architecture directory is self-contained: the index references only APKs
   in that directory.
 - `APKINDEX.tar.gz` is always signed. An unsigned index must not be uploaded.
-- The public key is available at `/apk/verity.rsa.pub` and is the only key the
-  install guide asks users to trust for the MVP.
+- The current public key is available at `/apk/verity.rsa.pub`. During rotation,
+  fingerprinted key files such as `/apk/verity-<fingerprint>.rsa.pub` may also
+  be published so clients can install both old and new trust anchors before the
+  alias moves.
 - No package outside the current index is part of the repository contract.
 
 ## Build and publish flow
@@ -51,15 +54,19 @@ fails.
 
 - The private signing key is stored as a GitHub Actions secret scoped to the
   Pages/repository publish workflow.
-- The public key is non-secret and published as `/apk/verity.rsa.pub`.
-- Documentation and site copy must show the SHA-256 fingerprint of the public
-  key once the implementation creates the production key.
+- The current public key is non-secret and published as `/apk/verity.rsa.pub`.
+- Documentation and site copy must show the SHA-256 fingerprint next to the key
+  URL before the repository is advertised for use. Until the implementation
+  creates the production key, the canonical fingerprint value is `TBD` and the
+  repository must remain unadvertised.
 - CI logs must not print private key material. Workflows should write private
   material to temporary files with restrictive permissions and delete them after
   signing.
-- Key rotation is additive first: publish the new public key, announce the new
-  fingerprint, sign future indexes with the new key, keep old-key instructions
-  through the overlap period, then remove the retired key from docs and Pages.
+- Key rotation is additive first: publish a fingerprinted new public key,
+  announce the new fingerprint, ask clients to install both old and new keys,
+  move the `/apk/verity.rsa.pub` alias to the new key for future installs, sign
+  future indexes with the new key, then remove retired-key instructions after
+  the overlap period.
 
 ## Retention policy
 
@@ -77,7 +84,8 @@ implementation details and do not create a supported package archive.
 
 Before publishing or advertising a repository update, automation should verify:
 
-1. `/apk/verity.rsa.pub` exists and matches the documented fingerprint.
+1. `/apk/verity.rsa.pub` exists and matches the documented non-`TBD`
+   fingerprint.
 2. Each `APKINDEX.tar.gz` includes an APK signature entry accepted by `apk` when
    the Verity public key is installed.
 3. Every package referenced by an index exists in the same architecture
