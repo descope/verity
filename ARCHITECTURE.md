@@ -14,6 +14,7 @@ covers the system design, component responsibilities, and pipeline mechanics.
 | **BuildKit** | Builds patched container images (production pipeline uses the GHCR-mirrored `buildx-stable-1` digest; PR smoke tests use a pinned buildx driver image; local `docker-compose.yaml` currently pins `moby/buildkit:v0.29.0`) |
 | **apko / melange** | Builds Wolfi-based Integer images from source (apko rootfs + melange APKs) |
 | **Helm** | Packages patched wrapper charts pushed to `oci://ghcr.io/verity-org/charts` |
+| **APK repository** | Experimental signed static APK repository served from GitHub Pages under `/apk/` |
 | **cosign** | Keyless image signing via Sigstore OIDC |
 | **GitHub Actions** | CI/CD pipeline orchestration (10 workflows) |
 
@@ -33,6 +34,17 @@ images ship an SPDX SBOM produced by apko.
 
 FIPS variants are available for a curated set of images (`golang`, `nginx`,
 `caddy`, `helm`, `terraform`, `cosign`, `crane`).
+
+## Experimental APK Repository
+
+Verity's planned APK repository is a signed, static, rolling `latest` repository
+served beside the public site at `https://verity.supply/apk/`. The MVP supports
+`x86_64` and `aarch64`, with one signed `APKINDEX.tar.gz` per architecture and a
+shared public key at `/apk/verity.rsa.pub`. It is documented as experimental and
+does not replace signed container images, Integer images, or Helm wrapper charts.
+
+Steady-state contract: [`docs/architecture/apk-repository.md`](docs/architecture/apk-repository.md).
+User install flow: [`docs/guides/install-apk-repository.md`](docs/guides/install-apk-repository.md).
 
 ## Source Layout
 
@@ -68,7 +80,8 @@ verity/
 │   ├── bespoke/                    Bespoke melange package builds (crane, dive, ko, pgweb)
 │   ├── overrides/fips.env          FIPS environment overrides
 │   └── upstream.lock.json          Locked upstream package versions
-├── site/                           Astro 6 static site
+├── site/                           Astro 6 static site; future Pages host for `/apk/` repository artifacts
+├── docs/                           SCRs plus stable architecture/product/guide docs
 ├── .github/workflows/              10 workflows (see Pipeline)
 ├── .github/scripts/                Workflow helper scripts
 ├── docker-compose.yaml             Local dev: registry on :5555, BuildKit v0.29.0
