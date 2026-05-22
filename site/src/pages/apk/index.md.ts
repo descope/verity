@@ -44,7 +44,7 @@ apk_arch="$(apk --print-arch)"
 repo_url="${repoRoot}/\${apk_arch}"
 
 wget -O "/etc/apk/keys/${apkRepository.keyFile}" "${keyUrl}"
-printf '%s\n' "${repoRoot}/\${apk_arch}" >> /etc/apk/repositories
+printf '%s\n' "$repo_url" >> /etc/apk/repositories
 apk update
 
 # Example, once packages are published:
