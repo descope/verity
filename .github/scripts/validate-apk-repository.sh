@@ -81,7 +81,7 @@ for arch_dir in "$REPO_DIR"/*; do
 
   index="$arch_dir/APKINDEX.tar.gz"
   if [[ ! -f "$index" ]]; then
-    echo "missing APKINDEX.tar.gz for ${arch_dir#${REPO_DIR}/}" >&2
+    echo "missing APKINDEX.tar.gz for ${arch_dir#"${REPO_DIR}"/}" >&2
     status=1
     continue
   fi
