@@ -81,6 +81,50 @@ func TestValidateAPKRepositoryRejectsRootPackages(t *testing.T) {
 	assert.Contains(t, output, "APK files must live under architecture directories")
 }
 
+func TestValidateAPKRepositoryRejectsNestedPackages(t *testing.T) {
+	repoRoot := t.TempDir()
+	repoDir := filepath.Join(repoRoot, "repo")
+	writeTempFile(t, filepath.Join(repoDir, "x86_64", "nested", "bad.apk"), "not a real apk")
+
+	output, err := runGithubScript(t, repoRoot, "validate-apk-repository.sh", repoDir)
+
+	require.Error(t, err)
+	assert.Contains(t, output, "directly under architecture directories")
+}
+
+func TestValidateAPKRepositoryRejectsUnsupportedArchDirectory(t *testing.T) {
+	repoRoot := t.TempDir()
+	repoDir := filepath.Join(repoRoot, "repo")
+	archDir := filepath.Join(repoDir, "not-an-arch")
+	writeTempFile(t, filepath.Join(archDir, "demo.apk"), "not a real apk")
+	writeTarGz(t, filepath.Join(archDir, "APKINDEX.tar.gz"), "APKINDEX")
+
+	output, err := runGithubScript(t, repoRoot, "validate-apk-repository.sh", repoDir)
+
+	require.Error(t, err)
+	assert.Contains(t, output, "unsupported architecture directory")
+}
+
+func TestAssembleAPKRepositoryRejectsDuplicateDestinations(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeTempFile(t, filepath.Join(repoRoot, "source-a", "x86_64", "demo.apk"), "a")
+	writeTempFile(t, filepath.Join(repoRoot, "source-b", "x86_64", "demo.apk"), "b")
+
+	output, err := runGithubScript(t, repoRoot, "assemble-apk-repository.sh", "source-a", "source-b")
+
+	require.Error(t, err)
+	assert.Contains(t, output, "duplicate APK destination x86_64/demo.apk")
+}
+
+func TestAssembleAPKRepositoryRequiresRSAKeyName(t *testing.T) {
+	repoRoot := t.TempDir()
+
+	output, err := runGithubScript(t, repoRoot, "assemble-apk-repository.sh", "--key-name", "custom", "missing-source")
+
+	require.Error(t, err)
+	assert.Contains(t, output, "key name must end with .rsa")
+}
+
 func TestValidateAPKRepositoryRequiresSignedIndexAndPublicKey(t *testing.T) {
 	repoRoot := t.TempDir()
 	repoDir := filepath.Join(repoRoot, "repo")
@@ -93,6 +137,12 @@ func TestValidateAPKRepositoryRequiresSignedIndexAndPublicKey(t *testing.T) {
 	assert.Contains(t, output, "no public key")
 
 	writeTempFile(t, filepath.Join(repoDir, "verity-apk-repository.rsa.pub"), "public key")
+	writeTarGz(t, filepath.Join(archDir, "APKINDEX.tar.gz"), "APKINDEX", ".SIGN.RSA.other.rsa.pub")
+
+	output, err = runGithubScript(t, repoRoot, "validate-apk-repository.sh", "--require-signature", repoDir)
+	require.Error(t, err)
+	assert.Contains(t, output, "has no matching root public key")
+
 	writeTarGz(t, filepath.Join(archDir, "APKINDEX.tar.gz"), "APKINDEX", ".SIGN.RSA.verity-apk-repository.rsa.pub")
 
 	output, err = runGithubScript(t, repoRoot, "validate-apk-repository.sh", "--require-signature", repoDir)

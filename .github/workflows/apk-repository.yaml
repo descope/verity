@@ -14,17 +14,15 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
   assemble:
     name: Assemble APK repository
     runs-on: ubuntu-24.04
-    environment:
-      name: github-pages
     env:
       HAS_APK_REPOSITORY_PRIVATE_KEY: ${{ secrets.APK_REPOSITORY_PRIVATE_KEY != '' }}
+    permissions:
+      contents: read
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
@@ -60,8 +58,8 @@ jobs:
             -e APK_REPOSITORY_PRIVATE_KEY \
             -v "$PWD:/work" \
             -w /work \
-            alpine:3.22 \
-            sh -euxc 'apk add --no-cache alpine-sdk bash findutils openssl && bash .github/scripts/assemble-apk-repository.sh --output site/dist/apk apk-artifacts packages/repo'
+            alpine:3.22@sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601 \
+            sh -euxc 'packages="bash findutils"; if [ -n "${APK_REPOSITORY_PRIVATE_KEY:-}" ]; then packages="$packages abuild openssl"; fi; apk add --no-cache $packages; bash .github/scripts/assemble-apk-repository.sh --output site/dist/apk apk-artifacts packages/repo'
 
       - name: Validate APK repository
         run: bash .github/scripts/validate-apk-repository.sh site/dist/apk

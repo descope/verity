@@ -39,8 +39,18 @@ the package retention and repository-size policy is still being decided.
 
 ## Local validation
 
+Non-empty repository assembly requires Alpine `apk` tooling. Signed assembly also
+requires `abuild-sign` and `openssl`. On non-Alpine hosts, run the same pinned
+container used by CI:
+
 ```bash
-bash .github/scripts/assemble-apk-repository.sh --output site/dist/apk packages/repo apk-artifacts
+docker run --rm \
+  -e APK_REPOSITORY_PRIVATE_KEY \
+  -v "$PWD:/work" \
+  -w /work \
+  alpine:3.22@sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601 \
+  sh -euxc 'packages="bash findutils"; if [ -n "${APK_REPOSITORY_PRIVATE_KEY:-}" ]; then packages="$packages abuild openssl"; fi; apk add --no-cache $packages; bash .github/scripts/assemble-apk-repository.sh --output site/dist/apk packages/repo apk-artifacts'
+
 bash .github/scripts/validate-apk-repository.sh site/dist/apk
 ```
 

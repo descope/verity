@@ -46,6 +46,13 @@ done
 [[ -n "$REPO_DIR" ]] || { usage; exit 2; }
 [[ -d "$REPO_DIR" ]] || { echo "repository directory not found: $REPO_DIR" >&2; exit 1; }
 
+is_supported_arch() {
+  case "$1" in
+    x86_64|aarch64|armv7|armhf|ppc64le|s390x|riscv64) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 mapfile -t ROOT_APKS < <(find "$REPO_DIR" -maxdepth 1 -type f -name '*.apk' -print | sort)
 if [[ ${#ROOT_APKS[@]} -gt 0 ]]; then
   echo "APK files must live under architecture directories, not repository root:" >&2
@@ -53,7 +60,14 @@ if [[ ${#ROOT_APKS[@]} -gt 0 ]]; then
   exit 1
 fi
 
-mapfile -t APKS < <(find "$REPO_DIR" -mindepth 2 -type f -name '*.apk' -print | sort)
+mapfile -t DEEP_APKS < <(find "$REPO_DIR" -mindepth 3 -type f -name '*.apk' -print | sort)
+if [[ ${#DEEP_APKS[@]} -gt 0 ]]; then
+  echo "APK files must live directly under architecture directories:" >&2
+  printf '  %s\n' "${DEEP_APKS[@]}" >&2
+  exit 1
+fi
+
+mapfile -t APKS < <(find "$REPO_DIR" -mindepth 2 -maxdepth 2 -type f -name '*.apk' -print | sort)
 if [[ ${#APKS[@]} -eq 0 ]]; then
   if [[ -f "$REPO_DIR/.no-apks-found" ]]; then
     echo "No APK files present; guarded empty repository marker found"
@@ -74,10 +88,17 @@ fi
 status=0
 for arch_dir in "$REPO_DIR"/*; do
   [[ -d "$arch_dir" ]] || continue
+  arch=$(basename "$arch_dir")
   shopt -s nullglob
   arch_apks=("$arch_dir"/*.apk)
   shopt -u nullglob
   [[ ${#arch_apks[@]} -gt 0 ]] || continue
+
+  if ! is_supported_arch "$arch"; then
+    echo "unsupported architecture directory containing APKs: $arch" >&2
+    status=1
+    continue
+  fi
 
   index="$arch_dir/APKINDEX.tar.gz"
   if [[ ! -f "$index" ]]; then
@@ -92,10 +113,20 @@ for arch_dir in "$REPO_DIR"/*; do
     continue
   fi
 
-  if [[ "$REQUIRE_SIGNATURE" == "true" ]] && \
-     ! tar -tzf "$index" | grep -Eq '(^|/)\.SIGN\.RSA\..*\.rsa\.pub$'; then
-    echo "missing RSA signature entry in $index" >&2
-    status=1
+  if [[ "$REQUIRE_SIGNATURE" == "true" ]]; then
+    mapfile -t SIGNATURES < <(tar -tzf "$index" | grep -E '(^|/)\.SIGN\.RSA\..*\.pub$' | sed 's#^.*/##')
+    if [[ ${#SIGNATURES[@]} -eq 0 ]]; then
+      echo "missing RSA signature entry in $index" >&2
+      status=1
+      continue
+    fi
+    for signature in "${SIGNATURES[@]}"; do
+      key_name="${signature#.SIGN.RSA.}"
+      if [[ ! -f "$REPO_DIR/$key_name" ]]; then
+        echo "signature ${signature} in $index has no matching root public key: $key_name" >&2
+        status=1
+      fi
+    done
   fi
 done
 

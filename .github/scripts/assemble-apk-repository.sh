@@ -61,22 +61,29 @@ if [[ ${#SOURCES[@]} -eq 0 ]]; then
   SOURCES=("packages/repo" "apk-artifacts")
 fi
 
+if [[ -z "$OUTPUT_DIR" ]] || [[ "$OUTPUT_DIR" == "/" ]] || [[ "$OUTPUT_DIR" == "." ]]; then
+  echo "unsafe output directory: ${OUTPUT_DIR}" >&2
+  exit 2
+fi
+
 if [[ ! "$KEY_NAME" =~ ^[A-Za-z0-9._-]+$ ]] || [[ "$KEY_NAME" == *".."* ]]; then
   echo "unsafe key name: ${KEY_NAME}" >&2
   exit 2
 fi
+if [[ "$KEY_NAME" != *.rsa ]]; then
+  echo "key name must end with .rsa so signatures match the published .rsa.pub key: ${KEY_NAME}" >&2
+  exit 2
+fi
 
 detect_arch() {
-  local path="$1" part
-  IFS='/' read -ra parts <<< "$path"
-  for part in "${parts[@]}"; do
-    case "$part" in
-      x86_64|aarch64|armv7|armhf|ppc64le|s390x|riscv64)
-        printf '%s\n' "$part"
-        return 0
-        ;;
-    esac
-  done
+  local path="$1" parent
+  parent=$(basename "$(dirname "$path")")
+  case "$parent" in
+    x86_64|aarch64|armv7|armhf|ppc64le|s390x|riscv64)
+      printf '%s\n' "$parent"
+      return 0
+      ;;
+  esac
   return 1
 }
 
@@ -87,15 +94,15 @@ require_tool() {
   fi
 }
 
-mkdir -p "$OUTPUT_DIR"
-rm -f "$OUTPUT_DIR/.no-apks-found"
-
 mapfile -t APKS < <(
   for source in "${SOURCES[@]}"; do
     [[ -d "$source" ]] || continue
     find "$source" -type f -name '*.apk' -print
   done | sort -u
 )
+
+rm -rf "$OUTPUT_DIR"
+mkdir -p "$OUTPUT_DIR"
 
 if [[ ${#APKS[@]} -eq 0 ]]; then
   cat > "$OUTPUT_DIR/.no-apks-found" <<EOF
@@ -105,6 +112,23 @@ EOF
   echo "No APK files found; wrote ${OUTPUT_DIR}/.no-apks-found"
   exit 0
 fi
+
+declare -A DESTINATIONS=()
+for apk_file in "${APKS[@]}"; do
+  arch=$(detect_arch "$apk_file") || {
+    echo "could not determine APK architecture from parent directory: ${apk_file}" >&2
+    echo "expected the APK to live directly under an arch directory such as x86_64 or aarch64" >&2
+    exit 1
+  }
+  dest_key="${arch}/$(basename "$apk_file")"
+  if [[ -n "${DESTINATIONS[$dest_key]:-}" ]]; then
+    echo "duplicate APK destination ${dest_key}:" >&2
+    echo "  ${DESTINATIONS[$dest_key]}" >&2
+    echo "  ${apk_file}" >&2
+    exit 1
+  fi
+  DESTINATIONS[$dest_key]="$apk_file"
+done
 
 require_tool apk
 if [[ -n "${APK_REPOSITORY_PRIVATE_KEY:-}" ]]; then
@@ -116,11 +140,7 @@ tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 
 for apk_file in "${APKS[@]}"; do
-  arch=$(detect_arch "$apk_file") || {
-    echo "could not determine APK architecture from path: ${apk_file}" >&2
-    echo "expected an arch path component such as x86_64 or aarch64" >&2
-    exit 1
-  }
+  arch=$(detect_arch "$apk_file")
   mkdir -p "$OUTPUT_DIR/$arch"
   cp "$apk_file" "$OUTPUT_DIR/$arch/"
 done
@@ -130,7 +150,7 @@ if [[ -n "${APK_REPOSITORY_PRIVATE_KEY:-}" ]]; then
   public_key="$tmpdir/$KEY_NAME.pub"
   printf '%s\n' "$APK_REPOSITORY_PRIVATE_KEY" > "$private_key"
   chmod 600 "$private_key"
-  openssl rsa -in "$private_key" -pubout -out "$public_key" >/dev/null 2>&1
+  openssl rsa -in "$private_key" -pubout -out "$public_key"
   cp "$public_key" "$OUTPUT_DIR/$KEY_NAME.pub"
   echo "Published APK repository public key: ${OUTPUT_DIR}/${KEY_NAME}.pub"
 else
