@@ -75,6 +75,7 @@ Every image carries: cosign signature, SLSA L3 build provenance, CycloneDX SBOM,
 - [Complete LLM Reference](${prefix}llms-full.txt) — Everything in one file
 - [Supply Chain Compliance](${prefix}compliance.md) — Framework mappings (SLSA, FedRAMP, SOC 2, ISO 27001, OWASP)
 - [Helm Charts](${prefix}charts/index.md) — Pre-patched wrapper Helm charts
+- [Experimental APK Repository](${prefix}apk/index.md) — Pending package repository metadata, install flow, trust model, and supported arches
 - [GitHub Repository](https://github.com/verity-org/verity) — Source code and issues
 `;
 

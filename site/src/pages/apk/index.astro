@@ -1,0 +1,114 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { apkRepository } from "../../data/apk-repository";
+
+const base = import.meta.env.BASE_URL;
+const repoRoot = `${base}${apkRepository.basePath}`;
+const keyUrl = `${repoRoot}/${apkRepository.keyFile}`;
+---
+
+<BaseLayout
+  title="Experimental APK Repository — Verity"
+  description="Experimental Verity APK repository docs: install instructions, trust model, key rotation, supported architectures, and repository metadata."
+  mdUrl={`${base}${apkRepository.basePath}/index.md`}
+>
+  <nav class="mb-6 text-sm text-verity-text-secondary">
+    <a href={base} class="transition-colors hover:text-verity-nucleus">Home</a>
+    <span class="mx-1">/</span>
+    <span class="text-verity-text-primary">APK Repository</span>
+  </nav>
+
+  <section
+    class="mb-10 overflow-hidden rounded-2xl border border-amber-500/30 bg-linear-to-br from-amber-500/10 via-verity-surface to-verity-void p-6 md:p-8"
+  >
+    <div class="mb-4 flex flex-wrap items-center gap-2">
+      <span
+        class="rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-amber-300"
+      >
+        Experimental
+      </span>
+      <span class="font-mono text-xs text-verity-text-muted">{apkRepository.status}</span>
+    </div>
+    <h1 class="mb-3 text-3xl font-bold text-verity-text-primary">APK Repository</h1>
+    <p class="max-w-3xl text-lg text-verity-text-secondary">{apkRepository.caveat}</p>
+  </section>
+
+  <section class="mb-10">
+    <h2 class="mb-4 text-xl font-semibold text-verity-text-primary">Repository metadata</h2>
+    <div class="overflow-hidden rounded-lg border border-verity-border bg-verity-surface">
+      <div
+        class="hidden grid-cols-[8rem_10rem_1fr_1fr] gap-4 border-b border-verity-border px-4 py-3 text-xs uppercase tracking-wider text-verity-text-muted md:grid"
+      >
+        <span>APK arch</span>
+        <span>Platform</span>
+        <span>Repository URL</span>
+        <span>Static metadata</span>
+      </div>
+      {
+        apkRepository.architectures.map((arch) => (
+          <div class="grid gap-2 border-b border-verity-border/60 px-4 py-4 last:border-b-0 md:grid-cols-[8rem_10rem_1fr_1fr] md:gap-4">
+            <code class="text-sm text-verity-text-primary">{arch.apk}</code>
+            <code class="text-sm text-verity-text-secondary">{arch.platform}</code>
+            <code class="break-all text-xs text-amber-200">
+              {repoRoot}/{arch.apk}
+            </code>
+            <code class="break-all text-xs text-verity-text-secondary">
+              {repoRoot}/{arch.apk}/APKINDEX.tar.gz
+            </code>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="mb-10 grid gap-4 md:grid-cols-2">
+    <div class="rounded-lg border border-verity-border bg-verity-surface p-5">
+      <h2 class="mb-3 text-lg font-semibold text-verity-text-primary">Signing key</h2>
+      <p class="mb-3 text-sm text-verity-text-secondary">
+        Install this key only after Verity publishes and confirms the fingerprint.
+      </p>
+      <code
+        class="block break-all rounded border border-verity-border bg-verity-void p-3 text-xs text-amber-200"
+      >
+        {keyUrl}
+      </code>
+      <p class="mt-3 font-mono text-xs text-verity-text-muted">
+        Fingerprint: {apkRepository.keyFingerprint}
+      </p>
+    </div>
+    <div class="rounded-lg border border-verity-border bg-verity-surface p-5">
+      <h2 class="mb-3 text-lg font-semibold text-verity-text-primary">Key rotation</h2>
+      <ol class="list-decimal space-y-2 pl-5 text-sm text-verity-text-secondary">
+        <li>Install old and new keys during the overlap window.</li>
+        <li>Run <code class="text-xs">apk update</code> and verify index refresh succeeds.</li>
+        <li>Remove the retired key after Verity announces rotation completion.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="mb-10">
+    <h2 class="mb-4 text-xl font-semibold text-verity-text-primary">
+      Install flow after verification
+    </h2>
+    <pre
+      class="overflow-x-auto rounded-lg border border-verity-border bg-verity-void p-4 text-sm text-verity-text-primary"><code>{`set -eu
+apk_arch="$(apk --print-arch)"
+repo_url="${repoRoot}/\${apk_arch}"
+
+wget -O "/etc/apk/keys/${apkRepository.keyFile}" "${keyUrl}"
+printf '%s\n' "$repo_url" >> /etc/apk/repositories
+apk update
+
+# apk add <verity-package>`}</code></pre>
+  </section>
+
+  <section class="rounded-lg border border-amber-500/30 bg-amber-500/10 p-5">
+    <h2 class="mb-3 text-lg font-semibold text-amber-200">Experimental caveats</h2>
+    <ul class="list-disc space-y-2 pl-5 text-sm text-verity-text-secondary">
+      <li>Package names, versions, repository paths, and signing keys may change.</li>
+      <li>The repository may be empty or return 404 until publish and verification complete.</li>
+      <li>Use only in ephemeral tests until general availability.</li>
+      <li>Use published OCI container images for production workloads today.</li>
+    </ul>
+  </section>
+</BaseLayout>

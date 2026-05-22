@@ -27,6 +27,7 @@ docker pull ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
 - [Overview & Quick Start](${prefix}index.md): What Verity is, how to use patched images, catalog summary by category
 - [Supply Chain Compliance](${prefix}compliance.md): SLSA L3, Sigstore/cosign, CycloneDX SBOM, Rekor transparency log, plus framework mappings for FedRAMP/NIST 800-53, SOC 2, ISO 27001, OWASP ASVS, NIST CSF 2.0, and CISA Secure by Design
 - [Helm Charts](${prefix}charts/index.md): Pre-patched wrapper Helm charts that override upstream image references with Verity's patched equivalents
+- [Experimental APK Repository](${prefix}apk/index.md): Pending APK repository entry point with install instructions, key rotation notes, supported arches, and experimental caveats
 
 ## Source
 
