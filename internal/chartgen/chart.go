@@ -2,6 +2,7 @@ package chartgen
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"os"
@@ -15,6 +16,19 @@ import (
 	"github.com/verity-org/verity/internal/config"
 	"github.com/verity-org/verity/internal/discovery"
 )
+
+const (
+	helmPushMaxAttempts = 4
+	helmPushTimeout     = 5 * time.Minute
+	helmPushBaseBackoff = 5 * time.Second
+	helmPushMaxBackoff  = 30 * time.Second
+)
+
+type commandRunner func(ctx context.Context, timeout time.Duration, name string, args ...string) (string, error)
+
+type contextSleeper func(ctx context.Context, delay time.Duration) error
+
+var errHelmPushFailed = errors.New("helm push failed")
 
 // WrapperChart holds the generated wrapper chart YAML content.
 type WrapperChart struct {
@@ -123,10 +137,93 @@ func PackageChart(chart *WrapperChart) (string, error) {
 
 // PushChart pushes a packaged chart archive to an OCI registry.
 func PushChart(tgzPath, registry string) error {
-	if _, err := runCommand(context.Background(), 5*time.Minute, "helm", "push", tgzPath, registry); err != nil {
-		return fmt.Errorf("helm push %s to %s: %w", tgzPath, registry, err)
+	return pushChartWithRetry(context.Background(), tgzPath, registry, runCommand, sleepContext, helmPushMaxAttempts)
+}
+
+func pushChartWithRetry(ctx context.Context, tgzPath, registry string, runner commandRunner, sleeper contextSleeper, maxAttempts int) error {
+	if maxAttempts < 1 {
+		maxAttempts = 1
 	}
-	return nil
+
+	errs := make([]error, 0, maxAttempts)
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		_, err := runner(ctx, helmPushTimeout, "helm", "push", tgzPath, registry)
+		if err == nil {
+			return nil
+		}
+
+		errs = append(errs, err)
+		if attempt == maxAttempts || !isRetriableHelmPushError(err) {
+			return helmPushError(tgzPath, registry, attempt, maxAttempts, errs)
+		}
+
+		delay := helmPushBackoff(attempt)
+		fmt.Fprintf(os.Stderr, "warning: helm push %s to %s failed on attempt %d/%d; retrying in %s: %v\n", tgzPath, registry, attempt, maxAttempts, delay, err)
+		if sleepErr := sleeper(ctx, delay); sleepErr != nil {
+			errs = append(errs, fmt.Errorf("wait before retry: %w", sleepErr))
+			return helmPushError(tgzPath, registry, attempt, maxAttempts, errs)
+		}
+	}
+
+	return helmPushError(tgzPath, registry, maxAttempts, maxAttempts, errs)
+}
+
+func helmPushBackoff(failedAttempt int) time.Duration {
+	delay := helmPushBaseBackoff << max(failedAttempt-1, 0)
+	if delay > helmPushMaxBackoff {
+		return helmPushMaxBackoff
+	}
+	return delay
+}
+
+func isRetriableHelmPushError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	retriableFragments := []string{
+		`failed to perform "tag" on destination`,
+		"not found",
+		"timeout",
+		"temporary",
+		"connection reset",
+		"tls handshake timeout",
+		"unexpected eof",
+		"server closed idle connection",
+		"too many requests",
+		"429",
+		"503 service unavailable",
+		"502 bad gateway",
+		"504 gateway timeout",
+	}
+	for _, fragment := range retriableFragments {
+		if strings.Contains(msg, fragment) {
+			return true
+		}
+	}
+	return false
+}
+
+func helmPushError(tgzPath, registry string, attempts, maxAttempts int, errs []error) error {
+	parts := make([]string, 0, len(errs))
+	for i, err := range errs {
+		if err == nil {
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("attempt %d: %v", i+1, err))
+	}
+	return fmt.Errorf("%w: %s to %s after %d/%d attempt(s): %s", errHelmPushFailed, tgzPath, registry, attempts, maxAttempts, strings.Join(parts, "; "))
+}
+
+func sleepContext(ctx context.Context, delay time.Duration) error {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }
 
 // buildValuesTree converts flat dotted-path overrides to a nested map scoped

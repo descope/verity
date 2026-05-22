@@ -1,14 +1,106 @@
 package chartgen
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/verity-org/verity/internal/config"
 )
+
+var (
+	errTransientTagRace  = errors.New(`helm push: failed to perform "Tag" on destination: sha256:abc: not found`)
+	errUnauthorizedPush  = errors.New("helm push: unauthorized: authentication required")
+	errTemporaryRegistry = errors.New("temporary registry error")
+)
+
+func TestPushChartWithRetrySucceedsAfterTransientTagRace(t *testing.T) {
+	var attempts int
+	var sleeps []time.Duration
+	runner := func(_ context.Context, timeout time.Duration, name string, args ...string) (string, error) {
+		attempts++
+		if timeout != helmPushTimeout {
+			t.Fatalf("timeout = %s, want %s", timeout, helmPushTimeout)
+		}
+		if name != "helm" || strings.Join(args, " ") != "push /tmp/wrapper.tgz oci://ghcr.io/verity-org/charts" {
+			t.Fatalf("command = %s %s", name, strings.Join(args, " "))
+		}
+		if attempts < 3 {
+			return "", errTransientTagRace
+		}
+		return "ok", nil
+	}
+	sleeper := func(_ context.Context, delay time.Duration) error {
+		sleeps = append(sleeps, delay)
+		return nil
+	}
+
+	if err := pushChartWithRetry(context.Background(), "/tmp/wrapper.tgz", "oci://ghcr.io/verity-org/charts", runner, sleeper, 4); err != nil {
+		t.Fatalf("pushChartWithRetry() error = %v", err)
+	}
+	if attempts != 3 {
+		t.Fatalf("attempts = %d, want 3", attempts)
+	}
+	wantSleeps := []time.Duration{5 * time.Second, 10 * time.Second}
+	if len(sleeps) != len(wantSleeps) {
+		t.Fatalf("sleeps = %v, want %v", sleeps, wantSleeps)
+	}
+	for i := range wantSleeps {
+		if sleeps[i] != wantSleeps[i] {
+			t.Fatalf("sleeps = %v, want %v", sleeps, wantSleeps)
+		}
+	}
+}
+
+func TestPushChartWithRetryStopsOnPermanentError(t *testing.T) {
+	var attempts int
+	runner := func(context.Context, time.Duration, string, ...string) (string, error) {
+		attempts++
+		return "", errUnauthorizedPush
+	}
+	sleeper := func(context.Context, time.Duration) error {
+		t.Fatal("sleeper should not be called for permanent errors")
+		return nil
+	}
+
+	err := pushChartWithRetry(context.Background(), "/tmp/wrapper.tgz", "oci://ghcr.io/verity-org/charts", runner, sleeper, 4)
+	if err == nil {
+		t.Fatal("pushChartWithRetry() error = nil, want error")
+	}
+	if attempts != 1 {
+		t.Fatalf("attempts = %d, want 1", attempts)
+	}
+	if !strings.Contains(err.Error(), "unauthorized") || !strings.Contains(err.Error(), "attempt 1") {
+		t.Fatalf("error = %v, want original error and attempt detail", err)
+	}
+}
+
+func TestPushChartWithRetryPreservesErrorsAfterExhaustion(t *testing.T) {
+	var attempts int
+	runner := func(context.Context, time.Duration, string, ...string) (string, error) {
+		attempts++
+		return "", fmt.Errorf("%w %d", errTemporaryRegistry, attempts)
+	}
+	sleeper := func(context.Context, time.Duration) error { return nil }
+
+	err := pushChartWithRetry(context.Background(), "/tmp/wrapper.tgz", "oci://ghcr.io/verity-org/charts", runner, sleeper, 3)
+	if err == nil {
+		t.Fatal("pushChartWithRetry() error = nil, want error")
+	}
+	if attempts != 3 {
+		t.Fatalf("attempts = %d, want 3", attempts)
+	}
+	for _, want := range []string{"attempt 1", "temporary registry error 1", "attempt 2", "temporary registry error 2", "attempt 3", "temporary registry error 3"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error = %v, missing %q", err, want)
+		}
+	}
+}
 
 func TestDryRunResultJSON(t *testing.T) {
 	res := DryRunResult{
