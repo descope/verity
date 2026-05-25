@@ -3,6 +3,180 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import CopyButton from "../components/CopyButton.astro";
 
 const base = import.meta.env.BASE_URL;
+
+interface FrameworkRow {
+  control: string;
+  meets: string;
+}
+interface Framework {
+  name: string;
+  href: string;
+  subtitle?: string;
+  rows: FrameworkRow[];
+}
+
+const frameworks: Framework[] = [
+  {
+    name: "SLSA v1.0",
+    href: "https://slsa.dev/",
+    rows: [
+      {
+        control: "Build L3 — Hardened provenance",
+        meets:
+          "Platform-generated provenance via actions/attest-build-provenance on ephemeral runners",
+      },
+      {
+        control: "Source integrity",
+        meets: "Version-controlled manifests in Git; provenance links artifacts to commit SHAs",
+      },
+    ],
+  },
+  {
+    name: "EO 14028",
+    href: "https://www.nist.gov/system/files/documents/2022/02/04/software-supply-chain-security-guidance-under-EO-14028-section-4e.pdf",
+    rows: [
+      {
+        control: "SBOM for delivered software",
+        meets: "CycloneDX SBOM attested to every container image",
+      },
+    ],
+  },
+  {
+    name: "NIST SSDF",
+    href: "https://csrc.nist.gov/Projects/ssdf",
+    rows: [
+      {
+        control: "PS.1 — Protect software integrity",
+        meets: "Cosign keyless signatures; Rekor transparency log",
+      },
+      {
+        control: "PW.4 — Verify third-party components",
+        meets: "Trivy scanning of all upstream images; Copa patching",
+      },
+      {
+        control: "RV.1 — Identify and confirm vulnerabilities",
+        meets: "Daily scheduled scans; auto-generated PRs",
+      },
+    ],
+  },
+  {
+    name: "NIST 800-53r5",
+    href: "https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final",
+    subtitle: "(FedRAMP)",
+    rows: [
+      {
+        control: "SR-3 / SR-4 — Supply chain provenance",
+        meets: "SLSA L3 provenance attestations linking artifacts to source, build, and runner",
+      },
+      {
+        control: "SR-11 — Component authenticity",
+        meets: "Cosign OIDC-based signatures verify artifact origin",
+      },
+      {
+        control: "SI-7 — Software integrity",
+        meets: "Signature verification detects any post-build tampering",
+      },
+      {
+        control: "RA-5 — Vulnerability monitoring",
+        meets: "Daily Trivy scans; 30-day report retention for audit evidence",
+      },
+    ],
+  },
+  {
+    name: "SOC 2",
+    href: "https://www.aicpa-cima.com/topic/audit-assurance/audit-and-assurance-greater-than-soc-2",
+    rows: [
+      {
+        control: "CC8.1 — Change management",
+        meets: "PR-gated changes; provenance ties artifacts to specific commits and runs",
+      },
+      {
+        control: "CC7.1 — Monitoring and detection",
+        meets: "Daily CVE scans; vulnerability report artifacts retained",
+      },
+      {
+        control: "CC6.1 — Logical access controls",
+        meets: "Scoped GITHUB_TOKEN; least-privilege workflow permissions; no static keys",
+      },
+    ],
+  },
+  {
+    name: "ISO 27001:2022",
+    href: "https://www.iso.org/standard/27001",
+    rows: [
+      {
+        control: "A.5.21 — ICT supply chain security",
+        meets: "Pinned dependencies; SBOM attestation; continuous upstream scanning",
+      },
+      {
+        control: "A.8.25 — Secure development lifecycle",
+        meets: "Automated CI gates (lint, test, scan) before any artifact is published",
+      },
+      {
+        control: "A.8.30 — Outsourced development",
+        meets: "Third-party images scanned, patched, re-signed under Verity identity",
+      },
+    ],
+  },
+  {
+    name: "OWASP ASVS v4",
+    href: "https://owasp.org/www-project-application-security-verification-standard/",
+    rows: [
+      {
+        control: "V14.2 — Dependency verification",
+        meets: "All deps pinned by hash; Renovate auto-updates; no mutable tags",
+      },
+      {
+        control: "V10.3 — Deployed application integrity",
+        meets: "Cosign + gh attestation verify for end-to-end integrity",
+      },
+    ],
+  },
+  {
+    name: "NIST CSF 2.0",
+    href: "https://www.nist.gov/cyberframework",
+    rows: [
+      {
+        control: "GV.SC — Supply chain risk management",
+        meets: "Provenance, signing, SBOM, pinning, and scanning as a unified supply chain posture",
+      },
+    ],
+  },
+  {
+    name: "CISA Secure by Design",
+    href: "https://www.cisa.gov/securebydesign",
+    rows: [
+      {
+        control: "Radical transparency",
+        meets: "Public vulnerability reports; SBOM on every image; Rekor for public audit",
+      },
+    ],
+  },
+  {
+    name: "OpenSSF Scorecard",
+    href: "https://bestpractices.openssf.org/",
+    rows: [
+      {
+        control: "Pinned-Dependencies",
+        meets: "Actions pinned by SHA; Go deps via go.sum; Renovate auto-updates",
+      },
+      {
+        control: "Signed-Releases",
+        meets: "All OCI artifacts signed with cosign keyless",
+      },
+    ],
+  },
+  {
+    name: "Sigstore",
+    href: "https://docs.sigstore.dev/",
+    rows: [
+      {
+        control: "Artifact transparency",
+        meets: "All signatures in the Rekor transparency log; verifiable by anyone",
+      },
+    ],
+  },
+];
 ---
 
 <BaseLayout title="Supply Chain Compliance — Verity" mdUrl={`${base}compliance.md`}>
@@ -560,7 +734,44 @@ const base = import.meta.env.BASE_URL;
     <p class="text-sm text-verity-text-muted mb-4">
       Quick-reference mapping of Verity controls to specific framework requirements.
     </p>
-    <div class="overflow-x-auto">
+
+    {
+      /* Mobile card layout — each framework groups its rows in a card so users
+        don't have to swipe across a 3-column table on narrow viewports. */
+    }
+    <ul class="space-y-4 sm:hidden">
+      {
+        frameworks.map((fw) => (
+          <li class="rounded-lg border border-verity-border bg-verity-surface overflow-hidden">
+            <div class="border-b border-verity-border px-4 py-3 bg-verity-void/40">
+              <a
+                href={fw.href}
+                class="font-medium text-verity-text-primary underline decoration-verity-border-2 hover:decoration-verity-nucleus transition-colors"
+              >
+                {fw.name}
+              </a>
+              {fw.subtitle && <div class="text-xs text-verity-text-secondary">{fw.subtitle}</div>}
+            </div>
+            <ul class="divide-y divide-verity-border/60">
+              {fw.rows.map((row) => (
+                <li class="px-4 py-3 space-y-1">
+                  <div class="text-xs uppercase tracking-wider text-verity-text-secondary">
+                    Control
+                  </div>
+                  <div class="text-sm text-verity-text-primary">{row.control}</div>
+                  <div class="text-xs uppercase tracking-wider text-verity-text-secondary pt-1">
+                    How Verity meets it
+                  </div>
+                  <div class="text-sm text-verity-text-muted">{row.meets}</div>
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))
+      }
+    </ul>
+
+    <div class="hidden sm:block overflow-x-auto">
       <table class="w-full text-sm border border-verity-border rounded-lg overflow-hidden">
         <thead class="bg-verity-surface text-left">
           <tr>
