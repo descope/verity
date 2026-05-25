@@ -179,15 +179,13 @@ func TestAssembleAPKRepositoryDetectArchUsesSupportedArchesAllowlist(t *testing.
 			apkPath := filepath.Join(repoRoot, "apk-artifacts", arch, "demo.apk")
 			writeTempFile(t, apkPath, "not a real apk")
 
-			// We do not require the run to succeed end-to-end (the fake .apk
-			// will be rejected by `apk index`). The script may exit with an
-			// error from `apk index`, but it must NOT reject the arch up-front
-			// with the "could not determine APK architecture" error — that
-			// would mean detect_arch and SUPPORTED_ARCHES have drifted apart.
+			// The fake .apk causes the script to fail at a later step (either
+			// `require_tool apk` or `apk index`). require.Error captures that
+			// expected failure explicitly so the test reads as
+			// "fails for a non-detect_arch reason" rather than discarding the
+			// return value silently.
 			out, err := runGithubScript(t, repoRoot, "assemble-apk-repository.sh", "--output", outputDir, "apk-artifacts")
-			// Intentionally ignore err — see comment above; the only failure
-			// mode this test cares about is the detect_arch rejection text.
-			_ = err
+			require.Error(t, err, "fake .apk should cause apk index (or require_tool) to fail")
 			assert.NotContains(t, out, "could not determine APK architecture",
 				"detect_arch must accept %q because it is in SUPPORTED_ARCHES", arch)
 		})

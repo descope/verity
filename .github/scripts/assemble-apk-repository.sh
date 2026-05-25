@@ -125,10 +125,10 @@ mapfile -t APKS < <(
 # index.html and index.md emitted by the Astro build) so the published page
 # still explains the repository even when no .apk files were produced.
 mkdir -p "$OUTPUT_DIR"
-rm -f "$OUTPUT_DIR/.no-apks-found"
-rm -f "$OUTPUT_DIR/$KEY_NAME.pub"
+rm -f "${OUTPUT_DIR:?}/.no-apks-found"
+rm -f "${OUTPUT_DIR:?}/${KEY_NAME}.pub"
 for arch in "${SUPPORTED_ARCHES[@]}"; do
-  rm -rf "${OUTPUT_DIR:?}/$arch"
+  rm -rf "${OUTPUT_DIR:?}/${arch}"
 done
 
 if [[ ${#APKS[@]} -eq 0 ]]; then
