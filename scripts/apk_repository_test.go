@@ -137,6 +137,70 @@ func TestAssembleAPKRepositoryCleansStaleArchAndMarker(t *testing.T) {
 	assert.FileExists(t, filepath.Join(outputDir, "index.html"))
 }
 
+func TestAssembleAPKRepositoryDoesNotRemoveUnrelatedRSAPubFiles(t *testing.T) {
+	// Regression for cubic review thread on #485:
+	// the cleanup previously globbed `*.rsa.pub` and would have erased any
+	// neighbouring public key file even if it was not the one this script
+	// publishes. Only the configured `$KEY_NAME.pub` should be touched.
+	repoRoot := t.TempDir()
+	outputDir := filepath.Join(repoRoot, "site", "dist", "apk")
+	// This script's managed key — should be cleaned.
+	managedKey := filepath.Join(outputDir, "verity-apk-repository.rsa.pub")
+	writeTempFile(t, managedKey, "stale managed key")
+	// An unrelated `.rsa.pub` published by a sibling system (e.g. a key
+	// rotation overlap that lays down both old and new keys) — must NOT
+	// be erased by this script.
+	unrelatedKey := filepath.Join(outputDir, "alpine-devel@example.test-1234abcd.rsa.pub")
+	writeTempFile(t, unrelatedKey, "unrelated key payload")
+	require.NoError(t, os.MkdirAll(filepath.Join(repoRoot, "apk-artifacts"), 0o755))
+
+	_, err := runGithubScript(t, repoRoot, "assemble-apk-repository.sh", "--output", outputDir, "apk-artifacts")
+	require.NoError(t, err)
+
+	_, statErr := os.Stat(managedKey)
+	assert.True(t, os.IsNotExist(statErr), "the script's managed public key must be cleaned before a fresh run")
+	assert.FileExists(t, unrelatedKey, "unrelated .rsa.pub files in the output directory must be preserved")
+	body, readErr := os.ReadFile(unrelatedKey)
+	require.NoError(t, readErr)
+	assert.Equal(t, "unrelated key payload", string(body), "unrelated key file contents must not be modified")
+}
+
+func TestAssembleAPKRepositoryDetectArchUsesSupportedArchesAllowlist(t *testing.T) {
+	// Regression for cubic review thread on #485:
+	// SUPPORTED_ARCHES and detect_arch previously held independent allowlists,
+	// which would drift if a new arch was added to one but not the other.
+	// detect_arch now consumes SUPPORTED_ARCHES directly. Verify the two
+	// halves still agree by exercising every supported arch end-to-end and
+	// confirming an unsupported arch is rejected with the documented message.
+	for _, arch := range []string{"x86_64", "aarch64", "armv7", "armhf", "ppc64le", "s390x", "riscv64"} {
+		t.Run(arch, func(t *testing.T) {
+			repoRoot := t.TempDir()
+			outputDir := filepath.Join(repoRoot, "site", "dist", "apk")
+			apkPath := filepath.Join(repoRoot, "apk-artifacts", arch, "demo.apk")
+			writeTempFile(t, apkPath, "not a real apk")
+
+			// We do not require the run to succeed end-to-end (the fake .apk
+			// will be rejected by `apk index`). We assert that detect_arch
+			// does NOT reject the arch up-front with the
+			// "could not determine APK architecture" error.
+			out, _ := runGithubScript(t, repoRoot, "assemble-apk-repository.sh", "--output", outputDir, "apk-artifacts")
+			assert.NotContains(t, out, "could not determine APK architecture",
+				"detect_arch must accept %q because it is in SUPPORTED_ARCHES", arch)
+		})
+	}
+
+	t.Run("rejects unsupported arch", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		outputDir := filepath.Join(repoRoot, "site", "dist", "apk")
+		writeTempFile(t, filepath.Join(repoRoot, "apk-artifacts", "loongarch64", "demo.apk"), "fake")
+
+		out, err := runGithubScript(t, repoRoot, "assemble-apk-repository.sh", "--output", outputDir, "apk-artifacts")
+		require.Error(t, err)
+		assert.Contains(t, out, "could not determine APK architecture",
+			"detect_arch must reject arches that are not in SUPPORTED_ARCHES")
+	})
+}
+
 func TestValidateAPKRepositoryRejectsRootPackages(t *testing.T) {
 	repoRoot := t.TempDir()
 	repoDir := filepath.Join(repoRoot, "repo")

@@ -23,9 +23,10 @@ and APKINDEX.tar.gz files) are removed at the start of each run.
 USAGE
 }
 
-# Architectures the script writes to OUTPUT_DIR. Kept in sync with detect_arch
-# below — any arch listed here may have a top-level directory removed on a
-# fresh run.
+# Architectures the script writes to OUTPUT_DIR. Single source of truth —
+# both `detect_arch` (which classifies incoming .apk files) and the
+# pre-assembly cleanup loop iterate over this list, so adding a new arch
+# only requires editing one place.
 SUPPORTED_ARCHES=(x86_64 aarch64 armv7 armhf ppc64le s390x riscv64)
 
 OUTPUT_DIR="site/dist/apk"
@@ -95,14 +96,14 @@ if [[ "$KEY_NAME" != *.rsa ]]; then
 fi
 
 detect_arch() {
-  local path="$1" parent
+  local path="$1" parent arch
   parent=$(basename "$(dirname "$path")")
-  case "$parent" in
-    x86_64|aarch64|armv7|armhf|ppc64le|s390x|riscv64)
-      printf '%s\n' "$parent"
+  for arch in "${SUPPORTED_ARCHES[@]}"; do
+    if [[ "$parent" == "$arch" ]]; then
+      printf '%s\n' "$arch"
       return 0
-      ;;
-  esac
+    fi
+  done
   return 1
 }
 
@@ -125,7 +126,7 @@ mapfile -t APKS < <(
 # still explains the repository even when no .apk files were produced.
 mkdir -p "$OUTPUT_DIR"
 rm -f "$OUTPUT_DIR/.no-apks-found"
-rm -f "$OUTPUT_DIR"/*.rsa.pub
+rm -f "$OUTPUT_DIR/$KEY_NAME.pub"
 for arch in "${SUPPORTED_ARCHES[@]}"; do
   rm -rf "${OUTPUT_DIR:?}/$arch"
 done
