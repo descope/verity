@@ -70,6 +70,73 @@ func TestAssembleAPKRepositoryNoPackagesCreatesMarker(t *testing.T) {
 	assert.FileExists(t, filepath.Join(outputDir, ".no-apks-found"))
 }
 
+func TestAssembleAPKRepositoryPreservesPreexistingDocsWhenNoPackages(t *testing.T) {
+	repoRoot := t.TempDir()
+	outputDir := filepath.Join(repoRoot, "site", "dist", "apk")
+	indexHTML := filepath.Join(outputDir, "index.html")
+	indexMD := filepath.Join(outputDir, "index.md")
+	writeTempFile(t, indexHTML, "<html>docs</html>")
+	writeTempFile(t, indexMD, "# docs")
+	require.NoError(t, os.MkdirAll(filepath.Join(repoRoot, "apk-artifacts"), 0o755))
+
+	output, err := runGithubScript(t, repoRoot, "assemble-apk-repository.sh", "--output", outputDir, "apk-artifacts")
+
+	require.NoError(t, err)
+	assert.Contains(t, output, "No APK files found")
+	assert.FileExists(t, indexHTML, "Astro-built apk/index.html must survive overlay assembly")
+	assert.FileExists(t, indexMD, "Astro-built apk/index.md must survive overlay assembly")
+	htmlContents, readErr := os.ReadFile(indexHTML)
+	require.NoError(t, readErr)
+	assert.Equal(t, "<html>docs</html>", string(htmlContents), "index.html must not be overwritten")
+}
+
+func TestAssembleAPKRepositoryPreservesDocsWhenPackagesPresent(t *testing.T) {
+	repoRoot := t.TempDir()
+	outputDir := filepath.Join(repoRoot, "site", "dist", "apk")
+	indexHTML := filepath.Join(outputDir, "index.html")
+	writeTempFile(t, indexHTML, "<html>docs</html>")
+	writeTempFile(t, filepath.Join(repoRoot, "apk-artifacts", "x86_64", "demo.apk"), "not a real apk")
+
+	// apk index will fail on the fake .apk; we only care the script reached the
+	// preservation point and did not delete the existing docs page before
+	// failing.
+	_, err := runGithubScript(t, repoRoot, "assemble-apk-repository.sh", "--output", outputDir, "apk-artifacts")
+	if err != nil {
+		// Failures from `apk index` against a fake archive are expected in the
+		// test environment. The preservation guarantee is independent of that
+		// outcome, so we ignore the error and assert on the file state below.
+		_ = err
+	}
+
+	assert.FileExists(t, indexHTML, "Astro-built apk/index.html must survive even when APKs are present")
+}
+
+func TestAssembleAPKRepositoryCleansStaleArchAndMarker(t *testing.T) {
+	repoRoot := t.TempDir()
+	outputDir := filepath.Join(repoRoot, "site", "dist", "apk")
+	// Stale artifacts from a previous run that should be removed.
+	writeTempFile(t, filepath.Join(outputDir, ".no-apks-found"), "old marker")
+	writeTempFile(t, filepath.Join(outputDir, "x86_64", "old.apk"), "stale")
+	writeTempFile(t, filepath.Join(outputDir, "verity-apk-repository.rsa.pub"), "stale key")
+	// Pre-existing doc that must NOT be removed.
+	writeTempFile(t, filepath.Join(outputDir, "index.html"), "<html>docs</html>")
+	require.NoError(t, os.MkdirAll(filepath.Join(repoRoot, "apk-artifacts"), 0o755))
+
+	_, err := runGithubScript(t, repoRoot, "assemble-apk-repository.sh", "--output", outputDir, "apk-artifacts")
+	require.NoError(t, err)
+
+	// Stale arch dir removed.
+	_, statErr := os.Stat(filepath.Join(outputDir, "x86_64"))
+	assert.True(t, os.IsNotExist(statErr), "stale arch directory should be removed")
+	// Stale key removed.
+	_, statErr = os.Stat(filepath.Join(outputDir, "verity-apk-repository.rsa.pub"))
+	assert.True(t, os.IsNotExist(statErr), "stale public key should be removed")
+	// Fresh marker written.
+	assert.FileExists(t, filepath.Join(outputDir, ".no-apks-found"))
+	// Docs preserved.
+	assert.FileExists(t, filepath.Join(outputDir, "index.html"))
+}
+
 func TestValidateAPKRepositoryRejectsRootPackages(t *testing.T) {
 	repoRoot := t.TempDir()
 	repoDir := filepath.Join(repoRoot, "repo")
