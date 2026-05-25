@@ -1,0 +1,31 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ImageCatalog from "../../components/ImageCatalog.astro";
+import { totalImages, totalCategories, copaCount, integerCount } from "../../data/full-catalog";
+
+const base = import.meta.env.BASE_URL;
+---
+
+<BaseLayout title={`Image Catalog — Verity`}>
+  <nav class="text-sm text-verity-text-secondary mb-6">
+    <a href={base} class="hover:text-verity-nucleus transition-colors">Home</a>
+    <span class="mx-1">/</span>
+    <span class="text-verity-text-primary">Catalog</span>
+  </nav>
+
+  <section class="mb-8">
+    <h1 class="text-2xl font-semibold text-verity-text-primary tracking-wider mb-3">
+      Image Catalog
+    </h1>
+    <p class="text-sm text-verity-text-secondary mb-2">
+      {totalImages} security-patched container images across {totalCategories} categories. Every image
+      is scanned, patched, signed, and published to
+      <code class="text-verity-text-primary text-xs">ghcr.io/verity-org</code>.
+    </p>
+    <p class="text-xs text-verity-text-muted">
+      {copaCount} Copa-patched upstream images · {integerCount} Wolfi-based hardened images
+    </p>
+  </section>
+
+  <ImageCatalog />
+</BaseLayout>

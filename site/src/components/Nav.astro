@@ -1,16 +1,33 @@
 ---
 const base = import.meta.env.BASE_URL;
+
+interface NavLink {
+  href: string;
+  label: string;
+  badge?: string;
+}
+
+const links: NavLink[] = [
+  { href: `${base}catalog/`, label: "Catalog" },
+  { href: `${base}charts/`, label: "Charts" },
+  { href: `${base}apk/`, label: "APK", badge: "EXP" },
+  { href: `${base}compliance/`, label: "Compliance" },
+];
+const githubHref = "https://github.com/verity-org/verity";
 ---
 
 <nav class="sticky top-0 z-40 bg-verity-void/80 border-b border-verity-border backdrop-blur-none">
-  <div class="max-w-[1120px] mx-auto px-6 py-3.5 flex items-center justify-between gap-6">
-    <a href={base} class="flex items-center gap-2.5 group">
+  <div
+    class="max-w-[1120px] mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3 sm:gap-6"
+  >
+    <a href={base} class="flex items-center gap-2.5 group min-w-0">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 80 80"
         width="28"
         height="28"
         class="flex-shrink-0"
+        aria-hidden="true"
       >
         <defs>
           <linearGradient id="verity-nav-teal" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -60,31 +77,126 @@ const base = import.meta.env.BASE_URL;
       >
     </a>
 
-    <div class="flex items-center gap-6">
+    {/* Desktop nav — hidden below md to avoid horizontal overflow on phones */}
+    <div class="hidden md:flex items-center gap-6">
+      {
+        links.map((link) => (
+          <a
+            href={link.href}
+            class="text-xs tracking-[0.12em] uppercase text-verity-text-secondary hover:text-verity-nucleus hover:[text-shadow:0_0_8px_rgba(0,240,204,0.5)] transition-colors py-2"
+          >
+            {link.label}
+            {link.badge && (
+              <span class="ml-1.5 rounded-sm border border-amber-500/40 bg-amber-500/10 px-1 py-px text-[9px] tracking-wider text-amber-200">
+                {link.badge}
+              </span>
+            )}
+          </a>
+        ))
+      }
       <a
-        href={`${base}catalog/`}
-        class="text-xs tracking-[0.12em] uppercase text-verity-text-secondary hover:text-verity-nucleus hover:[text-shadow:0_0_8px_rgba(0,240,204,0.5)] transition-colors"
-      >
-        Catalog
-      </a>
-      <a
-        href={`${base}charts/`}
-        class="text-xs tracking-[0.12em] uppercase text-verity-text-secondary hover:text-verity-nucleus hover:[text-shadow:0_0_8px_rgba(0,240,204,0.5)] transition-colors"
-      >
-        Charts
-      </a>
-      <a
-        href={`${base}compliance/`}
-        class="text-xs tracking-[0.12em] uppercase text-verity-text-secondary hover:text-verity-nucleus hover:[text-shadow:0_0_8px_rgba(0,240,204,0.5)] transition-colors"
-      >
-        Compliance
-      </a>
-      <a
-        href="https://github.com/verity-org/verity"
+        href={githubHref}
         class="text-xs tracking-[0.12em] uppercase text-verity-text border border-verity-border-2 px-2.5 py-1.5 rounded-md hover:border-verity-nucleus hover:text-verity-nucleus transition-colors"
       >
         GitHub ↗
       </a>
     </div>
+
+    {/* Mobile hamburger toggle — visible below md */}
+    <button
+      type="button"
+      class="md:hidden inline-flex items-center justify-center w-11 h-11 rounded-md border border-verity-border-2 text-verity-text hover:border-verity-nucleus hover:text-verity-nucleus transition-colors"
+      aria-controls="mobile-nav"
+      aria-expanded="false"
+      aria-label="Open menu"
+      data-nav-toggle
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        width="22"
+        height="22"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+        data-nav-icon-open
+      >
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        width="22"
+        height="22"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+        class="hidden"
+        data-nav-icon-close
+      >
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+        <line x1="6" y1="18" x2="18" y2="6"></line>
+      </svg>
+    </button>
+  </div>
+
+  {/* Mobile disclosure panel */}
+  <div
+    id="mobile-nav"
+    class="md:hidden hidden border-t border-verity-border bg-verity-void"
+    data-nav-panel
+  >
+    <ul class="px-4 py-3 flex flex-col">
+      {
+        links.map((link) => (
+          <li>
+            <a
+              href={link.href}
+              class="flex items-center justify-between gap-2 text-sm tracking-[0.12em] uppercase text-verity-text-secondary hover:text-verity-nucleus transition-colors py-3 border-b border-verity-border/50"
+            >
+              <span>{link.label}</span>
+              {link.badge && (
+                <span class="rounded-sm border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] tracking-wider text-amber-200">
+                  {link.badge}
+                </span>
+              )}
+            </a>
+          </li>
+        ))
+      }
+      <li class="pt-3">
+        <a
+          href={githubHref}
+          class="block w-full text-center text-sm tracking-[0.12em] uppercase text-verity-text border border-verity-border-2 py-3 rounded-md hover:border-verity-nucleus hover:text-verity-nucleus transition-colors"
+        >
+          GitHub ↗
+        </a>
+      </li>
+    </ul>
   </div>
 </nav>
+
+<script>
+  const toggle = document.querySelector<HTMLButtonElement>("[data-nav-toggle]");
+  const panel = document.querySelector<HTMLElement>("[data-nav-panel]");
+  const iconOpen = document.querySelector<SVGElement>("[data-nav-icon-open]");
+  const iconClose = document.querySelector<SVGElement>("[data-nav-icon-close]");
+
+  if (toggle && panel && iconOpen && iconClose) {
+    toggle.addEventListener("click", () => {
+      const isOpen = panel.classList.toggle("hidden") === false;
+      toggle.setAttribute("aria-expanded", String(isOpen));
+      toggle.setAttribute("aria-label", isOpen ? "Close menu" : "Open menu");
+      iconOpen.classList.toggle("hidden", isOpen);
+      iconClose.classList.toggle("hidden", !isOpen);
+    });
+  }
+</script>

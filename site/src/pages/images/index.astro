@@ -1,0 +1,27 @@
+---
+// The `/images/[id]` dynamic routes carry scanned image detail pages. Their
+// listing lives in the unified catalog at `/catalog/`, which surfaces every
+// image with its source badge, severity summary, and pull reference. This
+// stub page exists so the bare `/images/` URL is reachable instead of
+// returning 404 — it immediately redirects to the catalog.
+
+const base = import.meta.env.BASE_URL;
+const target = `${base}catalog/`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Image Catalog — Verity</title>
+    <meta http-equiv="refresh" content={`0;url=${target}`} />
+    <link rel="canonical" href={target} />
+  </head>
+  <body>
+    <p>Redirecting to <a href={target}>the image catalog</a>.</p>
+    <script is:inline define:vars={{ target }}>
+      window.location.replace(target);
+    </script>
+  </body>
+</html>
