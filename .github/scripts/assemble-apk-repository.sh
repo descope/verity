@@ -15,8 +15,19 @@ Defaults:
   key name: verity-apk-repository.rsa
 
 Guarded behavior: if no .apk files are found, writes .no-apks-found and exits 0.
+
+Preservation: any files in OUTPUT_DIR that this script does not own
+(e.g. index.html, index.md from a prior Astro build) are left untouched.
+Only managed artifacts (.no-apks-found, arch directories, the public key,
+and APKINDEX.tar.gz files) are removed at the start of each run.
 USAGE
 }
+
+# Architectures the script writes to OUTPUT_DIR. Single source of truth —
+# both `detect_arch` (which classifies incoming .apk files) and the
+# pre-assembly cleanup loop iterate over this list, so adding a new arch
+# only requires editing one place.
+SUPPORTED_ARCHES=(x86_64 aarch64 armv7 armhf ppc64le s390x riscv64)
 
 OUTPUT_DIR="site/dist/apk"
 KEY_NAME="verity-apk-repository.rsa"
@@ -85,14 +96,14 @@ if [[ "$KEY_NAME" != *.rsa ]]; then
 fi
 
 detect_arch() {
-  local path="$1" parent
+  local path="$1" parent arch
   parent=$(basename "$(dirname "$path")")
-  case "$parent" in
-    x86_64|aarch64|armv7|armhf|ppc64le|s390x|riscv64)
-      printf '%s\n' "$parent"
+  for arch in "${SUPPORTED_ARCHES[@]}"; do
+    if [[ "$parent" == "$arch" ]]; then
+      printf '%s\n' "$arch"
       return 0
-      ;;
-  esac
+    fi
+  done
   return 1
 }
 
@@ -110,8 +121,15 @@ mapfile -t APKS < <(
   done | sort -u
 )
 
-rm -rf "$OUTPUT_DIR"
+# Clean only artifacts this script manages. Preserve any other files (notably
+# index.html and index.md emitted by the Astro build) so the published page
+# still explains the repository even when no .apk files were produced.
 mkdir -p "$OUTPUT_DIR"
+rm -f "${OUTPUT_DIR:?}/.no-apks-found"
+rm -f "${OUTPUT_DIR:?}/${KEY_NAME}.pub"
+for arch in "${SUPPORTED_ARCHES[@]}"; do
+  rm -rf "${OUTPUT_DIR:?}/${arch}"
+done
 
 if [[ ${#APKS[@]} -eq 0 ]]; then
   cat > "$OUTPUT_DIR/.no-apks-found" <<EOF
