@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.70.0"
   },
-  "ReportID": "019eb583-0f77-750a-a7b8-ae7f47a4cac0",
-  "CreatedAt": "2026-06-11T07:08:45.815333142Z",
+  "ReportID": "019ec4ef-50d0-7758-abec-0b132be17e46",
+  "CreatedAt": "2026-06-14T07:01:18.672482853Z",
   "ArtifactID": "sha256:551b8a927055f26640b7285cffd3ddb01114ceaaf4439d9b64f962b2478b1b3a",
   "ArtifactName": "docker.io/falcosecurity/falcoctl:0.12.2",
   "ArtifactType": "container_image",
@@ -6486,7 +6486,7 @@
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
           },
           "Fingerprint": "sha256:1cf44e4139454d4929a4730eca12b979b7bed65288e9327da96aef2f928959d9",
-          "Title": "Docker: `PUT /containers/{id}/archive` executes container binary on the host",
+          "Title": "Moby is an open source container framework. In versions prior to 29.5. ...",
           "Description": "Moby is an open source container framework. In versions prior to 29.5.1 and in moby/moby v2 prior to v2.0.0-beta.14, when a compressed archive is uploaded to a container via `PUT /containers/{id}/archive` or piped through `docker cp -`, the daemon resolves decompression binaries (such as `xz` or `unpigz`) from the container's filesystem rather than the host's due to incorrect ordering of operations. A malicious container image containing a trojanized decompression binary can achieve arbitrary code execution with full daemon privileges, including host root UID and unrestricted capabilities, when a user uploads a compressed (xz or gzip) archive into that container. This issue is fixed in Docker Engine 29.5.1 and moby/moby v2.0.0-beta.14. Workarounds include only running containers from trusted images, using authorization plugins to restrict access to the `PUT /containers/{id}/archive` endpoint, and avoiding piping compressed archives into containers created from untrusted images",
           "Severity": "HIGH",
           "CweIDs": [
@@ -6534,9 +6534,13 @@
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
           },
           "Fingerprint": "sha256:dcdec55f6b65e3d42e11dd47560030a35bd960ec8fb82331b4d942ba7637efb6",
-          "Title": "Docker: Race condition in docker cp allows bind mount redirection to host path",
-          "Description": "Package updates are available for Amazon Linux 2023 that fix the following vulnerabilities:\nCVE-2026-46595:\n\tPreviously, CVE-2024-45337 fixed an authorization bypass for misused ssh server configurations; if any other type of callback is passed other than public key, then the source-address validation would be skipped.\n\nCVE-2026-42508:\n\tPreviously, a revoked 'SignatureKey' belonging to a CA was not correctly checked for revocation. Now, both the 'key' and 'key.SignatureKey' are checked for @revoked.\n\nCVE-2026-42306:\n\tDocker: Race condition in docker cp allows bind mount redirection to host path\n\nCVE-2026-39833:\n\tThe in-memory keyring returned by NewKeyring() silently accepted keys with the ConfirmBeforeUse constraint but never enforced it. The key would sign without any confirmation prompt, with no indication to the caller that the constraint was not in effect. NewKeyring() now returns an error when unsupported constraints are requested.\n\nCVE-2026-39831:\n\tThe Verify() method for FIDO/U2F security key types (sk-ecdsa-sha2-nistp256@openssh.com, sk-ssh-ed25519@openssh.com) did not check the User Presence flag. Signatures generated without physical touch were accepted, allowing unattended use of a hardware security key. To restore the previous behavior, return a \"no-touch-required\" extension in Permissions.Extensions from PublicKeyCallback.\n\nCVE-2026-39830:\n\tA malicious SSH peer could send unsolicited global request responses to fill an internal buffer, blocking the connection's read loop. The blocked goroutine could not be released by calling Close(), resulting in a resource leak per connection. Unsolicited global responses are now discarded.\n\nCVE-2026-39829:\n\tThe RSA and DSA public key parsers did not enforce size limits on key parameters. A crafted public key with an excessively large modulus or DSA parameter could cause several minutes of CPU consumption during signature verification. This could be triggered by unauthenticated clients during public key authentication. RSA moduli are now limited to 8192 bits, and DSA parameters are validated per FIPS 186-2.\n",
+          "Title": "Moby is an open source container framework. In Docker Engine prior to  ...",
+          "Description": "Moby is an open source container framework. In Docker Engine prior to version 29.5.1, Docker Daemon versions 28.5.2 and prior, and Moby Daemon prior to version 2.0.0-beta.14, a race condition during docker cp mount setup allows a malicious container to redirect a bind mount target to an arbitrary host path, potentially overwriting host files or causing denial of service. This issue has been patched in Docker Engine version 29.5.1 and Moby Daemon version 2.0.0-beta.14.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-61",
+            "CWE-367"
+          ],
           "VendorSeverity": {
             "amazon": 3,
             "ghsa": 3
@@ -6549,8 +6553,11 @@
           },
           "References": [
             "https://github.com/moby/moby",
-            "https://github.com/moby/moby/security/advisories/GHSA-rg2x-37c3-w2rh"
-          ]
+            "https://github.com/moby/moby/security/advisories/GHSA-rg2x-37c3-w2rh",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-42306"
+          ],
+          "PublishedDate": "2026-06-12T19:16:27.49Z",
+          "LastModifiedDate": "2026-06-12T19:16:27.49Z"
         },
         {
           "VulnerabilityID": "CVE-2026-33997",
@@ -6643,9 +6650,13 @@
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
           },
           "Fingerprint": "sha256:6daaca70d4b3b53684a277c6ef6d09770df68f92d886d88ee084e660b55da667",
-          "Title": "Docker: Race condition in docker cp allows creation of arbitrary empty files on the host via symlink swap",
-          "Description": "## Summary\n\nA race condition during `docker cp` mount setup allows a malicious container to create empty files or directories at arbitrary absolute paths on the host filesystem.\n\nThis advisory covers the race during mountpoint creation. The related race during the subsequent mount syscall is tracked in GHSA-rg2x-37c3-w2rh\n\n## Details\n\nWhen copying files into a container, the daemon sets up a temporary filesystem view by bind-mounting volumes into a private mount namespace. During this setup, the mount destination path is first resolved within the container's root filesystem using `GetResourcePath`, and then used to create the mountpoint (file or directory) if it does not already exist via `createIfNotExists`.\n\nBetween path resolution and mountpoint creation, a process running inside the container can swap a path component for a symlink pointing to an arbitrary location on the host. Because `createIfNotExists` operates on the already-resolved absolute path using standard `os.MkdirAll` and `os.OpenFile` — which follow symlinks in intermediate path components — the symlink is followed and the file or directory is created outside the container root filesystem, as root.\n\n## Impact\n\nA malicious container can create empty files or directories at arbitrary absolute paths on the host filesystem, running as root. This enables persistent denial of service — for example:\n\n- Converting `/etc/docker/daemon.json` into a directory prevents the daemon from restarting\n- Creating `/etc/nologin` prevents user logins\n- Overwriting critical system paths with empty files can break host services\n\nThe container does not gain read or write access to existing host files — only the ability to create new empty files or directories at chosen paths.\n\n### Conditions for exploitation\n\n- A container must be running with a process that can rapidly create and swap symlinks at a volume mount destination path.\n- An operator must initiate a `docker cp` into that container, or call the `PUT /containers/{id}/archive` or `HEAD /containers/{id}/archive` API endpoints.\n\n### Not affected\n\n- Containers that do not have volume mounts are not affected, as the race occurs during volume bind-mount setup.\n\n## Patches\n\nMountpoint creation is now scoped to the container root using `os.Root` (Go 1.24+), which refuses to follow symlinks that escape the opened root directory. All filesystem operations in `createIfNotExists` (`MkdirAll`, `OpenFile`) are performed through the `os.Root` handle, so even if a symlink swap occurs after path resolution, the creation stays confined to the container root.\n\n## Workarounds\n\n- Only run containers from trusted images.\n- Avoid using `docker cp` with untrusted running containers.\n- Use authorization plugins to restrict access to the archive API endpoints (`PUT /containers/{id}/archive`, `HEAD /containers/{id}/archive`).",
+          "Title": "Moby is an open source container framework. In Docker Engine prior to  ...",
+          "Description": "Moby is an open source container framework. In Docker Engine prior to version 29.5.1, Docker Daemon versions 28.5.2 and prior, and Moby Daemon prior to version 2.0.0-beta.14, a race condition during docker cp mount setup allows a malicious container to create empty files or directories at arbitrary absolute paths on the host filesystem. This issue has been patched in Docker Engine version 29.5.1 and Moby Daemon version 2.0.0-beta.14.",
           "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-81",
+            "CWE-367"
+          ],
           "VendorSeverity": {
             "ghsa": 2
           },
@@ -6657,8 +6668,11 @@
           },
           "References": [
             "https://github.com/moby/moby",
-            "https://github.com/moby/moby/security/advisories/GHSA-vp62-88p7-qqf5"
-          ]
+            "https://github.com/moby/moby/security/advisories/GHSA-vp62-88p7-qqf5",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-41568"
+          ],
+          "PublishedDate": "2026-06-12T19:16:26.907Z",
+          "LastModifiedDate": "2026-06-12T19:16:26.907Z"
         },
         {
           "VulnerabilityID": "CVE-2026-34986",
@@ -6738,7 +6752,7 @@
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-33186",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-34986",
             "https://errata.almalinux.org/9/ALSA-2026-19353.html",
-            "https://errata.rockylinux.org/RLSA-2026:22937",
+            "https://errata.rockylinux.org/RLSA-2026:23228",
             "https://github.com/go-jose/go-jose",
             "https://github.com/go-jose/go-jose/security/advisories/GHSA-78h2-9frx-2jm8",
             "https://linux.oracle.com/cve/CVE-2026-34986.html",
@@ -7048,7 +7062,7 @@
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
           },
           "Fingerprint": "sha256:5443112998117a087aea2d9981d9f2c12f7df1d69bb9dbf6a2d442268a486e56",
-          "Title": "opentelemetry-go: BSD kenv command not using absolute path enables PATH hijacking",
+          "Title": "github.com/open-telemetry/opentelemetry-go: OpenTelemetry-Go: Arbitrary code execution via PATH hijacking on BSD/Solaris",
           "Description": "OpenTelemetry-Go is the Go implementation of OpenTelemetry. From 1.15.0 to 1.42.0, the fix for CVE-2026-24051 changed the Darwin ioreg command to use an absolute path but left the BSD kenv command using a bare name, allowing the same PATH hijacking attack on BSD and Solaris platforms. This vulnerability is fixed in 1.43.0.",
           "Severity": "HIGH",
           "CweIDs": [
@@ -7056,7 +7070,8 @@
           ],
           "VendorSeverity": {
             "ghsa": 3,
-            "nvd": 3
+            "nvd": 3,
+            "redhat": 3
           },
           "CVSS": {
             "ghsa": {
@@ -7066,13 +7081,19 @@
             "nvd": {
               "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H",
               "V3Score": 7
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H",
+              "V3Score": 8.8
             }
           },
           "References": [
             "http://github.com/open-telemetry/opentelemetry-go/releases/tag/v1.43.0",
+            "https://access.redhat.com/security/cve/CVE-2026-39883",
             "https://github.com/open-telemetry/opentelemetry-go",
             "https://github.com/open-telemetry/opentelemetry-go/security/advisories/GHSA-hfvc-g4fc-pqhx",
-            "https://nvd.nist.gov/vuln/detail/CVE-2026-39883"
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-39883",
+            "https://www.cve.org/CVERecord?id=CVE-2026-39883"
           ],
           "PublishedDate": "2026-04-08T21:17:00.697Z",
           "LastModifiedDate": "2026-04-10T21:16:27.12Z"
@@ -7155,7 +7176,7 @@
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-33186",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-34986",
             "https://errata.almalinux.org/9/ALSA-2026-19353.html",
-            "https://errata.rockylinux.org/RLSA-2026:22937",
+            "https://errata.rockylinux.org/RLSA-2026:23228",
             "https://github.com/grpc/grpc-go",
             "https://github.com/grpc/grpc-go/security/advisories/GHSA-p77j-4mvh-x3m3",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-33186",
@@ -7228,14 +7249,12 @@
             "https://access.redhat.com/security/cve/CVE-2025-68121",
             "https://bugzilla.redhat.com/2434432",
             "https://bugzilla.redhat.com/2437111",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2434431",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2434432",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2437111",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-61726",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-61728",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-68121",
             "https://errata.almalinux.org/9/ALSA-2026-4177.html",
-            "https://errata.rockylinux.org/RLSA-2026:4672",
+            "https://errata.rockylinux.org/RLSA-2026:4177",
             "https://github.com/golang/go/issues/77113",
             "https://go.dev/cl/737700",
             "https://go.dev/issue/77217",
@@ -7287,6 +7306,7 @@
             "azure": 3,
             "bitnami": 3,
             "oracle-oval": 3,
+            "photon": 3,
             "redhat": 3,
             "rocky": 3
           },
@@ -7307,7 +7327,7 @@
             "https://bugzilla.redhat.com/show_bug.cgi?id=2445356",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-25679",
             "https://errata.almalinux.org/9/ALSA-2026-9044.html",
-            "https://errata.rockylinux.org/RLSA-2026:8456",
+            "https://errata.rockylinux.org/RLSA-2026:9044",
             "https://go.dev/cl/752180",
             "https://go.dev/issue/77578",
             "https://groups.google.com/g/golang-announce/c/EdhZqrQ98hk",
@@ -7356,6 +7376,7 @@
             "amazon": 3,
             "bitnami": 3,
             "oracle-oval": 3,
+            "photon": 3,
             "redhat": 3,
             "rocky": 3,
             "ubuntu": 2
@@ -7382,15 +7403,23 @@
             "https://bugzilla.redhat.com/2456338",
             "https://bugzilla.redhat.com/2456339",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2445356",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2449833",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2455470",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2456333",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2456335",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2456336",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2456338",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2456339",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-25679",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32280",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32281",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32282",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32283",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-33186",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-33810",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-34986",
             "https://errata.almalinux.org/9/ALSA-2026-19353.html",
-            "https://errata.rockylinux.org/RLSA-2026:16875",
+            "https://errata.rockylinux.org/RLSA-2026:19353",
             "https://go.dev/cl/758320",
             "https://go.dev/issue/78282",
             "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
@@ -7440,6 +7469,7 @@
             "amazon": 3,
             "bitnami": 3,
             "nvd": 3,
+            "photon": 3,
             "redhat": 2,
             "rocky": 3
           },
@@ -7468,14 +7498,24 @@
             "https://bugzilla.redhat.com/2456336",
             "https://bugzilla.redhat.com/2456338",
             "https://bugzilla.redhat.com/2456339",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2445356",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2449833",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2455470",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2456333",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2456335",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2456336",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2456338",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2456339",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-25679",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32280",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32281",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32282",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32283",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-33186",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-33810",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-34986",
             "https://errata.almalinux.org/9/ALSA-2026-19353.html",
-            "https://errata.rockylinux.org/RLSA-2026:23102",
+            "https://errata.rockylinux.org/RLSA-2026:19353",
             "https://go.dev/cl/758061",
             "https://go.dev/issue/78281",
             "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
@@ -7524,6 +7564,7 @@
             "bitnami": 3,
             "nvd": 3,
             "oracle-oval": 3,
+            "photon": 3,
             "redhat": 3,
             "rocky": 3
           },
@@ -7552,16 +7593,24 @@
             "https://bugzilla.redhat.com/2456336",
             "https://bugzilla.redhat.com/2456338",
             "https://bugzilla.redhat.com/2456339",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2434432",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2437111",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2445345",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2445356",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2449833",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2455470",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2456336",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2456338",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2456339",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-61726",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-68121",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-25679",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32280",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-27137",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32282",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32283",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-33186",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-34986",
             "https://errata.almalinux.org/9/ALSA-2026-19353.html",
-            "https://errata.rockylinux.org/RLSA-2026:16875",
+            "https://errata.rockylinux.org/RLSA-2026:23228",
             "https://go.dev/cl/763767",
             "https://go.dev/issue/78334",
             "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
@@ -7611,6 +7660,7 @@
             "bitnami": 3,
             "nvd": 3,
             "oracle-oval": 3,
+            "photon": 3,
             "redhat": 3
           },
           "CVSS": {
@@ -7679,6 +7729,7 @@
             "bitnami": 3,
             "nvd": 3,
             "oracle-oval": 3,
+            "photon": 3,
             "ubuntu": 2
           },
           "CVSS": {
@@ -7744,7 +7795,8 @@
             "amazon": 3,
             "bitnami": 3,
             "nvd": 3,
-            "oracle-oval": 3
+            "oracle-oval": 3,
+            "photon": 3
           },
           "CVSS": {
             "bitnami": {
@@ -7802,7 +7854,8 @@
           "VendorSeverity": {
             "amazon": 3,
             "bitnami": 2,
-            "oracle-oval": 3
+            "oracle-oval": 3,
+            "photon": 2
           },
           "CVSS": {
             "bitnami": {
@@ -7853,7 +7906,8 @@
           "VendorSeverity": {
             "amazon": 3,
             "bitnami": 2,
-            "oracle-oval": 3
+            "oracle-oval": 3,
+            "photon": 2
           },
           "CVSS": {
             "bitnami": {
@@ -7908,7 +7962,8 @@
           "VendorSeverity": {
             "bitnami": 3,
             "nvd": 3,
-            "oracle-oval": 3
+            "oracle-oval": 3,
+            "photon": 3
           },
           "CVSS": {
             "bitnami": {
@@ -7963,7 +8018,8 @@
           "VendorSeverity": {
             "amazon": 3,
             "bitnami": 3,
-            "oracle-oval": 3
+            "oracle-oval": 3,
+            "photon": 3
           },
           "CVSS": {
             "bitnami": {
@@ -8067,6 +8123,7 @@
           "VendorSeverity": {
             "amazon": 3,
             "bitnami": 2,
+            "photon": 2,
             "redhat": 2
           },
           "CVSS": {
@@ -8176,6 +8233,7 @@
             "bitnami": 2,
             "nvd": 2,
             "oracle-oval": 3,
+            "photon": 2,
             "redhat": 2,
             "rocky": 3
           },
@@ -8204,16 +8262,24 @@
             "https://bugzilla.redhat.com/2456336",
             "https://bugzilla.redhat.com/2456338",
             "https://bugzilla.redhat.com/2456339",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2434432",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2437111",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2445345",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2445356",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2449833",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2455470",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2456336",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2456338",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2456339",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-61726",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-68121",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-25679",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32280",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-27137",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32282",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32283",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-33186",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-34986",
             "https://errata.almalinux.org/9/ALSA-2026-19353.html",
-            "https://errata.rockylinux.org/RLSA-2026:16875",
+            "https://errata.rockylinux.org/RLSA-2026:23228",
             "https://go.dev/cl/763761",
             "https://go.dev/issue/78293",
             "https://groups.google.com/g/golang-announce/c/0uYbvbPZRWU",
@@ -8393,6 +8459,7 @@
             "amazon": 3,
             "bitnami": 2,
             "oracle-oval": 3,
+            "photon": 2,
             "redhat": 2
           },
           "CVSS": {
@@ -8501,6 +8568,7 @@
             "amazon": 3,
             "azure": 1,
             "bitnami": 1,
+            "photon": 1,
             "redhat": 1
           },
           "CVSS": {
