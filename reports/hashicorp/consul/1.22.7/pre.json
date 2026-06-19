@@ -3,10 +3,10 @@
   "Trivy": {
     "Version": "0.70.0"
   },
-  "ReportID": "019edec9-2ede-7ae1-8652-841c975103c5",
-  "CreatedAt": "2026-06-19T07:29:47.23071507Z",
-  "ArtifactID": "sha256:9e45201bff7fdd4c20bff3cab7a2539ce19e2826ca81738866f3391c6b400977",
-  "ArtifactName": "hashicorp/consul:1.22.7",
+  "ReportID": "019edec7-eb7c-7de9-8d7e-1f09afa6b585",
+  "CreatedAt": "2026-06-19T07:28:24.444913322Z",
+  "ArtifactID": "sha256:bdd9b62dfb71515609b8b869c349815a45d8f619a080148bad9b758040f34a39",
+  "ArtifactName": "mirror.gcr.io/hashicorp/consul:1.22.7",
   "ArtifactType": "container_image",
   "Metadata": {
     "Size": 213169664,
@@ -27,12 +27,12 @@
       "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
     ],
     "RepoTags": [
-      "hashicorp/consul:1.22.7"
+      "mirror.gcr.io/hashicorp/consul:1.22.7"
     ],
     "RepoDigests": [
-      "hashicorp/consul@sha256:a230dcea0bb107bd7958a912d1429fb7f9d399637de7ffb814b34412b9e8c543"
+      "mirror.gcr.io/hashicorp/consul@sha256:a230dcea0bb107bd7958a912d1429fb7f9d399637de7ffb814b34412b9e8c543"
     ],
-    "Reference": "hashicorp/consul:1.22.7",
+    "Reference": "mirror.gcr.io/hashicorp/consul:1.22.7",
     "ImageConfig": {
       "architecture": "amd64",
       "created": "2026-04-22T11:35:34.673685964Z",
@@ -290,7 +290,7 @@
   },
   "Results": [
     {
-      "Target": "hashicorp/consul:1.22.7 (alpine 3.23.4)",
+      "Target": "mirror.gcr.io/hashicorp/consul:1.22.7 (alpine 3.23.4)",
       "Class": "os-pkgs",
       "Type": "alpine",
       "Packages": [
@@ -3833,7 +3833,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:c42963e5e2a4c00fbd8bc5c2ebf3ac9faad30ef346a9613c157170e2ef339aae",
+          "Fingerprint": "sha256:ddc9b067922e03f7ec600340682e31b861a2d1149a588504ae9401991398b999",
           "Title": "curl: curl: Security bypass due to global TLS option changes in multi-threaded LDAPS transfers",
           "Description": "When doing multi-threaded LDAPS transfers (LDAP over TLS) with libcurl,\nchanging TLS options in one thread would inadvertently change them globally\nand therefore possibly also affect other concurrently setup transfers.\n\nDisabling certificate verification for a specific transfer could\nunintentionally disable the feature for other threads as well.",
           "Severity": "MEDIUM",
@@ -3891,7 +3891,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:d419a04b20fb36d8221897173299f59e3719dbd19003954057653e6dca4b60a3",
+          "Fingerprint": "sha256:461d637939452685c2585e253091cf8f6ffafd875a85433f1fca994bd2bee63c",
           "Title": "curl: curl: Authentication bypass due to incorrect connection reuse with Negotiate authentication",
           "Description": "libcurl can in some circumstances reuse the wrong connection when asked to do\nan Negotiate-authenticated HTTP or HTTPS request.\n\nlibcurl features a pool of recent connections so that subsequent requests can\nreuse an existing connection to avoid overhead.\n\nWhen reusing a connection a range of criterion must first be met. Due to a\nlogical error in the code, a request that was issued by an application could\nwrongfully reuse an existing connection to the same server that was\nauthenticated using different credentials. One underlying reason being that\nNegotiate sometimes authenticates *connections* and not *requests*, contrary\nto how HTTP is designed to work.\n\nAn application that allows Negotiate authentication to a server (that responds\nwanting Negotiate) with `user1:password1` and then does another operation to\nthe same server also using Negotiate but with `user2:password2` (while the\nprevious connection is still alive) - the second request wrongly reused the\nsame connection and since it then sees that the Negotiate negotiation is\nalready made, it just sends the request over that connection thinking it uses\nthe user2 credentials when it is in fact still using the connection\nauthenticated for user1...\n\nThe set of authentication methods to use is set with  `CURLOPT_HTTPAUTH`.\n\nApplications can disable libcurl's reuse of connections and thus mitigate this\nproblem, by using one of the following libcurl options to alter how\nconnections are or are not reused: `CURLOPT_FRESH_CONNECT`,\n`CURLOPT_MAXCONNECTS` and `CURLMOPT_MAX_HOST_CONNECTIONS` (if using the\ncurl_multi API).",
           "Severity": "MEDIUM",
@@ -3948,7 +3948,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:c215d0013251654c1e242cd70c443a0c3abccd34a230f6ed82f7661c6e67256b",
+          "Fingerprint": "sha256:6ffb18122252ef151869a7b7f0ff0b52f48809c7d9db636d5d865f6f74c895e2",
           "Title": "curl: curl: Information disclosure via OAuth2 bearer token leakage during HTTP(S) redirect",
           "Description": "When an OAuth2 bearer token is used for an HTTP(S) transfer, and that transfer\nperforms a redirect to a second URL, curl could leak that token to the second\nhostname under some circumstances.\n\nIf the hostname that the first request is redirected to has information in the\nused .netrc file, with either of the `machine` or `default` keywords, curl\nwould pass on the bearer token set for the first host also to the second one.",
           "Severity": "MEDIUM",
@@ -4008,7 +4008,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:f913901cce2c4234be94764e3ffb8e93c0be67fad9fdc6a4195dbb304140dbd7",
+          "Fingerprint": "sha256:b52efbdd1905a56708e621615d19a0fe9f367e40c7a7a974a66f7b3139021a89",
           "Title": "curl: curl: Unauthorized access due to improper HTTP proxy connection reuse",
           "Description": "curl would wrongly reuse an existing HTTP proxy connection doing CONNECT to a\nserver, even if the new request uses different credentials for the HTTP proxy.\nThe proper behavior is to create or use a separate connection.",
           "Severity": "MEDIUM",
@@ -4069,7 +4069,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:d0d9bfdfc12116fadf5ae235837cb851024263768e9ee6e8fdbc4d6a3d1b2e4a",
+          "Fingerprint": "sha256:03ef157d31b2371d77eff757c0e691dbf2d2762db9ffbddd4e44e1651e3cdf2a",
           "Title": "curl: curl: Arbitrary code execution or Denial of Service via use-after-free in SMB request handling",
           "Description": "When doing a second SMB request to the same host again, curl would wrongly use\na data pointer pointing into already freed memory.",
           "Severity": "MEDIUM",
@@ -4128,7 +4128,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:7d2cba12059596157cdc084c29d1990e95c407375415a9907df1fdda5edb9c72",
+          "Fingerprint": "sha256:ba2ff9cb047a494854bdaf4c9ce18cb5f202f3e4bc7d7b6ff65f5d53b0dc8e7e",
           "Title": "curl: Information disclosure via cross-protocol redirect with OAuth2 bearer token",
           "Description": "When an OAuth2 bearer token is used for an HTTP(S) transfer, and that transfer\nperforms a cross-protocol redirect to a second URL that uses an IMAP, LDAP,\nPOP3 or SMTP scheme, curl might wrongly pass on the bearer token to the new\ntarget host.",
           "Severity": "LOW",
@@ -4189,7 +4189,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:d0a8bf42f87829ddf54f900d3784fe3de236687b8e450ebaaf67f1462c8f2d6f",
+          "Fingerprint": "sha256:90f7ccd93b7ccd60ad47fc2fbbe51b12716f6e738efc1898acc3c0773e5829a3",
           "Title": "curl: libcurl: Improper certificate validation due to cached TLS settings reuse",
           "Description": "When doing TLS related transfers with reused easy or multi handles and\naltering the  `CURLSSLOPT_NO_PARTIALCHAIN` option, libcurl could accidentally\nreuse a CA store cached in memory for which the partial chain option was\nreversed. Contrary to the user's wishes and expectations. This could make\nlibcurl find and accept a trust chain that it otherwise would not.",
           "Severity": "LOW",
@@ -4248,7 +4248,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:d037f21a4362be7414a42ae867322e6778fdfd97a0c1c686a22786c15d832e8e",
+          "Fingerprint": "sha256:5a56ab7a86d749ec0ec2df2f177a57e6ec6f6ea8f9640c51c2598d34d1092d37",
           "Title": "gnutls: GnuTLS: Denial of Service via DTLS zero-length fragment",
           "Description": "A flaw in GnuTLS DTLS handshake parsing allows malformed fragments with zero length and non-zero offset, leading to an integer underflow during reassembly and resulting in an out-of-bounds read. This issue is remotely exploitable and may cause information disclosure or denial of service.",
           "Severity": "CRITICAL",
@@ -4348,7 +4348,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:1369eb1190c01ccdaadf006062c0d973d833102962496069a451d7b9724bcd07",
+          "Fingerprint": "sha256:3f543df17e5d888d2484744d3e76f8f11f08b66148b7039b2cc8068d9b433e34",
           "Title": "gnutls: gnutls: Authentication Bypass via NUL Character in Username",
           "Description": "A flaw was found in gnutls. Servers configured with RSA-PSK (Rivest–Shamir–Adleman – Pre-Shared Key) wrongfully matched usernames containing a NUL character with truncated usernames. A remote attacker could exploit this by sending a specially crafted username, leading to an authentication bypass. This vulnerability allows an attacker to gain unauthorized access by circumventing the authentication process.",
           "Severity": "CRITICAL",
@@ -4448,7 +4448,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:a7f322e71f1d90176733e60b1f8a5755e0fe3edea109fb87bf29d89e2301ef6d",
+          "Fingerprint": "sha256:38a0d2245cc41e296887e1007565e055ac15322cb5d09a6d47d8b2396c89ca8e",
           "Title": "gnutls: GnuTLS: Denial of Service via heap buffer overflow in DTLS handshake fragment reassembly",
           "Description": "A heap buffer overflow vulnerability exists in the DTLS handshake fragment reassembly logic of GnuTLS. The issue arises in merge_handshake_packet() where incoming handshake fragments are matched and merged based solely on handshake type, without validating that the message_length field remains consistent across all fragments of the same logical message. An attacker can exploit this by sending crafted DTLS fragments with conflicting message_length values, causing the implementation to allocate a buffer based on a smaller initial fragment and subsequently write beyond its bounds using larger, inconsistent fragments. Because the merge operation does not enforce proper bounds checking against the allocated buffer size, this results in an out-of-bounds write on the heap. The vulnerability is remotely exploitable without authentication via the DTLS handshake path and can lead to application crashes or potential memory corruption.",
           "Severity": "HIGH",
@@ -4543,7 +4543,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:621e0f1a361d8a2d7f6fd8645b24b8facac2fe74b316c7ffb758e96f4926caa1",
+          "Fingerprint": "sha256:58b1b8a7333e92203ccf2d6517bad9fd841b5455096364356ebc79e46837fb69",
           "Title": "gnutls: GnuTLS: Policy bypass due to case-sensitive nameConstraints comparison",
           "Description": "A flaw was found in gnutls. This vulnerability occurs because gnutls performs case-sensitive comparisons of `nameConstraints` labels, specifically for `dNSName` (DNS) or `rfc822Name` (email) constraints within `excludedSubtrees` or `permittedSubtrees`. A remote attacker can exploit this by crafting a leaf certificate with casing differences in the Subject Alternative Name (SAN), leading to a policy bypass where a certificate that should be rejected is instead accepted. This could result in unauthorized access or information disclosure.",
           "Severity": "HIGH",
@@ -4642,7 +4642,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:abd84bc3c3219025d7d86d261bf3bca56f8a8c1081d4b4309556175485e1165a",
+          "Fingerprint": "sha256:8925cb8fa1bdc49098746104b509efaf461c9ffd8580031d6fa96fb0bb1e9ebe",
           "Title": "gnutls: gnutls: Denial of Service via DTLS packet reordering vulnerability",
           "Description": "A flaw was found in gnutls. A remote attacker could exploit an issue in the Datagram Transport Layer Security (DTLS) packet reordering logic. The comparator function, responsible for ordering DTLS packets by sequence numbers, did not correctly handle packets with duplicate sequence numbers. This could lead to unstable packet ordering or undefined behavior, resulting in a denial of service.",
           "Severity": "HIGH",
@@ -4735,7 +4735,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:c786ace2ccd6c891b7b08e6fe2ee71f2ca0e63e6da5d0dfa5c0aa9b61076b6f1",
+          "Fingerprint": "sha256:06e9dd19fbbb6ffedb9b9d24c7e2a28fff86ddecbcc6047b7233c44505f32818",
           "Title": "gnutls: gnutls: Security bypass due to incorrect name constraint handling",
           "Description": "A flaw was found in gnutls. This vulnerability occurs because permitted name constraints were incorrectly ignored when previous Certificate Authorities (CAs) only had excluded name constraints. A remote attacker could exploit this to bypass critical name constraint checks during certificate validation. This bypass could lead to the acceptance of invalid certificates, potentially enabling spoofing or man-in-the-middle attacks against affected systems.",
           "Severity": "MEDIUM",
@@ -4828,7 +4828,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:36443ee60e0c963fe9a7d5bdcb05b37de89da250f071e5c81203807bfccd8c27",
+          "Fingerprint": "sha256:d6797a8d0534034a63568d4e223a09ce3dd04fe3cbed4b5141069e347e50d0ce",
           "Title": "gnutls: gnutls: Certificate validation bypass due to improper handling of URI and SRV SANs",
           "Description": "A flaw was found in gnutls. A remote attacker could exploit this vulnerability by presenting a specially crafted certificate that contains Uniform Resource Identifier (URI) or Service (SRV) Subject Alternative Names (SANs). This could cause the certificate validation process to incorrectly fall back to checking DNS hostnames against the Common Name (CN), potentially allowing the attacker to spoof legitimate services or intercept sensitive information.",
           "Severity": "MEDIUM",
@@ -4920,7 +4920,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:ad2483b3738452609586618815943aa1ed0ffa4e010df72edb217dea7a0c3d04",
+          "Fingerprint": "sha256:d418fc67edbac5c007744cbd63867a21f2cac67c0b59674e1cb194a2d66af40b",
           "Title": "gnutls: gnutls: Certificate validation bypass due to oversized Subject Alternative Name",
           "Description": "A flaw was found in gnutls. When validating certificates, an oversized Subject Alternative Name (SAN) could cause the validation process to incorrectly fall back to checking the Common Name (CN) field. This could allow a remote attacker to bypass proper certificate validation, potentially leading to spoofing or man-in-the-middle attacks.",
           "Severity": "MEDIUM",
@@ -5012,7 +5012,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:fb73df7a1eb7c217e9c2a33dfe19be5a261582f196cedb423921f3be828580c6",
+          "Fingerprint": "sha256:79ae5fb6e186c56ac14bf0c5cb6afdfb08f9546610be8196d668e7112f28d571",
           "Title": "gnutls: Fix use-after-free in gnutls_pkcs11_token_set_pin",
           "Description": "A flaw was found in GnuTLS. The `gnutls_pkcs11_token_set_pin` function, used for changing the Security Officer PIN, can lead to a use-after-free vulnerability. This occurs when an attacker attempts to change the PIN with a NULL old PIN for a token that lacks a protected authentication path.",
           "Severity": "MEDIUM",
@@ -5104,7 +5104,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:e2ede86e2fbbf8ee1d1b489ee2e9503cb7bad542778d9876f66b17efaee7fe26",
+          "Fingerprint": "sha256:25307a5217671e7053f48c47652423b6f635c67843716176d37f9b31ba6a2fe4",
           "Title": "gnutls: gnutls: Memory corruption due to off-by-one error in PKCS#12 bag handling",
           "Description": "A flaw was found in gnutls. An off-by-one error exists in the PKCS#12 bag element bounds check. This vulnerability allows an remote attacker to write past the internal array of a PKCS#12 bag when appending to a bag that already contains 32 elements. This memory corruption could lead to a denial of service (DoS) or potentially other unspecified impacts.",
           "Severity": "MEDIUM",
@@ -5196,7 +5196,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:c71254ad1b8e4c4525355b90977d7cc62ffdbf1265d62f6ddb483f2b077c7557",
+          "Fingerprint": "sha256:3b9e4af1c2bae07ac4cf93048d93ac5dbb7af41cdd764aa7a8618ee7417022fe",
           "Title": "gnutls: gnutls: Information disclosure via heap overread in RSA key exchange",
           "Description": "A flaw was found in libgnutls. A remote attacker, by sending an extremely short premaster secret during an RSA key exchange to a server using an RSA key backed by a PKCS#11 token, could trigger a short heap overread. This memory corruption vulnerability could lead to information disclosure.",
           "Severity": "MEDIUM",
@@ -5288,7 +5288,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:fe06c965a88208c1fcd6ed615c8802c466ed69597a508177a4dcc9246d548bce",
+          "Fingerprint": "sha256:bc2f52800eb42a23fb386879561ce5ae5fd634a8718dd7820930d2c962cb1978",
           "Title": "gnutls: gnutls: Security bypass allows acceptance of revoked server certificates via crafted OCSP response",
           "Description": "A flaw was found in gnutls. A remote attacker could exploit this vulnerability by presenting a specially crafted Online Certificate Status Protocol (OCSP) response during a TLS handshake. Due to a logic error in how gnutls processes multi-record OCSP responses, a client with OCSP verification enabled may incorrectly accept a revoked server certificate, potentially leading to a compromise of trust.",
           "Severity": "LOW",
@@ -5369,7 +5369,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:fc33f7ea190755e2ab493dc3a25ae84b50040152539f95727646f3c458a81423",
+          "Fingerprint": "sha256:3345fbd351624a76c9d09d70695ea196531064ca6b07e06588b76ad89425aa5f",
           "Title": "guntls: gnutls: Information disclosure via timing side-channel in PKCS#7 padding removal",
           "Description": "A flaw was found in gnutls. The PKCS#7 padding check, performed during decryption, was not constant-time. This timing side-channel could allow a remote attacker to potentially leak sensitive information about the padding bytes through observable timing differences. This vulnerability is a form of information disclosure.",
           "Severity": "LOW",
@@ -5449,7 +5449,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:29039a24e7012072b6071c8056208f918379adc10b15e7372b0e9ffb92358591",
+          "Fingerprint": "sha256:8d84acee448fd868f1cf834deefaa90a4f23e97140ae49c9cf873739a7288216",
           "Title": "openssl: Heap Use-After-Free in OpenSSL PKCS7_verify()",
           "Description": "Issue summary: A specially crafted PKCS#7 or S/MIME signed message could\ntrigger a use-after-free during PKCS#7 signature verification.\n\nImpact summary: A use-after-free may result in process crashes, heap\ncorruption, or potentially remote code execution.\n\nWhen processing a PKCS#7 or S/MIME signed message, if the SignedData\ndigestAlgorithms field is present as an empty ASN.1 SET, OpenSSL may\nincorrectly free a caller-owned BIO during PKCS7_verify(). A subsequent\nuse of the BIO by the calling application results in a use-after-free\ncondition.\n\nIn the common case this occurs when the application later calls\nBIO_free() on the BIO originally passed to PKCS7_verify(). Depending\non allocator behavior and application-specific BIO usage patterns, this\nmay result in a crash or other memory corruption. In some application\ncontexts this may potentially be exploitable for remote code execution.\n\nApplications that process PKCS#7 or S/MIME signed messages using OpenSSL\nPKCS#7 APIs may be affected. Applications using the CMS APIs for this\nprocessing are not affected.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "HIGH",
@@ -5557,7 +5557,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:245f8e27aeedd7509dd96510eab00a72936e651805649074e1ac5735d86b4f9c",
+          "Fingerprint": "sha256:2c828167a08860bde79c1f0a0d35e80110d1ba54b84bd1187ff576984f408988",
           "Title": "openssl: CMS AuthEnvelopedData Processing May Accept Forged Messages",
           "Description": "Issue Summary: Cryptographic Message Services (CMS) processing fails to perform\nsufficient input validation on the cipher and tag length fields of\nAuthEnvelopedData containers, leading to various potential compromises.\n\nImpact Summary: Attackers making use of these vulnerabilities may achieve\nkey-equivalent functionality for a given CMS recipient and/or bypass integrity\nvalidation for a given message.\n\nIn one use case, an attacker may send a CMS message containing\nAuthEnvelopedData with the cipher specified as a non-AEAD cipher.  OpenSSL\nerroneously allows this selection, and attempts to decrypt and validate the\nmessage.\n\nAn on-path attacker who captures one legitimate AES-GCM AuthEnvelopedData\naddressed to the victim can re-emit it with the recipientInfos set left\nbyte-for-byte intact, so the victim's private key still unwraps the genuine CEK\n(the content-encryption key), but with the inner OID rewritten to AES-256-OFB\n(Output Feedback Mode, an unauthenticated keystream mode) and with an\nattacker-chosen IV and ciphertext. The victim initializes AES-256-OFB under the\nreal CEK, never consults the MAC field, and CMS_decrypt() returns success.\n\nIf the application under attack responds to the attacker with any indicator\nshowing success or failure of the decryption effort, it is possible for the\nattacker to use this as an oracle to obtain key equivalent functionality for the\nCEK used for the chosen recipient of the message.\n\nIn another use case, an attacker can reduce the tag length of the chosen AEAD\ncipher for a given AuthEnvelopedData container to be a single byte long,\nallowing an attacker to brute force CMS decryption, producing an integrity\nbypass for applications that trust CMS_decrypt() to reject modified content.\n\nThe FIPS modules are not affected by this issue.",
           "Severity": "MEDIUM",
@@ -5662,7 +5662,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:fbaa4800f7b026763990b70bc64309858c04d3400ba33bcfca928ce802e17b43",
+          "Fingerprint": "sha256:98a07fc2b93c284609790c95959f6c4c50ee72a1bf95c214ca5b864c154e428a",
           "Title": "openssl: Unbounded Memory Growth in the QUIC PATH_CHALLENGE Handler",
           "Description": "Issue summary: Remote peer may exhaust heap memory of the QUIC\nserver or client by flooding it with packets containing PATH_CHALLENGE\nframes.\n\nImpact summary: A malicious remote peer can cause an unbounded\nmemory allocation which can lead to an abnormal termination of the\napplication acting as a QUIC client or server and a Denial of Service.\n\nA remote peer may exhaust heap memory by flooding the local\nQUIC stack with PATH_CHALLENGE frames. The local QUIC stack\nallocates a PATH_RESPONSE frame for every PATH_CHALLENGE it receives.\nThe allocated PATH_RESPONSE frame gets freed only when the remote\npeer acknowledges reception of the PATH_RESPONSE frame which will\nnot be done by a malicious peer.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are not affected by\nthis issue. The QUIC stack is outside of OpenSSL FIPS module\nboundary.",
           "Severity": "MEDIUM",
@@ -5765,7 +5765,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:2ae99fe94f86eaf4c5eac77dbdecc47c7c5be051de97a08a5ab15544299d0692",
+          "Fingerprint": "sha256:b239c1f96a35df757ae5e317199f61c8476b83bb774a2bd59316034fe6dad314",
           "Title": "openssl: NULL pointer dereference in QUIC server initial packet handling",
           "Description": "Issue summary: Receiving a QUIC initial packet with an invalid token may\ntrigger a NULL pointer dereference in the OpenSSL QUIC server with\naddress validation disabled.\n\nImpact summary: NULL pointer dereference typically causes abnormal termination\nof the affected QUIC server process and a Denial of Service.\n\nIf the address validation is disabled in the OpenSSL QUIC server\nimplementation, an attacker can crash the server by sending an initial\npacket with an invalid or expired token.\n\nBy default, the client address validation is enabled in the OpenSSL QUIC server\nimplementation, which makes the default configuration not vulnerable\nto this issue. However if the SSL_LISTENER_FLAG_NO_VALIDATE is used with\nthe SSL_new_listener() call, the address validation is disabled making the\nvulnerable code reachable.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "MEDIUM",
@@ -5867,7 +5867,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:23da850ba81cea6375e1d94b37ff156f7aa12013effa193e08c1b5d5f5f0d815",
+          "Fingerprint": "sha256:81287719843cbb5707b1794d155ea1f671a552bd712711d18d3b493c23dd0f2a",
           "Title": "openssl: AES-OCB IV Ignored on EVP_Cipher() Path",
           "Description": "Issue summary: When an application drives an AES-OCB context through the\npublic EVP_Cipher() one-shot interface, the application-supplied\ninitialisation vector (IV) is silently discarded.\n\nImpact summary: Every message encrypted under the same key uses the\nsame effective nonce regardless of the IV supplied by the caller,\nresulting in (key, nonce) reuse and loss of confidentiality.  If the\nsame code path is used to compute the authentication tag, the tag\ndepends only on the (key, IV) pair and not on the plaintext or\nciphertext, allowing universal forgery of arbitrary ciphertext from a\nsingle captured message.\n\nOpenSSL provides two ways to drive a cipher: the documented streaming\ninterface (EVP_CipherUpdate / EVP_CipherFinal_ex) and a lower-level\none-shot, EVP_Cipher(), whose documentation explicitly recommends\nagainst use by applications in favour of EVP_CipherUpdate() and\nEVP_CipherFinal_ex().  The OCB provider's streaming handler flushes\nthe application-supplied IV into the OCB context before processing\ndata; the one-shot handler did not.  Every call to EVP_Cipher() on an\nAES-OCB context therefore ran with the all-zero key-derived offset\nstate left by cipher initialisation, regardless of the caller's IV.\n\nIf EVP_EncryptFinal_ex() is subsequently used to obtain the\nauthentication tag, the deferred IV setup runs at that point and\nclears the running checksum that should have been accumulated over the\nplaintext.  The resulting tag is a function of (key, IV) only and\nverifies against any ciphertext produced under the same (key, IV)\npair.\n\nThe OpenSSL SSL/TLS implementation is not affected: AES-OCB is not a\nTLS cipher suite, and libssl does not call EVP_Cipher() in any case.\nApplications that drive AES-OCB through the documented streaming AEAD\nAPI (EVP_CipherUpdate / EVP_CipherFinal_ex) are not affected.  Only\napplications that combine the AES-OCB cipher with the EVP_Cipher()\none-shot API are vulnerable.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4 and 3.0 are not affected by\nthis issue, as AES-OCB is outside the OpenSSL FIPS module boundary.",
           "Severity": "MEDIUM",
@@ -5971,7 +5971,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:946060b8205a7789228dffc8a08ea3efdfd77cec73a816c6a3f65f08bf245c6e",
+          "Fingerprint": "sha256:7b06c4a11caa5be5efb7dee7dd243b3e031d9d24bf149813683c5687ad2c84e0",
           "Title": "openssl: OpenSSL: Heap buffer over-read in ASN.1 decoding can lead to denial of service or information disclosure.",
           "Description": "Issue summary: Parsing a crafted DER-encoded ASN.1 structure with a primitive\nelement whose content exceeds 2 gigabytes in length may cause a heap buffer\nover-read on 64-bit Unix and Unix-like platforms.\n\nImpact summary: The heap buffer over-read may crash the application (Denial of\nService) or to load into the decoded ASN.1 object contents of memory beyond the\nend of the input buffer.  More typically such ASN.1 elements would instead be\ntruncated.\n\nAn integer truncation in OpenSSL's ASN.1 decoder causes the content length of\nan ASN.1 primitive element to be mishandled when it exceeds 2 gigabytes. In the\nworst case the truncated length is treated as a request to scan the binary\ncontent for a terminating zero byte, possibly causing OpenSSL to read either\nless than or beyond the end of the allocated buffer.\n\nApplications that pass attacker-supplied data to d2i_X509(), d2i_PKCS7(), or\nany other d2i_* decoding function are affected. OpenSSL's own command-line\ntools are not vulnerable, as data read through the BIO layer is checked before\nit reaches the affected code. The issue only affects 64-bit Unix and Unix-like\nplatforms; 32-bit platforms and 64-bit Windows are not affected.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4 and 3.0 are not affected by this issue,\nas the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -6076,7 +6076,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:f61d2facb163621dee6a0b60f699237452ee64bf14ea1dc205705dc3472851ac",
+          "Fingerprint": "sha256:0110722277c640a72ebc82c096725a0b4dcbbcf86c1574e242a5aa6e1879df8a",
           "Title": "openssl: PKCS#12 Files with PBMAC1 Are Accepted with Short HMAC Keys",
           "Description": "Issue Summary: The PKCS#12 file processing fails to perform sufficient input\nvalidation for files that use Password-Based Message Authentication Code 1\n(PBMAC1) integrity mechanism allowing a certificate and private key forgery.\n\nImpact Summary: An attacker impersonating a user can cause a service reading\nPKCS#12 files to accept forged certificates and private keys with a 1 in 256\nprobability.\n\nIf a service accepting PKCS#12 files is using passwords for authenticating\nthe received files, the attacker can create unencrypted PKCS#12 files that\nuse PBMAC1 authentication that specifies an HMAC key of only one byte, allowing\nthem to craft a file that will be accepted with a 1 in 256 probability.\nThat would then cause the service to accept a certificate and private key\ncontrolled by the attacker.\n\nThe FIPS modules are not affected by this issue, as the affected code is\noutside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -6179,7 +6179,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:2ef79d025c68b180e958f170fdf8bdf7bc82337b115f41fe88ad38041329554c",
+          "Fingerprint": "sha256:af0a63561cc9d0daab0d5d0a2f201b571cd71fb1a8e6f99478f574a4a4e27865",
           "Title": "openssl: Possible NULL Dereference in Password-Based CMS Decryption",
           "Description": "Issue summary: A specially crafted password-encrypted CMS message\ncan trigger a NULL pointer dereference during CMS decryption.\n\nImpact summary: This NULL pointer dereference leads to an application crash\nand a Denial of Service.\n\nThe CMS PasswordRecipientInfo.keyDerivationAlgorithm field is defined as\nOPTIONAL in the ASN.1 specification and may therefore be absent in specially\ncrafted inputs. During the password-based CMS decryption the OpenSSL\nCMS implementation dereferences this field without first checking whether it\nwas present.\n\nAn attacker who supplies such a CMS message to an application performing\npassword-based CMS decryption can trigger an application crash, leading to\na Denial of Service.\n\nApplications that process password-encrypted CMS messages may be affected.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -6284,7 +6284,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:ea993eecca75fd6030c05f5f3515948282da4c4b6ab7ce496051a436b8edd3a7",
+          "Fingerprint": "sha256:5fbc7c1766ace250ba1d98427bbbe93ac57da0c9fc6a792dbd480bd650be062e",
           "Title": "openssl: NULL Pointer Dereference in CRMF EncryptedValue Decryption",
           "Description": "Issue summary: An attacker-controlled CMP (Certificate Management Protocol)\nserver could trigger a NULL pointer dereference in a CMP client application.\n\nImpact summary: A NULL pointer dereference causes a crash of the\napplication and a Denial of Service.\n\nAn attacker controlling a CMP server (or acting as a man-in-the-middle) could\ncraft a CMP response containing a CRMF (Certificate Request Message Format)\nCertRepMessage with an EncryptedValue structure where the symmAlg field\nhas an algorithm OID but no parameters field. When the OpenSSL CMP client\nprocesses this response, the NULL dereference occurs, causing a crash of\nthe CMP client.\n\nApplications that process untrusted CMP/CRMF messages may be affected.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -6388,7 +6388,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:1a4e8be30de374cb261c3b8568f8da830283a6be28e588a103d1debb8e083572",
+          "Fingerprint": "sha256:23cb4e3819b606107666ac02b8ce670586231989903133b29771990eaa50f5b4",
           "Title": "openssl: Multi-RecipientInfo Bleichenbacher Oracle in CMS_decrypt() and PKCS7_decrypt()",
           "Description": "Issue summary: The CMS_decrypt and PKCS7_decrypt functions are vulnerable to\nBleichenbacher-style attack when an attacker is able to provide the CMS or\nS/MIME messages and observe the error code and/or decryption output.\n\nImpact summary: The Bleichenbacher-style attack allows an attacker to use the\nvictim's vulnerable application as a way to decrypt or sign messages with the\nvictim's private RSA key.\n\nThe attack is possible in 2 variants.\n\n1. The decryption API (CMS_decrypt(), PKCS7_decrypt()) is used without\nproviding the recipient certificate. In this case OpenSSL iterates over every\nKeyTransRecipientInfo (KTRI) without stopping at the first success.\n\nAn attacker who authors a message with two KTRI entries — the first one\nwrapping a real CEK under the victim's public key, the second with an\narbitrary probe ciphertext — obtains opportunity to iterate the 2nd KTRI to\nget a valid PKCS#1 v1.5 padding if the error code of the application is\navailable.\n\nThat is a Bleichenbacher oracle (Bleichenbacher, CRYPTO '98): an\nadaptive-chosen-ciphertext side channel from which the attacker decrypts any\nRSA ciphertext to the victim's key or forges any PKCS#1 v1.5 signature under\nit.\n\n2. When the decryption API (CMS_decrypt(), PKCS7_decrypt()) is provided with\nthe recipient certificate, and the recipient is not found, a random\nkey is substituted.\n\nAn attacker who authors a message and is able to compare both error code and\nthe result of the decryption, can mount a Bleichenbacher oracle.\n\nWe are not aware of any applications that provide a remote attacker\nan opportunity to mount an attack described in these scenarios. We consider\nthe existence of such application very unlikely, and for this reason this\nCVE has been evaluated as Low severity.\n\nTo avoid these attacks, when RSA PKCS#1 v1.5 Key Transport is in use, the\ninvoked EVP_PKEY_decrypt() will use the implicit rejection mechanism described\nin draft-irtf-cfrg-rsa-guidance. In previous OpenSSL releases the implicit\nrejection was explicitly disabled.\n\nThe implicit rejection mechanism always returns a plaintext value,\nthe symmetric key. This result is deterministic for the ciphertext and the\nprivate key.  The length of the decryption result can happen to match the\nlength of the key of the symmetric cipher that was used for the content\nencryption. When a certificate is not provided, the last RecipientInfo\nproducing a key that looks valid will be used. It may cause getting garbage\ncontent on decryption. As a proper way to deal with this a recipient\ncertificate has to be provided to identify the particular RecipientInfo for\ndecryption.\n\nThe FIPS modules in 4.0, 3.6, 3.5, and 3.4 are not affected by this issue, as\nCMS and S/MIME processing happens outside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -6491,7 +6491,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:7e2bbb7d897959b8b111ceaa0f673cb68fca28a7268353886e90d8ce5e08097b",
+          "Fingerprint": "sha256:fdf9b1be4dc78863b4a2c5165b22b8efd8946085992a870115e84b1fce52b1cb",
           "Title": "openssl: Trust-Anchor Substitution via cert/issuer Typo in CMP rootCaKeyUpdate",
           "Description": "Issue Summary: An error in the callback used to verify the certificate\nprovided in a Root CA key update Certificate Management Protocol (CMP)\nmessage response rendered the certificate validation ineffectual, which\ncould lead to escalation of credentials from the Registration Authority (RA)\nlevel to the root Certification Authority (root CA) level.\n\nImpact Summary: The Registration Autority could replace the root CA\ncertificate for the CMP clients with an arbitrary root CA certificate.\n\nOne of the parts of the Certificate Management Protocol (CMP), specified in\nRFC 9810, is Root Certification Authority (root CA) key Rollover,\nwhich is sent by the server in a message with type 'id-it-rootCaKeyUpdate'.\nAs part of these messages, 'newWithOld' certificate, the new root CA\ncertificate signed with the old root CA key, is provided, and verifying its\nsignature is crucial for transferring the trust from the old CA key to the\nnew one.\n\nThe 'id-it-rootCaKeyUpdate' messages are expected to be processed with\nOSSL_CMP_get1_rootCaKeyUpdate(), that is expected to verify the 'newWithOld'\ncertificate.  A typo in the certificate chain building code led to adding\nan incorrect certificate ('newWithOld' instead of 'oldRoot') to the\ncertificate chain, rendering the certificate verification process ineffectual\n(only the issuer name and the algorithm OIDs were verified by other parts\nof the verification code).\n\nAn attacker who already has credentials that satisfy the CMP message\nprotection checks can generate a new key pair and use a crafted self-signed\ncertificate in its 'id-it-rootCaKeyUpdate' CMP messages which affected CMP\nclients would accept as a new trust anchor.\n\nSignificant preconditions for the attack (having valid RA-level credentials)\nare the reason the issue was assigned Low severity.\n\nThe FIPS modules are not affected by this issue, as the affected code is\noutside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -6594,7 +6594,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:6f31a3eca2a02cb345e6849c4258a06f10d7e6549960532fd678e5801832a808",
+          "Fingerprint": "sha256:cfb969ab6d56039dca5b0869b8c4f835d02615a450240cab9c73c3e159bb47cb",
           "Title": "openssl: FFC-DH Peer Validation Uses Attacker-Supplied q",
           "Description": "Issue summary: When EVP_PKEY_derive_set_peer() is called with a DHX (X9.42)\npeer key, the peer key is not properly checked for the subgroup membership.\n\nImpact summary: A malicious peer which presents an X9.42 key carrying the\nvictim's p and g parameters, a forged q = r (a small prime factor of the\ncofactor (p−1)/q_local), and a public value Y of order r can recover the\nvictim's private key after a small number of key exchange attempts.\n\nWhen EVP_PKEY_derive_set_peer() is called with a DHX (X9.42) peer key, the\nsubgroup membership check Y^q ≡ 1 (mod p) is performed using the peer's\nown q parameter, not the local key's q. The peer's domain parameters are\nthen matched against the domain parameters of the private key, but the value\nof q is not compared.\n\nA malicious peer who presents an X9.42 key carrying the victim's p, g,\na forged q = r (a small prime factor of the cofactor), and a public\nvalue Y of order r passes all checks. The shared secret then takes only\nr distinct values, leaking priv mod r. Repeating for each small-prime\nfactor of the cofactor and combining via CRT recovers the full private\nkey (Lim–Lee / small-subgroup-confinement attack).\n\nThe realistic attack surface is narrow: principally CMP deployments with\nlong-lived RA/CA DHX keys and bespoke enterprise or government applications\nusing X9.42 DHX static keys with interactive protocols and therefore this\nissue was assigned Low severity.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are affected by this\nissue.",
           "Severity": "LOW",
@@ -6698,7 +6698,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:f811a83296f85de97fd872b6c06ee868f1274325c5f1a549137f7f7dd8521a42",
+          "Fingerprint": "sha256:a9813bfed47cf3ead0b6777fa8f49f5cec78346cb2d6d6cf85f44a90acaf94eb",
           "Title": "openssl: Incorrect Tag Processing for Empty Messages in AES-GCM-SIV and AES-SIV modes",
           "Description": "Issue summary: The implementations of AES-SIV (RFC 5297) and AES-GCM-SIV\n(RFC 8452) mishandle the authentication of AAD (Additional Authenticated\nData) with an empty ciphertext allowing a forgery of such messages.\n\nImpact summary: An attacker can forge empty messages with arbitrary AAD\nto the victim's application using these ciphers.\n\nAES-SIV (RFC 5297) and AES-GCM-SIV (RFC 8452) are nonce-misuse-resistant AEAD\nmodes: they accept a key, nonce, optional AAD (bytes that are authenticated\nbut not encrypted), and plaintext, and produces ciphertext plus a 16-byte\ntag. On decrypt, `EVP_DecryptFinal_ex()` is documented to return success only\nif the tag is verified succesfully.\n\nIn OpenSSL's provider implementation of these ciphers, the expected tag is\ncomputed only when decryption function is invoked with non-empty data.\nIf the caller supplies AAD and then calls `EVP_DecryptFinal_ex()` without\ninvocation of the ciphertext update, which can happen when the received\nciphertext length is zero, the tag is never recalculated and still holds its\nall-zeros value.\n\nWhen AES-GCM-SIV is used, an attacker who sends arbitrary AAD, empty\nciphertext, and all-zeros tag passes authentication under any key they do not\nknow, single-shot. When AES-SIV is used, for mounting the attack it's\nnecessary for the application to reuse the decryption context without\nresetting the key.\n\nAES-SIV is implemented since OpenSSL 3.0. AES-GCM-SIV is implemented since\nOpenSSL 3.2.\n\nNo protocols implemented in OpenSSL itself (TLS/CMS/PKCS7/HPKE/QUIC) support\neither AES-GCM-SIV or AES-SIV. To mount an attack, the applications must\nimplement their own protocol and use the EVP interface. Also they must skip the\nciphertext update when a message with an empty ciphertext arrives.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are not affected by this\nissue, as these algorithms are not FIPS approved and the affected code is\noutside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -6802,7 +6802,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:4b31c7d2f693733f745c572865f1c646b9a1da8af20a239135b9768abf6f1251",
+          "Fingerprint": "sha256:6390a52b78643135683d30725dcc742ef743cee154b213383173b39390208605",
           "Title": "openssl: OpenSSL: Heap buffer overflow due to signed integer overflow in Unicode output sizing",
           "Description": "Issue summary: A signed integer overflow when sizing the destination\nbuffer for Unicode output in ASN1_mbstring_ncopy() can lead to a heap\nbuffer overflow.\n\nImpact summary: A heap buffer overflow may lead to a crash or possibly\nattacker controlled code execution or other undefined behaviour.\n\nIn ASN1_mbstring_copy() and ASN1_mbstring_ncopy() the destination\nsize for Unicode output is computed in a signed int: by left shift\nof the input character count for BMPSTRING (UTF-16) and\nUNIVERSALSTRING (UTF-32), and by summing per-character byte counts\nfor UTF8STRING. The calculation overflows when the input reaches\naround 2^30 characters. In the worst case (UNIVERSALSTRING at 2^30\ncharacters) the size wraps to zero, OPENSSL_malloc(1) is called, and\nthe subsequent character copy writes several gigabytes past the\none-byte allocation.\n\nX.509 certificate processing routes through ASN1_STRING_set_by_NID(),\nwhose DIRSTRING_TYPE mask excludes UNIVERSALSTRING and whose per-NID\nsize limits cap the input length; no network protocol or\ncertificate-handling path in OpenSSL exercises the overflow.\nTriggering the bug requires an application that calls\nASN1_mbstring_copy() or ASN1_mbstring_ncopy() directly, or registers\na custom string type via ASN1_STRING_TABLE_add(), with\nattacker-controlled input on the order of half a gigabyte or more.\nFor these reasons this issue was assigned Low severity.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4 and 3.0 are not affected by\nthis issue, as the affected code is outside the OpenSSL FIPS module\nboundary.",
           "Severity": "LOW",
@@ -6907,7 +6907,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:62ecea775c07e34a0d846fa0bc9d80281966785574da342c61366fa97b32b9a1",
+          "Fingerprint": "sha256:5c3de6d059d43506b4828a4389f63d142e601dae6a9a1d5d9941c14d5ceef8f2",
           "Title": "openssl: OpenSSL: Denial of Service due to heap out-of-bounds read in CMS password-based decryption",
           "Description": "Issue summary: When CMS password-based decryption (RFC 3211 / PWRI key unwrap)\nprocesses attacker-supplied CMS data, an attacker-chosen stream-mode KEK\ncipher can trigger a heap out-of-bounds read in kek_unwrap_key().\n\nImpact summary: A heap buffer over-read may trigger a crash which leads to\nDenial of Service for an application if the input buffer ends at a memory\npage boundary and the following page is unmapped. There is no information\ndisclosure as the over-read bytes are not revealed to the attacker.\n\nThe key unwrapping function performs a check-byte test as specified in the\nRFC that reads 7 bytes from a heap allocation that is based on the wrapped\nkey length from the message. There is a minimum length check based on the\nblock length of the wrapping cipher. However the cipher is selected from\nan OID carried in the attacker's PWRI keyEncryptionAlgorithm with no\nrequirement that the cipher be a block cipher. When an attacker selects\na stream-mode cipher the guard will be ineffective and the allocated buffer\ncontaining the unwrapped key can be too small to fit the check-bytes\nspecified in the RFC and a buffer over-read can happen.\n\nApplications calling CMS_decrypt() or CMS_decrypt_set1_password()\n(equivalently openssl cms -decrypt -pwri_password ...) on untrusted CMS\ndata are vulnerable to this issue. No password knowledge is required: the\nover-read happens during the unwrap attempt before any authentication\nsucceeds.\n\nThe over-read is limited to a few bytes and is not written to output, so\nthere is no information disclosure. Triggering a crash requires the\nallocation to border unmapped memory, which is unlikely with the normal\nallocator.\n\nThe FIPS modules are not affected by this issue.",
           "Severity": "LOW",
@@ -7012,7 +7012,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:a301b3da93d3771e5b96d991a526266d3caee08b95980fc8fe6271300c1c319e",
+          "Fingerprint": "sha256:3692e70ddba7574491989cd642e147f48e5687791cfd2282a0cdc70680b31b9d",
           "Title": "curl: curl: Security bypass due to global TLS option changes in multi-threaded LDAPS transfers",
           "Description": "When doing multi-threaded LDAPS transfers (LDAP over TLS) with libcurl,\nchanging TLS options in one thread would inadvertently change them globally\nand therefore possibly also affect other concurrently setup transfers.\n\nDisabling certificate verification for a specific transfer could\nunintentionally disable the feature for other threads as well.",
           "Severity": "MEDIUM",
@@ -7070,7 +7070,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:f0504b5302da4486f22dc79a582801daf0cade3f37d8ae1ac0a07c00f98b5bf3",
+          "Fingerprint": "sha256:e813852ac4a6973d55f1373b08d13d9f3d205c23a18fef7a929ec0ce7426d9d1",
           "Title": "curl: curl: Authentication bypass due to incorrect connection reuse with Negotiate authentication",
           "Description": "libcurl can in some circumstances reuse the wrong connection when asked to do\nan Negotiate-authenticated HTTP or HTTPS request.\n\nlibcurl features a pool of recent connections so that subsequent requests can\nreuse an existing connection to avoid overhead.\n\nWhen reusing a connection a range of criterion must first be met. Due to a\nlogical error in the code, a request that was issued by an application could\nwrongfully reuse an existing connection to the same server that was\nauthenticated using different credentials. One underlying reason being that\nNegotiate sometimes authenticates *connections* and not *requests*, contrary\nto how HTTP is designed to work.\n\nAn application that allows Negotiate authentication to a server (that responds\nwanting Negotiate) with `user1:password1` and then does another operation to\nthe same server also using Negotiate but with `user2:password2` (while the\nprevious connection is still alive) - the second request wrongly reused the\nsame connection and since it then sees that the Negotiate negotiation is\nalready made, it just sends the request over that connection thinking it uses\nthe user2 credentials when it is in fact still using the connection\nauthenticated for user1...\n\nThe set of authentication methods to use is set with  `CURLOPT_HTTPAUTH`.\n\nApplications can disable libcurl's reuse of connections and thus mitigate this\nproblem, by using one of the following libcurl options to alter how\nconnections are or are not reused: `CURLOPT_FRESH_CONNECT`,\n`CURLOPT_MAXCONNECTS` and `CURLMOPT_MAX_HOST_CONNECTIONS` (if using the\ncurl_multi API).",
           "Severity": "MEDIUM",
@@ -7127,7 +7127,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:36cea6cea39ff3a99cbf744cd51175d92754c6f78da16b344ca103018f7652e8",
+          "Fingerprint": "sha256:200bc50a2859bab779db21290d1230e5e82f3cab73324f683790125bac3f98d1",
           "Title": "curl: curl: Information disclosure via OAuth2 bearer token leakage during HTTP(S) redirect",
           "Description": "When an OAuth2 bearer token is used for an HTTP(S) transfer, and that transfer\nperforms a redirect to a second URL, curl could leak that token to the second\nhostname under some circumstances.\n\nIf the hostname that the first request is redirected to has information in the\nused .netrc file, with either of the `machine` or `default` keywords, curl\nwould pass on the bearer token set for the first host also to the second one.",
           "Severity": "MEDIUM",
@@ -7187,7 +7187,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:6663dce139cd2b1e00ba08a63c7ea3ef7e1142def3899de0e986d69e50644b4c",
+          "Fingerprint": "sha256:dcb360968181f040a52beb183e1d5c1218b90104c935e38139aba8d1d0966874",
           "Title": "curl: curl: Unauthorized access due to improper HTTP proxy connection reuse",
           "Description": "curl would wrongly reuse an existing HTTP proxy connection doing CONNECT to a\nserver, even if the new request uses different credentials for the HTTP proxy.\nThe proper behavior is to create or use a separate connection.",
           "Severity": "MEDIUM",
@@ -7248,7 +7248,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:847a3fd917947d6bf48a93ad40f84430e11c64eb1cacececde03c22fa59ff114",
+          "Fingerprint": "sha256:b84da4d6edd17450836eef04cb4493be5717d13d0a04d286bc98c239edfd824e",
           "Title": "curl: curl: Arbitrary code execution or Denial of Service via use-after-free in SMB request handling",
           "Description": "When doing a second SMB request to the same host again, curl would wrongly use\na data pointer pointing into already freed memory.",
           "Severity": "MEDIUM",
@@ -7307,7 +7307,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:3b8d5915b01daae5b5ffe2e2cdc1d153890e44c4d9d3e6752befad607c59b4d5",
+          "Fingerprint": "sha256:2827af3bdf4e5f2ee99d96469b5f1f2d71d35d88c90d33ccce04285383977669",
           "Title": "curl: Information disclosure via cross-protocol redirect with OAuth2 bearer token",
           "Description": "When an OAuth2 bearer token is used for an HTTP(S) transfer, and that transfer\nperforms a cross-protocol redirect to a second URL that uses an IMAP, LDAP,\nPOP3 or SMTP scheme, curl might wrongly pass on the bearer token to the new\ntarget host.",
           "Severity": "LOW",
@@ -7368,7 +7368,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:3e42ac84343464f62f1047ee011b1e6282e74c79391e07125188c571103508e7",
+          "Fingerprint": "sha256:30262902d1a1fd8bf6ac07d21a4713561a5dc6958410c6c492f54b5a71eed26c",
           "Title": "curl: libcurl: Improper certificate validation due to cached TLS settings reuse",
           "Description": "When doing TLS related transfers with reused easy or multi handles and\naltering the  `CURLSSLOPT_NO_PARTIALCHAIN` option, libcurl could accidentally\nreuse a CA store cached in memory for which the partial chain option was\nreversed. Contrary to the user's wishes and expectations. This could make\nlibcurl find and accept a trust chain that it otherwise would not.",
           "Severity": "LOW",
@@ -7426,7 +7426,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:461205f59cedad2a9397ef9b85178f82e9ba81f43387f1eccb98c13e18350711",
+          "Fingerprint": "sha256:ade265b101b6005a2b789b1bb52c5fcb6e6e101064835cfbcfeb5b983ddf8a3e",
           "Title": "openssl: Heap Use-After-Free in OpenSSL PKCS7_verify()",
           "Description": "Issue summary: A specially crafted PKCS#7 or S/MIME signed message could\ntrigger a use-after-free during PKCS#7 signature verification.\n\nImpact summary: A use-after-free may result in process crashes, heap\ncorruption, or potentially remote code execution.\n\nWhen processing a PKCS#7 or S/MIME signed message, if the SignedData\ndigestAlgorithms field is present as an empty ASN.1 SET, OpenSSL may\nincorrectly free a caller-owned BIO during PKCS7_verify(). A subsequent\nuse of the BIO by the calling application results in a use-after-free\ncondition.\n\nIn the common case this occurs when the application later calls\nBIO_free() on the BIO originally passed to PKCS7_verify(). Depending\non allocator behavior and application-specific BIO usage patterns, this\nmay result in a crash or other memory corruption. In some application\ncontexts this may potentially be exploitable for remote code execution.\n\nApplications that process PKCS#7 or S/MIME signed messages using OpenSSL\nPKCS#7 APIs may be affected. Applications using the CMS APIs for this\nprocessing are not affected.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "HIGH",
@@ -7534,7 +7534,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:7eaa9020b17886d14e3b28d929cef92795f60741f59f348c8d40c335e4b9454a",
+          "Fingerprint": "sha256:b22b3899c30897e46b9df818779fb1576bc0b8303b5010034d3ae5208cde7228",
           "Title": "openssl: CMS AuthEnvelopedData Processing May Accept Forged Messages",
           "Description": "Issue Summary: Cryptographic Message Services (CMS) processing fails to perform\nsufficient input validation on the cipher and tag length fields of\nAuthEnvelopedData containers, leading to various potential compromises.\n\nImpact Summary: Attackers making use of these vulnerabilities may achieve\nkey-equivalent functionality for a given CMS recipient and/or bypass integrity\nvalidation for a given message.\n\nIn one use case, an attacker may send a CMS message containing\nAuthEnvelopedData with the cipher specified as a non-AEAD cipher.  OpenSSL\nerroneously allows this selection, and attempts to decrypt and validate the\nmessage.\n\nAn on-path attacker who captures one legitimate AES-GCM AuthEnvelopedData\naddressed to the victim can re-emit it with the recipientInfos set left\nbyte-for-byte intact, so the victim's private key still unwraps the genuine CEK\n(the content-encryption key), but with the inner OID rewritten to AES-256-OFB\n(Output Feedback Mode, an unauthenticated keystream mode) and with an\nattacker-chosen IV and ciphertext. The victim initializes AES-256-OFB under the\nreal CEK, never consults the MAC field, and CMS_decrypt() returns success.\n\nIf the application under attack responds to the attacker with any indicator\nshowing success or failure of the decryption effort, it is possible for the\nattacker to use this as an oracle to obtain key equivalent functionality for the\nCEK used for the chosen recipient of the message.\n\nIn another use case, an attacker can reduce the tag length of the chosen AEAD\ncipher for a given AuthEnvelopedData container to be a single byte long,\nallowing an attacker to brute force CMS decryption, producing an integrity\nbypass for applications that trust CMS_decrypt() to reject modified content.\n\nThe FIPS modules are not affected by this issue.",
           "Severity": "MEDIUM",
@@ -7639,7 +7639,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:e6aa8630797cfa1f7f368b94ef24fa277a4c38e09be71321e2f90ccb86b8907b",
+          "Fingerprint": "sha256:9693bab94068a89a2b7f58a30a5889a1f2a2592d2419f5df6efb0dd47f64326c",
           "Title": "openssl: Unbounded Memory Growth in the QUIC PATH_CHALLENGE Handler",
           "Description": "Issue summary: Remote peer may exhaust heap memory of the QUIC\nserver or client by flooding it with packets containing PATH_CHALLENGE\nframes.\n\nImpact summary: A malicious remote peer can cause an unbounded\nmemory allocation which can lead to an abnormal termination of the\napplication acting as a QUIC client or server and a Denial of Service.\n\nA remote peer may exhaust heap memory by flooding the local\nQUIC stack with PATH_CHALLENGE frames. The local QUIC stack\nallocates a PATH_RESPONSE frame for every PATH_CHALLENGE it receives.\nThe allocated PATH_RESPONSE frame gets freed only when the remote\npeer acknowledges reception of the PATH_RESPONSE frame which will\nnot be done by a malicious peer.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are not affected by\nthis issue. The QUIC stack is outside of OpenSSL FIPS module\nboundary.",
           "Severity": "MEDIUM",
@@ -7742,7 +7742,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:efa13c79a2408f635eae7ea334bfac6b838ff1b537234544e0c91827f725bbe8",
+          "Fingerprint": "sha256:2c41e65b3d88024ad56b6891d96adec411a1abcb08893b7813a002b7490e65dd",
           "Title": "openssl: NULL pointer dereference in QUIC server initial packet handling",
           "Description": "Issue summary: Receiving a QUIC initial packet with an invalid token may\ntrigger a NULL pointer dereference in the OpenSSL QUIC server with\naddress validation disabled.\n\nImpact summary: NULL pointer dereference typically causes abnormal termination\nof the affected QUIC server process and a Denial of Service.\n\nIf the address validation is disabled in the OpenSSL QUIC server\nimplementation, an attacker can crash the server by sending an initial\npacket with an invalid or expired token.\n\nBy default, the client address validation is enabled in the OpenSSL QUIC server\nimplementation, which makes the default configuration not vulnerable\nto this issue. However if the SSL_LISTENER_FLAG_NO_VALIDATE is used with\nthe SSL_new_listener() call, the address validation is disabled making the\nvulnerable code reachable.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "MEDIUM",
@@ -7844,7 +7844,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:5783fad1e7962a32ff201d65123e4d951d584e5068139c0944f878872a714fcf",
+          "Fingerprint": "sha256:f6aec03915e5b8f4e767c52cf7b5deaf6eea3c8337e0acb37e7e16dd3dca2398",
           "Title": "openssl: AES-OCB IV Ignored on EVP_Cipher() Path",
           "Description": "Issue summary: When an application drives an AES-OCB context through the\npublic EVP_Cipher() one-shot interface, the application-supplied\ninitialisation vector (IV) is silently discarded.\n\nImpact summary: Every message encrypted under the same key uses the\nsame effective nonce regardless of the IV supplied by the caller,\nresulting in (key, nonce) reuse and loss of confidentiality.  If the\nsame code path is used to compute the authentication tag, the tag\ndepends only on the (key, IV) pair and not on the plaintext or\nciphertext, allowing universal forgery of arbitrary ciphertext from a\nsingle captured message.\n\nOpenSSL provides two ways to drive a cipher: the documented streaming\ninterface (EVP_CipherUpdate / EVP_CipherFinal_ex) and a lower-level\none-shot, EVP_Cipher(), whose documentation explicitly recommends\nagainst use by applications in favour of EVP_CipherUpdate() and\nEVP_CipherFinal_ex().  The OCB provider's streaming handler flushes\nthe application-supplied IV into the OCB context before processing\ndata; the one-shot handler did not.  Every call to EVP_Cipher() on an\nAES-OCB context therefore ran with the all-zero key-derived offset\nstate left by cipher initialisation, regardless of the caller's IV.\n\nIf EVP_EncryptFinal_ex() is subsequently used to obtain the\nauthentication tag, the deferred IV setup runs at that point and\nclears the running checksum that should have been accumulated over the\nplaintext.  The resulting tag is a function of (key, IV) only and\nverifies against any ciphertext produced under the same (key, IV)\npair.\n\nThe OpenSSL SSL/TLS implementation is not affected: AES-OCB is not a\nTLS cipher suite, and libssl does not call EVP_Cipher() in any case.\nApplications that drive AES-OCB through the documented streaming AEAD\nAPI (EVP_CipherUpdate / EVP_CipherFinal_ex) are not affected.  Only\napplications that combine the AES-OCB cipher with the EVP_Cipher()\none-shot API are vulnerable.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4 and 3.0 are not affected by\nthis issue, as AES-OCB is outside the OpenSSL FIPS module boundary.",
           "Severity": "MEDIUM",
@@ -7948,7 +7948,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:54e6cae1f2f3b9f136d76ce78c012db0e805d0f20e06f699efbd07c9058d9553",
+          "Fingerprint": "sha256:5f4249830b8f184ab2bdda1ac5db58b8428651a16e83e19c033c9cae04313b5e",
           "Title": "openssl: OpenSSL: Heap buffer over-read in ASN.1 decoding can lead to denial of service or information disclosure.",
           "Description": "Issue summary: Parsing a crafted DER-encoded ASN.1 structure with a primitive\nelement whose content exceeds 2 gigabytes in length may cause a heap buffer\nover-read on 64-bit Unix and Unix-like platforms.\n\nImpact summary: The heap buffer over-read may crash the application (Denial of\nService) or to load into the decoded ASN.1 object contents of memory beyond the\nend of the input buffer.  More typically such ASN.1 elements would instead be\ntruncated.\n\nAn integer truncation in OpenSSL's ASN.1 decoder causes the content length of\nan ASN.1 primitive element to be mishandled when it exceeds 2 gigabytes. In the\nworst case the truncated length is treated as a request to scan the binary\ncontent for a terminating zero byte, possibly causing OpenSSL to read either\nless than or beyond the end of the allocated buffer.\n\nApplications that pass attacker-supplied data to d2i_X509(), d2i_PKCS7(), or\nany other d2i_* decoding function are affected. OpenSSL's own command-line\ntools are not vulnerable, as data read through the BIO layer is checked before\nit reaches the affected code. The issue only affects 64-bit Unix and Unix-like\nplatforms; 32-bit platforms and 64-bit Windows are not affected.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4 and 3.0 are not affected by this issue,\nas the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -8053,7 +8053,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:37ab23e990ac4e470b03fce272e255d5239c21800c232d4c2ebcfc13ff2f3161",
+          "Fingerprint": "sha256:9e33d6f516ff0d11a8012be175dff1a32c7d90897983795feea04c25d2ea8e06",
           "Title": "openssl: PKCS#12 Files with PBMAC1 Are Accepted with Short HMAC Keys",
           "Description": "Issue Summary: The PKCS#12 file processing fails to perform sufficient input\nvalidation for files that use Password-Based Message Authentication Code 1\n(PBMAC1) integrity mechanism allowing a certificate and private key forgery.\n\nImpact Summary: An attacker impersonating a user can cause a service reading\nPKCS#12 files to accept forged certificates and private keys with a 1 in 256\nprobability.\n\nIf a service accepting PKCS#12 files is using passwords for authenticating\nthe received files, the attacker can create unencrypted PKCS#12 files that\nuse PBMAC1 authentication that specifies an HMAC key of only one byte, allowing\nthem to craft a file that will be accepted with a 1 in 256 probability.\nThat would then cause the service to accept a certificate and private key\ncontrolled by the attacker.\n\nThe FIPS modules are not affected by this issue, as the affected code is\noutside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -8156,7 +8156,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:9f73d59423dd25e5c3d93979be43968657aab2f1a92fe7906c8af5da492bf8eb",
+          "Fingerprint": "sha256:00a680efd1836566c1e59dc849b8c31ee7e591bd300c38f0e2a61e838e3abecd",
           "Title": "openssl: Possible NULL Dereference in Password-Based CMS Decryption",
           "Description": "Issue summary: A specially crafted password-encrypted CMS message\ncan trigger a NULL pointer dereference during CMS decryption.\n\nImpact summary: This NULL pointer dereference leads to an application crash\nand a Denial of Service.\n\nThe CMS PasswordRecipientInfo.keyDerivationAlgorithm field is defined as\nOPTIONAL in the ASN.1 specification and may therefore be absent in specially\ncrafted inputs. During the password-based CMS decryption the OpenSSL\nCMS implementation dereferences this field without first checking whether it\nwas present.\n\nAn attacker who supplies such a CMS message to an application performing\npassword-based CMS decryption can trigger an application crash, leading to\na Denial of Service.\n\nApplications that process password-encrypted CMS messages may be affected.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -8261,7 +8261,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:10f44c056a90952ab2f380ac60d5ee5699a3c64383c610df4fdeb2aec20beefc",
+          "Fingerprint": "sha256:f771bcc5b64ce8585561e396ec9d510671aee9161eaaae7fd37ae9cfdcb97c27",
           "Title": "openssl: NULL Pointer Dereference in CRMF EncryptedValue Decryption",
           "Description": "Issue summary: An attacker-controlled CMP (Certificate Management Protocol)\nserver could trigger a NULL pointer dereference in a CMP client application.\n\nImpact summary: A NULL pointer dereference causes a crash of the\napplication and a Denial of Service.\n\nAn attacker controlling a CMP server (or acting as a man-in-the-middle) could\ncraft a CMP response containing a CRMF (Certificate Request Message Format)\nCertRepMessage with an EncryptedValue structure where the symmAlg field\nhas an algorithm OID but no parameters field. When the OpenSSL CMP client\nprocesses this response, the NULL dereference occurs, causing a crash of\nthe CMP client.\n\nApplications that process untrusted CMP/CRMF messages may be affected.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -8365,7 +8365,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:3f10e267667e2b3875485b593eee2bf1ff06cc7ecb45cc75b09bc3afc68ee039",
+          "Fingerprint": "sha256:5a2a72d9dbd9fff2bfadeceb751d789dd3fbda6915229e97f5b55faf78f24e34",
           "Title": "openssl: Multi-RecipientInfo Bleichenbacher Oracle in CMS_decrypt() and PKCS7_decrypt()",
           "Description": "Issue summary: The CMS_decrypt and PKCS7_decrypt functions are vulnerable to\nBleichenbacher-style attack when an attacker is able to provide the CMS or\nS/MIME messages and observe the error code and/or decryption output.\n\nImpact summary: The Bleichenbacher-style attack allows an attacker to use the\nvictim's vulnerable application as a way to decrypt or sign messages with the\nvictim's private RSA key.\n\nThe attack is possible in 2 variants.\n\n1. The decryption API (CMS_decrypt(), PKCS7_decrypt()) is used without\nproviding the recipient certificate. In this case OpenSSL iterates over every\nKeyTransRecipientInfo (KTRI) without stopping at the first success.\n\nAn attacker who authors a message with two KTRI entries — the first one\nwrapping a real CEK under the victim's public key, the second with an\narbitrary probe ciphertext — obtains opportunity to iterate the 2nd KTRI to\nget a valid PKCS#1 v1.5 padding if the error code of the application is\navailable.\n\nThat is a Bleichenbacher oracle (Bleichenbacher, CRYPTO '98): an\nadaptive-chosen-ciphertext side channel from which the attacker decrypts any\nRSA ciphertext to the victim's key or forges any PKCS#1 v1.5 signature under\nit.\n\n2. When the decryption API (CMS_decrypt(), PKCS7_decrypt()) is provided with\nthe recipient certificate, and the recipient is not found, a random\nkey is substituted.\n\nAn attacker who authors a message and is able to compare both error code and\nthe result of the decryption, can mount a Bleichenbacher oracle.\n\nWe are not aware of any applications that provide a remote attacker\nan opportunity to mount an attack described in these scenarios. We consider\nthe existence of such application very unlikely, and for this reason this\nCVE has been evaluated as Low severity.\n\nTo avoid these attacks, when RSA PKCS#1 v1.5 Key Transport is in use, the\ninvoked EVP_PKEY_decrypt() will use the implicit rejection mechanism described\nin draft-irtf-cfrg-rsa-guidance. In previous OpenSSL releases the implicit\nrejection was explicitly disabled.\n\nThe implicit rejection mechanism always returns a plaintext value,\nthe symmetric key. This result is deterministic for the ciphertext and the\nprivate key.  The length of the decryption result can happen to match the\nlength of the key of the symmetric cipher that was used for the content\nencryption. When a certificate is not provided, the last RecipientInfo\nproducing a key that looks valid will be used. It may cause getting garbage\ncontent on decryption. As a proper way to deal with this a recipient\ncertificate has to be provided to identify the particular RecipientInfo for\ndecryption.\n\nThe FIPS modules in 4.0, 3.6, 3.5, and 3.4 are not affected by this issue, as\nCMS and S/MIME processing happens outside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -8468,7 +8468,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:dbf108db0f7933d4c4e005d23d1fee53f3f26daf1e02b320aa1ec40c97cff3a5",
+          "Fingerprint": "sha256:843736f61bfc969feb7303545ce6c392b6f64daaac6cc4c9f85142d60288bfad",
           "Title": "openssl: Trust-Anchor Substitution via cert/issuer Typo in CMP rootCaKeyUpdate",
           "Description": "Issue Summary: An error in the callback used to verify the certificate\nprovided in a Root CA key update Certificate Management Protocol (CMP)\nmessage response rendered the certificate validation ineffectual, which\ncould lead to escalation of credentials from the Registration Authority (RA)\nlevel to the root Certification Authority (root CA) level.\n\nImpact Summary: The Registration Autority could replace the root CA\ncertificate for the CMP clients with an arbitrary root CA certificate.\n\nOne of the parts of the Certificate Management Protocol (CMP), specified in\nRFC 9810, is Root Certification Authority (root CA) key Rollover,\nwhich is sent by the server in a message with type 'id-it-rootCaKeyUpdate'.\nAs part of these messages, 'newWithOld' certificate, the new root CA\ncertificate signed with the old root CA key, is provided, and verifying its\nsignature is crucial for transferring the trust from the old CA key to the\nnew one.\n\nThe 'id-it-rootCaKeyUpdate' messages are expected to be processed with\nOSSL_CMP_get1_rootCaKeyUpdate(), that is expected to verify the 'newWithOld'\ncertificate.  A typo in the certificate chain building code led to adding\nan incorrect certificate ('newWithOld' instead of 'oldRoot') to the\ncertificate chain, rendering the certificate verification process ineffectual\n(only the issuer name and the algorithm OIDs were verified by other parts\nof the verification code).\n\nAn attacker who already has credentials that satisfy the CMP message\nprotection checks can generate a new key pair and use a crafted self-signed\ncertificate in its 'id-it-rootCaKeyUpdate' CMP messages which affected CMP\nclients would accept as a new trust anchor.\n\nSignificant preconditions for the attack (having valid RA-level credentials)\nare the reason the issue was assigned Low severity.\n\nThe FIPS modules are not affected by this issue, as the affected code is\noutside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -8571,7 +8571,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:2da12a2710503b2b3b32e98e5487e57fbb0682c73675cd96d740afad585cacbc",
+          "Fingerprint": "sha256:e0eb105285e1b71a8a2280211e382fdb47d82abfe3475938c088e3f27431bec0",
           "Title": "openssl: FFC-DH Peer Validation Uses Attacker-Supplied q",
           "Description": "Issue summary: When EVP_PKEY_derive_set_peer() is called with a DHX (X9.42)\npeer key, the peer key is not properly checked for the subgroup membership.\n\nImpact summary: A malicious peer which presents an X9.42 key carrying the\nvictim's p and g parameters, a forged q = r (a small prime factor of the\ncofactor (p−1)/q_local), and a public value Y of order r can recover the\nvictim's private key after a small number of key exchange attempts.\n\nWhen EVP_PKEY_derive_set_peer() is called with a DHX (X9.42) peer key, the\nsubgroup membership check Y^q ≡ 1 (mod p) is performed using the peer's\nown q parameter, not the local key's q. The peer's domain parameters are\nthen matched against the domain parameters of the private key, but the value\nof q is not compared.\n\nA malicious peer who presents an X9.42 key carrying the victim's p, g,\na forged q = r (a small prime factor of the cofactor), and a public\nvalue Y of order r passes all checks. The shared secret then takes only\nr distinct values, leaking priv mod r. Repeating for each small-prime\nfactor of the cofactor and combining via CRT recovers the full private\nkey (Lim–Lee / small-subgroup-confinement attack).\n\nThe realistic attack surface is narrow: principally CMP deployments with\nlong-lived RA/CA DHX keys and bespoke enterprise or government applications\nusing X9.42 DHX static keys with interactive protocols and therefore this\nissue was assigned Low severity.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are affected by this\nissue.",
           "Severity": "LOW",
@@ -8675,7 +8675,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:5866444784079e1e61307c5d4a6b1104d9c88b5b8cf8603be0aa5162919e2971",
+          "Fingerprint": "sha256:3a1c147eb5d7c295156f62c499a57aa799f8ad36bbd3fa5f0e618e944dfd05e3",
           "Title": "openssl: Incorrect Tag Processing for Empty Messages in AES-GCM-SIV and AES-SIV modes",
           "Description": "Issue summary: The implementations of AES-SIV (RFC 5297) and AES-GCM-SIV\n(RFC 8452) mishandle the authentication of AAD (Additional Authenticated\nData) with an empty ciphertext allowing a forgery of such messages.\n\nImpact summary: An attacker can forge empty messages with arbitrary AAD\nto the victim's application using these ciphers.\n\nAES-SIV (RFC 5297) and AES-GCM-SIV (RFC 8452) are nonce-misuse-resistant AEAD\nmodes: they accept a key, nonce, optional AAD (bytes that are authenticated\nbut not encrypted), and plaintext, and produces ciphertext plus a 16-byte\ntag. On decrypt, `EVP_DecryptFinal_ex()` is documented to return success only\nif the tag is verified succesfully.\n\nIn OpenSSL's provider implementation of these ciphers, the expected tag is\ncomputed only when decryption function is invoked with non-empty data.\nIf the caller supplies AAD and then calls `EVP_DecryptFinal_ex()` without\ninvocation of the ciphertext update, which can happen when the received\nciphertext length is zero, the tag is never recalculated and still holds its\nall-zeros value.\n\nWhen AES-GCM-SIV is used, an attacker who sends arbitrary AAD, empty\nciphertext, and all-zeros tag passes authentication under any key they do not\nknow, single-shot. When AES-SIV is used, for mounting the attack it's\nnecessary for the application to reuse the decryption context without\nresetting the key.\n\nAES-SIV is implemented since OpenSSL 3.0. AES-GCM-SIV is implemented since\nOpenSSL 3.2.\n\nNo protocols implemented in OpenSSL itself (TLS/CMS/PKCS7/HPKE/QUIC) support\neither AES-GCM-SIV or AES-SIV. To mount an attack, the applications must\nimplement their own protocol and use the EVP interface. Also they must skip the\nciphertext update when a message with an empty ciphertext arrives.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are not affected by this\nissue, as these algorithms are not FIPS approved and the affected code is\noutside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -8779,7 +8779,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:f9afcd5e3fecdd51f9690f76d8c5f7d30683679557a7763dff61371231e35bbe",
+          "Fingerprint": "sha256:5d21c39b4210779ee937b9482a12b68a8507424ea1d53a7527e682961b92e53d",
           "Title": "openssl: OpenSSL: Heap buffer overflow due to signed integer overflow in Unicode output sizing",
           "Description": "Issue summary: A signed integer overflow when sizing the destination\nbuffer for Unicode output in ASN1_mbstring_ncopy() can lead to a heap\nbuffer overflow.\n\nImpact summary: A heap buffer overflow may lead to a crash or possibly\nattacker controlled code execution or other undefined behaviour.\n\nIn ASN1_mbstring_copy() and ASN1_mbstring_ncopy() the destination\nsize for Unicode output is computed in a signed int: by left shift\nof the input character count for BMPSTRING (UTF-16) and\nUNIVERSALSTRING (UTF-32), and by summing per-character byte counts\nfor UTF8STRING. The calculation overflows when the input reaches\naround 2^30 characters. In the worst case (UNIVERSALSTRING at 2^30\ncharacters) the size wraps to zero, OPENSSL_malloc(1) is called, and\nthe subsequent character copy writes several gigabytes past the\none-byte allocation.\n\nX.509 certificate processing routes through ASN1_STRING_set_by_NID(),\nwhose DIRSTRING_TYPE mask excludes UNIVERSALSTRING and whose per-NID\nsize limits cap the input length; no network protocol or\ncertificate-handling path in OpenSSL exercises the overflow.\nTriggering the bug requires an application that calls\nASN1_mbstring_copy() or ASN1_mbstring_ncopy() directly, or registers\na custom string type via ASN1_STRING_TABLE_add(), with\nattacker-controlled input on the order of half a gigabyte or more.\nFor these reasons this issue was assigned Low severity.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4 and 3.0 are not affected by\nthis issue, as the affected code is outside the OpenSSL FIPS module\nboundary.",
           "Severity": "LOW",
@@ -8884,7 +8884,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:445a6edca11b999e4fc6d9a3835f43b0fa11f8a6845aa6f424db1df3b4197800",
+          "Fingerprint": "sha256:1b5cf431978204d7569c6e916fe8d0a22e1f8aa89afde1dfcd1264616165e67d",
           "Title": "openssl: OpenSSL: Denial of Service due to heap out-of-bounds read in CMS password-based decryption",
           "Description": "Issue summary: When CMS password-based decryption (RFC 3211 / PWRI key unwrap)\nprocesses attacker-supplied CMS data, an attacker-chosen stream-mode KEK\ncipher can trigger a heap out-of-bounds read in kek_unwrap_key().\n\nImpact summary: A heap buffer over-read may trigger a crash which leads to\nDenial of Service for an application if the input buffer ends at a memory\npage boundary and the following page is unmapped. There is no information\ndisclosure as the over-read bytes are not revealed to the attacker.\n\nThe key unwrapping function performs a check-byte test as specified in the\nRFC that reads 7 bytes from a heap allocation that is based on the wrapped\nkey length from the message. There is a minimum length check based on the\nblock length of the wrapping cipher. However the cipher is selected from\nan OID carried in the attacker's PWRI keyEncryptionAlgorithm with no\nrequirement that the cipher be a block cipher. When an attacker selects\na stream-mode cipher the guard will be ineffective and the allocated buffer\ncontaining the unwrapped key can be too small to fit the check-bytes\nspecified in the RFC and a buffer over-read can happen.\n\nApplications calling CMS_decrypt() or CMS_decrypt_set1_password()\n(equivalently openssl cms -decrypt -pwri_password ...) on untrusted CMS\ndata are vulnerable to this issue. No password knowledge is required: the\nover-read happens during the unwrap attempt before any authentication\nsucceeds.\n\nThe over-read is limited to a few bytes and is not written to output, so\nthere is no information disclosure. Triggering a crash requires the\nallocation to border unmapped memory, which is unlikely with the normal\nallocator.\n\nThe FIPS modules are not affected by this issue.",
           "Severity": "LOW",
@@ -8989,7 +8989,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:11cdcb666f0d1f5a0526018a0fc67db07e3ee77da9c721ff412d963123136813",
+          "Fingerprint": "sha256:21befb7bc7966108d022fb93ed15bd8eaba33cd9d02208954d73265c0288ced7",
           "Title": "nghttp2: nghttp2: Denial of Service via malformed HTTP/2 frames after session termination",
           "Description": "nghttp2 is an implementation of the Hypertext Transfer Protocol version 2 in C. Prior to version 1.68.1, the nghttp2 library stops reading the incoming data when user facing public API `nghttp2_session_terminate_session` or `nghttp2_session_terminate_session2` is called by the application. They might be called internally by the library when it detects the situation that is subject to connection error. Due to the missing internal state validation, the library keeps reading the rest of the data after one of those APIs is called. Then receiving a malformed frame that causes FRAME_SIZE_ERROR causes assertion failure. nghttp2 v1.68.1 adds missing state validation to avoid assertion failure. No known workarounds are available.",
           "Severity": "HIGH",
@@ -9059,7 +9059,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:9f34d2a910663283bacc53a688aa2ba9ba9f1b0eb67056381de8bc6a586c9574",
+          "Fingerprint": "sha256:bb45a9ed3bdecd7737371ef8905d3d4e181e64bc426f1ce8c76cfc43dfedfeac",
           "Title": "openssl: Heap Use-After-Free in OpenSSL PKCS7_verify()",
           "Description": "Issue summary: A specially crafted PKCS#7 or S/MIME signed message could\ntrigger a use-after-free during PKCS#7 signature verification.\n\nImpact summary: A use-after-free may result in process crashes, heap\ncorruption, or potentially remote code execution.\n\nWhen processing a PKCS#7 or S/MIME signed message, if the SignedData\ndigestAlgorithms field is present as an empty ASN.1 SET, OpenSSL may\nincorrectly free a caller-owned BIO during PKCS7_verify(). A subsequent\nuse of the BIO by the calling application results in a use-after-free\ncondition.\n\nIn the common case this occurs when the application later calls\nBIO_free() on the BIO originally passed to PKCS7_verify(). Depending\non allocator behavior and application-specific BIO usage patterns, this\nmay result in a crash or other memory corruption. In some application\ncontexts this may potentially be exploitable for remote code execution.\n\nApplications that process PKCS#7 or S/MIME signed messages using OpenSSL\nPKCS#7 APIs may be affected. Applications using the CMS APIs for this\nprocessing are not affected.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "HIGH",
@@ -9167,7 +9167,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:0516d19d3fa99d4e9545048ba430751e54c815d80c76b2fa184f9519637010d6",
+          "Fingerprint": "sha256:0598d933f6bc22f42020857dc5fedab9648ecd9eb03cb213cb29cda8472f625d",
           "Title": "openssl: CMS AuthEnvelopedData Processing May Accept Forged Messages",
           "Description": "Issue Summary: Cryptographic Message Services (CMS) processing fails to perform\nsufficient input validation on the cipher and tag length fields of\nAuthEnvelopedData containers, leading to various potential compromises.\n\nImpact Summary: Attackers making use of these vulnerabilities may achieve\nkey-equivalent functionality for a given CMS recipient and/or bypass integrity\nvalidation for a given message.\n\nIn one use case, an attacker may send a CMS message containing\nAuthEnvelopedData with the cipher specified as a non-AEAD cipher.  OpenSSL\nerroneously allows this selection, and attempts to decrypt and validate the\nmessage.\n\nAn on-path attacker who captures one legitimate AES-GCM AuthEnvelopedData\naddressed to the victim can re-emit it with the recipientInfos set left\nbyte-for-byte intact, so the victim's private key still unwraps the genuine CEK\n(the content-encryption key), but with the inner OID rewritten to AES-256-OFB\n(Output Feedback Mode, an unauthenticated keystream mode) and with an\nattacker-chosen IV and ciphertext. The victim initializes AES-256-OFB under the\nreal CEK, never consults the MAC field, and CMS_decrypt() returns success.\n\nIf the application under attack responds to the attacker with any indicator\nshowing success or failure of the decryption effort, it is possible for the\nattacker to use this as an oracle to obtain key equivalent functionality for the\nCEK used for the chosen recipient of the message.\n\nIn another use case, an attacker can reduce the tag length of the chosen AEAD\ncipher for a given AuthEnvelopedData container to be a single byte long,\nallowing an attacker to brute force CMS decryption, producing an integrity\nbypass for applications that trust CMS_decrypt() to reject modified content.\n\nThe FIPS modules are not affected by this issue.",
           "Severity": "MEDIUM",
@@ -9272,7 +9272,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:7e10c9a41d200ca4bb949183a4b8b2665c727820c0c5b7c7949cf1dc3d81fdb5",
+          "Fingerprint": "sha256:7d0f37608fb892256fe80e7d254c96418927546e2fc4de27f0eb1b54979cad6a",
           "Title": "openssl: Unbounded Memory Growth in the QUIC PATH_CHALLENGE Handler",
           "Description": "Issue summary: Remote peer may exhaust heap memory of the QUIC\nserver or client by flooding it with packets containing PATH_CHALLENGE\nframes.\n\nImpact summary: A malicious remote peer can cause an unbounded\nmemory allocation which can lead to an abnormal termination of the\napplication acting as a QUIC client or server and a Denial of Service.\n\nA remote peer may exhaust heap memory by flooding the local\nQUIC stack with PATH_CHALLENGE frames. The local QUIC stack\nallocates a PATH_RESPONSE frame for every PATH_CHALLENGE it receives.\nThe allocated PATH_RESPONSE frame gets freed only when the remote\npeer acknowledges reception of the PATH_RESPONSE frame which will\nnot be done by a malicious peer.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are not affected by\nthis issue. The QUIC stack is outside of OpenSSL FIPS module\nboundary.",
           "Severity": "MEDIUM",
@@ -9375,7 +9375,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:aae12a4995d88b7ccdb6c6cd7493679708637e7e630c1e069472cd18992b1c6d",
+          "Fingerprint": "sha256:6793bae2ea19b6e60c747052138657ce34a87a2546faf46480450ee9ee239321",
           "Title": "openssl: NULL pointer dereference in QUIC server initial packet handling",
           "Description": "Issue summary: Receiving a QUIC initial packet with an invalid token may\ntrigger a NULL pointer dereference in the OpenSSL QUIC server with\naddress validation disabled.\n\nImpact summary: NULL pointer dereference typically causes abnormal termination\nof the affected QUIC server process and a Denial of Service.\n\nIf the address validation is disabled in the OpenSSL QUIC server\nimplementation, an attacker can crash the server by sending an initial\npacket with an invalid or expired token.\n\nBy default, the client address validation is enabled in the OpenSSL QUIC server\nimplementation, which makes the default configuration not vulnerable\nto this issue. However if the SSL_LISTENER_FLAG_NO_VALIDATE is used with\nthe SSL_new_listener() call, the address validation is disabled making the\nvulnerable code reachable.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "MEDIUM",
@@ -9477,7 +9477,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:a14f3183a6d5ddfa2acdb9fd9c6d8be3d5922687dcc7743b2c44b4752ee89a92",
+          "Fingerprint": "sha256:fccd4e6559e4cc6e1de73a2f291a821284d8aaf5398c16c6dcb47a306c0b4d17",
           "Title": "openssl: AES-OCB IV Ignored on EVP_Cipher() Path",
           "Description": "Issue summary: When an application drives an AES-OCB context through the\npublic EVP_Cipher() one-shot interface, the application-supplied\ninitialisation vector (IV) is silently discarded.\n\nImpact summary: Every message encrypted under the same key uses the\nsame effective nonce regardless of the IV supplied by the caller,\nresulting in (key, nonce) reuse and loss of confidentiality.  If the\nsame code path is used to compute the authentication tag, the tag\ndepends only on the (key, IV) pair and not on the plaintext or\nciphertext, allowing universal forgery of arbitrary ciphertext from a\nsingle captured message.\n\nOpenSSL provides two ways to drive a cipher: the documented streaming\ninterface (EVP_CipherUpdate / EVP_CipherFinal_ex) and a lower-level\none-shot, EVP_Cipher(), whose documentation explicitly recommends\nagainst use by applications in favour of EVP_CipherUpdate() and\nEVP_CipherFinal_ex().  The OCB provider's streaming handler flushes\nthe application-supplied IV into the OCB context before processing\ndata; the one-shot handler did not.  Every call to EVP_Cipher() on an\nAES-OCB context therefore ran with the all-zero key-derived offset\nstate left by cipher initialisation, regardless of the caller's IV.\n\nIf EVP_EncryptFinal_ex() is subsequently used to obtain the\nauthentication tag, the deferred IV setup runs at that point and\nclears the running checksum that should have been accumulated over the\nplaintext.  The resulting tag is a function of (key, IV) only and\nverifies against any ciphertext produced under the same (key, IV)\npair.\n\nThe OpenSSL SSL/TLS implementation is not affected: AES-OCB is not a\nTLS cipher suite, and libssl does not call EVP_Cipher() in any case.\nApplications that drive AES-OCB through the documented streaming AEAD\nAPI (EVP_CipherUpdate / EVP_CipherFinal_ex) are not affected.  Only\napplications that combine the AES-OCB cipher with the EVP_Cipher()\none-shot API are vulnerable.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4 and 3.0 are not affected by\nthis issue, as AES-OCB is outside the OpenSSL FIPS module boundary.",
           "Severity": "MEDIUM",
@@ -9581,7 +9581,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:e122983400555ef1a1037d7da394042623e8fa6c584438c6e5dc6d3efdfc0ee2",
+          "Fingerprint": "sha256:b99e3f14a6f07e8ae39bbe24152fb562b4d73c3226e938c4464772338535e5b6",
           "Title": "openssl: OpenSSL: Heap buffer over-read in ASN.1 decoding can lead to denial of service or information disclosure.",
           "Description": "Issue summary: Parsing a crafted DER-encoded ASN.1 structure with a primitive\nelement whose content exceeds 2 gigabytes in length may cause a heap buffer\nover-read on 64-bit Unix and Unix-like platforms.\n\nImpact summary: The heap buffer over-read may crash the application (Denial of\nService) or to load into the decoded ASN.1 object contents of memory beyond the\nend of the input buffer.  More typically such ASN.1 elements would instead be\ntruncated.\n\nAn integer truncation in OpenSSL's ASN.1 decoder causes the content length of\nan ASN.1 primitive element to be mishandled when it exceeds 2 gigabytes. In the\nworst case the truncated length is treated as a request to scan the binary\ncontent for a terminating zero byte, possibly causing OpenSSL to read either\nless than or beyond the end of the allocated buffer.\n\nApplications that pass attacker-supplied data to d2i_X509(), d2i_PKCS7(), or\nany other d2i_* decoding function are affected. OpenSSL's own command-line\ntools are not vulnerable, as data read through the BIO layer is checked before\nit reaches the affected code. The issue only affects 64-bit Unix and Unix-like\nplatforms; 32-bit platforms and 64-bit Windows are not affected.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4 and 3.0 are not affected by this issue,\nas the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -9686,7 +9686,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:ae1c16b1cb4688c1ce8b263e179a7a2c7a1ac86cb11af7b4d04c6a03b1f67c53",
+          "Fingerprint": "sha256:6dbdf98b1d766842bb6d5469229ba00cddb17275c151faa644a23afc250df13c",
           "Title": "openssl: PKCS#12 Files with PBMAC1 Are Accepted with Short HMAC Keys",
           "Description": "Issue Summary: The PKCS#12 file processing fails to perform sufficient input\nvalidation for files that use Password-Based Message Authentication Code 1\n(PBMAC1) integrity mechanism allowing a certificate and private key forgery.\n\nImpact Summary: An attacker impersonating a user can cause a service reading\nPKCS#12 files to accept forged certificates and private keys with a 1 in 256\nprobability.\n\nIf a service accepting PKCS#12 files is using passwords for authenticating\nthe received files, the attacker can create unencrypted PKCS#12 files that\nuse PBMAC1 authentication that specifies an HMAC key of only one byte, allowing\nthem to craft a file that will be accepted with a 1 in 256 probability.\nThat would then cause the service to accept a certificate and private key\ncontrolled by the attacker.\n\nThe FIPS modules are not affected by this issue, as the affected code is\noutside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -9789,7 +9789,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:1daba65712f5a59dfc04fdc972abea349ed1f39a6748b18e7e0d7a777e6addc2",
+          "Fingerprint": "sha256:7a542a69307fdc1458f61a66bb22bad90e99ec9cf1d2995e61fe77759564070b",
           "Title": "openssl: Possible NULL Dereference in Password-Based CMS Decryption",
           "Description": "Issue summary: A specially crafted password-encrypted CMS message\ncan trigger a NULL pointer dereference during CMS decryption.\n\nImpact summary: This NULL pointer dereference leads to an application crash\nand a Denial of Service.\n\nThe CMS PasswordRecipientInfo.keyDerivationAlgorithm field is defined as\nOPTIONAL in the ASN.1 specification and may therefore be absent in specially\ncrafted inputs. During the password-based CMS decryption the OpenSSL\nCMS implementation dereferences this field without first checking whether it\nwas present.\n\nAn attacker who supplies such a CMS message to an application performing\npassword-based CMS decryption can trigger an application crash, leading to\na Denial of Service.\n\nApplications that process password-encrypted CMS messages may be affected.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -9894,7 +9894,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:e7ea69609df4e312e517fb9f120bacbc81dac0d5c22d56cae44de8dca80fb5a5",
+          "Fingerprint": "sha256:00496a86e8482856df87a9cb0e2f5a35371372485b23f16cec631890e0308cdd",
           "Title": "openssl: NULL Pointer Dereference in CRMF EncryptedValue Decryption",
           "Description": "Issue summary: An attacker-controlled CMP (Certificate Management Protocol)\nserver could trigger a NULL pointer dereference in a CMP client application.\n\nImpact summary: A NULL pointer dereference causes a crash of the\napplication and a Denial of Service.\n\nAn attacker controlling a CMP server (or acting as a man-in-the-middle) could\ncraft a CMP response containing a CRMF (Certificate Request Message Format)\nCertRepMessage with an EncryptedValue structure where the symmAlg field\nhas an algorithm OID but no parameters field. When the OpenSSL CMP client\nprocesses this response, the NULL dereference occurs, causing a crash of\nthe CMP client.\n\nApplications that process untrusted CMP/CRMF messages may be affected.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are not affected by this\nissue, as the affected code is outside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -9998,7 +9998,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:1b64b46e6d0d31cd5f06119af0e98174441b72d214b83d9e5ede254333eae8f1",
+          "Fingerprint": "sha256:99d794071e202a9342f4df04fceb96ab97225915c8c05293baca21c88a99ed37",
           "Title": "openssl: Multi-RecipientInfo Bleichenbacher Oracle in CMS_decrypt() and PKCS7_decrypt()",
           "Description": "Issue summary: The CMS_decrypt and PKCS7_decrypt functions are vulnerable to\nBleichenbacher-style attack when an attacker is able to provide the CMS or\nS/MIME messages and observe the error code and/or decryption output.\n\nImpact summary: The Bleichenbacher-style attack allows an attacker to use the\nvictim's vulnerable application as a way to decrypt or sign messages with the\nvictim's private RSA key.\n\nThe attack is possible in 2 variants.\n\n1. The decryption API (CMS_decrypt(), PKCS7_decrypt()) is used without\nproviding the recipient certificate. In this case OpenSSL iterates over every\nKeyTransRecipientInfo (KTRI) without stopping at the first success.\n\nAn attacker who authors a message with two KTRI entries — the first one\nwrapping a real CEK under the victim's public key, the second with an\narbitrary probe ciphertext — obtains opportunity to iterate the 2nd KTRI to\nget a valid PKCS#1 v1.5 padding if the error code of the application is\navailable.\n\nThat is a Bleichenbacher oracle (Bleichenbacher, CRYPTO '98): an\nadaptive-chosen-ciphertext side channel from which the attacker decrypts any\nRSA ciphertext to the victim's key or forges any PKCS#1 v1.5 signature under\nit.\n\n2. When the decryption API (CMS_decrypt(), PKCS7_decrypt()) is provided with\nthe recipient certificate, and the recipient is not found, a random\nkey is substituted.\n\nAn attacker who authors a message and is able to compare both error code and\nthe result of the decryption, can mount a Bleichenbacher oracle.\n\nWe are not aware of any applications that provide a remote attacker\nan opportunity to mount an attack described in these scenarios. We consider\nthe existence of such application very unlikely, and for this reason this\nCVE has been evaluated as Low severity.\n\nTo avoid these attacks, when RSA PKCS#1 v1.5 Key Transport is in use, the\ninvoked EVP_PKEY_decrypt() will use the implicit rejection mechanism described\nin draft-irtf-cfrg-rsa-guidance. In previous OpenSSL releases the implicit\nrejection was explicitly disabled.\n\nThe implicit rejection mechanism always returns a plaintext value,\nthe symmetric key. This result is deterministic for the ciphertext and the\nprivate key.  The length of the decryption result can happen to match the\nlength of the key of the symmetric cipher that was used for the content\nencryption. When a certificate is not provided, the last RecipientInfo\nproducing a key that looks valid will be used. It may cause getting garbage\ncontent on decryption. As a proper way to deal with this a recipient\ncertificate has to be provided to identify the particular RecipientInfo for\ndecryption.\n\nThe FIPS modules in 4.0, 3.6, 3.5, and 3.4 are not affected by this issue, as\nCMS and S/MIME processing happens outside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -10101,7 +10101,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:4436572db03138709304e085a7b0fa3d265a2860312d8311b2525353149308ab",
+          "Fingerprint": "sha256:06052e6b27b8c7569d36a3294c1778e51c1fbe56a1fa8161d28f35ec9d957c7d",
           "Title": "openssl: Trust-Anchor Substitution via cert/issuer Typo in CMP rootCaKeyUpdate",
           "Description": "Issue Summary: An error in the callback used to verify the certificate\nprovided in a Root CA key update Certificate Management Protocol (CMP)\nmessage response rendered the certificate validation ineffectual, which\ncould lead to escalation of credentials from the Registration Authority (RA)\nlevel to the root Certification Authority (root CA) level.\n\nImpact Summary: The Registration Autority could replace the root CA\ncertificate for the CMP clients with an arbitrary root CA certificate.\n\nOne of the parts of the Certificate Management Protocol (CMP), specified in\nRFC 9810, is Root Certification Authority (root CA) key Rollover,\nwhich is sent by the server in a message with type 'id-it-rootCaKeyUpdate'.\nAs part of these messages, 'newWithOld' certificate, the new root CA\ncertificate signed with the old root CA key, is provided, and verifying its\nsignature is crucial for transferring the trust from the old CA key to the\nnew one.\n\nThe 'id-it-rootCaKeyUpdate' messages are expected to be processed with\nOSSL_CMP_get1_rootCaKeyUpdate(), that is expected to verify the 'newWithOld'\ncertificate.  A typo in the certificate chain building code led to adding\nan incorrect certificate ('newWithOld' instead of 'oldRoot') to the\ncertificate chain, rendering the certificate verification process ineffectual\n(only the issuer name and the algorithm OIDs were verified by other parts\nof the verification code).\n\nAn attacker who already has credentials that satisfy the CMP message\nprotection checks can generate a new key pair and use a crafted self-signed\ncertificate in its 'id-it-rootCaKeyUpdate' CMP messages which affected CMP\nclients would accept as a new trust anchor.\n\nSignificant preconditions for the attack (having valid RA-level credentials)\nare the reason the issue was assigned Low severity.\n\nThe FIPS modules are not affected by this issue, as the affected code is\noutside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -10204,7 +10204,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:c0e6416150526d64185395984003a9d83ce2028e4fa40f95fc05f2e353e58acd",
+          "Fingerprint": "sha256:75b575af849f8062789b043c013964ab23f9c7238134e11c0d30bb455a7d88f8",
           "Title": "openssl: FFC-DH Peer Validation Uses Attacker-Supplied q",
           "Description": "Issue summary: When EVP_PKEY_derive_set_peer() is called with a DHX (X9.42)\npeer key, the peer key is not properly checked for the subgroup membership.\n\nImpact summary: A malicious peer which presents an X9.42 key carrying the\nvictim's p and g parameters, a forged q = r (a small prime factor of the\ncofactor (p−1)/q_local), and a public value Y of order r can recover the\nvictim's private key after a small number of key exchange attempts.\n\nWhen EVP_PKEY_derive_set_peer() is called with a DHX (X9.42) peer key, the\nsubgroup membership check Y^q ≡ 1 (mod p) is performed using the peer's\nown q parameter, not the local key's q. The peer's domain parameters are\nthen matched against the domain parameters of the private key, but the value\nof q is not compared.\n\nA malicious peer who presents an X9.42 key carrying the victim's p, g,\na forged q = r (a small prime factor of the cofactor), and a public\nvalue Y of order r passes all checks. The shared secret then takes only\nr distinct values, leaking priv mod r. Repeating for each small-prime\nfactor of the cofactor and combining via CRT recovers the full private\nkey (Lim–Lee / small-subgroup-confinement attack).\n\nThe realistic attack surface is narrow: principally CMP deployments with\nlong-lived RA/CA DHX keys and bespoke enterprise or government applications\nusing X9.42 DHX static keys with interactive protocols and therefore this\nissue was assigned Low severity.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are affected by this\nissue.",
           "Severity": "LOW",
@@ -10308,7 +10308,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:89abff730d45c0d33967a0037f807517956b28fa5cfe679c6e5dc6674d2f0b51",
+          "Fingerprint": "sha256:6fa1863be892a1b06fbf9b4b56e979cfbb50b136937bfbd1b5f4102ed8935ffc",
           "Title": "openssl: Incorrect Tag Processing for Empty Messages in AES-GCM-SIV and AES-SIV modes",
           "Description": "Issue summary: The implementations of AES-SIV (RFC 5297) and AES-GCM-SIV\n(RFC 8452) mishandle the authentication of AAD (Additional Authenticated\nData) with an empty ciphertext allowing a forgery of such messages.\n\nImpact summary: An attacker can forge empty messages with arbitrary AAD\nto the victim's application using these ciphers.\n\nAES-SIV (RFC 5297) and AES-GCM-SIV (RFC 8452) are nonce-misuse-resistant AEAD\nmodes: they accept a key, nonce, optional AAD (bytes that are authenticated\nbut not encrypted), and plaintext, and produces ciphertext plus a 16-byte\ntag. On decrypt, `EVP_DecryptFinal_ex()` is documented to return success only\nif the tag is verified succesfully.\n\nIn OpenSSL's provider implementation of these ciphers, the expected tag is\ncomputed only when decryption function is invoked with non-empty data.\nIf the caller supplies AAD and then calls `EVP_DecryptFinal_ex()` without\ninvocation of the ciphertext update, which can happen when the received\nciphertext length is zero, the tag is never recalculated and still holds its\nall-zeros value.\n\nWhen AES-GCM-SIV is used, an attacker who sends arbitrary AAD, empty\nciphertext, and all-zeros tag passes authentication under any key they do not\nknow, single-shot. When AES-SIV is used, for mounting the attack it's\nnecessary for the application to reuse the decryption context without\nresetting the key.\n\nAES-SIV is implemented since OpenSSL 3.0. AES-GCM-SIV is implemented since\nOpenSSL 3.2.\n\nNo protocols implemented in OpenSSL itself (TLS/CMS/PKCS7/HPKE/QUIC) support\neither AES-GCM-SIV or AES-SIV. To mount an attack, the applications must\nimplement their own protocol and use the EVP interface. Also they must skip the\nciphertext update when a message with an empty ciphertext arrives.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are not affected by this\nissue, as these algorithms are not FIPS approved and the affected code is\noutside the OpenSSL FIPS module boundary.",
           "Severity": "LOW",
@@ -10412,7 +10412,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:ba4afbbe3ede6340ce3ed6bcb5217df9bee09a54dcc0699b66820024e3bcfc36",
+          "Fingerprint": "sha256:da6848d8f479d50229e501d68a95be318e4c597186bb96d7919197d16abb6661",
           "Title": "openssl: OpenSSL: Heap buffer overflow due to signed integer overflow in Unicode output sizing",
           "Description": "Issue summary: A signed integer overflow when sizing the destination\nbuffer for Unicode output in ASN1_mbstring_ncopy() can lead to a heap\nbuffer overflow.\n\nImpact summary: A heap buffer overflow may lead to a crash or possibly\nattacker controlled code execution or other undefined behaviour.\n\nIn ASN1_mbstring_copy() and ASN1_mbstring_ncopy() the destination\nsize for Unicode output is computed in a signed int: by left shift\nof the input character count for BMPSTRING (UTF-16) and\nUNIVERSALSTRING (UTF-32), and by summing per-character byte counts\nfor UTF8STRING. The calculation overflows when the input reaches\naround 2^30 characters. In the worst case (UNIVERSALSTRING at 2^30\ncharacters) the size wraps to zero, OPENSSL_malloc(1) is called, and\nthe subsequent character copy writes several gigabytes past the\none-byte allocation.\n\nX.509 certificate processing routes through ASN1_STRING_set_by_NID(),\nwhose DIRSTRING_TYPE mask excludes UNIVERSALSTRING and whose per-NID\nsize limits cap the input length; no network protocol or\ncertificate-handling path in OpenSSL exercises the overflow.\nTriggering the bug requires an application that calls\nASN1_mbstring_copy() or ASN1_mbstring_ncopy() directly, or registers\na custom string type via ASN1_STRING_TABLE_add(), with\nattacker-controlled input on the order of half a gigabyte or more.\nFor these reasons this issue was assigned Low severity.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4 and 3.0 are not affected by\nthis issue, as the affected code is outside the OpenSSL FIPS module\nboundary.",
           "Severity": "LOW",
@@ -10517,7 +10517,7 @@
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:3b0f2cddeccee46b8bfa0031fdf092a8171bede3242134d262b300a638dab1ee",
+          "Fingerprint": "sha256:164d44a01d8db71b97a9bd320120b14ebe4fde18cde9dab6b4d3639421589933",
           "Title": "openssl: OpenSSL: Denial of Service due to heap out-of-bounds read in CMS password-based decryption",
           "Description": "Issue summary: When CMS password-based decryption (RFC 3211 / PWRI key unwrap)\nprocesses attacker-supplied CMS data, an attacker-chosen stream-mode KEK\ncipher can trigger a heap out-of-bounds read in kek_unwrap_key().\n\nImpact summary: A heap buffer over-read may trigger a crash which leads to\nDenial of Service for an application if the input buffer ends at a memory\npage boundary and the following page is unmapped. There is no information\ndisclosure as the over-read bytes are not revealed to the attacker.\n\nThe key unwrapping function performs a check-byte test as specified in the\nRFC that reads 7 bytes from a heap allocation that is based on the wrapped\nkey length from the message. There is a minimum length check based on the\nblock length of the wrapping cipher. However the cipher is selected from\nan OID carried in the attacker's PWRI keyEncryptionAlgorithm with no\nrequirement that the cipher be a block cipher. When an attacker selects\na stream-mode cipher the guard will be ineffective and the allocated buffer\ncontaining the unwrapped key can be too small to fit the check-bytes\nspecified in the RFC and a buffer over-read can happen.\n\nApplications calling CMS_decrypt() or CMS_decrypt_set1_password()\n(equivalently openssl cms -decrypt -pwri_password ...) on untrusted CMS\ndata are vulnerable to this issue. No password knowledge is required: the\nover-read happens during the unwrap attempt before any authentication\nsucceeds.\n\nThe over-read is limited to a few bytes and is not written to output, so\nthere is no information disclosure. Triggering a crash requires the\nallocation to border unmapped memory, which is unlikely with the normal\nallocator.\n\nThe FIPS modules are not affected by this issue.",
           "Severity": "LOW",
@@ -14527,7 +14527,7 @@
             "Name": "GitHub Security Advisory Go",
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
           },
-          "Fingerprint": "sha256:95caa478cb87c5ef10691544573e3badd8564cbb42d19598b361c15d8e748f8a",
+          "Fingerprint": "sha256:1a2098a9fc5238479bcb824c32e7be351d9cc61fabd438a291aec25d7dd97114",
           "Title": "github.com/open-telemetry/opentelemetry-go: OpenTelemetry-Go: Denial of Service via crafted multi-value baggage headers",
           "Description": "OpenTelemetry-Go is the Go implementation of OpenTelemetry. From 1.36.0 to 1.40.0, multi-value baggage: header extraction parses each header field-value independently and aggregates members across values. This allows an attacker to amplify cpu and allocations by sending many baggage: header lines, even when each individual value is within the 8192-byte per-value parse limit. This vulnerability is fixed in 1.41.0.",
           "Severity": "HIGH",
@@ -14587,7 +14587,7 @@
             "Name": "The Go Vulnerability Database",
             "URL": "https://pkg.go.dev/vuln/"
           },
-          "Fingerprint": "sha256:b7ae8b38edb41b886fec59f6ca2c833e73736205dd40dc07e2e5cbaca0e837d6",
+          "Fingerprint": "sha256:80fd4e135ccd2d59f74dadbc592e451233535529aaa229b3134ac8e995f310f1",
           "Title": "net: golang: Go net package: Denial of Service via long CNAME response in LookupCNAME",
           "Description": "When using LookupCNAME with the cgo DNS resolver, a very long CNAME response can trigger a double-free of C memory and a crash.",
           "Severity": "HIGH",
@@ -14655,7 +14655,7 @@
             "Name": "The Go Vulnerability Database",
             "URL": "https://pkg.go.dev/vuln/"
           },
-          "Fingerprint": "sha256:856a2aee7bdfe5642551e2324ebc223238b88199980a36acc730d7a43324e3f2",
+          "Fingerprint": "sha256:6bef0e59b05ff9c2c85cfc459ec1fc04a850510dd5e541aa1a70118d8d08700d",
           "Title": "When processing HTTP/2 SETTINGS frames, transport will enter an infini ...",
           "Description": "When processing HTTP/2 SETTINGS frames, transport will enter an infinite loop of writing CONTINUATION frames if it receives a SETTINGS_MAX_FRAME_SIZE with a value of 0.",
           "Severity": "HIGH",
@@ -14724,7 +14724,7 @@
             "Name": "The Go Vulnerability Database",
             "URL": "https://pkg.go.dev/vuln/"
           },
-          "Fingerprint": "sha256:dfcef3c10ab5aa04948651e3d3b58dc76e712c797dd4f921531ad3afd6b7081f",
+          "Fingerprint": "sha256:fc9818c0842dba41c78f4789fffb75422a50df0e79911b1e4a171990c30d8ded",
           "Title": "Well-crafted inputs reaching ParseAddress, ParseAddressList, and Parse ...",
           "Description": "Well-crafted inputs reaching ParseAddress, ParseAddressList, and ParseDate were able to trigger excessive CPU exhaustion and memory allocations.",
           "Severity": "HIGH",
@@ -14784,7 +14784,7 @@
             "Name": "The Go Vulnerability Database",
             "URL": "https://pkg.go.dev/vuln/"
           },
-          "Fingerprint": "sha256:fe5807531b74129b3426796bc30b4690df674b95e7805d7d2e6d41e6960493a2",
+          "Fingerprint": "sha256:a3c679cb38bc5af0dc8cf4f5ec6934f3fda4a4d516786ca8cd9947f4c8536152",
           "Title": "CVE-2026-27142 fixed a vulnerability in which URLs were not correctly  ...",
           "Description": "CVE-2026-27142 fixed a vulnerability in which URLs were not correctly escaped inside of a \u003cmeta\u003e tag's \u003ccontent\u003e attribute. If the URL content were to insert ASCII whitespaces around the '=' rune inside of the \u003ccontent\u003e attribute, the escaper would fail to similarly escape it, leading to XSS.",
           "Severity": "HIGH",
@@ -14839,7 +14839,7 @@
             "Name": "The Go Vulnerability Database",
             "URL": "https://pkg.go.dev/vuln/"
           },
-          "Fingerprint": "sha256:4333625bb63a6432d93dc5d93aa87ca08506df7a8e30336d6c32ff1ca468d1b3",
+          "Fingerprint": "sha256:d207a7d34dcbba671ba179acd790aa610d39897fd38f514aa9f60616274e67e2",
           "Title": "ReverseProxy can forward queries containing parameters not visible to  ...",
           "Description": "ReverseProxy can forward queries containing parameters not visible to Rewrite functions. When used with a Rewrite function, or a Director function which parses query parameters, ReverseProxy sanitizes the forwarded request to remove query parameters which are not parsed by url.ParseQuery. ReverseProxy does not take ParseQuery's limit on the total number of query parameters (controlled by GODEBUG=urlmaxqueryparams=N) into account. This can permit ReverseProxy to forward a request containing a query parameter that is not visible to the Rewrite function. For example, the query \"a1=x\u0026a2=x\u0026...\u0026a10000=x\u0026hidden=y\" can forward the parameter \"hidden=y\" while hiding it from the proxy's Rewrite function.",
           "Severity": "HIGH",
@@ -14892,7 +14892,7 @@
             "Name": "The Go Vulnerability Database",
             "URL": "https://pkg.go.dev/vuln/"
           },
-          "Fingerprint": "sha256:b2ad61249237a6c7d11223ae4cf7e6e2c74857c39cd588531e837c54a466ba44",
+          "Fingerprint": "sha256:ec348797fde12d244e59f2ef4276268e6fec7d97480847e9e04f452fff4016e1",
           "Title": "ELSA-2026-22112:  go-toolset:ol8 security update (IMPORTANT)",
           "Description": "The Dial and LookupPort functions panic on Windows when provided with an input containing a NUL (0).",
           "Severity": "HIGH",
@@ -14951,7 +14951,7 @@
             "Name": "The Go Vulnerability Database",
             "URL": "https://pkg.go.dev/vuln/"
           },
-          "Fingerprint": "sha256:fbf197743389cd983f75985701dd473c7292d29ad152d42390293acd9930b76c",
+          "Fingerprint": "sha256:a231d379633f8b06aa22903a92966961d7db021d5aaa52e9cdd22ec2a34e1a92",
           "Title": "Pathological inputs could cause DoS through consumePhrase when parsing ...",
           "Description": "Pathological inputs could cause DoS through consumePhrase when parsing an email address according to RFC 5322.",
           "Severity": "HIGH",
@@ -15003,7 +15003,7 @@
             "Name": "The Go Vulnerability Database",
             "URL": "https://pkg.go.dev/vuln/"
           },
-          "Fingerprint": "sha256:50be796e0e5c2d48490d86cb24e9a98d0564809284248df3fe30d160ebe269d1",
+          "Fingerprint": "sha256:908c9c8fffed7f33a442605cc4a24dd4b767f928cc1e87f7ec7f7ac3d10e57bb",
           "Title": "Decoding a maliciously-crafted MIME header containing many invalid enc ...",
           "Description": "Decoding a maliciously-crafted MIME header containing many invalid encoded-words can consume excessive CPU.",
           "Severity": "HIGH",
@@ -15053,7 +15053,7 @@
             "Name": "The Go Vulnerability Database",
             "URL": "https://pkg.go.dev/vuln/"
           },
-          "Fingerprint": "sha256:3c1c396fef562905b8bdb66c3ef5771d968f9c9aee0c00b8abcd402e1a2a7eb3",
+          "Fingerprint": "sha256:020139ee391fdb79ed7687f40a947962351ee756a9d6a8f68c0edb578e960501",
           "Title": "*x509.Certificate).VerifyHostname previously called matchHostnames in ...",
           "Description": "(*x509.Certificate).VerifyHostname previously called matchHostnames in a loop over all DNS Subject Alternative Name (SAN) entries. This caused strings.Split(host, \".\") to execute repeatedly on the same input hostname. With a large DNS SAN list, verification costs scaled quadratically based on the number of SAN entries multiplied by the hostname's label count. Because x509.Verify validates hostnames before building the certificate chain, this overhead occurred even for untrusted certificates.",
           "Severity": "MEDIUM",
@@ -15100,7 +15100,7 @@
             "Name": "The Go Vulnerability Database",
             "URL": "https://pkg.go.dev/vuln/"
           },
-          "Fingerprint": "sha256:5e724a9485d6e29a56dd544533f8f2ad20b821e5285aa7edff6b8839b18e7bc6",
+          "Fingerprint": "sha256:fbc38d1bd4e5e1ae98364fdd7f72a84be7e1c1dcbe701558b8634a5c5222cf4f",
           "Title": "html/template: golang: html/template: Cross-site scripting due to incorrect script tag escaping",
           "Description": "If a trusted template author were to write a \u003cscript\u003e tag containing an empty 'type' attribute or a 'type' attribute with an ASCII whitespace, the execution of the template would incorrectly escape any data passed into the \u003cscript\u003e block.",
           "Severity": "MEDIUM",
@@ -15162,7 +15162,7 @@
             "Name": "The Go Vulnerability Database",
             "URL": "https://pkg.go.dev/vuln/"
           },
-          "Fingerprint": "sha256:85b6822a3ada2bdb62e59b6c83cd015690aef27c85eae8352b807bf744d89b86",
+          "Fingerprint": "sha256:2ef89542c89131d2ecc101b487a013081ae516bfb7b1ce6049ffe6e99ef6a7db",
           "Title": "net/textproto: golang: Golang net/textproto: Misleading error messages via input injection",
           "Description": "When returning errors, functions in the net/textproto package would include its input as part of the error. This might allow an attacker to inject misleading content to errors that are printed or logged.",
           "Severity": "MEDIUM",
