@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/verity-org/verity/internal/integer/config"
+	"github.com/verity-org/verity/internal/integer/discovery"
 )
 
 const opensslFIPSConfig = "/etc/ssl/openssl-fips.cnf"
@@ -45,4 +46,12 @@ func TestRepositoryFIPSVariantsEnableRuntimeFIPSByDefault(t *testing.T) {
 			require.Contains(t, nodeOptions, "--force-fips")
 		}
 	}
+}
+
+func TestRepositoryGo123DoesNotPublishFIPSVariant(t *testing.T) {
+	def, err := config.LoadImage("../../../images/golang.yaml")
+	require.NoError(t, err)
+
+	require.True(t, discovery.ShouldSkipType(def, "1.23", "fips"))
+	require.False(t, discovery.ShouldSkipType(def, "1.24", "fips"))
 }
