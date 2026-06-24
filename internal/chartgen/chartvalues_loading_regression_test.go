@@ -50,6 +50,10 @@ func TestVerityConfigChartValuesLoading(t *testing.T) {
 	if got := vc2.Overrides["jetstack/cert-manager-csi-driver"].ValuePath; got != "image" {
 		t.Fatalf("cert-manager-csi-driver valuePath = %q, want image", got)
 	}
+	certManagerCSIDriver := vc2.Replacements["jetstack/cert-manager-csi-driver"]
+	if certManagerCSIDriver.Tag != "0.15" {
+		t.Fatalf("cert-manager-csi-driver replacement tag=%q, want 0.15", certManagerCSIDriver.Tag)
+	}
 	tempo := vc2.Replacements["grafana/tempo"]
 	if tempo.Tag != "2.9.0" {
 		t.Fatalf("grafana/tempo replacement tag=%q, want 2.9.0", tempo.Tag)
