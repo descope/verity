@@ -141,7 +141,7 @@ jobs:
         run: echo "date=$(date -u '+%Y-%m-%d-%H')" >> "$GITHUB_OUTPUT"
 
       - name: Cache Trivy database
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
         with:
           path: ~/.cache/trivy
           key: trivy-db-${{ steps.trivy-date.outputs.date }}
@@ -283,7 +283,7 @@ jobs:
 
       - name: Cache Go modules
         if: steps.platform-check.outputs.enabled == 'true'
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache/restore@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
         with:
           path: |
             ~/dev/go/pkg/mod
@@ -377,7 +377,7 @@ jobs:
       - name: Cache otel-cli
         if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && steps.platform-check.outputs.enabled == 'true' }}
         id: cache-otel
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
         with:
           path: ~/.local/bin/otel-cli
           key: otel-cli-v${{ env.OTEL_CLI_VERSION }}-${{ runner.os }}-${{ runner.arch }}
@@ -606,7 +606,7 @@ jobs:
       - name: Cache otel-cli
         if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' }}
         id: cache-otel-finalize
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
         with:
           path: ~/.local/bin/otel-cli
           key: otel-cli-v${{ env.OTEL_CLI_VERSION }}-${{ runner.os }}-${{ runner.arch }}
