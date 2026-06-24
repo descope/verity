@@ -52,27 +52,33 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary {
       placeholder={`Search ${totalImages} images...`}
       class="w-full sm:w-96 px-3 py-2 border border-verity-border rounded-lg text-sm bg-verity-surface text-verity-text-primary placeholder-verity-text-secondary focus:outline-hidden focus:ring-2 focus:ring-verity-nucleus focus:border-verity-nucleus"
       id="catalog-search"
+      aria-label="Search images"
     />
 
     <div
       class="flex items-center p-1 bg-verity-surface border border-verity-border rounded-lg text-sm"
       id="catalog-filter"
+      role="group"
+      aria-label="Filter by image type"
     >
       <button
         class="filter-btn px-3 py-1.5 rounded-md font-medium transition-colors"
         data-filter="all"
+        aria-pressed="true"
       >
         All
       </button>
       <button
         class="filter-btn px-3 py-1.5 rounded-md font-medium transition-colors"
         data-filter="integer"
+        aria-pressed="false"
       >
         Wolfi-Based
       </button>
       <button
         class="filter-btn px-3 py-1.5 rounded-md font-medium transition-colors"
         data-filter="copa"
+        aria-pressed="false"
       >
         Patched
       </button>
@@ -165,12 +171,31 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary {
       ))
     }
   </div>
+  <div
+    id="catalog-empty"
+    class="hidden rounded-lg border border-verity-border bg-verity-surface px-4 py-8 text-center shadow-[0_0_24px_rgba(0,0,0,0.24)]"
+    aria-live="polite"
+  >
+    <div class="mb-3 font-[var(--font-code)] text-xs text-verity-nucleus" aria-hidden="true">
+      $ catalog query returned 0 images
+    </div>
+    <p class="text-sm text-verity-text-muted mb-4">No images match your current search/filter.</p>
+    <button
+      id="catalog-clear"
+      class="rounded border border-verity-border-2 px-3 py-2 text-xs uppercase tracking-[0.12em] text-verity-orbit transition-colors hover:border-verity-nucleus hover:text-verity-nucleus"
+    >
+      Clear filter
+    </button>
+  </div>
 </div>
 
 <script>
   const input = document.getElementById("catalog-search") as HTMLInputElement;
   const filterContainer = document.getElementById("catalog-filter");
   const filterBtns = filterContainer?.querySelectorAll<HTMLButtonElement>(".filter-btn");
+  const emptyState = document.getElementById("catalog-empty") as HTMLElement | null;
+  const clearBtn = document.getElementById("catalog-clear") as HTMLButtonElement | null;
+  const catalogGrid = document.getElementById("catalog-grid") as HTMLElement | null;
 
   type FilterValue = "all" | "integer" | "copa";
   const VALID_FILTERS = new Set<FilterValue>(["all", "integer", "copa"]);
@@ -201,6 +226,7 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary {
     // Update button styles
     filterBtns?.forEach((btn) => {
       const btnFilter = btn.getAttribute("data-filter");
+      btn.setAttribute("aria-pressed", String(btnFilter === filter));
       if (btnFilter === filter) {
         btn.classList.add("bg-verity-nucleus", "text-[#002820]");
         btn.classList.remove("text-verity-text-secondary", "hover:bg-verity-void");
@@ -216,6 +242,7 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary {
   function applyFilters() {
     const query = input?.value.toLowerCase() ?? "";
     const categories = document.querySelectorAll<HTMLElement>(".catalog-category");
+    let totalVisible = 0;
 
     categories.forEach((cat) => {
       const rows = cat.querySelectorAll<HTMLElement>(".catalog-row");
@@ -228,11 +255,18 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary {
         const matchesFilter = currentFilter === "all" || source === currentFilter;
         const show = matchesSearch && matchesFilter;
         row.style.display = show ? "" : "none";
-        if (show) visible++;
+        if (show) {
+          visible++;
+          totalVisible++;
+        }
       });
 
       cat.style.display = visible > 0 ? "" : "none";
     });
+
+    const hasResults = totalVisible > 0;
+    if (emptyState) emptyState.classList.toggle("hidden", hasResults);
+    if (catalogGrid) catalogGrid.classList.toggle("hidden", !hasResults);
   }
 
   // Event listeners
@@ -246,4 +280,8 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary {
   if (input) {
     input.addEventListener("input", applyFilters);
   }
+  clearBtn?.addEventListener("click", () => {
+    if (input) input.value = "";
+    setFilter("all");
+  });
 </script>
