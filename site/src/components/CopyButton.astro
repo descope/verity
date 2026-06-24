@@ -9,6 +9,7 @@ const { text } = Astro.props;
 <button
   class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-verity-surface hover:bg-verity-border text-verity-text-muted hover:text-verity-text-primary border border-verity-border rounded transition-colors"
   data-copy={text}
+  aria-label="Copy to clipboard"
 >
   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path
@@ -26,16 +27,32 @@ const { text } = Astro.props;
     btn.addEventListener("click", () => {
       const text = btn.getAttribute("data-copy");
       if (!text) return;
-      navigator.clipboard.writeText(text).then(() => {
-        const label = btn.querySelector(".copy-label");
-        if (label) {
-          const prev = label.textContent;
-          label.textContent = "Copied!";
-          setTimeout(() => {
-            label.textContent = prev;
-          }, 1500);
-        }
-      });
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          const label = btn.querySelector(".copy-label");
+          if (label) {
+            const prev = label.textContent;
+            label.textContent = "Copied!";
+            btn.setAttribute("aria-label", "Copied!");
+            setTimeout(() => {
+              label.textContent = prev;
+              btn.setAttribute("aria-label", "Copy to clipboard");
+            }, 1500);
+          }
+        })
+        .catch(() => {
+          const label = btn.querySelector(".copy-label");
+          if (label) {
+            const prev = label.textContent;
+            label.textContent = "Copy failed";
+            btn.setAttribute("aria-label", "Copy failed");
+            setTimeout(() => {
+              label.textContent = prev;
+              btn.setAttribute("aria-label", "Copy to clipboard");
+            }, 1500);
+          }
+        });
     });
   });
 </script>

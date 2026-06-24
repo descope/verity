@@ -16,7 +16,7 @@ const links: NavLink[] = [
 const githubHref = "https://github.com/verity-org/verity";
 ---
 
-<nav class="sticky top-0 z-40 bg-verity-void/80 border-b border-verity-border backdrop-blur-none">
+<nav class="sticky top-0 z-40 bg-verity-void/80 border-b border-verity-border backdrop-blur-sm">
   <div
     class="max-w-[1120px] mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3 sm:gap-6"
   >
@@ -83,7 +83,17 @@ const githubHref = "https://github.com/verity-org/verity";
         links.map((link) => (
           <a
             href={link.href}
-            class="text-xs tracking-[0.12em] uppercase text-verity-text-secondary hover:text-verity-nucleus hover:[text-shadow:0_0_8px_rgba(0,240,204,0.5)] transition-colors py-2"
+            aria-current={
+              Astro.url.pathname === link.href || Astro.url.pathname.startsWith(link.href)
+                ? "page"
+                : undefined
+            }
+            class:list={[
+              "text-xs tracking-[0.12em] uppercase transition-colors py-2",
+              Astro.url.pathname === link.href || Astro.url.pathname.startsWith(link.href)
+                ? "text-verity-nucleus [text-shadow:0_0_8px_rgba(0,240,204,0.3)]"
+                : "text-verity-text-secondary hover:text-verity-nucleus hover:[text-shadow:0_0_8px_rgba(0,240,204,0.5)]",
+            ]}
           >
             {link.label}
             {link.badge && (
@@ -160,7 +170,17 @@ const githubHref = "https://github.com/verity-org/verity";
           <li>
             <a
               href={link.href}
-              class="flex items-center justify-between gap-2 text-sm tracking-[0.12em] uppercase text-verity-text-secondary hover:text-verity-nucleus transition-colors py-3 border-b border-verity-border/50"
+              aria-current={
+                Astro.url.pathname === link.href || Astro.url.pathname.startsWith(link.href)
+                  ? "page"
+                  : undefined
+              }
+              class:list={[
+                "flex items-center justify-between gap-2 text-sm tracking-[0.12em] uppercase transition-colors py-3 border-b border-verity-border/50",
+                Astro.url.pathname === link.href || Astro.url.pathname.startsWith(link.href)
+                  ? "text-verity-nucleus"
+                  : "text-verity-text-secondary hover:text-verity-nucleus",
+              ]}
             >
               <span>{link.label}</span>
               {link.badge && (
