@@ -49,6 +49,8 @@ const MaxSkippedCharts = 5
 // string to enumerate un-issued skips.
 const skipsNeedsNewIssueSentinel = "needs new issue"
 
+const runSkippedChartsEnv = "VERITY_IT_RUN_SKIPPED_CHARTS"
+
 // Static error sentinels. Defining them here (vs. inline errors.New /
 // fmt.Errorf at call sites) keeps golangci-lint's err113 happy and lets
 // tests errors.Is-match on intent if they ever need to.
@@ -229,4 +231,21 @@ func (s *SkipsConfig) IsSkipped(chart string) (bool, *SkipEntry) {
 		return true, e
 	}
 	return false, nil
+}
+
+func shouldSkipChart(cfg *SkipsConfig, chart string) (bool, *SkipEntry) {
+	skip, entry := cfg.IsSkipped(chart)
+	if !skip || runSkippedChart(chart) {
+		return false, nil
+	}
+	return true, entry
+}
+
+func runSkippedChart(chart string) bool {
+	for item := range strings.SplitSeq(os.Getenv(runSkippedChartsEnv), ",") {
+		if strings.TrimSpace(item) == chart {
+			return true
+		}
+	}
+	return false
 }
