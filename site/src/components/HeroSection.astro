@@ -25,7 +25,7 @@ const pipelineSteps = [
 
 <section class="relative mb-16 -mt-8 pt-16 pb-8">
   <div
-    class="absolute inset-x-0 top-0 h-[480px] pointer-events-none"
+    class="absolute inset-x-0 top-0 h-[600px] pointer-events-none"
     style="background: var(--grad-glow-radial);"
   >
   </div>
@@ -36,10 +36,11 @@ const pipelineSteps = [
     </div>
 
     <h1
-      class="text-4xl sm:text-5xl lg:text-[52px] leading-[1.15] tracking-[0.12em] text-verity-text uppercase font-normal mb-6"
+      class="text-[1.65rem] sm:text-5xl lg:text-[52px] leading-[1.18] sm:leading-[1.15] tracking-[0.03em] sm:tracking-[0.12em] text-verity-text uppercase font-normal mb-6"
     >
       CONTAINER IMAGES<br />
-      <span class="text-verity-nucleus" style="text-shadow: 0 0 24px rgba(0,240,204,0.25);"
+      <span
+        class="whitespace-nowrap bg-linear-to-r from-verity-nucleus to-verity-orbit bg-clip-text text-transparent"
         >PATCHED IN-PLACE,</span
       ><br />
       SIGNED &amp; ATTESTED.
@@ -75,24 +76,50 @@ const pipelineSteps = [
       <div
         class="bg-verity-surface border-b border-verity-border px-3.5 py-2 flex items-center justify-between"
       >
-        <span class="text-[11px] tracking-[0.12em] uppercase text-verity-text-muted">
-          $ pull a patched image
-        </span>
-        <CopyButton text={pullCmd} />
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-1.5" aria-hidden="true">
+            <span class="w-2.5 h-2.5 rounded-full bg-verity-border-2"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-verity-border-2"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-verity-nucleus/60"></span>
+          </div>
+          <span class="text-[11px] tracking-[0.12em] uppercase text-verity-text-muted">
+            $ pull a patched image
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] tracking-[0.12em] uppercase text-verity-text-ghost sm:hidden">
+            scroll →
+          </span>
+          <CopyButton text={pullCmd} />
+        </div>
       </div>
-      <pre
-        class="m-0 p-4 font-[var(--font-code)] text-[13px] text-verity-text-primary overflow-auto"><span class="text-verity-nucleus mr-2">$</span>{pullCmd}</pre>
+      <div class="relative">
+        <pre
+          class="m-0 p-4 pr-12 font-[var(--font-code)] text-[13px] text-verity-text-primary overflow-auto"><span class="text-verity-nucleus mr-2">$</span>{pullCmd}</pre>
+        <div
+          class="pointer-events-none absolute inset-y-0 right-0 w-10 bg-linear-to-l from-black to-transparent sm:hidden"
+          aria-hidden="true"
+        >
+        </div>
+      </div>
     </div>
 
-    <div class="flex flex-wrap items-center gap-y-2">
+    <div
+      class="flex flex-col gap-y-2 sm:flex-row sm:items-center sm:flex-wrap"
+      role="list"
+      aria-label="Processing pipeline"
+    >
       {
         pipelineSteps.map((step, i) => (
-          <div class="inline-flex items-center shrink-0">
+          <div
+            class="flex w-full flex-col items-center sm:w-auto sm:flex-row sm:shrink-0"
+            role="listitem"
+          >
             <div
               class:list={[
-                "border rounded px-4 py-3 min-w-[120px] text-center transition-all duration-[180ms]",
+                "w-full border rounded px-4 py-3 text-center transition-all duration-[180ms] sm:min-w-[120px]",
                 step.active
-                  ? "border-verity-nucleus bg-verity-surface shadow-[0_0_20px_rgba(0,240,204,0.25)]"
+                  ? "border-verity-nucleus bg-verity-surface shadow-[0_0_20px_rgba(0,240,204,0.25)] pipeline-pulse"
                   : "border-verity-border-2 bg-verity-surface",
               ]}
             >
@@ -109,7 +136,10 @@ const pipelineSteps = [
               </span>
             </div>
             {i < pipelineSteps.length - 1 && (
-              <span aria-hidden="true" class="text-verity-nucleus px-2.5 text-base">
+              <span
+                aria-hidden="true"
+                class="text-verity-nucleus py-1 text-base rotate-90 sm:rotate-0 sm:px-2.5 sm:py-0"
+              >
                 →
               </span>
             )}
@@ -124,13 +154,13 @@ const pipelineSteps = [
   <div
     class="bg-verity-surface border border-verity-border rounded p-4 text-center hover:border-verity-border-2 hover:bg-verity-surface-2 transition-colors"
   >
-    <div class="text-2xl text-verity-text">{totalImages}</div>
+    <div class="text-2xl text-verity-text tabular-nums">{totalImages}</div>
     <div class="text-[11px] tracking-[0.25em] text-verity-text-muted uppercase mt-1">Images</div>
   </div>
   <div
     class="bg-verity-surface border border-verity-border rounded p-4 text-center hover:border-verity-border-2 hover:bg-verity-surface-2 transition-colors"
   >
-    <div class="text-2xl text-verity-text">{totalCategories}</div>
+    <div class="text-2xl text-verity-text tabular-nums">{totalCategories}</div>
     <div class="text-[11px] tracking-[0.25em] text-verity-text-muted uppercase mt-1">
       Categories
     </div>
