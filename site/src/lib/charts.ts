@@ -37,6 +37,7 @@ let cached: ChartsCatalog | null = null;
 export function getChartsCatalog(): ChartsCatalog {
   if (cached !== null) return cached;
   if (!existsSync(CATALOG_PATH)) {
+    // eslint-disable-next-line no-console
     console.warn(`[charts-catalog] ${CATALOG_PATH} not found`);
     return { generatedAt: "", chartRegistry: "", charts: [] };
   }
@@ -45,6 +46,7 @@ export function getChartsCatalog(): ChartsCatalog {
     cached = JSON.parse(raw) as ChartsCatalog;
     return cached;
   } catch {
+    // eslint-disable-next-line no-console
     console.warn(`[charts-catalog] Failed to parse ${CATALOG_PATH}`);
     return { generatedAt: "", chartRegistry: "", charts: [] };
   }

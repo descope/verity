@@ -36,6 +36,7 @@ let cached: CatalogResult | null = null;
 
 function loadCatalog(): CatalogResult {
   if (!existsSync(CATALOG_PATH)) {
+    // eslint-disable-next-line no-console
     console.warn(
       `[integer-catalog] ${CATALOG_PATH} not found — run: ./verity integer catalog --output site/src/data/integer-catalog.json`
     );
@@ -47,6 +48,7 @@ function loadCatalog(): CatalogResult {
     const raw = readFileSync(CATALOG_PATH, "utf-8");
     data = JSON.parse(raw);
   } catch (err) {
+    // eslint-disable-next-line no-console
     console.warn(`[integer-catalog] Failed to parse ${CATALOG_PATH}:`, err);
     return { images: [], registry: "" };
   }

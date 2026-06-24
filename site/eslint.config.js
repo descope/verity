@@ -4,9 +4,10 @@ import tsParser from '@typescript-eslint/parser';
 import astroPlugin from 'eslint-plugin-astro';
 
 export default [
+  { ignores: ['.astro/**'] },
   js.configs.recommended,
   {
-    files: ['**/*.{js,ts,astro}'],
+    files: ['**/*.{js,mjs,ts,astro}'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
@@ -25,6 +26,7 @@ export default [
         Response: 'readonly',
         Request: 'readonly',
         Headers: 'readonly',
+        process: 'readonly',
       },
     },
     plugins: {
