@@ -1,19 +1,21 @@
 ---
-import { fullCatalog, totalImages, upstreamPath, REGISTRY } from "../data/full-catalog";
-import type { FullCatalogImage } from "../data/full-catalog";
-import SourceBadge from "./SourceBadge.astro";
+import type { FullCatalogImage } from "../data/full-catalog.ts";
+import { fullCatalog, REGISTRY, totalImages, upstreamPath } from "../data/full-catalog.ts";
+import { getIntegerCatalog } from "../data/integer-catalog.ts";
+import type { SiteImage, VulnSummary } from "../lib/catalog.ts";
+import { catalog } from "../lib/catalog.ts";
+import { patchedRefToName } from "../lib/refs.ts";
 import SeverityBadges from "./SeverityBadges.astro";
-import { catalog } from "../lib/catalog";
-import type { SiteImage, VulnSummary } from "../lib/catalog";
-import { patchedRefToName } from "../lib/refs";
-import { getIntegerCatalog } from "../data/integer-catalog";
+import SourceBadge from "./SourceBadge.astro";
 
 const base = import.meta.env.BASE_URL;
 
 const scanDataMap = new Map<string, SiteImage>();
-for (const img of catalog.images ?? []) {
+for (const img of catalog.images) {
   const name = patchedRefToName(img.patchedRef);
-  if (name) scanDataMap.set(name, img);
+  if (name) {
+    scanDataMap.set(name, img);
+  }
 }
 
 // Build lookup maps from integer catalog for FIPS badges and variant counts
@@ -21,7 +23,7 @@ const integerFipsSet = new Set<string>();
 const integerImageSet = new Set<string>();
 const integerVariantCounts = new Map<string, number>();
 const integerVariantTypes = new Map<string, string>();
-const { images: integerImages } = await getIntegerCatalog();
+const { images: integerImages } = getIntegerCatalog();
 for (const img of integerImages) {
   integerImageSet.add(img.name);
   const latestVersion = img.versions.find((v) => v.latest) ?? img.versions.at(-1);
@@ -38,7 +40,9 @@ for (const img of integerImages) {
 // Helper to get vulnerability summary for an image
 function getVulnSummary(image: FullCatalogImage): VulnSummary {
   const scanData = scanDataMap.get(image.name);
-  if (scanData) return scanData.afterVulns;
+  if (scanData) {
+    return scanData.afterVulns;
+  }
   // No scan data yet — treat as clean (integer images are built from scratch;
   // copa images without scan data are either newly added or awaiting first scan)
   return { total: 0, severityCounts: {} };

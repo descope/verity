@@ -1,11 +1,11 @@
-import type { ChartEntry } from "./charts";
-import { catalog } from "./catalog";
-import type { VulnSummary } from "./catalog";
+import type { VulnSummary } from "./catalog.ts";
+import { catalog } from "./catalog.ts";
+import type { ChartEntry } from "./charts.ts";
 
 const EMPTY_VULNS: VulnSummary = { total: 0, severityCounts: {} };
 
 const vulnMap = new Map<string, VulnSummary>();
-for (const img of catalog.images ?? []) {
+for (const img of catalog.images) {
   vulnMap.set(img.patchedRef, img.afterVulns);
 }
 

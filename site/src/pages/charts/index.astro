@@ -1,13 +1,13 @@
 ---
-import BaseLayout from "../../layouts/BaseLayout.astro";
 import CopyButton from "../../components/CopyButton.astro";
 import SeverityBadges from "../../components/SeverityBadges.astro";
 import SourceBadge from "../../components/SourceBadge.astro";
-import { fullCatalog, type ImageSource } from "../../data/full-catalog";
-import { getChartsCatalog } from "../../lib/charts";
-import type { ChartEntry, ChartImageMapping } from "../../lib/charts";
-import { getImageVulns, getChartVulns } from "../../lib/chart-vulns";
-import { patchedRefToName } from "../../lib/refs";
+import { fullCatalog, type ImageSource } from "../../data/full-catalog.ts";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getChartVulns, getImageVulns } from "../../lib/chart-vulns.ts";
+import type { ChartEntry, ChartImageMapping } from "../../lib/charts.ts";
+import { getChartsCatalog } from "../../lib/charts.ts";
+import { patchedRefToName } from "../../lib/refs.ts";
 
 const base = import.meta.env.BASE_URL;
 const chartsCatalog = getChartsCatalog();
@@ -19,7 +19,7 @@ const totalOverrides = charts.reduce(
 
 // Precompute chart vuln summaries to avoid duplicate getChartVulns calls
 const chartVulnMap = new Map(charts.map((c) => [c.name, getChartVulns(c)]));
-const totalCVEs = charts.reduce((sum, c) => sum + (chartVulnMap.get(c.name)?.total ?? 0), 0);
+const totalCvEs = charts.reduce((sum, c) => sum + (chartVulnMap.get(c.name)?.total ?? 0), 0);
 
 // Build image-name → source lookup from full catalog for accurate SourceBadge
 // Key by both img.name and integerName so chart-gen replacements resolve correctly
@@ -66,7 +66,7 @@ for (const cat of fullCatalog) {
     <div
       class="bg-verity-surface border border-verity-border rounded-lg p-4 text-center hover:border-verity-orbit transition-colors"
     >
-      <div class="text-2xl font-bold text-verity-nucleus">{totalCVEs}</div>
+      <div class="text-2xl font-bold text-verity-nucleus">{totalCvEs}</div>
       <div class="text-xs text-verity-text-secondary mt-1">Open CVEs</div>
     </div>
     <div

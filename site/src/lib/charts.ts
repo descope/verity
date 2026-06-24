@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import process from "node:process";
 
@@ -35,9 +35,11 @@ const CATALOG_PATH = resolve(process.cwd(), "src/data/charts-catalog.json");
 let cached: ChartsCatalog | null = null;
 
 export function getChartsCatalog(): ChartsCatalog {
-  if (cached !== null) return cached;
+  if (cached !== null) {
+    return cached;
+  }
   if (!existsSync(CATALOG_PATH)) {
-    // eslint-disable-next-line no-console
+    // biome-ignore lint/suspicious/noConsole: Missing generated chart catalog should be visible during local builds.
     console.warn(`[charts-catalog] ${CATALOG_PATH} not found`);
     return { generatedAt: "", chartRegistry: "", charts: [] };
   }
@@ -46,7 +48,7 @@ export function getChartsCatalog(): ChartsCatalog {
     cached = JSON.parse(raw) as ChartsCatalog;
     return cached;
   } catch {
-    // eslint-disable-next-line no-console
+    // biome-ignore lint/suspicious/noConsole: Parse failures should include the generated catalog path.
     console.warn(`[charts-catalog] Failed to parse ${CATALOG_PATH}`);
     return { generatedAt: "", chartRegistry: "", charts: [] };
   }

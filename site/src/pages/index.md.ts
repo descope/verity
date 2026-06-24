@@ -1,12 +1,12 @@
 import type { APIRoute } from "astro";
 import {
-  fullCatalog,
-  totalImages,
-  totalCategories,
   copaCount,
+  fullCatalog,
   integerCount,
-} from "../data/full-catalog";
-import { getChartsCatalog } from "../lib/charts";
+  totalCategories,
+  totalImages,
+} from "../data/full-catalog.ts";
+import { getChartsCatalog } from "../lib/charts.ts";
 
 export const GET: APIRoute = ({ site }) => {
   const base = import.meta.env.BASE_URL;
@@ -20,9 +20,13 @@ export const GET: APIRoute = ({ site }) => {
     .map((cat) => {
       const copaImgs = cat.images.filter((i) => i.source === "copa").length;
       const wolfiImgs = cat.images.filter((i) => i.source === "integer").length;
-      const parts = [];
-      if (wolfiImgs > 0) parts.push(`${wolfiImgs} Wolfi`);
-      if (copaImgs > 0) parts.push(`${copaImgs} Copa`);
+      const parts: string[] = [];
+      if (wolfiImgs > 0) {
+        parts.push(`${wolfiImgs} Wolfi`);
+      }
+      if (copaImgs > 0) {
+        parts.push(`${copaImgs} Copa`);
+      }
       return `- **${cat.label}** — ${cat.images.length} images (${parts.join(", ")})`;
     })
     .join("\n");

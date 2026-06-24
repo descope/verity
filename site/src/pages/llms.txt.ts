@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { totalImages, totalCategories, copaCount, integerCount } from "../data/full-catalog";
+import { copaCount, integerCount, totalCategories, totalImages } from "../data/full-catalog.ts";
 
 export const GET: APIRoute = ({ site }) => {
   const base = import.meta.env.BASE_URL;
@@ -35,7 +35,7 @@ docker pull ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
 - [Browse Image Catalog](${prefix}): Interactive catalog with vulnerability data, severity breakdowns, and supply chain badges
 `;
 
-  return new Response(content.trim() + "\n", {
+  return new Response(`${content.trim()}\n`, {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "public, max-age=3600",

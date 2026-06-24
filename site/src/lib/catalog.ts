@@ -1,4 +1,4 @@
-import rawData from "../data/catalog.json";
+import rawData from "../data/catalog.json" with { type: "json" };
 
 export interface VulnSummary {
   total: number;
@@ -64,7 +64,7 @@ export interface SiteData {
 export const catalog: SiteData = rawData as SiteData;
 
 export function getAllImages(): SiteImage[] {
-  return catalog.images ?? [];
+  return catalog.images;
 }
 
 export function getImageById(id: string): SiteImage | undefined {

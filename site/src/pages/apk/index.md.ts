@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { apkRepository } from "../../data/apk-repository";
+import { apkRepository } from "../../data/apk-repository.ts";
 
 export const GET: APIRoute = ({ site }) => {
   const base = import.meta.env.BASE_URL;
