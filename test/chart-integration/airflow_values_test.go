@@ -30,7 +30,7 @@ func TestAirflowPostgresqlImageOverrideIsComposable(t *testing.T) {
 			Images                   struct {
 				MigrationsWaitTimeout int `yaml:"migrationsWaitTimeout"`
 			} `yaml:"images"`
-			Postgresql               struct {
+			Postgresql struct {
 				Image struct {
 					Registry   string `yaml:"registry"`
 					Repository string `yaml:"repository"`
