@@ -50,6 +50,10 @@ func TestVerityConfigChartValuesLoading(t *testing.T) {
 	if got := vc2.Overrides["jetstack/cert-manager-csi-driver"].ValuePath; got != "image" {
 		t.Fatalf("cert-manager-csi-driver valuePath = %q, want image", got)
 	}
+	tempo := vc2.Replacements["grafana/tempo"]
+	if tempo.Tag != "2.9.0" {
+		t.Fatalf("grafana/tempo replacement tag=%q, want 2.9.0", tempo.Tag)
+	}
 	airflow := vc2.ChartValues["airflow"]
 	if airflow["postgresql.image.registry"] != "" {
 		t.Fatalf("airflow postgresql.image.registry=%v, want empty string", airflow["postgresql.image.registry"])
