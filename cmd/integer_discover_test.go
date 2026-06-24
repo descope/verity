@@ -101,6 +101,46 @@ func TestIntegerDiscoverCommand(t *testing.T) {
 	assert.Equal(t, "ghcr.io/test-org", captured[0]["registry"])
 }
 
+func TestIntegerDiscoverCommand_TempoIncludesChartCompatibleVersion(t *testing.T) {
+	// Given
+	repoRoot, err := filepath.Abs("..")
+	require.NoError(t, err)
+	genDir := t.TempDir()
+	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	origStdout := os.Stdout
+	os.Stdout = w
+
+	// When
+	runErr := root.Run(context.Background(), []string{
+		"verity", "integer", "discover",
+		"--config", filepath.Join(repoRoot, "integer.yaml"),
+		"--images-dir", filepath.Join(repoRoot, "images"),
+		"--apkindex-url", "",
+		"--gen-dir", genDir,
+		"--only", "tempo",
+	})
+
+	w.Close()
+	os.Stdout = origStdout
+	require.NoError(t, runErr)
+	out, err := io.ReadAll(r)
+	require.NoError(t, err)
+
+	// Then
+	var captured []struct {
+		Version string `json:"version"`
+	}
+	require.NoError(t, json.Unmarshal(out, &captured))
+	versions := make([]string, 0, len(captured))
+	for _, entry := range captured {
+		versions = append(versions, entry.Version)
+	}
+	assert.Contains(t, versions, "2.9.0")
+}
+
 func TestIntegerDiscoverCommand_MissingConfig(t *testing.T) {
 	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
 	err := root.Run(context.Background(), []string{"verity", "integer", "discover", "--config", "/nonexistent/integer.yaml"})
