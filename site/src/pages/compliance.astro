@@ -17,7 +17,10 @@ interface Framework {
 
 // Split a string at backtick-fenced spans so we can render inline code
 // without resorting to `set:html`. Returns alternating { text, code } segments.
-type MeetsSegment = { kind: "text" | "code"; value: string };
+interface MeetsSegment {
+  kind: "text" | "code";
+  value: string;
+}
 const CODE_SPAN_PATTERN = /`([^`]+)`/g;
 
 function parseMeets(text: string): MeetsSegment[] {
@@ -25,15 +28,14 @@ function parseMeets(text: string): MeetsSegment[] {
   let lastIndex = 0;
   for (const match of text.matchAll(CODE_SPAN_PATTERN)) {
     const matchIndex = match.index;
-    const code = match[1];
-    if (matchIndex === undefined || code === undefined) {
-      continue;
+    const [matchedText, code] = match;
+    if (matchIndex !== undefined && code !== undefined) {
+      if (matchIndex > lastIndex) {
+        segments.push({ kind: "text", value: text.slice(lastIndex, matchIndex) });
+      }
+      segments.push({ kind: "code", value: code });
+      lastIndex = matchIndex + matchedText.length;
     }
-    if (matchIndex > lastIndex) {
-      segments.push({ kind: "text", value: text.slice(lastIndex, matchIndex) });
-    }
-    segments.push({ kind: "code", value: code });
-    lastIndex = matchIndex + match[0].length;
   }
   if (lastIndex < text.length) {
     segments.push({ kind: "text", value: text.slice(lastIndex) });
@@ -82,6 +84,26 @@ const frameworks: Framework[] = [
       {
         control: "RV.1 — Identify and confirm vulnerabilities",
         meets: "Daily scheduled scans; auto-generated PRs",
+      },
+    ],
+  },
+  {
+    name: "FIPS Evidence",
+    href: "https://csrc.nist.gov/projects/cryptographic-module-validation-program",
+    rows: [
+      {
+        control: "CMVP module mapping",
+        meets:
+          "FIPS variants declare `fips-profile` values that map images to Go, OpenSSL, Java, or review evidence paths",
+      },
+      {
+        control: "Open-source validated modules",
+        meets: "OpenSSL profile maps to CMVP #4985; Go profile maps to CMVP #5247",
+      },
+      {
+        control: "Claim boundary",
+        meets:
+          "Verity publishes module/config/runtime evidence, not whole-image FIPS validation or legal warranty claims",
       },
     ],
   },

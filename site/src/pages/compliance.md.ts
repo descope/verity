@@ -62,6 +62,21 @@ Every signature is recorded in the Rekor transparency log — tamper-evident, pu
 
 ---
 
+## FIPS-Capable Image Evidence
+
+[NIST CMVP](https://csrc.nist.gov/projects/cryptographic-module-validation-program) · [OpenSSL FIPS Provider #4985](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4985) · [Go Cryptographic Module #5247](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/5247)
+
+FIPS variants declare a machine-readable \`fips-profile\` so Verity can map each image to the right cryptographic evidence path:
+
+- **\`go\`** — Go binaries/toolchains use the Go Cryptographic Module path, with \`GODEBUG=fips140=on\` and build-time \`GOFIPS140\` evidence where Verity rebuilds the package
+- **\`openssl\`** — Runtime images inherit the OpenSSL FIPS provider configuration from \`wolfi-fips\`
+- **\`java\`** — JVM images carry a Java provider configuration path and runtime activation flags
+- **\`review\`** — Images whose crypto path is hybrid or not yet proven are explicitly marked for follow-up instead of inheriting a blanket FIPS claim
+
+Verity does not claim that a whole container image is itself FIPS validated. The claim is limited to use of CMVP-validated cryptographic modules with Verity-published configuration and runtime evidence.
+
+---
+
 ## Dependency Management
 
 [OpenSSF Best Practices](https://bestpractices.openssf.org/Secure-Software-Development-Fundamentals/en/)
@@ -178,7 +193,7 @@ gh attestation verify \\
 [Full LLM Reference](${prefix}llms-full.txt) · [Browse Catalog](${prefix}) · [GitHub](https://github.com/verity-org/verity)
 `;
 
-  return new Response(content.trim() + "\n", {
+  return new Response(`${content.trim()}\n`, {
     headers: {
       "Content-Type": "text/markdown; charset=utf-8",
       "Cache-Control": "public, max-age=3600",
