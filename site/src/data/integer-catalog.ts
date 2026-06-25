@@ -1,7 +1,7 @@
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import process from "node:process";
-import type { IntegerImage, IntegerVariant, IntegerVersion } from "../lib/catalog";
+import type { IntegerImage, IntegerVariant, IntegerVersion } from "../lib/catalog.ts";
 
 interface RawIntegerCatalog {
   generatedAt: string;
@@ -36,6 +36,7 @@ let cached: CatalogResult | null = null;
 
 function loadCatalog(): CatalogResult {
   if (!existsSync(CATALOG_PATH)) {
+    // biome-ignore lint/suspicious/noConsole: Missing generated catalog should explain the local generation command.
     console.warn(
       `[integer-catalog] ${CATALOG_PATH} not found — run: ./verity integer catalog --output site/src/data/integer-catalog.json`
     );
@@ -47,6 +48,7 @@ function loadCatalog(): CatalogResult {
     const raw = readFileSync(CATALOG_PATH, "utf-8");
     data = JSON.parse(raw);
   } catch (err) {
+    // biome-ignore lint/suspicious/noConsole: Parse failures should include the generated catalog path.
     console.warn(`[integer-catalog] Failed to parse ${CATALOG_PATH}:`, err);
     return { images: [], registry: "" };
   }
@@ -76,8 +78,10 @@ function loadCatalog(): CatalogResult {
   return { images, registry: data.registry };
 }
 
-export async function getIntegerCatalog(): Promise<CatalogResult> {
-  if (cached !== null) return cached;
+export function getIntegerCatalog(): CatalogResult {
+  if (cached !== null) {
+    return cached;
+  }
   cached = loadCatalog();
   return cached;
 }
@@ -86,9 +90,11 @@ interface IntegerImageWithRegistry extends IntegerImage {
   registry: string;
 }
 
-export async function getIntegerImage(name: string): Promise<IntegerImageWithRegistry | undefined> {
-  const { images, registry } = await getIntegerCatalog();
+export function getIntegerImage(name: string): IntegerImageWithRegistry | undefined {
+  const { images, registry } = getIntegerCatalog();
   const image = images.find((img) => img.name === name);
-  if (!image) return undefined;
+  if (!image) {
+    return;
+  }
   return { ...image, registry };
 }

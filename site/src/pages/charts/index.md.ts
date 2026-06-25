@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { getChartsCatalog } from "../../lib/charts";
+import { getChartsCatalog } from "../../lib/charts.ts";
 
 export const GET: APIRoute = ({ site }) => {
   const base = import.meta.env.BASE_URL;

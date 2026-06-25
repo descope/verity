@@ -1,16 +1,16 @@
 ---
-import BaseLayout from "../../layouts/BaseLayout.astro";
 import CopyButton from "../../components/CopyButton.astro";
-import SupplyChainBadges from "../../components/SupplyChainBadges.astro";
 import SeverityBreakdown from "../../components/SeverityBreakdown.astro";
-import VulnTable from "../../components/VulnTable.astro";
-import { fullCatalog, upstreamPath, stripTag, REGISTRY } from "../../data/full-catalog";
-import type { FullCatalogImage, FullCatalogCategory } from "../../data/full-catalog";
 import SourceBadge from "../../components/SourceBadge.astro";
-import { catalog } from "../../lib/catalog";
-import type { SiteImage, IntegerImage, IntegerVersion, IntegerVariant } from "../../lib/catalog";
-import { getIntegerImage } from "../../data/integer-catalog";
-import { patchedRefToName, extractVersionFromRef } from "../../lib/refs";
+import SupplyChainBadges from "../../components/SupplyChainBadges.astro";
+import VulnTable from "../../components/VulnTable.astro";
+import type { FullCatalogCategory, FullCatalogImage } from "../../data/full-catalog.ts";
+import { fullCatalog, REGISTRY, stripTag, upstreamPath } from "../../data/full-catalog.ts";
+import { getIntegerImage } from "../../data/integer-catalog.ts";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import type { IntegerImage, IntegerVariant, IntegerVersion, SiteImage } from "../../lib/catalog.ts";
+import { getAllImages } from "../../lib/catalog.ts";
+import { extractVersionFromRef, patchedRefToName } from "../../lib/refs.ts";
 
 interface IntegerDataWithRegistry extends IntegerImage {
   registry: string;
@@ -35,8 +35,12 @@ function isEolPassed(eolDateStr: string): boolean {
 
 function sortVersionsLatestFirst(versions: IntegerVersion[]): IntegerVersion[] {
   return [...versions].sort((a, b) => {
-    if (a.latest && !b.latest) return -1;
-    if (!a.latest && b.latest) return 1;
+    if (a.latest && !b.latest) {
+      return -1;
+    }
+    if (!a.latest && b.latest) {
+      return 1;
+    }
     return b.version.localeCompare(a.version, undefined, { numeric: true });
   });
 }
@@ -48,7 +52,7 @@ function getDefaultVariant(variants: IntegerVariant[]): IntegerVariant | undefin
 function getUniqueVariantTypes(variants: IntegerVariant[]): string[] {
   return [...new Set(variants.map((v) => v.type))];
 }
-export async function getStaticPaths() {
+export function getStaticPaths() {
   const paths: { params: { name: string }; props: CatalogPageProps }[] = [];
 
   // Pre-compute set of integer image names for upgrade banner logic
@@ -60,7 +64,7 @@ export async function getStaticPaths() {
 
   // Pre-compute Copa scan data grouped by image name (avoids O(n²) filter+sort per image)
   const scanDataByName = new Map<string, SiteImage[]>();
-  for (const ci of catalog.images ?? []) {
+  for (const ci of getAllImages()) {
     const name = patchedRefToName(ci.patchedRef);
     const list = scanDataByName.get(name) ?? [];
     list.push(ci);
@@ -83,7 +87,7 @@ export async function getStaticPaths() {
       // Fetch integer version data for integer source images
       let integerData: IntegerDataWithRegistry | undefined;
       if (image.source === "integer") {
-        integerData = await getIntegerImage(image.integerName ?? image.name);
+        integerData = getIntegerImage(image.integerName ?? image.name);
       }
 
       // Check if copa image has a hardened (integer) equivalent

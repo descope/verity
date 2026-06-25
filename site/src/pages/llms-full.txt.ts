@@ -1,16 +1,18 @@
 import type { APIRoute } from "astro";
+import { apkRepository } from "../data/apk-repository.ts";
+import type { FullCatalogImage } from "../data/full-catalog.ts";
 import {
-  fullCatalog,
-  upstreamPath,
-  REGISTRY,
-  totalImages,
-  totalCategories,
   copaCount,
+  fullCatalog,
   integerCount,
-} from "../data/full-catalog";
-import type { FullCatalogImage } from "../data/full-catalog";
-import { apkRepository } from "../data/apk-repository";
-import { getChartsCatalog } from "../lib/charts";
+  REGISTRY,
+  totalCategories,
+  totalImages,
+  upstreamPath,
+} from "../data/full-catalog.ts";
+import { getChartsCatalog } from "../lib/charts.ts";
+
+const TRAILING_SLASH_PATTERN = /\/$/;
 
 /** Format a single catalog image as a markdown list item. */
 function formatImage(img: FullCatalogImage): string {
@@ -40,14 +42,14 @@ function formatImage(img: FullCatalogImage): string {
 export const GET: APIRoute = ({ site }) => {
   const base = import.meta.env.BASE_URL;
   const origin = site?.origin ?? "https://verity.supply";
-  const siteUrl = `${origin}${base}`.replace(/\/$/, "");
+  const siteUrl = `${origin}${base}`.replace(TRAILING_SLASH_PATTERN, "");
 
   // Generate image catalog sections
   const catalogSections = fullCatalog
     .map((category) => {
       const header = `### ${category.label}\n`;
       const images = category.images.map(formatImage).join("\n");
-      return header + "\n" + images;
+      return `${header}\n${images}`;
     })
     .join("\n\n");
 

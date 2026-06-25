@@ -48,8 +48,12 @@
   --color-verity-light-teal-2: #006b7a;
 
   /* Fonts */
-  --font-mono: "Share Tech Mono", "Courier New", monospace;
-  --font-code: "JetBrains Mono", "SF Mono", "Share Tech Mono", monospace;
+  --font-mono:
+    "Share Tech Mono", "Noto Sans Mono CJK JP", "Noto Sans Mono CJK KR", "Noto Sans Mono CJK SC",
+    "Courier New", monospace;
+  --font-code:
+    "JetBrains Mono", "SF Mono", "Share Tech Mono", "Noto Sans Mono CJK JP",
+    "Noto Sans Mono CJK KR", monospace;
 }
 
 /* =========================================================
@@ -124,5 +128,80 @@
 @layer base {
   body {
     @apply font-mono;
+  }
+}
+
+/* =========================================================
+   Global base — focus · selection · scrollbar · atmosphere
+   ========================================================= */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  ::selection {
+    background-color: rgba(0, 240, 204, 0.18);
+    color: #e8edf2;
+  }
+
+  :focus-visible {
+    outline: 2px solid #00f0cc;
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Custom scrollbar — WebKit */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #060d12;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1f2b35;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #00f0cc;
+  }
+
+  /* Dot-grid page atmosphere */
+  body {
+    background-image: radial-gradient(rgba(0, 240, 204, 0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+}
+
+/* =========================================================
+   Keyframes
+   ========================================================= */
+@keyframes nucleus-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(0, 240, 204, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 36px rgba(0, 240, 204, 0.5);
+  }
+}
+
+@layer utilities {
+  .pipeline-pulse {
+    animation: nucleus-pulse 2s ease-in-out infinite;
+  }
+}
+
+/* =========================================================
+   Reduced motion — respect user preference
+   ========================================================= */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

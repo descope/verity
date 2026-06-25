@@ -1,6 +1,6 @@
 ---
-import BaseLayout from "../layouts/BaseLayout.astro";
 import CopyButton from "../components/CopyButton.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
 
 const base = import.meta.env.BASE_URL;
 
@@ -18,17 +18,22 @@ interface Framework {
 // Split a string at backtick-fenced spans so we can render inline code
 // without resorting to `set:html`. Returns alternating { text, code } segments.
 type MeetsSegment = { kind: "text" | "code"; value: string };
+const CODE_SPAN_PATTERN = /`([^`]+)`/g;
+
 function parseMeets(text: string): MeetsSegment[] {
   const segments: MeetsSegment[] = [];
-  const re = new RegExp("`([^`]+)`", "g");
   let lastIndex = 0;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > lastIndex) {
-      segments.push({ kind: "text", value: text.slice(lastIndex, m.index) });
+  for (const match of text.matchAll(CODE_SPAN_PATTERN)) {
+    const matchIndex = match.index;
+    const code = match[1];
+    if (matchIndex === undefined || code === undefined) {
+      continue;
     }
-    segments.push({ kind: "code", value: m[1] });
-    lastIndex = re.lastIndex;
+    if (matchIndex > lastIndex) {
+      segments.push({ kind: "text", value: text.slice(lastIndex, matchIndex) });
+    }
+    segments.push({ kind: "code", value: code });
+    lastIndex = matchIndex + match[0].length;
   }
   if (lastIndex < text.length) {
     segments.push({ kind: "text", value: text.slice(lastIndex) });

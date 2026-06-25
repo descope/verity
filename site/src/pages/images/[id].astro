@@ -1,17 +1,17 @@
 ---
-import BaseLayout from "../../layouts/BaseLayout.astro";
-import VulnTable from "../../components/VulnTable.astro";
-import SeverityBreakdown from "../../components/SeverityBreakdown.astro";
 import CopyButton from "../../components/CopyButton.astro";
+import SeverityBreakdown from "../../components/SeverityBreakdown.astro";
 import SupplyChainBadges from "../../components/SupplyChainBadges.astro";
-import { getAllImages, shortName } from "../../lib/catalog";
-import type { SiteImage } from "../../lib/catalog";
+import VulnTable from "../../components/VulnTable.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import type { SiteImage } from "../../lib/catalog.ts";
+import { getAllImages, shortName } from "../../lib/catalog.ts";
 
 export function getStaticPaths() {
   const all = getAllImages();
-  return all.map((image) => ({
-    params: { id: image.id },
-    props: { image },
+  return all.map((catalogImage) => ({
+    params: { id: catalogImage.id },
+    props: { image: catalogImage },
   }));
 }
 

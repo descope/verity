@@ -1,6 +1,8 @@
-import { REGISTRY } from "../data/full-catalog";
+import { REGISTRY } from "../data/full-catalog.ts";
 
 const REGISTRY_PREFIX = REGISTRY + "/";
+const REGISTRY_HOST_PATTERN = /[.:]/;
+const PATCHED_SUFFIX_PATTERN = /-patched$/;
 
 /**
  * Extract the catalog name from a patched image reference by stripping
@@ -9,15 +11,21 @@ const REGISTRY_PREFIX = REGISTRY + "/";
  * e.g. "ghcr.io/verity-org/kiwigrid/k8s-sidecar:1.28.0" → "kiwigrid/k8s-sidecar"
  */
 export function patchedRefToName(ref: string | undefined): string {
-  if (!ref) return "";
+  if (!ref) {
+    return "";
+  }
 
   let v = ref;
   const at = v.indexOf("@");
-  if (at !== -1) v = v.slice(0, at);
+  if (at !== -1) {
+    v = v.slice(0, at);
+  }
 
   const lastSlash = v.lastIndexOf("/");
   const lastColon = v.lastIndexOf(":");
-  if (lastColon > lastSlash) v = v.slice(0, lastColon);
+  if (lastColon > lastSlash) {
+    v = v.slice(0, lastColon);
+  }
 
   if (v.startsWith(REGISTRY_PREFIX)) {
     return v.slice(REGISTRY_PREFIX.length);
@@ -26,7 +34,7 @@ export function patchedRefToName(ref: string | undefined): string {
   const parts = v.split("/");
   if (parts.length >= 2) {
     const first = parts[0] ?? "";
-    if (/[.:]/.test(first) || first === "localhost") {
+    if (REGISTRY_HOST_PATTERN.test(first) || first === "localhost") {
       return parts.slice(1).join("/");
     }
   }
@@ -46,9 +54,13 @@ export function patchedRefToName(ref: string | undefined): string {
 export function extractVersionFromRef(ref: string): string {
   let v = ref;
   const at = v.indexOf("@");
-  if (at !== -1) v = v.slice(0, at);
+  if (at !== -1) {
+    v = v.slice(0, at);
+  }
   const lastColon = v.lastIndexOf(":");
-  if (lastColon < 0) return "";
+  if (lastColon < 0) {
+    return "";
+  }
   const tag = v.slice(lastColon + 1);
-  return tag.replace(/-patched$/, "");
+  return tag.replace(PATCHED_SUFFIX_PATTERN, "");
 }
