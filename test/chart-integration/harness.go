@@ -139,13 +139,15 @@ func (h *Harness) createCluster(ctx context.Context) error {
 		}
 	}
 	h.cleanupStaleKindNode(ctx)
-	cfg := filepath.Join(h.RepoRoot, "test", "chart-integration", "kind.yaml")
-	if err := runCmd(ctx, h.t, "", nil,
-		"kind", "create", "cluster",
+	args := []string{
+		"create", "cluster",
 		"--name", clusterName,
-		"--config", cfg,
-		"--wait", "120s",
-	); err != nil {
+		"--config", kindConfigPath(h.RepoRoot),
+	}
+	if wait := kindCreateWait(); wait != "" {
+		args = append(args, "--wait", wait)
+	}
+	if err := runCmd(ctx, h.t, "", nil, "kind", args...); err != nil {
 		h.cleanupStaleKindNode(ctx)
 		return err
 	}

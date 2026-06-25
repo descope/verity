@@ -1,0 +1,118 @@
+name: chart-integration-privileged
+
+on:
+  workflow_run:
+    workflows: ['Chart Generation']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: chart-integration-privileged-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  chart-test:
+    name: ${{ matrix.chart }} privileged
+    if: |
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+      - chart-integration-privileged
+      - bpf
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - chart: falco
+            kind_config: test/chart-integration/kind.yaml
+            kind_wait: 120s
+          - chart: cilium
+            kind_config: test/chart-integration/kind-cilium.yaml
+            kind_wait: 0s
+    env:
+      VERITY_CHART: ${{ matrix.chart }}
+      VERITY_IT_RUN_SKIPPED_CHARTS: ${{ matrix.chart }}
+      VERITY_IT_KIND_CONFIG: ${{ matrix.kind_config }}
+      VERITY_IT_KIND_CREATE_WAIT: ${{ matrix.kind_wait }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Install mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          install: true
+          cache: true
+
+      - name: Cache Go modules
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/dev/go/pkg/mod
+            ~/.cache/go-build
+          key: chart-it-privileged-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: chart-it-privileged-${{ runner.os }}-
+
+      - name: Log in to GHCR
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            if printf '%s' "${{ secrets.GITHUB_TOKEN }}" \
+              | docker login ghcr.io -u "${{ github.actor }}" --password-stdin; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "GHCR login failed after ${attempt} attempts" >&2
+              exit 1
+            fi
+            sleep $((attempt * 10))
+          done
+
+      - name: Harness compile and unit-test gate
+        env:
+          VERITY_IT_SKIP_CLUSTER: "1"
+          TEST_REGEX: Test(KindConfigPath|KindCreateWait|ShouldSkipChart|LoadSkips|IsSkipped|ProductionSKIPSYAMLIsValid)
+        run: |
+          go test -tags=integration \
+            -run "$TEST_REGEX" \
+            -v ./test/chart-integration/...
+
+      - name: Run privileged chart smoke test
+        id: smoke
+        run: make chart-integration
+
+      - name: Record shard outcome
+        if: always()
+        run: |
+          set -euo pipefail
+          outcome="${{ steps.smoke.outcome }}"
+          {
+            if [ "$outcome" = "success" ]; then
+              echo "## ✅ ${{ matrix.chart }} privileged: success"
+            else
+              echo "## ❌ ${{ matrix.chart }} privileged: ${outcome}"
+              echo ""
+              echo "Inspect diagnostics-${{ matrix.chart }}-privileged for cluster-info and kind logs."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload diagnostics on failure
+        if: always() && steps.smoke.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: diagnostics-${{ matrix.chart }}-privileged
+          path: |
+            _dump-${{ matrix.chart }}
+            _kind-logs-${{ matrix.chart }}
+          retention-days: 7
+          if-no-files-found: ignore

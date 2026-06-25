@@ -97,7 +97,7 @@ func TestCharts(t *testing.T) {
 		}
 		matched++
 		t.Run(spec.Name, func(t *testing.T) {
-			if skip, entry := skipsCfg.IsSkipped(spec.Name); skip {
+			if skip, entry := shouldSkipChart(skipsCfg, spec.Name); skip {
 				// Drop a sentinel for the workflow's Record-shard-outcome step
 				// so the GitHub Step Summary can render "skipped" distinctly
 				// from "success". The step grade gracefully degrades if the
