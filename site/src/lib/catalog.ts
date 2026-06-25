@@ -57,14 +57,18 @@ export interface SiteData {
   generatedAt: string;
   registry: string;
   summary: SiteSummary;
-  images: SiteImage[];
+  images?: SiteImage[];
   integerImages?: IntegerImage[];
 }
 
 export const catalog: SiteData = rawData as SiteData;
 
+export function getImagesFromCatalog(data: Pick<SiteData, "images">): SiteImage[] {
+  return data.images ?? [];
+}
+
 export function getAllImages(): SiteImage[] {
-  return catalog.images;
+  return getImagesFromCatalog(catalog);
 }
 
 export function getImageById(id: string): SiteImage | undefined {

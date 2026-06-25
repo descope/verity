@@ -9,7 +9,7 @@ import { fullCatalog, REGISTRY, stripTag, upstreamPath } from "../../data/full-c
 import { getIntegerImage } from "../../data/integer-catalog.ts";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import type { IntegerImage, IntegerVariant, IntegerVersion, SiteImage } from "../../lib/catalog.ts";
-import { catalog } from "../../lib/catalog.ts";
+import { getAllImages } from "../../lib/catalog.ts";
 import { extractVersionFromRef, patchedRefToName } from "../../lib/refs.ts";
 
 interface IntegerDataWithRegistry extends IntegerImage {
@@ -64,7 +64,7 @@ export function getStaticPaths() {
 
   // Pre-compute Copa scan data grouped by image name (avoids O(n²) filter+sort per image)
   const scanDataByName = new Map<string, SiteImage[]>();
-  for (const ci of catalog.images) {
+  for (const ci of getAllImages()) {
     const name = patchedRefToName(ci.patchedRef);
     const list = scanDataByName.get(name) ?? [];
     list.push(ci);
