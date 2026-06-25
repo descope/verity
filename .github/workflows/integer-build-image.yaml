@@ -127,14 +127,15 @@ jobs:
         run: |
           mkdir -p melange-work
 
+          commit=$(jq -r '.wolfi_commit' packages/upstream.lock.json)
+          if [ "$commit" = "null" ] || [ -z "$commit" ]; then
+            echo "wolfi_commit missing or null in packages/upstream.lock.json" >&2
+            exit 1
+          fi
+
           if [ -n "$BESPOKE" ]; then
             cp "packages/bespoke/${BESPOKE}" melange-work/build.yaml
           elif [ -n "$UPSTREAM" ]; then
-            commit=$(jq -r '.wolfi_commit' packages/upstream.lock.json)
-            if [ "$commit" = "null" ] || [ -z "$commit" ]; then
-              echo "wolfi_commit missing or null in packages/upstream.lock.json" >&2
-              exit 1
-            fi
             file=$(jq -r --arg pkg "$UPSTREAM" '.packages[$pkg].file' packages/upstream.lock.json)
             expected_sha=$(jq -r --arg pkg "$UPSTREAM" '.packages[$pkg].sha256' packages/upstream.lock.json)
             if [ "$file" = "null" ] || [ -z "$file" ]; then
@@ -155,24 +156,34 @@ jobs:
               exit 1
             fi
             mv melange-work/build.yaml.tmp melange-work/build.yaml
+          fi
 
-            echo "Fetching wolfi pipelines/ and ${UPSTREAM}/ companion dir at commit ${commit}"
-            tmp_wolfi=$(mktemp -d)
-            trap 'rm -rf "$tmp_wolfi"' EXIT
-            git -C "$tmp_wolfi" init --quiet
-            git -C "$tmp_wolfi" remote add origin "https://github.com/wolfi-dev/os.git"
+          echo "Fetching wolfi pipelines/ at commit ${commit}"
+          tmp_wolfi=$(mktemp -d)
+          trap 'rm -rf "$tmp_wolfi"' EXIT
+          git -C "$tmp_wolfi" init --quiet
+          git -C "$tmp_wolfi" remote add origin "https://github.com/wolfi-dev/os.git"
 
+          sparse_paths=(pipelines)
+          if [ -n "$UPSTREAM" ]; then
             if [[ ! "$UPSTREAM" =~ ^[A-Za-z0-9._-]+$ ]]; then
               echo "upstream value contains unsafe characters: '${UPSTREAM}'" >&2
               exit 1
             fi
+            sparse_paths+=("${UPSTREAM}")
+          fi
 
-            git -C "$tmp_wolfi" sparse-checkout set --no-cone pipelines "${UPSTREAM}"
-            git -C "$tmp_wolfi" fetch --quiet --depth 1 --filter=blob:none origin "$commit"
+          git -C "$tmp_wolfi" sparse-checkout set --no-cone "${sparse_paths[@]}"
+          git -C "$tmp_wolfi" fetch --quiet --depth 1 --filter=blob:none origin "$commit"
+          if [ -n "$UPSTREAM" ]; then
             git -C "$tmp_wolfi" checkout --quiet FETCH_HEAD -- pipelines "${UPSTREAM}" 2>/dev/null || \
               git -C "$tmp_wolfi" checkout --quiet FETCH_HEAD -- pipelines
-            rm -rf melange-work/pipelines
-            cp -r "$tmp_wolfi/pipelines" melange-work/pipelines
+          else
+            git -C "$tmp_wolfi" checkout --quiet FETCH_HEAD -- pipelines
+          fi
+          rm -rf melange-work/pipelines
+          cp -r "$tmp_wolfi/pipelines" melange-work/pipelines
+          if [ -n "$UPSTREAM" ]; then
             if [ -d "$tmp_wolfi/${UPSTREAM}" ]; then
               cp -r "$tmp_wolfi/${UPSTREAM}/." melange-work/
               echo "Copied ${UPSTREAM}/ companion files into melange-work/"
