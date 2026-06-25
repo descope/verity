@@ -275,8 +275,11 @@ types:
     entrypoint: /usr/bin/prometheus
   fips:
     base: wolfi-base
+    fips-profile: go
     packages: ["prometheus-{{version}}"]
     entrypoint: /usr/bin/prometheus
+    environment:
+      GODEBUG: "fips140=on"
 versions:
   "2.55":
     skip-types: [fips]
@@ -351,8 +354,11 @@ types:
     entrypoint: /usr/bin/prometheus
   fips:
     base: wolfi-base
+    fips-profile: go
     packages: ["prometheus-{{version}}"]
     entrypoint: /usr/bin/prometheus
+    environment:
+      GODEBUG: "fips140=on"
     melange:
       upstream: "prometheus-3.9"
       env-file: "fips.env"

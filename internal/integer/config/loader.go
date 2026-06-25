@@ -22,6 +22,21 @@ var (
 	// ErrMissingBase is returned when a type template has no base image.
 	ErrMissingBase = errors.New("missing required field: base")
 
+	// ErrMissingFIPSProfile is returned when types.fips has no fips-profile.
+	ErrMissingFIPSProfile = errors.New("missing required field: fips-profile")
+
+	// ErrInvalidFIPSProfile is returned when fips-profile is not supported.
+	ErrInvalidFIPSProfile = errors.New("invalid fips-profile")
+
+	// ErrFIPSProfileOnNonFIPS is returned when a non-fips type declares fips-profile.
+	ErrFIPSProfileOnNonFIPS = errors.New("fips-profile is only valid on type fips")
+
+	// ErrInvalidFIPSBase is returned when a profile uses an incompatible base.
+	ErrInvalidFIPSBase = errors.New("invalid fips base")
+
+	// ErrMissingFIPSEnvironment is returned when a profile lacks its runtime toggle.
+	ErrMissingFIPSEnvironment = errors.New("missing fips environment")
+
 	// ErrMelangeSourceConflict is returned when both upstream and bespoke are set.
 	ErrMelangeSourceConflict = errors.New("melange: set exactly one of upstream or bespoke, not both")
 
@@ -73,11 +88,53 @@ func Validate(def *ImageDef) error {
 		if tmpl.Base == "" {
 			return fmt.Errorf("image %q type %q: %w", def.Name, typeName, ErrMissingBase)
 		}
+		if err := validateFIPSProfile(def.Name, typeName, tmpl); err != nil {
+			return err
+		}
 		if err := validateMelange(def.Name, typeName, tmpl.Melange); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func validateFIPSProfile(image, typeName string, tmpl TypeTemplate) error {
+	if typeName != "fips" {
+		if tmpl.FIPSProfile != "" {
+			return fmt.Errorf("image %q type %q: %w", image, typeName, ErrFIPSProfileOnNonFIPS)
+		}
+		return nil
+	}
+	if tmpl.FIPSProfile == "" {
+		return fmt.Errorf("image %q type %q: %w", image, typeName, ErrMissingFIPSProfile)
+	}
+	if !tmpl.FIPSProfile.Valid() {
+		return fmt.Errorf("image %q type %q value %q: %w", image, typeName, tmpl.FIPSProfile, ErrInvalidFIPSProfile)
+	}
+	switch tmpl.FIPSProfile {
+	case FIPSProfileGo:
+		if !envContains(tmpl, "GODEBUG", "fips140=on") {
+			return fmt.Errorf("image %q type %q profile %q: %w", image, typeName, tmpl.FIPSProfile, ErrMissingFIPSEnvironment)
+		}
+	case FIPSProfileOpenSSL:
+		if tmpl.Base != "wolfi-fips" {
+			return fmt.Errorf("image %q type %q profile %q base %q: %w", image, typeName, tmpl.FIPSProfile, tmpl.Base, ErrInvalidFIPSBase)
+		}
+	case FIPSProfileJava:
+		if tmpl.Base != "wolfi-fips" {
+			return fmt.Errorf("image %q type %q profile %q base %q: %w", image, typeName, tmpl.FIPSProfile, tmpl.Base, ErrInvalidFIPSBase)
+		}
+		if !envContains(tmpl, "JAVA_TOOL_OPTIONS", "java.security.properties") {
+			return fmt.Errorf("image %q type %q profile %q: %w", image, typeName, tmpl.FIPSProfile, ErrMissingFIPSEnvironment)
+		}
+	case FIPSProfileReview:
+		return nil
+	}
+	return nil
+}
+
+func envContains(tmpl TypeTemplate, key, token string) bool {
+	return strings.Contains(tmpl.Environment[key], token)
 }
 
 func validateMelange(image, typeName string, m *MelangeSpec) error {

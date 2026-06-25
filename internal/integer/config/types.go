@@ -7,6 +7,33 @@ import "strings"
 // the helper below can stay independent of the apkindex package.
 const versionPlaceholder = "{{version}}"
 
+// FIPSProfile records which cryptographic validation path a fips image type uses.
+type FIPSProfile string
+
+const (
+	// FIPSProfileGo uses the Go Cryptographic Module selected at build time.
+	FIPSProfileGo FIPSProfile = "go"
+
+	// FIPSProfileOpenSSL uses the OpenSSL FIPS Provider from the runtime base.
+	FIPSProfileOpenSSL FIPSProfile = "openssl"
+
+	// FIPSProfileJava uses a JVM FIPS provider configuration.
+	FIPSProfileJava FIPSProfile = "java"
+
+	// FIPSProfileReview marks variants that need explicit crypto-path review.
+	FIPSProfileReview FIPSProfile = "review"
+)
+
+// Valid reports whether p is a supported FIPS profile value.
+func (p FIPSProfile) Valid() bool {
+	switch p {
+	case FIPSProfileGo, FIPSProfileOpenSSL, FIPSProfileJava, FIPSProfileReview:
+		return true
+	default:
+		return false
+	}
+}
+
 // IntegerConfig is the global integer.yaml configuration.
 type IntegerConfig struct {
 	Target   TargetSpec   `yaml:"target"`
@@ -95,6 +122,7 @@ type TypeTemplate struct {
 	// Base references a _base/*.yaml file by stem name (e.g. "wolfi-base",
 	// "wolfi-dev", "wolfi-fips"). Rendered as an apko include: directive.
 	Base        string            `yaml:"base"`
+	FIPSProfile FIPSProfile       `yaml:"fips-profile,omitempty"`
 	Packages    []string          `yaml:"packages"`
 	Entrypoint  string            `yaml:"entrypoint,omitempty"`
 	WorkDir     string            `yaml:"work-dir,omitempty"`
