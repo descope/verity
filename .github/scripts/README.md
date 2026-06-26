@@ -34,10 +34,7 @@ and are shellcheck validated.
 
 ## Utility / manual
 
-| Script                | Purpose                                                                        |
-| --------------------- | ------------------------------------------------------------------------------ |
-| `verify-artifacts.sh` | Verify cosign signatures and GitHub attestations for published images (manual) |
-| `pr-summary.sh`       | Legacy PR pipeline summary helper — not currently referenced by any workflow   |
+Manual verification commands live in the top-level README.
 
 ## Development
 
