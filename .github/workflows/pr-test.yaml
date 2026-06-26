@@ -14,21 +14,65 @@ on:
       - '.github/workflows/integer-*.yaml'
       - 'internal/integer/**'
       - 'cmd/integer*.go'
+      - 'cmd/patch*.go'
       - 'cmd/discover*.go'
       - 'cmd/scan*.go'
+      - 'internal/patch/**'
       - '.github/scripts/patch-image.sh'
+      - '.github/scripts/scan-before.sh'
+      - '.github/scripts/verify-patched.sh'
+      - '.github/scripts/read-catalog-entry.sh'
+      - '.github/scripts/melange-check.sh'
+      - '.github/scripts/melange-build.sh'
       - '.github/actions/setup-binaries/**'
 
 permissions:
   contents: read
 
+concurrency:
+  group: pr-test-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   TARGET_REGISTRY: ghcr.io/verity-org
 
 jobs:
+  changes:
+    name: Detect PR test scope
+    runs-on: ubuntu-latest
+    outputs:
+      integer: ${{ steps.filter.outputs.integer }}
+      copa: ${{ steps.filter.outputs.copa }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+
+      - id: filter
+        name: Check changed paths
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
+
+          if grep -Eq '^images/|^integer\.yaml$|^internal/integer/|^cmd/(integer|discover|scan).*\.go$|^\.github/scripts/(melange-check|melange-build)\.sh$|^\.github/workflows/(pr-test|integer-.*)\.yaml$' changed-files.txt; then
+            echo 'integer=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'integer=false' >> "$GITHUB_OUTPUT"
+          fi
+
+          if grep -Eq '^copa-config\.yaml$|^internal/patch/|^cmd/(patch|discover|scan).*\.go$|^\.github/scripts/(patch-image|scan-before|verify-patched|read-catalog-entry)\.sh$|^\.github/workflows/(pr-test|patch-image)\.yaml$|^\.github/actions/setup-binaries/' changed-files.txt; then
+            echo 'copa=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'copa=false' >> "$GITHUB_OUTPUT"
+          fi
+
   # ── Validate discovery works ───────────────────────────────────────
   discover:
     name: Discover Images
+    needs: changes
+    if: needs.changes.outputs.copa == 'true'
     runs-on: ubuntu-24.04
 
     steps:
@@ -71,6 +115,8 @@ jobs:
   # ── Validate all integer image configs ─────────────────────────────────
   validate:
     name: Validate image configs
+    needs: changes
+    if: needs.changes.outputs.integer == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -104,6 +150,8 @@ jobs:
   # ── Integer (Wolfi-based) smoke test ─────────────────────────────────
   integer-smoke-test:
     name: "Integer ${{ matrix.image }}:${{ matrix.version }}-${{ matrix.type }}"
+    needs: changes
+    if: needs.changes.outputs.integer == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -180,6 +228,8 @@ jobs:
   # ── Build + scan changed Integer images ──────────────────────────────
   detect-changed-images:
     name: Detect changed images
+    needs: changes
+    if: needs.changes.outputs.integer == 'true'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.detect.outputs.matrix }}
@@ -283,8 +333,8 @@ jobs:
 
   integer-build-changed:
     name: "Build ${{ matrix.image }}:${{ matrix.version }}-${{ matrix.type }}"
-    needs: detect-changed-images
-    if: needs.detect-changed-images.outputs.has-changes == 'true'
+    needs: [changes, detect-changed-images]
+    if: needs.changes.outputs.integer == 'true' && needs.detect-changed-images.outputs.has-changes == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -397,6 +447,8 @@ jobs:
   # ── Detect changed Copa images and test them ─────────────────────────
   detect-copa-changes:
     name: Detect changed images
+    needs: changes
+    if: needs.changes.outputs.copa == 'true'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -518,8 +570,8 @@ jobs:
 
   copa-patching-changed:
     name: "Copa Patch: ${{ matrix.name }}:${{ matrix.tag }}"
-    needs: detect-copa-changes
-    if: needs.detect-copa-changes.outputs.has-changes == 'true'
+    needs: [changes, detect-copa-changes]
+    if: needs.changes.outputs.copa == 'true' && needs.detect-copa-changes.outputs.has-changes == 'true'
     runs-on: ubuntu-24.04
     continue-on-error: true  # Go binary patching is experimental — don't block PR
     permissions:
@@ -630,6 +682,8 @@ jobs:
   # Image URL and goVcsUrl are read from copa-config.yaml at runtime.
   copa-patching-regression:
     name: "Copa Patch: ${{ matrix.name }}:${{ matrix.tag }}"
+    needs: changes
+    if: needs.changes.outputs.copa == 'true'
     runs-on: ubuntu-24.04
     permissions:
       contents: read

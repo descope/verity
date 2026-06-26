@@ -10,9 +10,63 @@ permissions:
   contents: read
   pull-requests: read
 
+concurrency:
+  group: lint-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  changes:
+    name: Detect lint scope
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.filter.outputs.go }}
+      static: ${{ steps.filter.outputs.static }}
+      node: ${{ steps.filter.outputs.node }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+
+      - id: filter
+        name: Check changed paths
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            {
+              echo 'go=true'
+              echo 'static=true'
+              echo 'node=true'
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
+
+          if grep -Eq '\.go$|(^|/)(go\.mod|go\.sum)$|^\.golangci\.ya?ml$' changed-files.txt; then
+            echo 'go=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'go=false' >> "$GITHUB_OUTPUT"
+          fi
+
+          if grep -Eq '^\.github/|^scripts/|\.ya?ml$|\.md$|^Makefile$|^mise\.toml$' changed-files.txt; then
+            echo 'static=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'static=false' >> "$GITHUB_OUTPUT"
+          fi
+
+          if grep -Eq '^site/|^\.github/workflows/lint\.yaml$' changed-files.txt; then
+            echo 'node=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'node=false' >> "$GITHUB_OUTPUT"
+          fi
+
   go-lint:
     name: Go Lint
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -37,6 +91,8 @@ jobs:
 
   static-lint:
     name: Static Analysis
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.static == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -76,6 +132,8 @@ jobs:
 
   node-lint:
     name: Node Lint
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.node == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Harden the runner (Audit all outbound calls)
