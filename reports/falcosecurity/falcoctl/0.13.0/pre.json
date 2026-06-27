@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.70.0"
   },
-  "ReportID": "019efd75-29da-7d5c-8ff8-f3050a7da19c",
-  "CreatedAt": "2026-06-25T06:26:14.618876847Z",
+  "ReportID": "019f07b1-d68f-7d31-ba2d-ead7cb30c591",
+  "CreatedAt": "2026-06-27T06:08:43.151865743Z",
   "ArtifactID": "sha256:23bbe9ea5556f1898e44bcf6d0190858bcbc4541be81184caa465eb8e37eefc6",
   "ArtifactName": "docker.io/falcosecurity/falcoctl:0.13.0",
   "ArtifactType": "container_image",
@@ -6498,6 +6498,49 @@
           "LastModifiedDate": "2026-05-08T22:24:19Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-48702",
+          "VendorIDs": [
+            "GHSA-47q9-m4ww-924m"
+          ],
+          "PkgID": "github.com/sigstore/rekor@v1.5.1",
+          "PkgName": "github.com/sigstore/rekor",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/github.com/sigstore/rekor@v1.5.1",
+            "UID": "b91741fbfa94caff"
+          },
+          "InstalledVersion": "v1.5.1",
+          "FixedVersion": "1.5.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:40da230879f9eece02dc5a77b9ce208003bd3be961cfcb1f9e0eebc063ea00c0",
+            "DiffID": "sha256:dec26f2a262e8495e68d394baa474b4342f09947b36562d63a3b611290150ff2"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-48702",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Go",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
+          },
+          "Fingerprint": "sha256:c74ba31830fae6c2c2b77b21991414ae4c276e66b38c60834ef715b3f24f900d",
+          "Title": "Rekor has an OOM Condition due to Unbounded gzip Decompression in Alpine APK Parsing Logic",
+          "Description": "## Description\n\nThe `Package.Unmarshal()` function in `pkg/types/alpine/apk.go` decompresses the signature and control gzip members of an APK file into in-memory buffers without bounding the total decompressed size. The existing `max_apk_metadata_size` check (default 1MB) is only applied to individual tar entry header sizes after decompression completes, so it does not prevent a decompression bomb from consuming unbounded heap memory.\n\nAn attacker can craft a gzip stream that compresses at a ~1000:1 ratio (e.g., 2MB compressed zeros → 2GB decompressed). When submitted as spec.package.content in an Alpine `ProposedEntry`, the server decompresses the full payload into memory during request processing, triggering a fatal Go runtime out-of-memory error or OS OOM-kill that cannot be caught by the server's recover() middleware.\n\nThis is reachable via two unauthenticated endpoints:\n- POST /api/v1/log/entries (createLogEntry)\n- POST /api/v1/log/entries/retrieve (searchLogQuery)\n\nBoth invoke `V001Entry.Canonicalize()` → `fetchExternalEntities()` → `apk.Unmarshal(packageData)`, which performs the unbounded decompression.\n\n## Workarounds\n\nThere is no effective workaround. Setting `max_request_body_size` reduces but does not eliminate exposure due to the ~1000:1 compression ratio (a 1MB body limit still allows ~1GB heap allocation). Setting `max_apk_metadata_size` has no effect on this vulnerability since the check is applied after decompression.",
+          "Severity": "HIGH",
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://github.com/sigstore/rekor",
+            "https://github.com/sigstore/rekor/security/advisories/GHSA-47q9-m4ww-924m"
+          ]
+        },
+        {
           "VulnerabilityID": "CVE-2026-39827",
           "VendorIDs": [
             "GO-2026-5016"
@@ -6628,9 +6671,12 @@
             "CWE-347"
           ],
           "VendorSeverity": {
+            "alma": 3,
             "amazon": 3,
             "azure": 3,
-            "redhat": 3
+            "oracle-oval": 3,
+            "redhat": 3,
+            "rocky": 3
           },
           "CVSS": {
             "redhat": {
@@ -6639,11 +6685,34 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:29455",
             "https://access.redhat.com/security/cve/CVE-2026-39829",
+            "https://bugzilla.redhat.com/2445356",
+            "https://bugzilla.redhat.com/2456333",
+            "https://bugzilla.redhat.com/2456338",
+            "https://bugzilla.redhat.com/2456339",
+            "https://bugzilla.redhat.com/2480681",
+            "https://bugzilla.redhat.com/2480684",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2445356",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2456333",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2456338",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2456339",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2480681",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2480684",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-25679",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32280",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32281",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32283",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39829",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39830",
+            "https://errata.almalinux.org/9/ALSA-2026-29455.html",
+            "https://errata.rockylinux.org/RLSA-2026:29455",
             "https://go.dev/cl/781641",
             "https://go.dev/cl/781661",
             "https://go.dev/issue/79565",
             "https://groups.google.com/g/golang-announce/c/a082jnz-LvI",
+            "https://linux.oracle.com/cve/CVE-2026-39829.html",
+            "https://linux.oracle.com/errata/ELSA-2026-29455.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-39829",
             "https://pkg.go.dev/vuln/GO-2026-5018",
             "https://www.cve.org/CVERecord?id=CVE-2026-39829"
@@ -6683,9 +6752,12 @@
             "CWE-119"
           ],
           "VendorSeverity": {
+            "alma": 3,
             "amazon": 3,
             "azure": 3,
+            "oracle-oval": 3,
             "redhat": 3,
+            "rocky": 3,
             "ubuntu": 2
           },
           "CVSS": {
@@ -6695,12 +6767,35 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:29455",
             "https://access.redhat.com/security/cve/CVE-2026-39830",
+            "https://bugzilla.redhat.com/2445356",
+            "https://bugzilla.redhat.com/2456333",
+            "https://bugzilla.redhat.com/2456338",
+            "https://bugzilla.redhat.com/2456339",
+            "https://bugzilla.redhat.com/2480681",
+            "https://bugzilla.redhat.com/2480684",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2445356",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2456333",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2456338",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2456339",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2480681",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2480684",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-25679",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32280",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32281",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32283",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39829",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39830",
+            "https://errata.almalinux.org/9/ALSA-2026-29455.html",
+            "https://errata.rockylinux.org/RLSA-2026:29455",
             "https://github.com/golang/crypto/commit/4e7a7384ecbc8d519f6f4c11b36fa9d761fc8946",
             "https://go.dev/cl/781640",
             "https://go.dev/cl/781664",
             "https://go.dev/issue/79564",
             "https://groups.google.com/g/golang-announce/c/a082jnz-LvI",
+            "https://linux.oracle.com/cve/CVE-2026-39830.html",
+            "https://linux.oracle.com/errata/ELSA-2026-29455.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-39830",
             "https://pkg.go.dev/vuln/GO-2026-5017",
             "https://ubuntu.com/security/notices/USN-8447-1",
@@ -6710,6 +6805,63 @@
           ],
           "PublishedDate": "2026-05-22T04:16:22.44Z",
           "LastModifiedDate": "2026-06-17T10:42:39.483Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-39832",
+          "VendorIDs": [
+            "GO-2026-5006"
+          ],
+          "PkgID": "golang.org/x/crypto@v0.50.0",
+          "PkgName": "golang.org/x/crypto",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/golang.org/x/crypto@v0.50.0",
+            "UID": "19019d895075f6b0"
+          },
+          "InstalledVersion": "v0.50.0",
+          "FixedVersion": "0.52.0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:40da230879f9eece02dc5a77b9ce208003bd3be961cfcb1f9e0eebc063ea00c0",
+            "DiffID": "sha256:dec26f2a262e8495e68d394baa474b4342f09947b36562d63a3b611290150ff2"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-39832",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:39f3db015ce729431e1b98cac53a6d086b65757ff6f3d29492524d2c633f4486",
+          "Title": "golang.org/x/crypto/ssh/agent: golang.org/x/crypto/ssh/agent: Security bypass due to improper handling of key restrictions",
+          "Description": "When adding a key to a remote agent constraint extensions such as restrict-destination-v00@openssh.com were not serialized in the request. Destination restrictions were silently stripped when forwarding keys, allowing unrestricted use of the key on the remote host. The client now serializes all constraint extensions. Additionally, the in-memory keyring returned by NewKeyring() now rejects keys with unsupported constraint extensions instead of silently ignoring them.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-502"
+          ],
+          "VendorSeverity": {
+            "amazon": 3,
+            "azure": 3,
+            "redhat": 3,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:H/I:H/A:N",
+              "V3Score": 8.7
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-39832",
+            "https://github.com/golang/crypto/commit/e3d1254f1e7e60baa086142c46174bf6d8d0fe50",
+            "https://go.dev/cl/778642",
+            "https://go.dev/issue/79435",
+            "https://groups.google.com/g/golang-announce/c/a082jnz-LvI",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-39832",
+            "https://pkg.go.dev/vuln/GO-2026-5006",
+            "https://ubuntu.com/security/notices/USN-8447-1",
+            "https://www.cve.org/CVERecord?id=CVE-2026-39832"
+          ],
+          "PublishedDate": "2026-05-22T04:16:22.663Z",
+          "LastModifiedDate": "2026-06-17T10:42:39.773Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39835",
@@ -6963,55 +7115,6 @@
           ],
           "PublishedDate": "2026-05-22T04:16:22.553Z",
           "LastModifiedDate": "2026-06-17T10:42:39.63Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-39832",
-          "VendorIDs": [
-            "GO-2026-5006"
-          ],
-          "PkgID": "golang.org/x/crypto@v0.50.0",
-          "PkgName": "golang.org/x/crypto",
-          "PkgIdentifier": {
-            "PURL": "pkg:golang/golang.org/x/crypto@v0.50.0",
-            "UID": "19019d895075f6b0"
-          },
-          "InstalledVersion": "v0.50.0",
-          "FixedVersion": "0.52.0",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:40da230879f9eece02dc5a77b9ce208003bd3be961cfcb1f9e0eebc063ea00c0",
-            "DiffID": "sha256:dec26f2a262e8495e68d394baa474b4342f09947b36562d63a3b611290150ff2"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-39832",
-          "DataSource": {
-            "ID": "govulndb",
-            "Name": "The Go Vulnerability Database",
-            "URL": "https://pkg.go.dev/vuln/"
-          },
-          "Fingerprint": "sha256:39f3db015ce729431e1b98cac53a6d086b65757ff6f3d29492524d2c633f4486",
-          "Title": "When adding a key to a remote agent constraint extensions such as rest ...",
-          "Description": "When adding a key to a remote agent constraint extensions such as restrict-destination-v00@openssh.com were not serialized in the request. Destination restrictions were silently stripped when forwarding keys, allowing unrestricted use of the key on the remote host. The client now serializes all constraint extensions. Additionally, the in-memory keyring returned by NewKeyring() now rejects keys with unsupported constraint extensions instead of silently ignoring them.",
-          "Severity": "MEDIUM",
-          "CweIDs": [
-            "CWE-502"
-          ],
-          "VendorSeverity": {
-            "amazon": 3,
-            "azure": 3,
-            "ubuntu": 2
-          },
-          "References": [
-            "https://github.com/golang/crypto/commit/e3d1254f1e7e60baa086142c46174bf6d8d0fe50",
-            "https://go.dev/cl/778642",
-            "https://go.dev/issue/79435",
-            "https://groups.google.com/g/golang-announce/c/a082jnz-LvI",
-            "https://nvd.nist.gov/vuln/detail/CVE-2026-39832",
-            "https://pkg.go.dev/vuln/GO-2026-5006",
-            "https://ubuntu.com/security/notices/USN-8447-1",
-            "https://www.cve.org/CVERecord?id=CVE-2026-39832"
-          ],
-          "PublishedDate": "2026-05-22T04:16:22.663Z",
-          "LastModifiedDate": "2026-06-17T10:42:39.773Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39833",
@@ -7492,54 +7595,6 @@
           "LastModifiedDate": "2026-06-17T10:42:38.62Z"
         },
         {
-          "VulnerabilityID": "CVE-2026-27145",
-          "VendorIDs": [
-            "GO-2026-5037"
-          ],
-          "PkgID": "stdlib@v1.26.2",
-          "PkgName": "stdlib",
-          "PkgIdentifier": {
-            "PURL": "pkg:golang/stdlib@v1.26.2",
-            "UID": "94368e3c5ef8ffc9"
-          },
-          "InstalledVersion": "v1.26.2",
-          "FixedVersion": "1.25.11, 1.26.4",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:40da230879f9eece02dc5a77b9ce208003bd3be961cfcb1f9e0eebc063ea00c0",
-            "DiffID": "sha256:dec26f2a262e8495e68d394baa474b4342f09947b36562d63a3b611290150ff2"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27145",
-          "DataSource": {
-            "ID": "govulndb",
-            "Name": "The Go Vulnerability Database",
-            "URL": "https://pkg.go.dev/vuln/"
-          },
-          "Fingerprint": "sha256:61de17ae8f297c1545ee824dbbc8b6fc9b9566dae349fa8148ecd8ede9647728",
-          "Title": "*x509.Certificate).VerifyHostname previously called matchHostnames in ...",
-          "Description": "(*x509.Certificate).VerifyHostname previously called matchHostnames in a loop over all DNS Subject Alternative Name (SAN) entries. This caused strings.Split(host, \".\") to execute repeatedly on the same input hostname. With a large DNS SAN list, verification costs scaled quadratically based on the number of SAN entries multiplied by the hostname's label count. Because x509.Verify validates hostnames before building the certificate chain, this overhead occurred even for untrusted certificates.",
-          "Severity": "HIGH",
-          "VendorSeverity": {
-            "amazon": 3,
-            "bitnami": 2
-          },
-          "CVSS": {
-            "bitnami": {
-              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:H",
-              "V3Score": 6.5
-            }
-          },
-          "References": [
-            "https://go.dev/cl/783621",
-            "https://go.dev/issue/79694",
-            "https://groups.google.com/g/golang-announce/c/tKs3rmcBcKw",
-            "https://nvd.nist.gov/vuln/detail/CVE-2026-27145",
-            "https://pkg.go.dev/vuln/GO-2026-5037"
-          ],
-          "PublishedDate": "2026-06-02T23:16:35.57Z",
-          "LastModifiedDate": "2026-06-17T10:26:45.23Z"
-        },
-        {
           "VulnerabilityID": "CVE-2026-33811",
           "VendorIDs": [
             "GO-2026-4981"
@@ -7599,7 +7654,7 @@
             "https://go.dev/issue/78803",
             "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
             "https://linux.oracle.com/cve/CVE-2026-33811.html",
-            "https://linux.oracle.com/errata/ELSA-2026-22112.html",
+            "https://linux.oracle.com/errata/ELSA-2026-22121.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-33811",
             "https://pkg.go.dev/vuln/GO-2026-4981",
             "https://www.cve.org/CVERecord?id=CVE-2026-33811"
@@ -7673,10 +7728,13 @@
             "https://go.dev/issue/78476",
             "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
             "https://linux.oracle.com/cve/CVE-2026-33814.html",
-            "https://linux.oracle.com/errata/ELSA-2026-22112.html",
+            "https://linux.oracle.com/errata/ELSA-2026-22121.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-33814",
             "https://pkg.go.dev/vuln/GO-2026-4918",
             "https://ubuntu.com/security/notices/USN-8430-1",
+            "https://ubuntu.com/security/notices/USN-8471-1",
+            "https://ubuntu.com/security/notices/USN-8472-1",
+            "https://ubuntu.com/security/notices/USN-8473-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-33814"
           ],
           "PublishedDate": "2026-05-07T20:16:42.88Z",
@@ -7736,119 +7794,12 @@
             "https://go.dev/issue/78566",
             "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
             "https://linux.oracle.com/cve/CVE-2026-39820.html",
-            "https://linux.oracle.com/errata/ELSA-2026-22112.html",
+            "https://linux.oracle.com/errata/ELSA-2026-22121.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-39820",
             "https://pkg.go.dev/vuln/GO-2026-4986"
           ],
           "PublishedDate": "2026-05-07T20:16:43.187Z",
           "LastModifiedDate": "2026-06-17T10:42:38.193Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-39823",
-          "VendorIDs": [
-            "GO-2026-4982"
-          ],
-          "PkgID": "stdlib@v1.26.2",
-          "PkgName": "stdlib",
-          "PkgIdentifier": {
-            "PURL": "pkg:golang/stdlib@v1.26.2",
-            "UID": "94368e3c5ef8ffc9"
-          },
-          "InstalledVersion": "v1.26.2",
-          "FixedVersion": "1.25.10, 1.26.3",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:40da230879f9eece02dc5a77b9ce208003bd3be961cfcb1f9e0eebc063ea00c0",
-            "DiffID": "sha256:dec26f2a262e8495e68d394baa474b4342f09947b36562d63a3b611290150ff2"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-39823",
-          "DataSource": {
-            "ID": "govulndb",
-            "Name": "The Go Vulnerability Database",
-            "URL": "https://pkg.go.dev/vuln/"
-          },
-          "Fingerprint": "sha256:9bfbb45bc06990f6fb5a002da0cd6dc0ac9ff7229e2aa0d5a355d774b6eb3f03",
-          "Title": "CVE-2026-27142 fixed a vulnerability in which URLs were not correctly  ...",
-          "Description": "CVE-2026-27142 fixed a vulnerability in which URLs were not correctly escaped inside of a \u003cmeta\u003e tag's \u003ccontent\u003e attribute. If the URL content were to insert ASCII whitespaces around the '=' rune inside of the \u003ccontent\u003e attribute, the escaper would fail to similarly escape it, leading to XSS.",
-          "Severity": "HIGH",
-          "CweIDs": [
-            "CWE-79"
-          ],
-          "VendorSeverity": {
-            "amazon": 3,
-            "bitnami": 2,
-            "oracle-oval": 3,
-            "photon": 2
-          },
-          "CVSS": {
-            "bitnami": {
-              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
-              "V3Score": 6.1
-            }
-          },
-          "References": [
-            "https://go.dev/cl/769920",
-            "https://go.dev/issue/78913",
-            "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
-            "https://linux.oracle.com/cve/CVE-2026-39823.html",
-            "https://linux.oracle.com/errata/ELSA-2026-22112.html",
-            "https://nvd.nist.gov/vuln/detail/CVE-2026-39823",
-            "https://pkg.go.dev/vuln/GO-2026-4982"
-          ],
-          "PublishedDate": "2026-05-07T20:16:43.29Z",
-          "LastModifiedDate": "2026-06-17T10:42:38.473Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-39825",
-          "VendorIDs": [
-            "GO-2026-4976"
-          ],
-          "PkgID": "stdlib@v1.26.2",
-          "PkgName": "stdlib",
-          "PkgIdentifier": {
-            "PURL": "pkg:golang/stdlib@v1.26.2",
-            "UID": "94368e3c5ef8ffc9"
-          },
-          "InstalledVersion": "v1.26.2",
-          "FixedVersion": "1.25.10, 1.26.3",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:40da230879f9eece02dc5a77b9ce208003bd3be961cfcb1f9e0eebc063ea00c0",
-            "DiffID": "sha256:dec26f2a262e8495e68d394baa474b4342f09947b36562d63a3b611290150ff2"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-39825",
-          "DataSource": {
-            "ID": "govulndb",
-            "Name": "The Go Vulnerability Database",
-            "URL": "https://pkg.go.dev/vuln/"
-          },
-          "Fingerprint": "sha256:c56d3b0250f39801648cbd89f85cf5d74862a9f3a13ebda27d9964f849b620e7",
-          "Title": "ReverseProxy can forward queries containing parameters not visible to  ...",
-          "Description": "ReverseProxy can forward queries containing parameters not visible to Rewrite functions. When used with a Rewrite function, or a Director function which parses query parameters, ReverseProxy sanitizes the forwarded request to remove query parameters which are not parsed by url.ParseQuery. ReverseProxy does not take ParseQuery's limit on the total number of query parameters (controlled by GODEBUG=urlmaxqueryparams=N) into account. This can permit ReverseProxy to forward a request containing a query parameter that is not visible to the Rewrite function. For example, the query \"a1=x\u0026a2=x\u0026...\u0026a10000=x\u0026hidden=y\" can forward the parameter \"hidden=y\" while hiding it from the proxy's Rewrite function.",
-          "Severity": "HIGH",
-          "VendorSeverity": {
-            "amazon": 3,
-            "bitnami": 2,
-            "oracle-oval": 3,
-            "photon": 2
-          },
-          "CVSS": {
-            "bitnami": {
-              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
-              "V3Score": 5.3
-            }
-          },
-          "References": [
-            "https://go.dev/cl/770541",
-            "https://go.dev/issue/78948",
-            "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
-            "https://linux.oracle.com/cve/CVE-2026-39825.html",
-            "https://linux.oracle.com/errata/ELSA-2026-22112.html",
-            "https://nvd.nist.gov/vuln/detail/CVE-2026-39825",
-            "https://pkg.go.dev/vuln/GO-2026-4976"
-          ],
-          "PublishedDate": "2026-05-07T20:16:43.39Z",
-          "LastModifiedDate": "2026-06-17T10:42:38.77Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39836",
@@ -7876,7 +7827,7 @@
             "URL": "https://pkg.go.dev/vuln/"
           },
           "Fingerprint": "sha256:ea7e94e40dce04eb8d7a09079c007e7e562e757bfb9076fb8d4ae15ba761be47",
-          "Title": "ELSA-2026-22112:  go-toolset:ol8 security update (IMPORTANT)",
+          "Title": "ELSA-2026-22121:  golang security update (IMPORTANT)",
           "Description": "The Dial and LookupPort functions panic on Windows when provided with an input containing a NUL (0).",
           "Severity": "HIGH",
           "CweIDs": [
@@ -7903,7 +7854,7 @@
             "https://go.dev/issue/79006",
             "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
             "https://linux.oracle.com/cve/CVE-2026-39836.html",
-            "https://linux.oracle.com/errata/ELSA-2026-22112.html",
+            "https://linux.oracle.com/errata/ELSA-2026-22121.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-39836",
             "https://pkg.go.dev/vuln/GO-2026-4971"
           ],
@@ -7955,7 +7906,7 @@
             "https://go.dev/issue/78987",
             "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
             "https://linux.oracle.com/cve/CVE-2026-42499.html",
-            "https://linux.oracle.com/errata/ELSA-2026-22112.html",
+            "https://linux.oracle.com/errata/ELSA-2026-22121.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-42499",
             "https://pkg.go.dev/vuln/GO-2026-4977"
           ],
@@ -7963,9 +7914,9 @@
           "LastModifiedDate": "2026-06-17T10:47:56.183Z"
         },
         {
-          "VulnerabilityID": "CVE-2026-42504",
+          "VulnerabilityID": "CVE-2026-27145",
           "VendorIDs": [
-            "GO-2026-5038"
+            "GO-2026-5037"
           ],
           "PkgID": "stdlib@v1.26.2",
           "PkgName": "stdlib",
@@ -7980,38 +7931,156 @@
             "Digest": "sha256:40da230879f9eece02dc5a77b9ce208003bd3be961cfcb1f9e0eebc063ea00c0",
             "DiffID": "sha256:dec26f2a262e8495e68d394baa474b4342f09947b36562d63a3b611290150ff2"
           },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-42504",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27145",
           "DataSource": {
             "ID": "govulndb",
             "Name": "The Go Vulnerability Database",
             "URL": "https://pkg.go.dev/vuln/"
           },
-          "Fingerprint": "sha256:dc90b7a82128838d37f861bf9b59e3d6f584563dcc7804f17f9cdf4db308a15b",
-          "Title": "Decoding a maliciously-crafted MIME header containing many invalid enc ...",
-          "Description": "Decoding a maliciously-crafted MIME header containing many invalid encoded-words can consume excessive CPU.",
-          "Severity": "HIGH",
-          "CweIDs": [
-            "CWE-407"
-          ],
+          "Fingerprint": "sha256:61de17ae8f297c1545ee824dbbc8b6fc9b9566dae349fa8148ecd8ede9647728",
+          "Title": "*x509.Certificate).VerifyHostname previously called matchHostnames in ...",
+          "Description": "(*x509.Certificate).VerifyHostname previously called matchHostnames in a loop over all DNS Subject Alternative Name (SAN) entries. This caused strings.Split(host, \".\") to execute repeatedly on the same input hostname. With a large DNS SAN list, verification costs scaled quadratically based on the number of SAN entries multiplied by the hostname's label count. Because x509.Verify validates hostnames before building the certificate chain, this overhead occurred even for untrusted certificates.",
+          "Severity": "MEDIUM",
           "VendorSeverity": {
-            "amazon": 3,
-            "bitnami": 3
+            "amazon": 2,
+            "bitnami": 2
           },
           "CVSS": {
             "bitnami": {
-              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
-              "V3Score": 7.5
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:H",
+              "V3Score": 6.5
             }
           },
           "References": [
-            "https://go.dev/cl/774481",
-            "https://go.dev/issue/79217",
+            "https://go.dev/cl/783621",
+            "https://go.dev/issue/79694",
             "https://groups.google.com/g/golang-announce/c/tKs3rmcBcKw",
-            "https://nvd.nist.gov/vuln/detail/CVE-2026-42504",
-            "https://pkg.go.dev/vuln/GO-2026-5038"
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-27145",
+            "https://pkg.go.dev/vuln/GO-2026-5037"
           ],
-          "PublishedDate": "2026-06-02T23:16:37.927Z",
-          "LastModifiedDate": "2026-06-17T10:47:56.86Z"
+          "PublishedDate": "2026-06-02T23:16:35.57Z",
+          "LastModifiedDate": "2026-06-17T10:26:45.23Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-39823",
+          "VendorIDs": [
+            "GO-2026-4982"
+          ],
+          "PkgID": "stdlib@v1.26.2",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.26.2",
+            "UID": "94368e3c5ef8ffc9"
+          },
+          "InstalledVersion": "v1.26.2",
+          "FixedVersion": "1.25.10, 1.26.3",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:40da230879f9eece02dc5a77b9ce208003bd3be961cfcb1f9e0eebc063ea00c0",
+            "DiffID": "sha256:dec26f2a262e8495e68d394baa474b4342f09947b36562d63a3b611290150ff2"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-39823",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:9bfbb45bc06990f6fb5a002da0cd6dc0ac9ff7229e2aa0d5a355d774b6eb3f03",
+          "Title": "html/template: golang: Go html/template: Cross-Site Scripting via improper URL escaping in meta tag content",
+          "Description": "CVE-2026-27142 fixed a vulnerability in which URLs were not correctly escaped inside of a \u003cmeta\u003e tag's \u003ccontent\u003e attribute. If the URL content were to insert ASCII whitespaces around the '=' rune inside of the \u003ccontent\u003e attribute, the escaper would fail to similarly escape it, leading to XSS.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-79"
+          ],
+          "VendorSeverity": {
+            "amazon": 3,
+            "bitnami": 2,
+            "oracle-oval": 3,
+            "photon": 2,
+            "redhat": 2
+          },
+          "CVSS": {
+            "bitnami": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+              "V3Score": 6.1
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+              "V3Score": 5.4
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-39823",
+            "https://go.dev/cl/769920",
+            "https://go.dev/issue/78913",
+            "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
+            "https://linux.oracle.com/cve/CVE-2026-39823.html",
+            "https://linux.oracle.com/errata/ELSA-2026-22121.html",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-39823",
+            "https://pkg.go.dev/vuln/GO-2026-4982",
+            "https://www.cve.org/CVERecord?id=CVE-2026-39823"
+          ],
+          "PublishedDate": "2026-05-07T20:16:43.29Z",
+          "LastModifiedDate": "2026-06-17T10:42:38.473Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-39825",
+          "VendorIDs": [
+            "GO-2026-4976"
+          ],
+          "PkgID": "stdlib@v1.26.2",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.26.2",
+            "UID": "94368e3c5ef8ffc9"
+          },
+          "InstalledVersion": "v1.26.2",
+          "FixedVersion": "1.25.10, 1.26.3",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:40da230879f9eece02dc5a77b9ce208003bd3be961cfcb1f9e0eebc063ea00c0",
+            "DiffID": "sha256:dec26f2a262e8495e68d394baa474b4342f09947b36562d63a3b611290150ff2"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-39825",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:c56d3b0250f39801648cbd89f85cf5d74862a9f3a13ebda27d9964f849b620e7",
+          "Title": "net/http/httputil: golang: net/http/httputil: ReverseProxy forwards hidden query parameters, potentially bypassing security controls",
+          "Description": "ReverseProxy can forward queries containing parameters not visible to Rewrite functions. When used with a Rewrite function, or a Director function which parses query parameters, ReverseProxy sanitizes the forwarded request to remove query parameters which are not parsed by url.ParseQuery. ReverseProxy does not take ParseQuery's limit on the total number of query parameters (controlled by GODEBUG=urlmaxqueryparams=N) into account. This can permit ReverseProxy to forward a request containing a query parameter that is not visible to the Rewrite function. For example, the query \"a1=x\u0026a2=x\u0026...\u0026a10000=x\u0026hidden=y\" can forward the parameter \"hidden=y\" while hiding it from the proxy's Rewrite function.",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "amazon": 3,
+            "bitnami": 2,
+            "oracle-oval": 3,
+            "photon": 2,
+            "redhat": 2
+          },
+          "CVSS": {
+            "bitnami": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+              "V3Score": 5.3
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+              "V3Score": 6.5
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-39825",
+            "https://go.dev/cl/770541",
+            "https://go.dev/issue/78948",
+            "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
+            "https://linux.oracle.com/cve/CVE-2026-39825.html",
+            "https://linux.oracle.com/errata/ELSA-2026-22121.html",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-39825",
+            "https://pkg.go.dev/vuln/GO-2026-4976",
+            "https://www.cve.org/CVERecord?id=CVE-2026-39825"
+          ],
+          "PublishedDate": "2026-05-07T20:16:43.39Z",
+          "LastModifiedDate": "2026-06-17T10:42:38.77Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39826",
@@ -8067,13 +8136,64 @@
             "https://go.dev/issue/78981",
             "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
             "https://linux.oracle.com/cve/CVE-2026-39826.html",
-            "https://linux.oracle.com/errata/ELSA-2026-22112.html",
+            "https://linux.oracle.com/errata/ELSA-2026-22121.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-39826",
             "https://pkg.go.dev/vuln/GO-2026-4980",
             "https://www.cve.org/CVERecord?id=CVE-2026-39826"
           ],
           "PublishedDate": "2026-05-07T20:16:43.49Z",
           "LastModifiedDate": "2026-06-17T10:42:38.923Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-42504",
+          "VendorIDs": [
+            "GO-2026-5038"
+          ],
+          "PkgID": "stdlib@v1.26.2",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.26.2",
+            "UID": "94368e3c5ef8ffc9"
+          },
+          "InstalledVersion": "v1.26.2",
+          "FixedVersion": "1.25.11, 1.26.4",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:40da230879f9eece02dc5a77b9ce208003bd3be961cfcb1f9e0eebc063ea00c0",
+            "DiffID": "sha256:dec26f2a262e8495e68d394baa474b4342f09947b36562d63a3b611290150ff2"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-42504",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:dc90b7a82128838d37f861bf9b59e3d6f584563dcc7804f17f9cdf4db308a15b",
+          "Title": "Decoding a maliciously-crafted MIME header containing many invalid enc ...",
+          "Description": "Decoding a maliciously-crafted MIME header containing many invalid encoded-words can consume excessive CPU.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-407"
+          ],
+          "VendorSeverity": {
+            "amazon": 2,
+            "bitnami": 3
+          },
+          "CVSS": {
+            "bitnami": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://go.dev/cl/774481",
+            "https://go.dev/issue/79217",
+            "https://groups.google.com/g/golang-announce/c/tKs3rmcBcKw",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-42504",
+            "https://pkg.go.dev/vuln/GO-2026-5038"
+          ],
+          "PublishedDate": "2026-06-02T23:16:37.927Z",
+          "LastModifiedDate": "2026-06-17T10:47:56.86Z"
         },
         {
           "VulnerabilityID": "CVE-2026-42507",
@@ -8104,9 +8224,11 @@
           "Description": "When returning errors, functions in the net/textproto package would include its input as part of the error. This might allow an attacker to inject misleading content to errors that are printed or logged.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
-            "amazon": 3,
+            "amazon": 2,
             "bitnami": 2,
-            "redhat": 2
+            "oracle-oval": 2,
+            "redhat": 2,
+            "rocky": 2
           },
           "CVSS": {
             "bitnami": {
@@ -8120,9 +8242,14 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-42507",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2484205",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-42507",
+            "https://errata.rockylinux.org/RLSA-2026:29981",
             "https://go.dev/cl/777060",
             "https://go.dev/issue/79346",
             "https://groups.google.com/g/golang-announce/c/tKs3rmcBcKw",
+            "https://linux.oracle.com/cve/CVE-2026-42507.html",
+            "https://linux.oracle.com/errata/ELSA-2026-29981.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-42507",
             "https://pkg.go.dev/vuln/GO-2026-5039",
             "https://www.cve.org/CVERecord?id=CVE-2026-42507"
