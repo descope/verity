@@ -105,10 +105,11 @@ jobs:
               }
 
               for image in "${changed_images[@]}"; do
+                image_re="$(printf '%s' "$image" | sed 's/[][(){}.^$?+*|\\/]/\\&/g')"
                 image_norm="$(norm "$image")"
                 match_chart_name "$image_norm"
                 for values_file in test/chart-integration/values/*.yaml; do
-                  if grep -Eq "verity-org/(.*/)?${image}([:@'\"[:space:]]|$)|\b${image}\b" "$values_file"; then
+                  if grep -Eq "verity-org/(.*/)?${image_re}([:@'\"[:space:]]|$)|\b${image_re}\b" "$values_file"; then
                     add_chart "$(basename "$values_file" .yaml)"
                   fi
                 done
