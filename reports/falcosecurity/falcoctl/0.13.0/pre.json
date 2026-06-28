@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.70.0"
   },
-  "ReportID": "019f07b1-d68f-7d31-ba2d-ead7cb30c591",
-  "CreatedAt": "2026-06-27T06:08:43.151865743Z",
+  "ReportID": "019f0cf3-4085-7c5b-aad6-88faf20a6cc2",
+  "CreatedAt": "2026-06-28T06:38:16.197811454Z",
   "ArtifactID": "sha256:23bbe9ea5556f1898e44bcf6d0190858bcbc4541be81184caa465eb8e37eefc6",
   "ArtifactName": "docker.io/falcosecurity/falcoctl:0.13.0",
   "ArtifactType": "container_image",
@@ -6253,25 +6253,32 @@
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
           },
           "Fingerprint": "sha256:1a6ec8307863f860b7f798506e477f8ad233443ec01d14e48955b43e342314a1",
-          "Title": "Moby is an open source container framework. In versions prior to 29.5. ...",
+          "Title": "docker: Moby/Docker Engine: Arbitrary Code Execution via malicious container image and compressed archive upload",
           "Description": "Moby is an open source container framework. In versions prior to 29.5.1 and in moby/moby v2 prior to v2.0.0-beta.14, when a compressed archive is uploaded to a container via `PUT /containers/{id}/archive` or piped through `docker cp -`, the daemon resolves decompression binaries (such as `xz` or `unpigz`) from the container's filesystem rather than the host's due to incorrect ordering of operations. A malicious container image containing a trojanized decompression binary can achieve arbitrary code execution with full daemon privileges, including host root UID and unrestricted capabilities, when a user uploads a compressed (xz or gzip) archive into that container. This issue is fixed in Docker Engine 29.5.1 and moby/moby v2.0.0-beta.14. Workarounds include only running containers from trusted images, using authorization plugins to restrict access to the `PUT /containers/{id}/archive` endpoint, and avoiding piping compressed archives into containers created from untrusted images",
           "Severity": "HIGH",
           "CweIDs": [
             "CWE-427"
           ],
           "VendorSeverity": {
-            "ghsa": 3
+            "ghsa": 3,
+            "redhat": 3
           },
           "CVSS": {
             "ghsa": {
               "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:R/S:C/C:H/I:H/A:N",
               "V3Score": 7.2
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:R/S:C/C:H/I:H/A:H",
+              "V3Score": 7.5
             }
           },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-41567",
             "https://github.com/moby/moby",
             "https://github.com/moby/moby/security/advisories/GHSA-x86f-5xw2-fm2r",
-            "https://nvd.nist.gov/vuln/detail/CVE-2026-41567"
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-41567",
+            "https://www.cve.org/CVERecord?id=CVE-2026-41567"
           ],
           "PublishedDate": "2026-06-05T02:17:13.817Z",
           "LastModifiedDate": "2026-06-17T10:46:51.687Z"
@@ -7595,6 +7602,54 @@
           "LastModifiedDate": "2026-06-17T10:42:38.62Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-27145",
+          "VendorIDs": [
+            "GO-2026-5037"
+          ],
+          "PkgID": "stdlib@v1.26.2",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.26.2",
+            "UID": "94368e3c5ef8ffc9"
+          },
+          "InstalledVersion": "v1.26.2",
+          "FixedVersion": "1.25.11, 1.26.4",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:40da230879f9eece02dc5a77b9ce208003bd3be961cfcb1f9e0eebc063ea00c0",
+            "DiffID": "sha256:dec26f2a262e8495e68d394baa474b4342f09947b36562d63a3b611290150ff2"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27145",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:61de17ae8f297c1545ee824dbbc8b6fc9b9566dae349fa8148ecd8ede9647728",
+          "Title": "*x509.Certificate).VerifyHostname previously called matchHostnames in ...",
+          "Description": "(*x509.Certificate).VerifyHostname previously called matchHostnames in a loop over all DNS Subject Alternative Name (SAN) entries. This caused strings.Split(host, \".\") to execute repeatedly on the same input hostname. With a large DNS SAN list, verification costs scaled quadratically based on the number of SAN entries multiplied by the hostname's label count. Because x509.Verify validates hostnames before building the certificate chain, this overhead occurred even for untrusted certificates.",
+          "Severity": "HIGH",
+          "VendorSeverity": {
+            "amazon": 3,
+            "bitnami": 2
+          },
+          "CVSS": {
+            "bitnami": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:H",
+              "V3Score": 6.5
+            }
+          },
+          "References": [
+            "https://go.dev/cl/783621",
+            "https://go.dev/issue/79694",
+            "https://groups.google.com/g/golang-announce/c/tKs3rmcBcKw",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-27145",
+            "https://pkg.go.dev/vuln/GO-2026-5037"
+          ],
+          "PublishedDate": "2026-06-02T23:16:35.57Z",
+          "LastModifiedDate": "2026-06-17T10:26:45.23Z"
+        },
+        {
           "VulnerabilityID": "CVE-2026-33811",
           "VendorIDs": [
             "GO-2026-4981"
@@ -7914,9 +7969,9 @@
           "LastModifiedDate": "2026-06-17T10:47:56.183Z"
         },
         {
-          "VulnerabilityID": "CVE-2026-27145",
+          "VulnerabilityID": "CVE-2026-42504",
           "VendorIDs": [
-            "GO-2026-5037"
+            "GO-2026-5038"
           ],
           "PkgID": "stdlib@v1.26.2",
           "PkgName": "stdlib",
@@ -7931,35 +7986,38 @@
             "Digest": "sha256:40da230879f9eece02dc5a77b9ce208003bd3be961cfcb1f9e0eebc063ea00c0",
             "DiffID": "sha256:dec26f2a262e8495e68d394baa474b4342f09947b36562d63a3b611290150ff2"
           },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-27145",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-42504",
           "DataSource": {
             "ID": "govulndb",
             "Name": "The Go Vulnerability Database",
             "URL": "https://pkg.go.dev/vuln/"
           },
-          "Fingerprint": "sha256:61de17ae8f297c1545ee824dbbc8b6fc9b9566dae349fa8148ecd8ede9647728",
-          "Title": "*x509.Certificate).VerifyHostname previously called matchHostnames in ...",
-          "Description": "(*x509.Certificate).VerifyHostname previously called matchHostnames in a loop over all DNS Subject Alternative Name (SAN) entries. This caused strings.Split(host, \".\") to execute repeatedly on the same input hostname. With a large DNS SAN list, verification costs scaled quadratically based on the number of SAN entries multiplied by the hostname's label count. Because x509.Verify validates hostnames before building the certificate chain, this overhead occurred even for untrusted certificates.",
-          "Severity": "MEDIUM",
+          "Fingerprint": "sha256:dc90b7a82128838d37f861bf9b59e3d6f584563dcc7804f17f9cdf4db308a15b",
+          "Title": "Decoding a maliciously-crafted MIME header containing many invalid enc ...",
+          "Description": "Decoding a maliciously-crafted MIME header containing many invalid encoded-words can consume excessive CPU.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-407"
+          ],
           "VendorSeverity": {
-            "amazon": 2,
-            "bitnami": 2
+            "amazon": 3,
+            "bitnami": 3
           },
           "CVSS": {
             "bitnami": {
-              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:H",
-              "V3Score": 6.5
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
             }
           },
           "References": [
-            "https://go.dev/cl/783621",
-            "https://go.dev/issue/79694",
+            "https://go.dev/cl/774481",
+            "https://go.dev/issue/79217",
             "https://groups.google.com/g/golang-announce/c/tKs3rmcBcKw",
-            "https://nvd.nist.gov/vuln/detail/CVE-2026-27145",
-            "https://pkg.go.dev/vuln/GO-2026-5037"
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-42504",
+            "https://pkg.go.dev/vuln/GO-2026-5038"
           ],
-          "PublishedDate": "2026-06-02T23:16:35.57Z",
-          "LastModifiedDate": "2026-06-17T10:26:45.23Z"
+          "PublishedDate": "2026-06-02T23:16:37.927Z",
+          "LastModifiedDate": "2026-06-17T10:47:56.86Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39823",
@@ -8145,57 +8203,6 @@
           "LastModifiedDate": "2026-06-17T10:42:38.923Z"
         },
         {
-          "VulnerabilityID": "CVE-2026-42504",
-          "VendorIDs": [
-            "GO-2026-5038"
-          ],
-          "PkgID": "stdlib@v1.26.2",
-          "PkgName": "stdlib",
-          "PkgIdentifier": {
-            "PURL": "pkg:golang/stdlib@v1.26.2",
-            "UID": "94368e3c5ef8ffc9"
-          },
-          "InstalledVersion": "v1.26.2",
-          "FixedVersion": "1.25.11, 1.26.4",
-          "Status": "fixed",
-          "Layer": {
-            "Digest": "sha256:40da230879f9eece02dc5a77b9ce208003bd3be961cfcb1f9e0eebc063ea00c0",
-            "DiffID": "sha256:dec26f2a262e8495e68d394baa474b4342f09947b36562d63a3b611290150ff2"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-42504",
-          "DataSource": {
-            "ID": "govulndb",
-            "Name": "The Go Vulnerability Database",
-            "URL": "https://pkg.go.dev/vuln/"
-          },
-          "Fingerprint": "sha256:dc90b7a82128838d37f861bf9b59e3d6f584563dcc7804f17f9cdf4db308a15b",
-          "Title": "Decoding a maliciously-crafted MIME header containing many invalid enc ...",
-          "Description": "Decoding a maliciously-crafted MIME header containing many invalid encoded-words can consume excessive CPU.",
-          "Severity": "MEDIUM",
-          "CweIDs": [
-            "CWE-407"
-          ],
-          "VendorSeverity": {
-            "amazon": 2,
-            "bitnami": 3
-          },
-          "CVSS": {
-            "bitnami": {
-              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
-              "V3Score": 7.5
-            }
-          },
-          "References": [
-            "https://go.dev/cl/774481",
-            "https://go.dev/issue/79217",
-            "https://groups.google.com/g/golang-announce/c/tKs3rmcBcKw",
-            "https://nvd.nist.gov/vuln/detail/CVE-2026-42504",
-            "https://pkg.go.dev/vuln/GO-2026-5038"
-          ],
-          "PublishedDate": "2026-06-02T23:16:37.927Z",
-          "LastModifiedDate": "2026-06-17T10:47:56.86Z"
-        },
-        {
           "VulnerabilityID": "CVE-2026-42507",
           "VendorIDs": [
             "GO-2026-5039"
@@ -8224,7 +8231,7 @@
           "Description": "When returning errors, functions in the net/textproto package would include its input as part of the error. This might allow an attacker to inject misleading content to errors that are printed or logged.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
-            "amazon": 2,
+            "amazon": 3,
             "bitnami": 2,
             "oracle-oval": 2,
             "redhat": 2,
