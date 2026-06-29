@@ -51,6 +51,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
@@ -60,10 +61,71 @@ jobs:
 
       - id: build-matrix
         name: Build chart matrix from Chart.yaml
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          INPUT_CHART: ${{ github.event.inputs.chart }}
         run: |
           set -euo pipefail
-          if [[ -n "${{ github.event.inputs.chart }}" ]]; then
-            charts="${{ github.event.inputs.chart }}"
+          if [[ -n "$INPUT_CHART" ]]; then
+            charts="$INPUT_CHART"
+          elif [[ "$EVENT_NAME" == "pull_request" ]]; then
+            git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
+            if grep -Eq '^(test/chart-integration/|\.github/workflows/chart-integration\.yaml|mise\.toml|Makefile|Chart\.yaml|verity\.yaml|internal/chartgen/|internal/discovery/)' changed-files.txt; then
+              charts="$(yq -r '.dependencies[].name' Chart.yaml)"
+            elif grep -Eq '^images/_base/' changed-files.txt; then
+              charts="$(yq -r '.dependencies[].name' Chart.yaml)"
+            elif grep -Eq '^images/.*\.ya?ml$' changed-files.txt; then
+              mapfile -t chart_deps < <(yq -r '.dependencies[].name' Chart.yaml)
+              mapfile -t chart_value_keys < <(yq -r '(.chartValues // {}) | keys[]' verity.yaml)
+              mapfile -t changed_images < <(sed -n 's|^images/\([^/]*\)\.ya\?ml$|\1|p' changed-files.txt | sort -u)
+              declare -A chart_set=()
+
+              norm() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]'; }
+              add_chart() {
+                local chart="$1"
+                for dep in "${chart_deps[@]}"; do
+                  if [[ "$dep" == "$chart" ]]; then
+                    chart_set["$chart"]=1
+                  fi
+                done
+                return 0
+              }
+              match_chart_name() {
+                local image_norm="$1"
+                local chart chart_norm
+                for chart in "${chart_deps[@]}" "${chart_value_keys[@]}"; do
+                  chart_norm="$(norm "$chart")"
+                  if [[ "$image_norm" == "$chart_norm" || "$image_norm" == "$chart_norm"* || "$chart_norm" == "$image_norm"* ]]; then
+                    add_chart "$chart"
+                  fi
+                done
+                return 0
+              }
+
+              for image in "${changed_images[@]}"; do
+                image_re="$(printf '%s' "$image" | sed 's/[][(){}.^$?+*|\\/]/\\&/g')"
+                image_norm="$(norm "$image")"
+                match_chart_name "$image_norm"
+                for values_file in test/chart-integration/values/*.yaml; do
+                  if grep -Eq "verity-org/(.*/)?${image_re}([:@'\"[:space:]]|$)|\b${image_re}\b" "$values_file"; then
+                    add_chart "$(basename "$values_file" .yaml)"
+                  fi
+                done
+                while IFS=$'\t' read -r _ replacement; do
+                  replacement_image="${replacement##*/}"
+                  replacement_norm="$(norm "$replacement_image")"
+                  if [[ "$replacement_norm" == "$image_norm" || "$replacement_norm" == "$image_norm"* || "$image_norm" == "$replacement_norm"* ]]; then
+                    match_chart_name "$replacement_norm"
+                  fi
+                done < <(yq -r '(.replacements // {}) | to_entries[] | [.key, .value.image] | @tsv' verity.yaml)
+              done
+
+              charts="$(printf '%s\n' "${!chart_set[@]}" | sort)"
+            else
+              charts=""
+            fi
           else
             charts="$(yq -r '.dependencies[].name' Chart.yaml)"
           fi
