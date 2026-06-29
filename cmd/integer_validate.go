@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	"github.com/urfave/cli/v3"
 	"gopkg.in/yaml.v3"
@@ -171,7 +170,8 @@ func runIntegerValidate(_ context.Context, cmd *cli.Command) error {
 func validateBespokeRefs(def *intconfig.ImageDef, defPath, bespokeDir string, referenced map[string]string, dirExists bool) int {
 	failures := 0
 	bespokeRefs := 0
-	for typeName, tmpl := range def.Types {
+	for typeName := range def.Types {
+		tmpl := def.Types[typeName]
 		if tmpl.Melange == nil || tmpl.Melange.Bespoke == "" {
 			continue
 		}
@@ -217,127 +217,6 @@ func validateBespokeRefs(def *intconfig.ImageDef, defPath, bespokeDir string, re
 	}
 
 	return failures
-}
-
-// validateDeclaredVersionsAgainstAPKINDEX flags declared `versions: X` keys
-// that the Wolfi APKINDEX cannot satisfy. For versioned upstream patterns
-// every declared X must resolve to either a literal "<pkg>-X" or some
-// aliasable "<pkg>-X.<minor>" — otherwise the apko config rendered for that
-// dispatch will fail at publish time with `nothing provides "<pkg>-X"`.
-//
-// Skips:
-//   - Unversioned upstream patterns (no "{{version}}"). The image-level
-//     existence check handles them; declared versions are usually just
-//     "latest" and don't need APKINDEX presence.
-//   - Types whose template is purely bespoke (declares melange.bespoke and
-//     does not include the upstream apk in packages:). Bespoke builds
-//     supply the apk locally so APKINDEX presence isn't required.
-//
-// When at least one type in the def DOES depend on the upstream apk
-// (the common case — every default/dev/fips type that doesn't override
-// packages:), the declared version must be APKINDEX-resolvable.
-func validateDeclaredVersionsAgainstAPKINDEX(def *intconfig.ImageDef, defPath string, pkgs []apkindex.Package) int {
-	// Pick the actual package pattern apk solving will use. For most
-	// images this is Upstream.Package; for the erlang/haproxy shape
-	// (unversioned upstream.package + versioned type packages),
-	// VersionedPackagePattern walks types[*].packages to find the
-	// constraint that actually matters. Bail when no version template
-	// is reachable — purely-bespoke or fully-pinned images don't need
-	// the per-version guard.
-	resolutionPattern := def.VersionedPackagePattern()
-	if resolutionPattern == "" {
-		return 0
-	}
-	if !anyTypeUsesPackage(def, resolutionPattern) {
-		return 0
-	}
-
-	failures := 0
-	for v := range def.Versions {
-		if v == "" || v == latestSentinel {
-			continue
-		}
-		resolved := apkindex.ResolveAliasVersion(pkgs, resolutionPattern, v)
-		// ResolveAliasVersion returns v unchanged when there is neither a
-		// literal nor an alias match. To distinguish "literal exists" from
-		// "unresolvable", check the literal one more time when resolved == v.
-		if resolved != v {
-			continue // alias matched a "<v>.<minor>" stem — render-time fix kicks in
-		}
-		literal := strings.ReplaceAll(resolutionPattern, "{{version}}", v)
-		if hasPackageName(pkgs, literal) {
-			continue // literal matched
-		}
-		fmt.Fprintf(os.Stderr,
-			"FAIL %s: declared version %q is not satisfiable — Wolfi APKINDEX has no package "+
-				"named %q, and no %q.<minor>-style package (e.g. %q.0, %q.1) is published either "+
-				"(apko publish would fail with `nothing provides %q`); "+
-				"declare a specific minor that Wolfi actually publishes\n",
-			defPath, v, literal, literal, literal, literal, literal)
-		failures++
-	}
-	return failures
-}
-
-// validateAgainstAPKINDEX runs the two APKINDEX-dependent guards for one
-// image def: the image-level "upstream package present" check and the
-// per-declared-version satisfiability check. Returns the failure count and
-// a skip flag indicating whether the caller should `continue` to the next
-// image (mirrors the structure of the inline block this replaced, kept here
-// to keep runIntegerValidate's cyclomatic complexity below the lint cap).
-//
-// When pkgs is empty (no --apkindex-url supplied), both guards are no-ops
-// and the function returns (0, false).
-func validateAgainstAPKINDEX(def *intconfig.ImageDef, defPath string, pkgs []apkindex.Package) (int, bool) {
-	if len(pkgs) == 0 {
-		return 0, false
-	}
-	if found := apkindex.DiscoverVersions(pkgs, def.Upstream.Package); len(found) == 0 {
-		fmt.Fprintf(os.Stderr, "FAIL %s: upstream package %q not found in APKINDEX\n",
-			defPath, def.Upstream.Package)
-		return 1, true
-	}
-	// Per-declared-version guard. For versioned upstream patterns every
-	// "versions: X" must map to either a literal "<pkg>-X" in the
-	// APKINDEX or some "<pkg>-X.<minor>" the renderer can alias to.
-	// Without this guard, declarations like `kyverno: { "1": {} }` slip
-	// through (because "kyverno-1.17" makes the image-level check pass)
-	// and then blow up at apko publish time with
-	// `nothing provides "kyverno-1"` — the chronic Integer Build Image
-	// failure mode.
-	//
-	// Skip purely-bespoke types (no upstream apk dependency) and
-	// unversioned upstream patterns, which are already covered by the
-	// image-level check above.
-	versionFails := validateDeclaredVersionsAgainstAPKINDEX(def, defPath, pkgs)
-	if versionFails > 0 {
-		return versionFails, true
-	}
-	return 0, false
-}
-
-// anyTypeUsesPackage reports whether at least one type in def lists pkg
-// in its packages: constraint. Used by the per-version validate guard to
-// skip images whose types don't actually depend on the resolution pattern
-// at hand: bespoke-only types and images where upstream.package is
-// declared but never referenced by a type.
-func anyTypeUsesPackage(def *intconfig.ImageDef, pkg string) bool {
-	for _, tmpl := range def.Types {
-		if slices.Contains(tmpl.Packages, pkg) {
-			return true
-		}
-	}
-	return false
-}
-
-// hasPackageName reports whether any pkg in pkgs has the exact name n.
-func hasPackageName(pkgs []apkindex.Package, n string) bool {
-	for _, pkg := range pkgs {
-		if pkg.Name == n {
-			return true
-		}
-	}
-	return false
 }
 
 // isExistingDir returns true iff path is a non-empty string and refers to
