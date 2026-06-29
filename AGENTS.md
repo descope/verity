@@ -91,6 +91,13 @@ searches in sandbox. Only your printed summary enters context.
 - When indexing content, use descriptive source labels so others can
   `search(source: "label")` later.
 
+## Verity security invariant
+
+- Verity's Integer images must stay zero-CVE. Never silence a Trivy failure by
+  skipping, excluding, downgrading, or documenting a vulnerable variant. Fix the
+  package/image so Trivy passes, or stop and escalate with the exact missing
+  upstream fix.
+
 ## ctx commands
 
 |Command|Action|
