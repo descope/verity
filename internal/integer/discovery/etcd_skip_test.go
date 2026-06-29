@@ -23,6 +23,7 @@ types:
     entrypoint: /usr/bin/etcd
   fips:
     base: wolfi-fips
+    fips-profile: openssl
     packages: ["etcd-{{version}}"]
     entrypoint: /usr/bin/etcd
 versions:
