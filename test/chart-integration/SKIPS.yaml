@@ -12,7 +12,7 @@
 # issue, an exit criterion, and a peer review. Prefer chartValues tuning,
 # image fixes, or harness retries (subtask 5) before adding here.
 #
-# Slot accounting: 2 of 5 slots used. Loader's MaxSkippedCharts=5
+# Slot accounting: 3 of 5 slots used. Loader's MaxSkippedCharts=5
 # invariant will reject any 6th entry. Adding another skip requires either
 # (a) removing an existing entry whose exit_criteria has been met, or
 # (b) a new SCR raising the cap.
@@ -66,3 +66,10 @@ skips:
     exit_criteria: "agent init container hits \"dial tcp 10.96.0.1:443: operation not permitted\" — kind cluster lacks capabilities for cilium's CNI. Revisit when smoke harness gains capability grants OR when cilium chart exposes a CI-friendly probe-disable knob."
     added: 2026-05-14
     added_by: SCR-2026-05-14-001
+
+  - chart: tempo-distributed
+    reason: integer-image-config-incompat
+    tracking_issue: needs new issue
+    exit_criteria: "ghcr.io/verity-org/tempo:2.9.0 accepts tempo-distributed chart 1.61.3's rendered distributed config; current failure is `field compactor not found in type app.Config` and `field ingester not found in type app.Config`."
+    added: 2026-06-29
+    added_by: nightly-ci-issues-review
