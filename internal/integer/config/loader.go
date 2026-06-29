@@ -113,6 +113,9 @@ func validateFIPSProfile(image, typeName string, tmpl TypeTemplate) error {
 	}
 	switch tmpl.FIPSProfile {
 	case FIPSProfileGo:
+		if tmpl.Base != "wolfi-base" {
+			return fmt.Errorf("image %q type %q profile %q base %q: %w", image, typeName, tmpl.FIPSProfile, tmpl.Base, ErrInvalidFIPSBase)
+		}
 		if !envContains(tmpl, "GODEBUG", "fips140=on") {
 			return fmt.Errorf("image %q type %q profile %q: %w", image, typeName, tmpl.FIPSProfile, ErrMissingFIPSEnvironment)
 		}
