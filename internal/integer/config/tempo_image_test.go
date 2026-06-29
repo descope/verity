@@ -20,8 +20,11 @@ func TestTempoImagePinsChartCompatiblePackage(t *testing.T) {
 	if err := Validate(def); err != nil {
 		t.Fatalf("validate tempo image: %v", err)
 	}
-	if _, ok := def.Versions["2.9.0"]; !ok {
-		t.Fatalf("tempo versions=%v, want 2.9.0", def.Versions)
+	if _, ok := def.Versions["2.9.0"]; ok {
+		t.Fatalf("tempo versions=%v must not publish vulnerable 2.9.0", def.Versions)
+	}
+	if _, ok := def.Versions["2.10.0"]; !ok {
+		t.Fatalf("tempo versions=%v, want 2.10.0", def.Versions)
 	}
 	packages := def.Types["default"].Packages
 	if !slices.Contains(packages, "tempo~{{version}}") {
