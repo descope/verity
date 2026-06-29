@@ -28,11 +28,6 @@ pipeline:
       repository: https://github.com/coredns/coredns
       tag: v${{package.version}}
 
-  - uses: go/bump
-    with:
-      deps: |-
-        go.opentelemetry.io/otel/sdk@v1.40.0
-
   - runs: |
       # Generate code and fetch plugins
       GOLANG_VERSION=$(go version | awk '{print $3}' | sed 's/^go//') make gen
