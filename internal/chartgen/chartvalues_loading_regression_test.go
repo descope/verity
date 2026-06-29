@@ -55,8 +55,8 @@ func TestVerityConfigChartValuesLoading(t *testing.T) {
 		t.Fatalf("cert-manager-csi-driver replacement tag=%q, want 0.15", certManagerCSIDriver.Tag)
 	}
 	tempo := vc2.Replacements["grafana/tempo"]
-	if tempo.Tag != "2.9.0" {
-		t.Fatalf("grafana/tempo replacement tag=%q, want 2.9.0", tempo.Tag)
+	if tempo.Tag != "2.10.0" {
+		t.Fatalf("grafana/tempo replacement tag=%q, want 2.10.0", tempo.Tag)
 	}
 	airflow := vc2.ChartValues["airflow"]
 	if airflow["postgresql.image.registry"] != "" {

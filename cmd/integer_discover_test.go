@@ -138,7 +138,8 @@ func TestIntegerDiscoverCommand_TempoIncludesChartCompatibleVersion(t *testing.T
 	for _, entry := range captured {
 		versions = append(versions, entry.Version)
 	}
-	assert.Contains(t, versions, "2.9.0")
+	assert.Contains(t, versions, "2.10.0")
+	assert.NotContains(t, versions, "2.9.0")
 }
 
 func TestIntegerDiscoverCommand_MissingConfig(t *testing.T) {
