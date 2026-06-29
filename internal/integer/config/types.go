@@ -92,7 +92,8 @@ func (d *ImageDef) VersionedPackagePattern() string {
 	if strings.Contains(d.Upstream.Package, versionPlaceholder) {
 		return d.Upstream.Package
 	}
-	for _, tmpl := range d.Types {
+	for typeName := range d.Types {
+		tmpl := d.Types[typeName]
 		for _, pkg := range tmpl.Packages {
 			if strings.Contains(pkg, versionPlaceholder) {
 				return pkg

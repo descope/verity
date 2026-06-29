@@ -84,11 +84,12 @@ func Validate(def *ImageDef) error {
 	if len(def.Types) == 0 {
 		return fmt.Errorf("image %q: %w", def.Name, ErrNoTypes)
 	}
-	for typeName, tmpl := range def.Types {
+	for typeName := range def.Types {
+		tmpl := def.Types[typeName]
 		if tmpl.Base == "" {
 			return fmt.Errorf("image %q type %q: %w", def.Name, typeName, ErrMissingBase)
 		}
-		if err := validateFIPSProfile(def.Name, typeName, tmpl); err != nil {
+		if err := validateFIPSProfile(def.Name, typeName, &tmpl); err != nil {
 			return err
 		}
 		if err := validateMelange(def.Name, typeName, tmpl.Melange); err != nil {
@@ -98,7 +99,7 @@ func Validate(def *ImageDef) error {
 	return nil
 }
 
-func validateFIPSProfile(image, typeName string, tmpl TypeTemplate) error {
+func validateFIPSProfile(image, typeName string, tmpl *TypeTemplate) error {
 	if typeName != "fips" {
 		if tmpl.FIPSProfile != "" {
 			return fmt.Errorf("image %q type %q: %w", image, typeName, ErrFIPSProfileOnNonFIPS)
@@ -136,7 +137,7 @@ func validateFIPSProfile(image, typeName string, tmpl TypeTemplate) error {
 	return nil
 }
 
-func envContains(tmpl TypeTemplate, key, token string) bool {
+func envContains(tmpl *TypeTemplate, key, token string) bool {
 	return strings.Contains(tmpl.Environment[key], token)
 }
 
