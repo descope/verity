@@ -22,10 +22,15 @@ types:
     packages: ["etcd-{{version}}"]
     entrypoint: /usr/bin/etcd
   fips:
-    base: wolfi-fips
-    fips-profile: openssl
+    base: wolfi-base
+    fips-profile: go
     packages: ["etcd-{{version}}"]
     entrypoint: /usr/bin/etcd
+    environment:
+      GODEBUG: "fips140=on"
+    melange:
+      upstream: "etcd"
+      env-file: "fips.env"
 versions:
   "3.5":
     skip-types: [default, fips]

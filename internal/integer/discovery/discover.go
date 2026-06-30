@@ -212,10 +212,14 @@ func expandImage(def *config.ImageDef, imagesDir, registry string, pkgs []apkind
 //     requires a melange build. Melange upstream YAMLs target a specific
 //     version, so auto-discovered versions cannot use them.
 func ShouldSkipType(def *config.ImageDef, version, typeName string) bool {
+	tmpl, exists := def.Types[typeName]
+	if exists && tmpl.FIPSProfile == config.FIPSProfileReview {
+		return true
+	}
+
 	meta, ok := def.Versions[version]
 	if !ok {
 		// Auto-discovered version: skip types that require a melange build.
-		tmpl, exists := def.Types[typeName]
 		return exists && tmpl.Melange != nil
 	}
 	return slices.Contains(meta.SkipTypes, typeName)
