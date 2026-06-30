@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.70.0"
   },
-  "ReportID": "019f1744-1632-7c56-8773-d2a9fa7a0745",
-  "CreatedAt": "2026-06-30T06:42:45.938810323Z",
+  "ReportID": "019f18ae-3920-732d-9de7-30cb5929777f",
+  "CreatedAt": "2026-06-30T13:18:18.912211678Z",
   "ArtifactID": "sha256:351cc9d3fad7f406a15f7c0d8df4947230aeb76578f479d8461699ec7b53bd00",
   "ArtifactName": "ghcr.io/verity-org/cache:library-elasticsearch-9.4.2",
   "ArtifactType": "container_image",
@@ -31116,7 +31116,7 @@
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-21555",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-21559",
             "https://errata.almalinux.org/8/ALSA-2025-1673.html",
-            "https://errata.rockylinux.org/RLSA-2025:1671",
+            "https://errata.rockylinux.org/RLSA-2025:1673",
             "https://github.com/advisories/GHSA-h288-5fq8-5pfw",
             "https://hackerone.com/reports/2829063",
             "https://linux.oracle.com/cve/CVE-2024-11053.html",
@@ -31334,7 +31334,7 @@
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-21555",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-21559",
             "https://errata.almalinux.org/8/ALSA-2025-1673.html",
-            "https://errata.rockylinux.org/RLSA-2025:1671",
+            "https://errata.rockylinux.org/RLSA-2025:1673",
             "https://github.com/curl/curl/commit/27959ecce75cdb2809c0bdb3286e60e08fadb519",
             "https://hackerone.com/reports/2629968",
             "https://linux.oracle.com/cve/CVE-2024-7264.html",
@@ -32895,7 +32895,7 @@
           "SeveritySource": "redhat",
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-54369",
           "Fingerprint": "sha256:e226dfdcab01d66634f6f2fa3184def6786bf69929b8cb0adc5a3210ac5f09ed",
-          "Title": "acl before version 2.4.0 contains a symlink traversal vulnerability in ...",
+          "Title": "acl: Symlink traversal privilege escalation via libacl functions",
           "Description": "acl before version 2.4.0 contains a symlink traversal vulnerability in the libacl pathname-based functions acl_get_file(), acl_set_file(), acl_extended_file(), and acl_delete_def_file() that allows local attackers to escalate privileges by replacing any pathname component with a symbolic link. Attackers who control any component of a pathname processed by a privileged caller can redirect ACL read or write operations to arbitrary files or directories, enabling unauthorized manipulation of access control lists and local privilege escalation.",
           "Severity": "HIGH",
           "CweIDs": [
@@ -32904,13 +32904,24 @@
           "VendorSeverity": {
             "redhat": 3
           },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+              "V3Score": 7.1
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-54369",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2490277",
             "https://cgit.git.savannah.nongnu.org/cgit/acl.git/commit/?id=24a227d0ab8576612194f8a56c2314389adc74a5",
             "https://cgit.git.savannah.nongnu.org/cgit/acl.git/commit/?id=3589787cd589b34bdd9265936e17190b6d3f17d1",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-54369",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-54369.json",
+            "https://www.cve.org/CVERecord?id=CVE-2026-54369",
             "https://www.vulncheck.com/advisories/acl-symlink-traversal-privilege-escalation-via-libacl-functions"
           ],
           "PublishedDate": "2026-06-29T14:16:57.487Z",
-          "LastModifiedDate": "2026-06-29T19:22:57.46Z"
+          "LastModifiedDate": "2026-06-30T03:21:02.73Z"
         },
         {
           "VulnerabilityID": "CVE-2026-54370",
@@ -32929,7 +32940,7 @@
           "SeveritySource": "redhat",
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-54370",
           "Fingerprint": "sha256:b218f89714782e192ccc5563c0b1f4fefee0333202a2e44ae4ee93739b94e025",
-          "Title": "acl before version 2.4.0 contains a time-of-check to time-of-use (TOCT ...",
+          "Title": "acl: TOCTOU Symlink Traversal via getfacl/setfacl",
           "Description": "acl before version 2.4.0 contains a time-of-check to time-of-use (TOCTOU) race condition vulnerability that allows local attackers to escalate privileges by replacing a pathname component with a symbolic link between an lstat() check and subsequent symlink-following operations such as stat(), chown(), chmod(), acl_get_file(), and acl_set_file(). Attackers who control a pathname component can redirect file access control list operations to arbitrary files when getfacl, setfacl, or chacl is invoked by a privileged process over an attacker-controlled path, resulting in local privilege escalation.",
           "Severity": "MEDIUM",
           "CweIDs": [
@@ -32938,9 +32949,18 @@
           "VendorSeverity": {
             "redhat": 2
           },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:N",
+              "V3Score": 6.3
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-54370",
             "https://cgit.git.savannah.nongnu.org/cgit/acl.git/commit/?id=24a227d0ab8576612194f8a56c2314389adc74a5",
             "https://cgit.git.savannah.nongnu.org/cgit/acl.git/commit/?id=3589787cd589b34bdd9265936e17190b6d3f17d1",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-54370",
+            "https://www.cve.org/CVERecord?id=CVE-2026-54370",
             "https://www.vulncheck.com/advisories/acl-toctou-symlink-traversal-via-getfacl-setfacl-chacl"
           ],
           "PublishedDate": "2026-06-29T14:16:57.67Z",
@@ -33421,7 +33441,7 @@
           "SeveritySource": "redhat",
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-54371",
           "Fingerprint": "sha256:5b18a212954f60d24f1c108b524fd5cc323cee62856f76c469ff46e490d818b7",
-          "Title": "attr before version 2.6.0 contains a symlink traversal vulnerability i ...",
+          "Title": "attr: Symlink Traversal Privilege Escalation via getfattr",
           "Description": "attr before version 2.6.0 contains a symlink traversal vulnerability in the getfattr and setfattr utilities that allows local attackers to escalate privileges by replacing a pathname component with a symbolic link during directory hierarchy traversal. Attackers who control a pathname component can redirect getfattr and setfattr operations to arbitrary files by substituting a symlink, leading to local privilege escalation when getfattr or setfattr is invoked by a privileged process over an attacker-controlled path.",
           "Severity": "HIGH",
           "CweIDs": [
@@ -33430,13 +33450,24 @@
           "VendorSeverity": {
             "redhat": 3
           },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+              "V3Score": 7.1
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-54371",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2490283",
             "https://cgit.git.savannah.nongnu.org/cgit/attr.git/commit/?id=49f79e947270f06940b9100fa638f85dddc4aa7f",
             "https://cgit.git.savannah.nongnu.org/cgit/attr.git/commit/?id=c440855d6b33446edf4b5eb1a2d892281f15a99b",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-54371",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-54371.json",
+            "https://www.cve.org/CVERecord?id=CVE-2026-54371",
             "https://www.vulncheck.com/advisories/attr-symlink-traversal-privilege-escalation-via-getfattr-setfattr"
           ],
           "PublishedDate": "2026-06-29T14:16:57.823Z",
-          "LastModifiedDate": "2026-06-29T19:22:57.46Z"
+          "LastModifiedDate": "2026-06-30T03:21:02.943Z"
         },
         {
           "VulnerabilityID": "CVE-2026-13595",
@@ -33471,6 +33502,7 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26573",
             "https://access.redhat.com/security/cve/CVE-2026-13595",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2494101",
             "https://github.com/util-linux/util-linux/commit/c0186f14fbdb02f64c8e0ba701ce727ea764ff4c",
@@ -33478,7 +33510,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-13595"
           ],
           "PublishedDate": "2026-06-29T09:16:28.303Z",
-          "LastModifiedDate": "2026-06-29T18:51:46.54Z"
+          "LastModifiedDate": "2026-06-30T03:17:14.55Z"
         },
         {
           "VulnerabilityID": "CVE-2026-27456",
@@ -34351,7 +34383,7 @@
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-21555",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-21559",
             "https://errata.almalinux.org/8/ALSA-2025-1673.html",
-            "https://errata.rockylinux.org/RLSA-2025:1671",
+            "https://errata.rockylinux.org/RLSA-2025:1673",
             "https://github.com/advisories/GHSA-h288-5fq8-5pfw",
             "https://hackerone.com/reports/2829063",
             "https://linux.oracle.com/cve/CVE-2024-11053.html",
@@ -34569,7 +34601,7 @@
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-21555",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-21559",
             "https://errata.almalinux.org/8/ALSA-2025-1673.html",
-            "https://errata.rockylinux.org/RLSA-2025:1671",
+            "https://errata.rockylinux.org/RLSA-2025:1673",
             "https://github.com/curl/curl/commit/27959ecce75cdb2809c0bdb3286e60e08fadb519",
             "https://hackerone.com/reports/2629968",
             "https://linux.oracle.com/cve/CVE-2024-7264.html",
@@ -35127,6 +35159,7 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26573",
             "https://access.redhat.com/security/cve/CVE-2026-13595",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2494101",
             "https://github.com/util-linux/util-linux/commit/c0186f14fbdb02f64c8e0ba701ce727ea764ff4c",
@@ -35134,7 +35167,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-13595"
           ],
           "PublishedDate": "2026-06-29T09:16:28.303Z",
-          "LastModifiedDate": "2026-06-29T18:51:46.54Z"
+          "LastModifiedDate": "2026-06-30T03:17:14.55Z"
         },
         {
           "VulnerabilityID": "CVE-2026-27456",
@@ -35268,6 +35301,7 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26573",
             "https://access.redhat.com/security/cve/CVE-2026-13595",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2494101",
             "https://github.com/util-linux/util-linux/commit/c0186f14fbdb02f64c8e0ba701ce727ea764ff4c",
@@ -35275,7 +35309,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-13595"
           ],
           "PublishedDate": "2026-06-29T09:16:28.303Z",
-          "LastModifiedDate": "2026-06-29T18:51:46.54Z"
+          "LastModifiedDate": "2026-06-30T03:17:14.55Z"
         },
         {
           "VulnerabilityID": "CVE-2026-27456",
@@ -35657,6 +35691,7 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26573",
             "https://access.redhat.com/security/cve/CVE-2026-13595",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2494101",
             "https://github.com/util-linux/util-linux/commit/c0186f14fbdb02f64c8e0ba701ce727ea764ff4c",
@@ -35664,7 +35699,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-13595"
           ],
           "PublishedDate": "2026-06-29T09:16:28.303Z",
-          "LastModifiedDate": "2026-06-29T18:51:46.54Z"
+          "LastModifiedDate": "2026-06-30T03:17:14.55Z"
         },
         {
           "VulnerabilityID": "CVE-2026-27456",
@@ -37254,8 +37289,25 @@
             "DiffID": "sha256:76c30a19831466a2388cd37770733c4a149dba7034565b568358b06088a23bf2"
           },
           "SeveritySource": "redhat",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-44605",
           "Fingerprint": "sha256:bc536f64a21e20165c923e1242c02fe76926a6f53409fb6898cb429515dc1b83",
-          "Severity": "LOW"
+          "Title": "rpm: heap buffer overflow in NDB slot table parsing",
+          "Description": "No description is available for this CVE.",
+          "Severity": "LOW",
+          "VendorSeverity": {
+            "redhat": 1
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+              "V3Score": 5.5
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-44605",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-44605",
+            "https://www.cve.org/CVERecord?id=CVE-2026-44605"
+          ]
         },
         {
           "VulnerabilityID": "CVE-2026-44604",
@@ -37314,8 +37366,25 @@
             "DiffID": "sha256:76c30a19831466a2388cd37770733c4a149dba7034565b568358b06088a23bf2"
           },
           "SeveritySource": "redhat",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-44605",
           "Fingerprint": "sha256:f9b14eb45cc88c8c8765e156f2f3ab2b39b63d43d201913ab500d44e80eb1fd2",
-          "Severity": "LOW"
+          "Title": "rpm: heap buffer overflow in NDB slot table parsing",
+          "Description": "No description is available for this CVE.",
+          "Severity": "LOW",
+          "VendorSeverity": {
+            "redhat": 1
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+              "V3Score": 5.5
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-44605",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-44605",
+            "https://www.cve.org/CVERecord?id=CVE-2026-44605"
+          ]
         },
         {
           "VulnerabilityID": "CVE-2026-5958",
@@ -51503,6 +51572,7 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-54513",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2492010",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/01d1692c8d0ed03e51a0e3c4f8a9e6908e4931e5",
             "https://github.com/FasterXML/jackson-databind/commit/24529da29fdf46ff94ca38de9ebf31cd188f5e8e",
@@ -51511,10 +51581,11 @@
             "https://github.com/FasterXML/jackson-databind/pull/5984",
             "https://github.com/FasterXML/jackson-databind/security/advisories/GHSA-rmj7-2vxq-3g9f",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-54513",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-54513.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-54513"
           ],
           "PublishedDate": "2026-06-23T21:17:02.333Z",
-          "LastModifiedDate": "2026-06-27T21:00:19.3Z"
+          "LastModifiedDate": "2026-06-30T03:21:03.13Z"
         },
         {
           "VulnerabilityID": "CVE-2026-54513",
@@ -51564,6 +51635,7 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-54513",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2492010",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/01d1692c8d0ed03e51a0e3c4f8a9e6908e4931e5",
             "https://github.com/FasterXML/jackson-databind/commit/24529da29fdf46ff94ca38de9ebf31cd188f5e8e",
@@ -51572,10 +51644,11 @@
             "https://github.com/FasterXML/jackson-databind/pull/5984",
             "https://github.com/FasterXML/jackson-databind/security/advisories/GHSA-rmj7-2vxq-3g9f",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-54513",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-54513.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-54513"
           ],
           "PublishedDate": "2026-06-23T21:17:02.333Z",
-          "LastModifiedDate": "2026-06-27T21:00:19.3Z"
+          "LastModifiedDate": "2026-06-30T03:21:03.13Z"
         },
         {
           "VulnerabilityID": "CVE-2026-54513",
@@ -51625,6 +51698,7 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-54513",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2492010",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/01d1692c8d0ed03e51a0e3c4f8a9e6908e4931e5",
             "https://github.com/FasterXML/jackson-databind/commit/24529da29fdf46ff94ca38de9ebf31cd188f5e8e",
@@ -51633,10 +51707,11 @@
             "https://github.com/FasterXML/jackson-databind/pull/5984",
             "https://github.com/FasterXML/jackson-databind/security/advisories/GHSA-rmj7-2vxq-3g9f",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-54513",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-54513.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-54513"
           ],
           "PublishedDate": "2026-06-23T21:17:02.333Z",
-          "LastModifiedDate": "2026-06-27T21:00:19.3Z"
+          "LastModifiedDate": "2026-06-30T03:21:03.13Z"
         },
         {
           "VulnerabilityID": "CVE-2026-54513",
@@ -51686,6 +51761,7 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-54513",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2492010",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/01d1692c8d0ed03e51a0e3c4f8a9e6908e4931e5",
             "https://github.com/FasterXML/jackson-databind/commit/24529da29fdf46ff94ca38de9ebf31cd188f5e8e",
@@ -51694,10 +51770,11 @@
             "https://github.com/FasterXML/jackson-databind/pull/5984",
             "https://github.com/FasterXML/jackson-databind/security/advisories/GHSA-rmj7-2vxq-3g9f",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-54513",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-54513.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-54513"
           ],
           "PublishedDate": "2026-06-23T21:17:02.333Z",
-          "LastModifiedDate": "2026-06-27T21:00:19.3Z"
+          "LastModifiedDate": "2026-06-30T03:21:03.13Z"
         },
         {
           "VulnerabilityID": "CVE-2026-54513",
@@ -51747,6 +51824,7 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-54513",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2492010",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/01d1692c8d0ed03e51a0e3c4f8a9e6908e4931e5",
             "https://github.com/FasterXML/jackson-databind/commit/24529da29fdf46ff94ca38de9ebf31cd188f5e8e",
@@ -51755,10 +51833,11 @@
             "https://github.com/FasterXML/jackson-databind/pull/5984",
             "https://github.com/FasterXML/jackson-databind/security/advisories/GHSA-rmj7-2vxq-3g9f",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-54513",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-54513.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-54513"
           ],
           "PublishedDate": "2026-06-23T21:17:02.333Z",
-          "LastModifiedDate": "2026-06-27T21:00:19.3Z"
+          "LastModifiedDate": "2026-06-30T03:21:03.13Z"
         },
         {
           "VulnerabilityID": "CVE-2026-54514",
@@ -52415,6 +52494,7 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-54513",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2492010",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/01d1692c8d0ed03e51a0e3c4f8a9e6908e4931e5",
             "https://github.com/FasterXML/jackson-databind/commit/24529da29fdf46ff94ca38de9ebf31cd188f5e8e",
@@ -52423,10 +52503,11 @@
             "https://github.com/FasterXML/jackson-databind/pull/5984",
             "https://github.com/FasterXML/jackson-databind/security/advisories/GHSA-rmj7-2vxq-3g9f",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-54513",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-54513.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-54513"
           ],
           "PublishedDate": "2026-06-23T21:17:02.333Z",
-          "LastModifiedDate": "2026-06-27T21:00:19.3Z"
+          "LastModifiedDate": "2026-06-30T03:21:03.13Z"
         },
         {
           "VulnerabilityID": "CVE-2026-54513",
@@ -52476,6 +52557,7 @@
           },
           "References": [
             "https://access.redhat.com/security/cve/CVE-2026-54513",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2492010",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/01d1692c8d0ed03e51a0e3c4f8a9e6908e4931e5",
             "https://github.com/FasterXML/jackson-databind/commit/24529da29fdf46ff94ca38de9ebf31cd188f5e8e",
@@ -52484,10 +52566,11 @@
             "https://github.com/FasterXML/jackson-databind/pull/5984",
             "https://github.com/FasterXML/jackson-databind/security/advisories/GHSA-rmj7-2vxq-3g9f",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-54513",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-54513.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-54513"
           ],
           "PublishedDate": "2026-06-23T21:17:02.333Z",
-          "LastModifiedDate": "2026-06-27T21:00:19.3Z"
+          "LastModifiedDate": "2026-06-30T03:21:03.13Z"
         },
         {
           "VulnerabilityID": "CVE-2026-54514",
@@ -53302,7 +53385,8 @@
           "Severity": "MEDIUM",
           "CweIDs": [
             "CWE-400",
-            "CWE-401"
+            "CWE-401",
+            "CWE-772"
           ],
           "VendorSeverity": {
             "ghsa": 2,
@@ -53324,16 +53408,21 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
             "https://access.redhat.com/security/cve/CVE-2026-48043",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488442",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-c2gf-v879-257j",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-48043",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-48043.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-48043"
           ],
           "PublishedDate": "2026-06-12T16:16:30.587Z",
-          "LastModifiedDate": "2026-06-17T10:54:50.363Z"
+          "LastModifiedDate": "2026-06-30T03:20:25.413Z"
         },
         {
           "VulnerabilityID": "CVE-2026-48043",
@@ -53366,7 +53455,8 @@
           "Severity": "MEDIUM",
           "CweIDs": [
             "CWE-400",
-            "CWE-401"
+            "CWE-401",
+            "CWE-772"
           ],
           "VendorSeverity": {
             "ghsa": 2,
@@ -53388,16 +53478,21 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
             "https://access.redhat.com/security/cve/CVE-2026-48043",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488442",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-c2gf-v879-257j",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-48043",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-48043.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-48043"
           ],
           "PublishedDate": "2026-06-12T16:16:30.587Z",
-          "LastModifiedDate": "2026-06-17T10:54:50.363Z"
+          "LastModifiedDate": "2026-06-30T03:20:25.413Z"
         },
         {
           "VulnerabilityID": "CVE-2026-48043",
@@ -53430,7 +53525,8 @@
           "Severity": "MEDIUM",
           "CweIDs": [
             "CWE-400",
-            "CWE-401"
+            "CWE-401",
+            "CWE-772"
           ],
           "VendorSeverity": {
             "ghsa": 2,
@@ -53452,16 +53548,21 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
             "https://access.redhat.com/security/cve/CVE-2026-48043",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488442",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-c2gf-v879-257j",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-48043",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-48043.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-48043"
           ],
           "PublishedDate": "2026-06-12T16:16:30.587Z",
-          "LastModifiedDate": "2026-06-17T10:54:50.363Z"
+          "LastModifiedDate": "2026-06-30T03:20:25.413Z"
         },
         {
           "VulnerabilityID": "CVE-2026-48043",
@@ -53494,7 +53595,8 @@
           "Severity": "MEDIUM",
           "CweIDs": [
             "CWE-400",
-            "CWE-401"
+            "CWE-401",
+            "CWE-772"
           ],
           "VendorSeverity": {
             "ghsa": 2,
@@ -53516,16 +53618,21 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
             "https://access.redhat.com/security/cve/CVE-2026-48043",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488442",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-c2gf-v879-257j",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-48043",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-48043.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-48043"
           ],
           "PublishedDate": "2026-06-12T16:16:30.587Z",
-          "LastModifiedDate": "2026-06-17T10:54:50.363Z"
+          "LastModifiedDate": "2026-06-30T03:20:25.413Z"
         },
         {
           "VulnerabilityID": "CVE-2026-50560",
@@ -53822,7 +53929,8 @@
           "Severity": "HIGH",
           "CweIDs": [
             "CWE-284",
-            "CWE-697"
+            "CWE-697",
+            "CWE-1287"
           ],
           "VendorSeverity": {
             "ghsa": 3,
@@ -53839,16 +53947,22 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-44249",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488081",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-3qp7-7mw8-wx86",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-44249",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-44249.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-44249"
           ],
           "PublishedDate": "2026-06-11T22:16:56.707Z",
-          "LastModifiedDate": "2026-06-17T10:50:24.89Z"
+          "LastModifiedDate": "2026-06-30T03:19:52.673Z"
         },
         {
           "VulnerabilityID": "CVE-2026-44249",
@@ -53881,7 +53995,8 @@
           "Severity": "HIGH",
           "CweIDs": [
             "CWE-284",
-            "CWE-697"
+            "CWE-697",
+            "CWE-1287"
           ],
           "VendorSeverity": {
             "ghsa": 3,
@@ -53898,16 +54013,22 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-44249",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488081",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-3qp7-7mw8-wx86",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-44249",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-44249.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-44249"
           ],
           "PublishedDate": "2026-06-11T22:16:56.707Z",
-          "LastModifiedDate": "2026-06-17T10:50:24.89Z"
+          "LastModifiedDate": "2026-06-30T03:19:52.673Z"
         },
         {
           "VulnerabilityID": "CVE-2026-44249",
@@ -53940,7 +54061,8 @@
           "Severity": "HIGH",
           "CweIDs": [
             "CWE-284",
-            "CWE-697"
+            "CWE-697",
+            "CWE-1287"
           ],
           "VendorSeverity": {
             "ghsa": 3,
@@ -53957,16 +54079,22 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-44249",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488081",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-3qp7-7mw8-wx86",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-44249",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-44249.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-44249"
           ],
           "PublishedDate": "2026-06-11T22:16:56.707Z",
-          "LastModifiedDate": "2026-06-17T10:50:24.89Z"
+          "LastModifiedDate": "2026-06-30T03:19:52.673Z"
         },
         {
           "VulnerabilityID": "CVE-2026-44249",
@@ -53999,7 +54127,8 @@
           "Severity": "HIGH",
           "CweIDs": [
             "CWE-284",
-            "CWE-697"
+            "CWE-697",
+            "CWE-1287"
           ],
           "VendorSeverity": {
             "ghsa": 3,
@@ -54016,16 +54145,22 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-44249",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488081",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-3qp7-7mw8-wx86",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-44249",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-44249.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-44249"
           ],
           "PublishedDate": "2026-06-11T22:16:56.707Z",
-          "LastModifiedDate": "2026-06-17T10:50:24.89Z"
+          "LastModifiedDate": "2026-06-30T03:19:52.673Z"
         },
         {
           "VulnerabilityID": "CVE-2026-44249",
@@ -54058,7 +54193,8 @@
           "Severity": "HIGH",
           "CweIDs": [
             "CWE-284",
-            "CWE-697"
+            "CWE-697",
+            "CWE-1287"
           ],
           "VendorSeverity": {
             "ghsa": 3,
@@ -54075,16 +54211,22 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-44249",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488081",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-3qp7-7mw8-wx86",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-44249",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-44249.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-44249"
           ],
           "PublishedDate": "2026-06-11T22:16:56.707Z",
-          "LastModifiedDate": "2026-06-17T10:50:24.89Z"
+          "LastModifiedDate": "2026-06-30T03:19:52.673Z"
         },
         {
           "VulnerabilityID": "CVE-2026-44249",
@@ -54117,7 +54259,8 @@
           "Severity": "HIGH",
           "CweIDs": [
             "CWE-284",
-            "CWE-697"
+            "CWE-697",
+            "CWE-1287"
           ],
           "VendorSeverity": {
             "ghsa": 3,
@@ -54134,16 +54277,22 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-44249",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488081",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-3qp7-7mw8-wx86",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-44249",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-44249.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-44249"
           ],
           "PublishedDate": "2026-06-11T22:16:56.707Z",
-          "LastModifiedDate": "2026-06-17T10:50:24.89Z"
+          "LastModifiedDate": "2026-06-30T03:19:52.673Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45416",
@@ -54192,16 +54341,22 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-45416",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488391",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-x4gw-5cx5-pgmh",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-45416",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-45416.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-45416"
           ],
           "PublishedDate": "2026-06-12T15:16:26.94Z",
-          "LastModifiedDate": "2026-06-17T10:52:02.103Z"
+          "LastModifiedDate": "2026-06-30T03:20:03.83Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45416",
@@ -54250,16 +54405,22 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-45416",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488391",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-x4gw-5cx5-pgmh",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-45416",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-45416.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-45416"
           ],
           "PublishedDate": "2026-06-12T15:16:26.94Z",
-          "LastModifiedDate": "2026-06-17T10:52:02.103Z"
+          "LastModifiedDate": "2026-06-30T03:20:03.83Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45416",
@@ -54308,16 +54469,22 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-45416",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488391",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-x4gw-5cx5-pgmh",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-45416",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-45416.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-45416"
           ],
           "PublishedDate": "2026-06-12T15:16:26.94Z",
-          "LastModifiedDate": "2026-06-17T10:52:02.103Z"
+          "LastModifiedDate": "2026-06-30T03:20:03.83Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45416",
@@ -54366,16 +54533,22 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-45416",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488391",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-x4gw-5cx5-pgmh",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-45416",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-45416.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-45416"
           ],
           "PublishedDate": "2026-06-12T15:16:26.94Z",
-          "LastModifiedDate": "2026-06-17T10:52:02.103Z"
+          "LastModifiedDate": "2026-06-30T03:20:03.83Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45416",
@@ -54424,16 +54597,22 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-45416",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488391",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-x4gw-5cx5-pgmh",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-45416",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-45416.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-45416"
           ],
           "PublishedDate": "2026-06-12T15:16:26.94Z",
-          "LastModifiedDate": "2026-06-17T10:52:02.103Z"
+          "LastModifiedDate": "2026-06-30T03:20:03.83Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45416",
@@ -54482,16 +54661,22 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-45416",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488391",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-x4gw-5cx5-pgmh",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-45416",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-45416.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-45416"
           ],
           "PublishedDate": "2026-06-12T15:16:26.94Z",
-          "LastModifiedDate": "2026-06-17T10:52:02.103Z"
+          "LastModifiedDate": "2026-06-30T03:20:03.83Z"
         },
         {
           "VulnerabilityID": "CVE-2026-50010",
@@ -54540,16 +54725,22 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-50010",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488429",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-c653-97m9-rcg9",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-50010",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-50010.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-50010"
           ],
           "PublishedDate": "2026-06-12T16:16:31.18Z",
-          "LastModifiedDate": "2026-06-17T10:57:35.027Z"
+          "LastModifiedDate": "2026-06-30T03:20:44.84Z"
         },
         {
           "VulnerabilityID": "CVE-2026-50010",
@@ -54598,16 +54789,22 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-50010",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488429",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-c653-97m9-rcg9",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-50010",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-50010.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-50010"
           ],
           "PublishedDate": "2026-06-12T16:16:31.18Z",
-          "LastModifiedDate": "2026-06-17T10:57:35.027Z"
+          "LastModifiedDate": "2026-06-30T03:20:44.84Z"
         },
         {
           "VulnerabilityID": "CVE-2026-50010",
@@ -54656,16 +54853,22 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-50010",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488429",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-c653-97m9-rcg9",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-50010",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-50010.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-50010"
           ],
           "PublishedDate": "2026-06-12T16:16:31.18Z",
-          "LastModifiedDate": "2026-06-17T10:57:35.027Z"
+          "LastModifiedDate": "2026-06-30T03:20:44.84Z"
         },
         {
           "VulnerabilityID": "CVE-2026-50010",
@@ -54714,16 +54917,22 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-50010",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488429",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-c653-97m9-rcg9",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-50010",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-50010.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-50010"
           ],
           "PublishedDate": "2026-06-12T16:16:31.18Z",
-          "LastModifiedDate": "2026-06-17T10:57:35.027Z"
+          "LastModifiedDate": "2026-06-30T03:20:44.84Z"
         },
         {
           "VulnerabilityID": "CVE-2026-50010",
@@ -54772,16 +54981,22 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-50010",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488429",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-c653-97m9-rcg9",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-50010",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-50010.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-50010"
           ],
           "PublishedDate": "2026-06-12T16:16:31.18Z",
-          "LastModifiedDate": "2026-06-17T10:57:35.027Z"
+          "LastModifiedDate": "2026-06-30T03:20:44.84Z"
         },
         {
           "VulnerabilityID": "CVE-2026-50010",
@@ -54830,16 +55045,22 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-50010",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488429",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-c653-97m9-rcg9",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-50010",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-50010.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-50010"
           ],
           "PublishedDate": "2026-06-12T16:16:31.18Z",
-          "LastModifiedDate": "2026-06-17T10:57:35.027Z"
+          "LastModifiedDate": "2026-06-30T03:20:44.84Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45674",
@@ -54871,7 +55092,8 @@
           "Description": "Netty is a network application framework for development of protocol servers and clients. Prior to versions 4.1.135.Final and 4.2.15.Final, Netty's DnsResolveContext fails to validate the origin (bailiwick) of CNAME records in DNS responses. Versions 4.1.135.Final and 4.2.15.Final patch the issue.",
           "Severity": "HIGH",
           "CweIDs": [
-            "CWE-345"
+            "CWE-345",
+            "CWE-346"
           ],
           "VendorSeverity": {
             "ghsa": 3,
@@ -54893,16 +55115,21 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
             "https://access.redhat.com/security/cve/CVE-2026-45674",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488400",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-676x-f7gg-47vc",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-45674",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-45674.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-45674"
           ],
           "PublishedDate": "2026-06-12T15:16:27.55Z",
-          "LastModifiedDate": "2026-06-17T10:52:27.297Z"
+          "LastModifiedDate": "2026-06-30T03:20:04.983Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45674",
@@ -54934,7 +55161,8 @@
           "Description": "Netty is a network application framework for development of protocol servers and clients. Prior to versions 4.1.135.Final and 4.2.15.Final, Netty's DnsResolveContext fails to validate the origin (bailiwick) of CNAME records in DNS responses. Versions 4.1.135.Final and 4.2.15.Final patch the issue.",
           "Severity": "HIGH",
           "CweIDs": [
-            "CWE-345"
+            "CWE-345",
+            "CWE-346"
           ],
           "VendorSeverity": {
             "ghsa": 3,
@@ -54956,16 +55184,21 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
             "https://access.redhat.com/security/cve/CVE-2026-45674",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488400",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-676x-f7gg-47vc",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-45674",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-45674.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-45674"
           ],
           "PublishedDate": "2026-06-12T15:16:27.55Z",
-          "LastModifiedDate": "2026-06-17T10:52:27.297Z"
+          "LastModifiedDate": "2026-06-30T03:20:04.983Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45674",
@@ -54997,7 +55230,8 @@
           "Description": "Netty is a network application framework for development of protocol servers and clients. Prior to versions 4.1.135.Final and 4.2.15.Final, Netty's DnsResolveContext fails to validate the origin (bailiwick) of CNAME records in DNS responses. Versions 4.1.135.Final and 4.2.15.Final patch the issue.",
           "Severity": "HIGH",
           "CweIDs": [
-            "CWE-345"
+            "CWE-345",
+            "CWE-346"
           ],
           "VendorSeverity": {
             "ghsa": 3,
@@ -55019,16 +55253,21 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
             "https://access.redhat.com/security/cve/CVE-2026-45674",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488400",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-676x-f7gg-47vc",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-45674",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-45674.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-45674"
           ],
           "PublishedDate": "2026-06-12T15:16:27.55Z",
-          "LastModifiedDate": "2026-06-17T10:52:27.297Z"
+          "LastModifiedDate": "2026-06-30T03:20:04.983Z"
         },
         {
           "VulnerabilityID": "CVE-2026-47691",
@@ -55060,7 +55299,8 @@
           "Description": "Netty is a network application framework for development of protocol servers and clients. Prior to versions 4.1.135.Final and 4.2.15.Final, Netty's `DnsResolveContext` insufficiently validates the bailiwick of NS records, enabling DNS Cache Poisoning. An attacker controlling an authoritative name server for a subdomain can poison the cache for parent domains (like `.co.uk`). In `io.netty.resolver.dns.DnsResolveContext.AuthoritativeNameServerList#add` method accepts any NS record from the AUTHORITY section as long as the record's name is a suffix of the questionName. Subsequently, the `handleWithAdditional` method caches the associated A records from the ADDITIONAL section directly into the `authoritativeDnsServerCache` under the parent domain's key. This bypasses standard bailiwick rules, where a server authoritative for a subdomain should not be trusted to provide authoritative records for its parent. The poisoned cache is then used for all future resolutions under the parent domain's key. Versions 4.1.135.Final and 4.2.15.Final patch the issue.",
           "Severity": "HIGH",
           "CweIDs": [
-            "CWE-345"
+            "CWE-345",
+            "CWE-346"
           ],
           "VendorSeverity": {
             "ghsa": 3,
@@ -55082,16 +55322,21 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
             "https://access.redhat.com/security/cve/CVE-2026-47691",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488439",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-5pvg-856g-cp85",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-47691",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-47691.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-47691"
           ],
           "PublishedDate": "2026-06-12T16:16:30.31Z",
-          "LastModifiedDate": "2026-06-17T10:54:37.5Z"
+          "LastModifiedDate": "2026-06-30T03:20:24.28Z"
         },
         {
           "VulnerabilityID": "CVE-2026-47691",
@@ -55123,7 +55368,8 @@
           "Description": "Netty is a network application framework for development of protocol servers and clients. Prior to versions 4.1.135.Final and 4.2.15.Final, Netty's `DnsResolveContext` insufficiently validates the bailiwick of NS records, enabling DNS Cache Poisoning. An attacker controlling an authoritative name server for a subdomain can poison the cache for parent domains (like `.co.uk`). In `io.netty.resolver.dns.DnsResolveContext.AuthoritativeNameServerList#add` method accepts any NS record from the AUTHORITY section as long as the record's name is a suffix of the questionName. Subsequently, the `handleWithAdditional` method caches the associated A records from the ADDITIONAL section directly into the `authoritativeDnsServerCache` under the parent domain's key. This bypasses standard bailiwick rules, where a server authoritative for a subdomain should not be trusted to provide authoritative records for its parent. The poisoned cache is then used for all future resolutions under the parent domain's key. Versions 4.1.135.Final and 4.2.15.Final patch the issue.",
           "Severity": "HIGH",
           "CweIDs": [
-            "CWE-345"
+            "CWE-345",
+            "CWE-346"
           ],
           "VendorSeverity": {
             "ghsa": 3,
@@ -55145,16 +55391,21 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
             "https://access.redhat.com/security/cve/CVE-2026-47691",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488439",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-5pvg-856g-cp85",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-47691",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-47691.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-47691"
           ],
           "PublishedDate": "2026-06-12T16:16:30.31Z",
-          "LastModifiedDate": "2026-06-17T10:54:37.5Z"
+          "LastModifiedDate": "2026-06-30T03:20:24.28Z"
         },
         {
           "VulnerabilityID": "CVE-2026-47691",
@@ -55186,7 +55437,8 @@
           "Description": "Netty is a network application framework for development of protocol servers and clients. Prior to versions 4.1.135.Final and 4.2.15.Final, Netty's `DnsResolveContext` insufficiently validates the bailiwick of NS records, enabling DNS Cache Poisoning. An attacker controlling an authoritative name server for a subdomain can poison the cache for parent domains (like `.co.uk`). In `io.netty.resolver.dns.DnsResolveContext.AuthoritativeNameServerList#add` method accepts any NS record from the AUTHORITY section as long as the record's name is a suffix of the questionName. Subsequently, the `handleWithAdditional` method caches the associated A records from the ADDITIONAL section directly into the `authoritativeDnsServerCache` under the parent domain's key. This bypasses standard bailiwick rules, where a server authoritative for a subdomain should not be trusted to provide authoritative records for its parent. The poisoned cache is then used for all future resolutions under the parent domain's key. Versions 4.1.135.Final and 4.2.15.Final patch the issue.",
           "Severity": "HIGH",
           "CweIDs": [
-            "CWE-345"
+            "CWE-345",
+            "CWE-346"
           ],
           "VendorSeverity": {
             "ghsa": 3,
@@ -55208,16 +55460,21 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:26017",
+            "https://access.redhat.com/errata/RHSA-2026:26018",
+            "https://access.redhat.com/errata/RHSA-2026:26586",
             "https://access.redhat.com/security/cve/CVE-2026-47691",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2488439",
             "https://github.com/netty/netty",
             "https://github.com/netty/netty/releases/tag/netty-4.1.135.Final",
             "https://github.com/netty/netty/releases/tag/netty-4.2.15.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-5pvg-856g-cp85",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-47691",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-47691.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-47691"
           ],
           "PublishedDate": "2026-06-12T16:16:30.31Z",
-          "LastModifiedDate": "2026-06-17T10:54:37.5Z"
+          "LastModifiedDate": "2026-06-30T03:20:24.28Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45673",
@@ -55443,17 +55700,20 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-45292",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2482785",
             "https://github.com/open-telemetry/opentelemetry-java",
             "https://github.com/open-telemetry/opentelemetry-java/commit/03837d3c1763bc35464aea1078671e2ef2336a5f",
             "https://github.com/open-telemetry/opentelemetry-java/pull/8380",
             "https://github.com/open-telemetry/opentelemetry-java/releases/tag/v1.62.0",
             "https://github.com/open-telemetry/opentelemetry-java/security/advisories/GHSA-rcgg-9c38-7xpx",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-45292",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-45292.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-45292"
           ],
           "PublishedDate": "2026-05-28T17:16:32.06Z",
-          "LastModifiedDate": "2026-06-17T10:51:52.793Z"
+          "LastModifiedDate": "2026-06-30T03:20:03.23Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45292",
@@ -55502,17 +55762,20 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/security/cve/CVE-2026-45292",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2482785",
             "https://github.com/open-telemetry/opentelemetry-java",
             "https://github.com/open-telemetry/opentelemetry-java/commit/03837d3c1763bc35464aea1078671e2ef2336a5f",
             "https://github.com/open-telemetry/opentelemetry-java/pull/8380",
             "https://github.com/open-telemetry/opentelemetry-java/releases/tag/v1.62.0",
             "https://github.com/open-telemetry/opentelemetry-java/security/advisories/GHSA-rcgg-9c38-7xpx",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-45292",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-45292.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-45292"
           ],
           "PublishedDate": "2026-05-28T17:16:32.06Z",
-          "LastModifiedDate": "2026-06-17T10:51:52.793Z"
+          "LastModifiedDate": "2026-06-30T03:20:03.23Z"
         },
         {
           "VulnerabilityID": "CVE-2025-22227",
