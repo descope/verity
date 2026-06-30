@@ -71,11 +71,11 @@ lint-frontend:
 
 # Format frontend code
 fmt-frontend:
-	cd site && npx prettier --write "src/**/*.{js,ts,astro,css,json,md}"
+	cd site && npm run format
 
 # Check frontend formatting
 check-frontend:
-	cd site && npx prettier --check "src/**/*.{js,ts,astro,css,json,md}"
+	cd site && npm run format:check
 
 # ── Integer (Image Configuration) Targets ────────────────────────────────
 
