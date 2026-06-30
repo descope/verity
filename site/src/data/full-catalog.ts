@@ -75,7 +75,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     label: "Web Servers & Proxies",
     images: [
       { name: "caddy", source: "integer", variants: ["default", "fips"] },
-      { name: "nginx", source: "integer", variants: ["default", "fips"] },
+      { name: "nginx", source: "integer", variants: ["default"] },
       { name: "httpd", source: "integer" },
       { name: "haproxy", source: "integer" },
       { name: "traefik", source: "integer" },
@@ -173,6 +173,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "memcached", source: "integer" },
       { name: "pgbouncer", source: "integer" },
       { name: "pgcat", source: "integer" },
+      { name: "pgweb", source: "integer", variants: ["default", "fips"] },
       { name: "proxysql", source: "integer" },
       { name: "trino", source: "integer" },
       {
@@ -238,7 +239,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     images: [
       { name: "kubectl", source: "integer" },
       { name: "helm", source: "integer", variants: ["default", "fips"] },
-      { name: "etcd", source: "integer" },
+      { name: "etcd", source: "integer", variants: ["default", "fips"] },
       {
         name: "aws/karpenter",
         label: "karpenter",
@@ -900,6 +901,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       },
       { name: "curl", source: "integer" },
       { name: "git", source: "integer" },
+      { name: "docker-cli", source: "integer", variants: ["default", "fips"] },
       {
         name: "library/docker",
         label: "docker-cli",

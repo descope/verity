@@ -280,6 +280,9 @@ types:
     entrypoint: /usr/bin/prometheus
     environment:
       GODEBUG: "fips140=on"
+    melange:
+      upstream: "prometheus"
+      env-file: "fips.env"
 versions:
   "2.55":
     skip-types: [fips]
@@ -395,6 +398,50 @@ versions:
 		}
 	}
 	assert.Equal(t, []string{"3.9"}, fipsVersions, "only explicit version should get fips")
+}
+
+func TestDiscoverFromFiles_ReviewFIPSProfileSkipped(t *testing.T) {
+	const reviewYAML = `
+name: review-only
+upstream:
+  package: review-only
+types:
+  default:
+    base: wolfi-base
+    packages: [review-only]
+  fips:
+    base: wolfi-base
+    fips-profile: review
+    packages: [review-only]
+versions:
+  latest:
+    latest: true
+`
+	// Given: image with review-only FIPS variant.
+	imagesDir := setupImages(t, map[string]string{"review-only.yaml": reviewYAML})
+	genDir := t.TempDir()
+
+	// When: images are discovered.
+	imgs, err := discovery.DiscoverFromFiles(opts(imagesDir, genDir, []apkindex.Package{{Name: "review-only"}}))
+	require.NoError(t, err)
+
+	// Then: review FIPS variant is not discoverable/published.
+	for _, img := range imgs {
+		require.NotEqual(t, "fips", img.Type)
+	}
+}
+
+func TestShouldSkipType_ReviewFIPSProfileSkipped(t *testing.T) {
+	// Given: explicit version with review-only FIPS profile.
+	def := &config.ImageDef{
+		Types: map[string]config.TypeTemplate{
+			"fips": {Base: "wolfi-base", FIPSProfile: config.FIPSProfileReview},
+		},
+		Versions: map[string]config.VersionMeta{"latest": {Latest: true}},
+	}
+
+	// When/Then: review variants are skipped even when explicitly declared.
+	require.True(t, discovery.ShouldSkipType(def, "latest", "fips"))
 }
 
 func TestApplyTypeSuffix(t *testing.T) {

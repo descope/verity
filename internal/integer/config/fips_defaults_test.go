@@ -48,7 +48,7 @@ func TestRepositoryFIPSVariantsDeclareFIPSProfile(t *testing.T) {
 			require.Contains(t, nodeOptions, "--force-fips")
 		}
 		if def.Name == "golang" {
-			require.Contains(t, fips.Environment["GOFIPS140"], "latest")
+			require.Equal(t, "v1.0.0", fips.Environment["GOFIPS140"])
 		}
 	}
 }
@@ -57,6 +57,36 @@ func TestRepositoryGo123DoesNotPublishFIPSVariant(t *testing.T) {
 	def, err := config.LoadImage("../../../images/golang.yaml")
 	require.NoError(t, err)
 
+	require.True(t, discovery.ShouldSkipType(def, "1.20", "fips"))
+	require.True(t, discovery.ShouldSkipType(def, "1.21", "fips"))
+	require.True(t, discovery.ShouldSkipType(def, "1.22", "fips"))
 	require.True(t, discovery.ShouldSkipType(def, "1.23", "fips"))
 	require.False(t, discovery.ShouldSkipType(def, "1.24", "fips"))
+}
+
+func TestRepositoryGoFIPSProfilesRequirePinnedModule(t *testing.T) {
+	paths, err := filepath.Glob("../../../images/*.yaml")
+	require.NoError(t, err)
+	require.NotEmpty(t, paths)
+
+	for _, path := range paths {
+		// Given: repository image definitions with Go-backed FIPS profiles.
+		def, err := config.LoadImage(path)
+		require.NoError(t, err)
+		require.NoError(t, config.Validate(def))
+
+		fips, ok := def.Types["fips"]
+		if !ok || fips.FIPSProfile != config.FIPSProfileGo {
+			continue
+		}
+
+		// When: the Go FIPS runtime and module pin are inspected.
+		goDebug := fips.Environment["GODEBUG"]
+		goFIPSIsPinned := fips.Environment["GOFIPS140"] == "v1.0.0"
+		goFIPSUsesEnvFile := fips.Melange != nil && fips.Melange.EnvFile == "fips.env"
+
+		// Then: Go FIPS uses runtime enforcement plus a pinned module source.
+		require.Equalf(t, "fips140=on", goDebug, "%s Go FIPS must set GODEBUG=fips140=on", filepath.Base(path))
+		require.Truef(t, goFIPSIsPinned || goFIPSUsesEnvFile, "%s Go FIPS must pin GOFIPS140=v1.0.0 or use melange.env-file=fips.env", filepath.Base(path))
+	}
 }
