@@ -174,7 +174,7 @@ For Wolfi-based images (no upstream equivalent):
 \`\`\`
 ghcr.io/verity-org/golang:latest
 ghcr.io/verity-org/python:latest-dev
-ghcr.io/verity-org/nginx:latest-fips
+ghcr.io/verity-org/caddy:latest-fips
 \`\`\`
 
 On subsequent re-patches, the suffix increments: \`-patched-2\`, \`-patched-3\`, etc.
@@ -219,7 +219,7 @@ Verity maintains ${totalImages} container images across ${totalCategories} categ
 **Legend:**
 - **Wolfi-based** = Built from scratch with minimal attack surface (no shell, no package manager)
 - **Copa-patched** = Upstream image with OS packages patched in-place
-- **Variants**: \`default\` (standard), \`dev\` (includes build tools/shell), \`fips\` (FIPS 140-2 compliant)
+- **Variants**: \`default\` (standard), \`dev\` (includes build tools/shell), \`fips\` (Go-backed FIPS variant; available for golang, caddy, docker-cli, etcd, helm, terraform, cosign, crane, pgweb)
 
 ${catalogSections}
 
