@@ -7,7 +7,7 @@ require (
 	github.com/google/go-containerregistry v0.21.7
 	github.com/project-copacetic/copacetic v0.13.1-0.20260422213235-21047038c9fe
 	github.com/stretchr/testify v1.11.1
-	github.com/urfave/cli/v3 v3.10.0
+	github.com/urfave/cli/v3 v3.10.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
