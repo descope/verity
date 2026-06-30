@@ -38,6 +38,7 @@ types:
         permissions: "0o755"
   fips:
     base: wolfi-fips
+    fips-profile: openssl
     packages: ["nodejs-{{version}}", "libstdc++"]
     entrypoint: /usr/bin/node
 versions:
@@ -104,6 +105,7 @@ func TestLoadImage(t *testing.T) {
 
 	fips := def.Types["fips"]
 	assert.Equal(t, "wolfi-fips", fips.Base)
+	assert.Equal(t, config.FIPSProfileOpenSSL, fips.FIPSProfile)
 
 	require.Len(t, def.Versions, 2)
 	v22 := def.Versions["22"]
@@ -166,7 +168,9 @@ func TestValidate(t *testing.T) {
 			Upstream: config.Upstream{Package: "caddy"},
 			Types: map[string]config.TypeTemplate{
 				"fips": {
-					Base: "wolfi-base",
+					Base:        "wolfi-base",
+					FIPSProfile: config.FIPSProfileGo,
+					Environment: map[string]string{"GODEBUG": "fips140=on"},
 					Melange: &config.MelangeSpec{
 						Upstream: "caddy",
 						EnvFile:  "fips.env",
@@ -175,6 +179,54 @@ func TestValidate(t *testing.T) {
 			},
 		}
 		require.NoError(t, config.Validate(def))
+	})
+
+	t.Run("fips type missing profile", func(t *testing.T) {
+		def := &config.ImageDef{
+			Name:     "node",
+			Upstream: config.Upstream{Package: "nodejs-{{version}}"},
+			Types: map[string]config.TypeTemplate{
+				"fips": {Base: "wolfi-fips"},
+			},
+		}
+		err := config.Validate(def)
+		require.ErrorIs(t, err, config.ErrMissingFIPSProfile)
+	})
+
+	t.Run("fips type invalid profile", func(t *testing.T) {
+		def := &config.ImageDef{
+			Name:     "node",
+			Upstream: config.Upstream{Package: "nodejs-{{version}}"},
+			Types: map[string]config.TypeTemplate{
+				"fips": {Base: "wolfi-fips", FIPSProfile: "mystery"},
+			},
+		}
+		err := config.Validate(def)
+		require.ErrorIs(t, err, config.ErrInvalidFIPSProfile)
+	})
+
+	t.Run("openssl fips requires fips base", func(t *testing.T) {
+		def := &config.ImageDef{
+			Name:     "node",
+			Upstream: config.Upstream{Package: "nodejs-{{version}}"},
+			Types: map[string]config.TypeTemplate{
+				"fips": {Base: "wolfi-base", FIPSProfile: config.FIPSProfileOpenSSL},
+			},
+		}
+		err := config.Validate(def)
+		require.ErrorIs(t, err, config.ErrInvalidFIPSBase)
+	})
+
+	t.Run("go fips requires runtime toggle", func(t *testing.T) {
+		def := &config.ImageDef{
+			Name:     "caddy",
+			Upstream: config.Upstream{Package: "caddy"},
+			Types: map[string]config.TypeTemplate{
+				"fips": {Base: "wolfi-base", FIPSProfile: config.FIPSProfileGo},
+			},
+		}
+		err := config.Validate(def)
+		require.ErrorIs(t, err, config.ErrMissingFIPSEnvironment)
 	})
 
 	t.Run("melange with bespoke only", func(t *testing.T) {
@@ -199,7 +251,9 @@ func TestValidate(t *testing.T) {
 			Upstream: config.Upstream{Package: "caddy"},
 			Types: map[string]config.TypeTemplate{
 				"fips": {
-					Base: "wolfi-base",
+					Base:        "wolfi-base",
+					FIPSProfile: config.FIPSProfileGo,
+					Environment: map[string]string{"GODEBUG": "fips140=on"},
 					Melange: &config.MelangeSpec{
 						Upstream: "caddy",
 						Bespoke:  "caddy.melange.yaml",
@@ -217,8 +271,10 @@ func TestValidate(t *testing.T) {
 			Upstream: config.Upstream{Package: "caddy"},
 			Types: map[string]config.TypeTemplate{
 				"fips": {
-					Base:    "wolfi-base",
-					Melange: &config.MelangeSpec{},
+					Base:        "wolfi-base",
+					FIPSProfile: config.FIPSProfileGo,
+					Environment: map[string]string{"GODEBUG": "fips140=on"},
+					Melange:     &config.MelangeSpec{},
 				},
 			},
 		}
@@ -232,8 +288,10 @@ func TestValidate(t *testing.T) {
 			Upstream: config.Upstream{Package: "caddy"},
 			Types: map[string]config.TypeTemplate{
 				"fips": {
-					Base:    "wolfi-base",
-					Melange: &config.MelangeSpec{Bespoke: "../evil/caddy.yaml"},
+					Base:        "wolfi-base",
+					FIPSProfile: config.FIPSProfileGo,
+					Environment: map[string]string{"GODEBUG": "fips140=on"},
+					Melange:     &config.MelangeSpec{Bespoke: "../evil/caddy.yaml"},
 				},
 			},
 		}
@@ -247,7 +305,9 @@ func TestValidate(t *testing.T) {
 			Upstream: config.Upstream{Package: "caddy"},
 			Types: map[string]config.TypeTemplate{
 				"fips": {
-					Base: "wolfi-base",
+					Base:        "wolfi-base",
+					FIPSProfile: config.FIPSProfileGo,
+					Environment: map[string]string{"GODEBUG": "fips140=on"},
 					Melange: &config.MelangeSpec{
 						Upstream: "caddy",
 						EnvFile:  "subdir/fips.env",
@@ -265,8 +325,10 @@ func TestValidate(t *testing.T) {
 			Upstream: config.Upstream{Package: "caddy"},
 			Types: map[string]config.TypeTemplate{
 				"fips": {
-					Base:    "wolfi-base",
-					Melange: &config.MelangeSpec{Bespoke: `subdir\caddy.yaml`},
+					Base:        "wolfi-base",
+					FIPSProfile: config.FIPSProfileGo,
+					Environment: map[string]string{"GODEBUG": "fips140=on"},
+					Melange:     &config.MelangeSpec{Bespoke: `subdir\caddy.yaml`},
 				},
 			},
 		}

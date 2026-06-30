@@ -6,14 +6,17 @@ upstream:
 types:
   default:
     base: wolfi-base
-    packages: ["coredns-1.14"]
+    packages: ["verity-coredns-1.14"]
     entrypoint: /usr/bin/coredns
     paths:
       - {path: /etc/coredns, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+    melange:
+      bespoke: "coredns-1.14.yaml"
 
   fips:
     base: wolfi-base
-    packages: ["coredns-1.14"]
+    fips-profile: go
+    packages: ["verity-coredns-1.14"]
     entrypoint: /usr/bin/coredns
     environment:
       GODEBUG: "fips140=on"

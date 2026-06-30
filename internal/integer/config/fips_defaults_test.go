@@ -2,7 +2,6 @@ package config_test
 
 import (
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,7 +12,7 @@ import (
 
 const opensslFIPSConfig = "/etc/ssl/openssl-fips.cnf"
 
-func TestRepositoryFIPSVariantsEnableRuntimeFIPSByDefault(t *testing.T) {
+func TestRepositoryFIPSVariantsDeclareFIPSProfile(t *testing.T) {
 	paths, err := filepath.Glob("../../../images/*.yaml")
 	require.NoError(t, err)
 	require.NotEmpty(t, paths)
@@ -21,29 +20,35 @@ func TestRepositoryFIPSVariantsEnableRuntimeFIPSByDefault(t *testing.T) {
 	for _, path := range paths {
 		def, err := config.LoadImage(path)
 		require.NoError(t, err)
+		require.NoError(t, config.Validate(def))
 
 		fips, ok := def.Types["fips"]
 		if !ok {
 			continue
 		}
 
-		env := fips.Environment
-		godebug := env["GODEBUG"]
-		nodeOptions := env["NODE_OPTIONS"]
-		hasGoFIPS := strings.Contains(godebug, "fips140=on")
-		hasOpenSSLFIPS := env["OPENSSL_CONF"] == opensslFIPSConfig
-		hasNodeFIPS := strings.Contains(nodeOptions, "--force-fips")
+		require.Truef(t, fips.FIPSProfile.Valid(), "%s fips variant must declare a supported fips-profile", filepath.Base(path))
 
-		require.Truef(
-			t,
-			hasGoFIPS || hasOpenSSLFIPS || hasNodeFIPS,
-			"%s fips variant must explicitly enable runtime FIPS by default",
-			filepath.Base(path),
-		)
+		switch fips.FIPSProfile {
+		case config.FIPSProfileGo:
+			require.Equalf(t, "wolfi-base", fips.Base, "%s Go FIPS uses Go's module, not OpenSSL runtime base", filepath.Base(path))
+			require.Contains(t, fips.Environment["GODEBUG"], "fips140=on")
+		case config.FIPSProfileOpenSSL:
+			require.Equalf(t, "wolfi-fips", fips.Base, "%s OpenSSL FIPS must inherit wolfi-fips", filepath.Base(path))
+		case config.FIPSProfileJava:
+			require.Equalf(t, "wolfi-fips", fips.Base, "%s Java FIPS must inherit wolfi-fips", filepath.Base(path))
+			require.Contains(t, fips.Environment["JAVA_TOOL_OPTIONS"], "java.security.properties")
+		case config.FIPSProfileReview:
+			continue
+		}
 
 		if def.Name == "node" {
+			nodeOptions := fips.Environment["NODE_OPTIONS"]
 			require.Contains(t, nodeOptions, "--openssl-config="+opensslFIPSConfig)
 			require.Contains(t, nodeOptions, "--force-fips")
+		}
+		if def.Name == "golang" {
+			require.Contains(t, fips.Environment["GOFIPS140"], "latest")
 		}
 	}
 }
