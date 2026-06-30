@@ -32,8 +32,8 @@ images ship an SPDX SBOM produced by apko.
 | **Copa-patched** | Upstream image with OS + Python + Go packages patched in-place | `verity patch` (wraps Copa's Go library) via BuildKit — no Dockerfile rebuild |
 | **Integer (Wolfi-based)** | From-scratch hardened rebuild using Wolfi packages with minimal attack surface | `apko` rootfs build + `melange` APK build from `images/*.yaml` |
 
-FIPS variants are available for a curated set of images (`golang`, `nginx`,
-`caddy`, `helm`, `terraform`, `cosign`, `crane`).
+FIPS variants are available for a curated set of Go-backed images (`golang`,
+`caddy`, `docker-cli`, `etcd`, `helm`, `terraform`, `cosign`, `crane`, `pgweb`).
 
 ## Experimental APK Repository
 

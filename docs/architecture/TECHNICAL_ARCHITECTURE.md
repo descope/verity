@@ -384,7 +384,7 @@ chart's `args:` is supposed to land as full argv.
 
 ### 4.6 Cross-references
 
-- `images/argocd.yaml` (default + fips variants), `images/dex.yaml` —
+- `images/argocd.yaml` (default + review-only fips variants), `images/dex.yaml` —
   reference fixes that landed under this convention.
 - `internal/integer/render/render.go` — the `render.Config` that emits
   the apko YAML faithfully omits the `entrypoint:` key when
