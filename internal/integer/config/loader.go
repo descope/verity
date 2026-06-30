@@ -28,14 +28,17 @@ var (
 	// ErrInvalidFIPSProfile is returned when fips-profile is not supported.
 	ErrInvalidFIPSProfile = errors.New("invalid fips-profile")
 
-	// ErrFIPSProfileOnNonFIPS is returned when a non-fips type declares fips-profile.
-	ErrFIPSProfileOnNonFIPS = errors.New("fips-profile is only valid on type fips")
+	// ErrFIPSProfileOnNonFIPS is returned when a non-fips-claiming type declares fips-profile.
+	ErrFIPSProfileOnNonFIPS = errors.New("fips-profile is only valid on fips-claiming types")
 
 	// ErrInvalidFIPSBase is returned when a profile uses an incompatible base.
 	ErrInvalidFIPSBase = errors.New("invalid fips base")
 
 	// ErrMissingFIPSEnvironment is returned when a profile lacks its runtime toggle.
 	ErrMissingFIPSEnvironment = errors.New("missing fips environment")
+
+	// ErrUnsupportedFIPSProfile is returned when a profile lacks a provider artifact.
+	ErrUnsupportedFIPSProfile = errors.New("unsupported fips-profile")
 
 	// ErrMelangeSourceConflict is returned when both upstream and bespoke are set.
 	ErrMelangeSourceConflict = errors.New("melange: set exactly one of upstream or bespoke, not both")
@@ -89,10 +92,10 @@ func Validate(def *ImageDef) error {
 		if tmpl.Base == "" {
 			return fmt.Errorf("image %q type %q: %w", def.Name, typeName, ErrMissingBase)
 		}
-		if err := validateFIPSProfile(def.Name, typeName, &tmpl); err != nil {
+		if err := validateMelange(def.Name, typeName, tmpl.Melange); err != nil {
 			return err
 		}
-		if err := validateMelange(def.Name, typeName, tmpl.Melange); err != nil {
+		if err := validateFIPSProfile(def.Name, typeName, &tmpl); err != nil {
 			return err
 		}
 	}
@@ -100,7 +103,7 @@ func Validate(def *ImageDef) error {
 }
 
 func validateFIPSProfile(image, typeName string, tmpl *TypeTemplate) error {
-	if typeName != "fips" {
+	if !isFIPSClaimType(typeName) {
 		if tmpl.FIPSProfile != "" {
 			return fmt.Errorf("image %q type %q: %w", image, typeName, ErrFIPSProfileOnNonFIPS)
 		}
@@ -114,31 +117,51 @@ func validateFIPSProfile(image, typeName string, tmpl *TypeTemplate) error {
 	}
 	switch tmpl.FIPSProfile {
 	case FIPSProfileGo:
-		if tmpl.Base != "wolfi-base" {
-			return fmt.Errorf("image %q type %q profile %q base %q: %w", image, typeName, tmpl.FIPSProfile, tmpl.Base, ErrInvalidFIPSBase)
-		}
-		if !envContains(tmpl, "GODEBUG", "fips140=on") {
-			return fmt.Errorf("image %q type %q profile %q: %w", image, typeName, tmpl.FIPSProfile, ErrMissingFIPSEnvironment)
-		}
-	case FIPSProfileOpenSSL:
-		if tmpl.Base != "wolfi-fips" {
-			return fmt.Errorf("image %q type %q profile %q base %q: %w", image, typeName, tmpl.FIPSProfile, tmpl.Base, ErrInvalidFIPSBase)
-		}
-	case FIPSProfileJava:
-		if tmpl.Base != "wolfi-fips" {
-			return fmt.Errorf("image %q type %q profile %q base %q: %w", image, typeName, tmpl.FIPSProfile, tmpl.Base, ErrInvalidFIPSBase)
-		}
-		if !envContains(tmpl, "JAVA_TOOL_OPTIONS", "java.security.properties") {
-			return fmt.Errorf("image %q type %q profile %q: %w", image, typeName, tmpl.FIPSProfile, ErrMissingFIPSEnvironment)
-		}
+		return validateGoFIPS(image, typeName, tmpl)
+	case FIPSProfileOpenSSL, FIPSProfileJava:
+		return validateProviderFIPS(image, typeName, tmpl)
 	case FIPSProfileReview:
 		return nil
 	}
 	return nil
 }
 
+// validateGoFIPS enforces the Go Cryptographic Module path: the wolfi-base
+// runtime, GODEBUG=fips140=on, and a pinned validated module (GOFIPS140=v1.0.0
+// directly or via the fips.env melange override).
+func validateGoFIPS(image, typeName string, tmpl *TypeTemplate) error {
+	if tmpl.Base != "wolfi-base" {
+		return fmt.Errorf("image %q type %q profile %q base %q: %w", image, typeName, tmpl.FIPSProfile, tmpl.Base, ErrInvalidFIPSBase)
+	}
+	if !envContains(tmpl, "GODEBUG", "fips140=on") {
+		return fmt.Errorf("image %q type %q profile %q: %w", image, typeName, tmpl.FIPSProfile, ErrMissingFIPSEnvironment)
+	}
+	if tmpl.Environment["GOFIPS140"] != "v1.0.0" && !usesFIPSEnvFile(tmpl) {
+		return fmt.Errorf("image %q type %q profile %q: %w", image, typeName, tmpl.FIPSProfile, ErrMissingFIPSEnvironment)
+	}
+	return nil
+}
+
+// validateProviderFIPS rejects OpenSSL/Java FIPS profiles. They require a
+// validated provider artifact (OpenSSL fips.so + fipsmodule.cnf, or a JVM FIPS
+// provider) that Verity does not yet ship, so they stay unsupported until it does.
+func validateProviderFIPS(image, typeName string, tmpl *TypeTemplate) error {
+	if tmpl.Base != "wolfi-fips" {
+		return fmt.Errorf("image %q type %q profile %q base %q: %w", image, typeName, tmpl.FIPSProfile, tmpl.Base, ErrInvalidFIPSBase)
+	}
+	return fmt.Errorf("image %q type %q profile %q: %w", image, typeName, tmpl.FIPSProfile, ErrUnsupportedFIPSProfile)
+}
+
+func isFIPSClaimType(typeName string) bool {
+	return typeName == "fips" || strings.HasPrefix(typeName, "fips-") || strings.HasSuffix(typeName, "-fips")
+}
+
 func envContains(tmpl *TypeTemplate, key, token string) bool {
 	return strings.Contains(tmpl.Environment[key], token)
+}
+
+func usesFIPSEnvFile(tmpl *TypeTemplate) bool {
+	return tmpl.Melange != nil && tmpl.Melange.EnvFile == "fips.env"
 }
 
 func validateMelange(image, typeName string, m *MelangeSpec) error {
