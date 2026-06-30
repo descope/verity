@@ -159,6 +159,46 @@ func TestGenerate_WithReports(t *testing.T) {
 	assert.Equal(t, "unknown", v22.Variants[1].Status)
 }
 
+func TestGenerate_SkipsReviewFIPSReports(t *testing.T) {
+	imagesDir := t.TempDir()
+	reportsDir := t.TempDir()
+	writeFile(t, imagesDir, "node.yaml", `
+name: node
+description: "Node.js runtime"
+upstream:
+  package: "nodejs-{{version}}"
+types:
+  default:
+    base: wolfi-base
+    packages: ["nodejs-{{version}}"]
+  fips:
+    base: wolfi-fips
+    fips-profile: review
+    packages: ["nodejs-{{version}}"]
+versions:
+  "24":
+    latest: true
+`)
+
+	report := map[string]any{
+		"digest":   "sha256:stale",
+		"status":   "success",
+		"built_at": "2026-01-01T00:00:00Z",
+	}
+	reportData, err := json.Marshal(report)
+	require.NoError(t, err)
+	reportPath := filepath.Join(reportsDir, "node", "24", "fips", "latest.json")
+	require.NoError(t, os.MkdirAll(filepath.Dir(reportPath), 0o755))
+	require.NoError(t, os.WriteFile(reportPath, reportData, 0o644))
+
+	cat, err := catalog.Generate(imagesDir, reportsDir, "ghcr.io/verity-org", testPkgs, nil)
+	require.NoError(t, err)
+
+	variants := cat.Images[0].Versions[0].Variants
+	require.Len(t, variants, 1)
+	assert.Equal(t, "default", variants[0].Type)
+}
+
 func TestGenerate_SkipsNonYAML(t *testing.T) {
 	imagesDir := t.TempDir()
 	writeFile(t, imagesDir, "node.yaml", nodeYAML)
