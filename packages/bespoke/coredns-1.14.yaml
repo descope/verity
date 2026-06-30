@@ -62,38 +62,6 @@ subpackages:
             /coredns --version
             /coredns --help
 
-  - name: kuma-${{package.name}}
-    description: CoreDNS with plugins used by Kuma
-    dependencies:
-      provides:
-        - kuma-coredns=${{package.full-version}}
-    pipeline:
-      - runs: |
-          # We need to explicitly set the GOLANG_VERSION since it's used by
-          # the make file below and if there are mismatches, things go bad.
-          # For more details: https://github.com/wolfi-dev/os/pull/36612#issuecomment-2547453359
-          export GOLANG_VERSION=`go version | sed -n 's/.*go\([0-9.]*\).*/\1/p'`
-
-          # Build with plugins used by Kuma
-          # Plugin list: https://github.com/kumahq/coredns-builds/blob/main/plugin.cfg
-          mv kuma-plugin.cfg plugin.cfg
-          # Generate code and fetch plugins
-          make gen
-      - uses: go/build
-        with:
-          ldflags: -X github.com/coredns/coredns/coremain.GitCommit=v${{package.version}}
-          output: coredns
-          packages: .
-    test:
-      environment:
-        contents:
-          packages:
-            - libcap-utils
-      pipeline:
-        - runs: |
-            coredns -version
-            coredns -plugins
-
 update:
   enabled: true
   github:
