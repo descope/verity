@@ -77,7 +77,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "caddy", source: "integer", variants: ["default", "fips"] },
       { name: "nginx", source: "integer", variants: ["default", "fips"] },
       { name: "httpd", source: "integer", variants: ["default", "fips"] },
-      { name: "haproxy", source: "integer" },
+      { name: "haproxy", source: "integer", variants: ["default", "fips"] },
       { name: "traefik", source: "integer" },
       { name: "envoy", source: "integer" },
       {
@@ -125,7 +125,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     label: "Databases & Caching",
     images: [
       { name: "postgres", source: "integer", variants: ["default", "dev"] },
-      { name: "valkey", source: "integer" },
+      { name: "valkey", source: "integer", variants: ["default", "fips"] },
       {
         name: "mongodb/mongodb-community-server",
         label: "mongodb",
