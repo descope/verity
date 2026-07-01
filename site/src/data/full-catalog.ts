@@ -125,7 +125,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     label: "Databases & Caching",
     images: [
       { name: "postgres", source: "integer", variants: ["default", "dev"] },
-      { name: "valkey", source: "integer", variants: ["default", "fips"] },
+      { name: "valkey", source: "integer" },
       {
         name: "mongodb/mongodb-community-server",
         label: "mongodb",
