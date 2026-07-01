@@ -81,6 +81,29 @@ func TestValidateFIPSProfile_rejectsOpenSSLWithoutProviderWiring(t *testing.T) {
 	require.ErrorIs(t, err, config.ErrUnsupportedFIPSProfile)
 }
 
+func TestValidateFIPSProfile_rejectsOpenSSLWrapperWithoutCommand(t *testing.T) {
+	def := &config.ImageDef{
+		Name:     "nginx",
+		Upstream: config.Upstream{Package: "nginx"},
+		Types: map[string]config.TypeTemplate{
+			"fips": {
+				Base:        "wolfi-fips",
+				FIPSProfile: config.FIPSProfileOpenSSL,
+				Packages:    []string{"nginx", "openssl-provider-fips"},
+				Entrypoint:  "/usr/bin/openssl-fips-entrypoint ",
+				Environment: map[string]string{
+					"OPENSSL_MODULES": "/usr/lib/ossl-modules",
+					"OPENSSL_CONF":    "/etc/ssl/openssl-fips.cnf",
+				},
+				Melange: &config.MelangeSpec{Bespoke: "openssl-provider-fips.yaml"},
+			},
+		},
+	}
+
+	err := config.Validate(def)
+	require.ErrorIs(t, err, config.ErrMissingFIPSEnvironment)
+}
+
 func TestValidateFIPSProfile_rejectsJavaWithoutProvider(t *testing.T) {
 	// Given: Java FIPS profile has JVM config but no provider artifact.
 	def := &config.ImageDef{

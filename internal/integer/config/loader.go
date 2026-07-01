@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -151,7 +152,8 @@ func validateOpenSSLFIPS(image, typeName string, tmpl *TypeTemplate) error {
 	if !hasPackage(tmpl, "openssl-provider-fips") || tmpl.Melange == nil || tmpl.Melange.Bespoke != "openssl-provider-fips.yaml" {
 		return fmt.Errorf("image %q type %q profile %q: %w", image, typeName, tmpl.FIPSProfile, ErrUnsupportedFIPSProfile)
 	}
-	if !strings.HasPrefix(tmpl.Entrypoint, "/usr/bin/openssl-fips-entrypoint ") {
+	command, ok := strings.CutPrefix(tmpl.Entrypoint, "/usr/bin/openssl-fips-entrypoint ")
+	if !ok || strings.TrimSpace(command) == "" {
 		return fmt.Errorf("image %q type %q profile %q: %w", image, typeName, tmpl.FIPSProfile, ErrMissingFIPSEnvironment)
 	}
 	if tmpl.Environment["OPENSSL_MODULES"] != "/usr/lib/ossl-modules" || tmpl.Environment["OPENSSL_CONF"] != "/etc/ssl/openssl-fips.cnf" {
@@ -161,12 +163,7 @@ func validateOpenSSLFIPS(image, typeName string, tmpl *TypeTemplate) error {
 }
 
 func hasPackage(tmpl *TypeTemplate, name string) bool {
-	for _, pkg := range tmpl.Packages {
-		if pkg == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(tmpl.Packages, name)
 }
 
 func validateProviderFIPS(image, typeName string, tmpl *TypeTemplate) error {
