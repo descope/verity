@@ -1,0 +1,114 @@
+package:
+  name: openssl-provider-fips
+  version: "3.1.2"
+  epoch: 0
+  description: OpenSSL 3.1.2 FIPS 140-3 provider module and configuration
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - openssl
+
+environment:
+  contents:
+    packages:
+      - build-base
+      - busybox
+      - perl
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/openssl/openssl
+      tag: openssl-${{package.version}}
+      expected-commit: 17a2c5111864d8e016c5f2d29c40a3746b559e9d
+
+  - runs: |
+      perl ./Configure linux-${{build.arch}} --prefix=/usr --libdir=lib --openssldir=/etc/ssl enable-fips shared no-zlib no-async no-comp no-idea no-mdc2 no-rc5 no-ssl3 no-weak-ssl-ciphers -Wa,--noexecstack
+      make -j$(nproc) build_sw
+      mkdir -p "${{targets.destdir}}"/usr/bin "${{targets.destdir}}"/usr/lib/ossl-modules "${{targets.destdir}}"/etc/ssl
+      install -m755 providers/fips.so "${{targets.destdir}}"/usr/lib/ossl-modules/fips.so
+      cat > /tmp/openssl-fips-entrypoint.c <<'EOF'
+      #include <errno.h>
+      #include <fcntl.h>
+      #include <stdio.h>
+      #include <stdlib.h>
+      #include <string.h>
+      #include <sys/stat.h>
+      #include <sys/wait.h>
+      #include <unistd.h>
+
+      int main(int argc, char **argv) {
+        if (argc < 2) {
+          fputs("usage: openssl-fips-entrypoint <command> [args...]\n", stderr);
+          return 64;
+        }
+        if (mkdir("/tmp/openssl-fips", 0700) != 0 && errno != EEXIST) {
+          perror("mkdir /tmp/openssl-fips");
+          return 70;
+        }
+        pid_t pid = fork();
+        if (pid < 0) {
+          perror("fork");
+          return 70;
+        }
+        if (pid == 0) {
+          int devnull = open("/dev/null", O_WRONLY);
+          if (devnull >= 0) {
+            dup2(devnull, STDOUT_FILENO);
+            dup2(devnull, STDERR_FILENO);
+            close(devnull);
+          }
+          setenv("OPENSSL_CONF", "/etc/ssl/openssl.cnf", 1);
+          char *args[] = {"/usr/bin/openssl", "fipsinstall", "-out", "/tmp/openssl-fips/fipsmodule.cnf", "-module", "/usr/lib/ossl-modules/fips.so", NULL};
+          execv(args[0], args);
+          perror("exec openssl fipsinstall");
+          _exit(127);
+        }
+        int status = 0;
+        if (waitpid(pid, &status, 0) < 0) {
+          perror("waitpid");
+          return 70;
+        }
+        if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+          fprintf(stderr, "openssl fipsinstall failed: %d\n", status);
+          return 70;
+        }
+        execvp(argv[1], &argv[1]);
+        fprintf(stderr, "exec %s failed: %s\n", argv[1], strerror(errno));
+        return 127;
+      }
+      EOF
+      gcc -O2 -Wall -Wextra -o "${{targets.destdir}}"/usr/bin/openssl-fips-entrypoint /tmp/openssl-fips-entrypoint.c
+      cat > "${{targets.destdir}}"/etc/ssl/openssl-fips.cnf <<'EOF'
+      config_diagnostics = 1
+      openssl_conf = openssl_init
+
+      .include /tmp/openssl-fips/fipsmodule.cnf
+
+      [openssl_init]
+      providers = provider_sect
+      alg_section = algorithm_sect
+
+      [provider_sect]
+      fips = fips_sect
+      base = base_sect
+
+      [base_sect]
+      activate = 1
+
+      [algorithm_sect]
+      default_properties = fips=yes
+      EOF
+
+  - uses: strip
+
+test:
+  pipeline:
+    - runs: |
+        test -s /usr/lib/ossl-modules/fips.so
+        test -x /usr/bin/openssl-fips-entrypoint
+        OPENSSL_MODULES=/usr/lib/ossl-modules OPENSSL_CONF=/etc/ssl/openssl-fips.cnf /usr/bin/openssl-fips-entrypoint /usr/bin/openssl list -providers | grep -q '^  fips$'
+        if OPENSSL_MODULES=/usr/lib/ossl-modules OPENSSL_CONF=/etc/ssl/openssl-fips.cnf /usr/bin/openssl-fips-entrypoint /usr/bin/openssl md5 /dev/null >/tmp/md5.out 2>&1; then
+          exit 1
+        fi
