@@ -44,11 +44,11 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "python", source: "integer", variants: ["default", "dev"] },
       { name: "node", source: "integer", variants: ["default", "dev", "fips"] },
       { name: "rust", source: "integer", variants: ["default", "dev"] },
-      { name: "ruby", source: "integer", variants: ["default", "dev"] },
+      { name: "ruby", source: "integer", variants: ["default", "dev", "fips"] },
       { name: "dotnet", source: "integer", variants: ["default", "dev"] },
       { name: "erlang", source: "integer" },
       { name: "openjdk", source: "integer", variants: ["default", "dev"] },
-      { name: "php", source: "integer", variants: ["default", "dev"] },
+      { name: "php", source: "integer", variants: ["default", "dev", "fips"] },
       { name: "deno", source: "integer" },
       { name: "gcc", source: "integer" },
       {
@@ -76,7 +76,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     images: [
       { name: "caddy", source: "integer", variants: ["default", "fips"] },
       { name: "nginx", source: "integer", variants: ["default", "fips"] },
-      { name: "httpd", source: "integer" },
+      { name: "httpd", source: "integer", variants: ["default", "fips"] },
       { name: "haproxy", source: "integer" },
       { name: "traefik", source: "integer" },
       { name: "envoy", source: "integer" },
