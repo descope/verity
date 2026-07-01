@@ -42,7 +42,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     images: [
       { name: "golang", source: "integer", variants: ["default", "dev", "fips"] },
       { name: "python", source: "integer", variants: ["default", "dev"] },
-      { name: "node", source: "integer", variants: ["default", "dev"] },
+      { name: "node", source: "integer", variants: ["default", "dev", "fips"] },
       { name: "rust", source: "integer", variants: ["default", "dev"] },
       { name: "ruby", source: "integer", variants: ["default", "dev"] },
       { name: "dotnet", source: "integer", variants: ["default", "dev"] },
@@ -75,7 +75,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     label: "Web Servers & Proxies",
     images: [
       { name: "caddy", source: "integer", variants: ["default", "fips"] },
-      { name: "nginx", source: "integer", variants: ["default"] },
+      { name: "nginx", source: "integer", variants: ["default", "fips"] },
       { name: "httpd", source: "integer" },
       { name: "haproxy", source: "integer" },
       { name: "traefik", source: "integer" },
