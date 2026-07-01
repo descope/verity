@@ -12,7 +12,7 @@ export const GET: APIRoute = ({ site }) => {
 
 Verity covers ${totalImages} container images across ${totalCategories} categories: languages & build tools, web servers & proxies, databases & caching, messaging & streaming, Kubernetes & orchestration, service mesh & networking, monitoring & observability, logging, CI/CD & GitOps, security & identity, policy & compliance, cert management, data & ML, and base & utilities.
 
-Images are available in two forms: **Copa-patched** (${copaCount} images — in-place OS-level package patching of upstream images) and **Wolfi-based** (${integerCount} images — from-scratch hardened rebuilds using Wolfi packages with minimal attack surface). All images support linux/amd64 and linux/arm64. FIPS variants are available for Go-backed images (golang, caddy, docker-cli, etcd, helm, terraform, cosign, crane, pgweb).
+Images are available in two forms: **Copa-patched** (${copaCount} images — in-place OS-level package patching of upstream images) and **Wolfi-based** (${integerCount} images — from-scratch hardened rebuilds using Wolfi packages with minimal attack surface). All images support linux/amd64 and linux/arm64. FIPS variants are available for Go-backed images (golang, caddy, docker-cli, etcd, helm, terraform, cosign, crane, pgweb) and OpenSSL-backed images (node, nginx, php, ruby, haproxy, httpd).
 
 The patching pipeline runs daily at 02:00 UTC via GitHub Actions. Every published image carries five supply-chain attestations: cosign keyless signature, SLSA Level 3 build provenance, CycloneDX SBOM, Trivy vulnerability report, and a Rekor transparency log entry.
 

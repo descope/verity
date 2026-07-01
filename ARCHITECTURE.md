@@ -33,7 +33,8 @@ images ship an SPDX SBOM produced by apko.
 | **Integer (Wolfi-based)** | From-scratch hardened rebuild using Wolfi packages with minimal attack surface | `apko` rootfs build + `melange` APK build from `images/*.yaml` |
 
 FIPS variants are available for a curated set of Go-backed images (`golang`,
-`caddy`, `docker-cli`, `etcd`, `helm`, `terraform`, `cosign`, `crane`, `pgweb`).
+`caddy`, `docker-cli`, `etcd`, `helm`, `terraform`, `cosign`, `crane`, `pgweb`)
+and OpenSSL-backed images using Verity's OpenSSL FIPS provider (`node`, `nginx`, `php`, `ruby`, `haproxy`, `httpd`).
 
 ## Experimental APK Repository
 

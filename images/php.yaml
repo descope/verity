@@ -50,13 +50,15 @@ types:
 
   fips:
     base: wolfi-fips
-    fips-profile: review
-    packages: ["php-{{version}}", "php-{{version}}-mbstring", "php-{{version}}-openssl", "php-{{version}}-curl"]
-    entrypoint: /usr/bin/php
+    fips-profile: openssl
+    packages: ["php-{{version}}", "php-{{version}}-mbstring", "php-{{version}}-openssl", "php-{{version}}-curl", "openssl-provider-fips"]
+    entrypoint: /usr/bin/openssl-fips-entrypoint /usr/bin/php
     work-dir: /app
     environment:
       OPENSSL_MODULES: /usr/lib/ossl-modules
       OPENSSL_CONF: /etc/ssl/openssl-fips.cnf
+    melange:
+      bespoke: "openssl-provider-fips.yaml"
     paths:
       - {path: /app, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
 
