@@ -219,7 +219,7 @@ Verity maintains ${totalImages} container images across ${totalCategories} categ
 **Legend:**
 - **Wolfi-based** = Built from scratch with minimal attack surface (no shell, no package manager)
 - **Copa-patched** = Upstream image with OS packages patched in-place
-- **Variants**: \`default\` (standard), \`dev\` (includes build tools/shell), \`fips\` (Go-backed FIPS variant; available for golang, caddy, docker-cli, etcd, helm, terraform, cosign, crane, pgweb)
+- **Variants**: \`default\` (standard), \`dev\` (includes build tools/shell), \`fips\` (Go-backed FIPS variant for golang, caddy, docker-cli, etcd, helm, terraform, cosign, crane, pgweb; OpenSSL-backed FIPS variant for node, nginx)
 
 ${catalogSections}
 
