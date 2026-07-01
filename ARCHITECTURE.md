@@ -34,7 +34,7 @@ images ship an SPDX SBOM produced by apko.
 
 FIPS variants are available for a curated set of Go-backed images (`golang`,
 `caddy`, `docker-cli`, `etcd`, `helm`, `terraform`, `cosign`, `crane`, `pgweb`)
-and OpenSSL-backed images using Verity's OpenSSL FIPS provider (`node`, `nginx`).
+and OpenSSL-backed images using Verity's OpenSSL FIPS provider (`node`, `nginx`, `php`, `ruby`, `haproxy`, `httpd`).
 
 ## Experimental APK Repository
 
