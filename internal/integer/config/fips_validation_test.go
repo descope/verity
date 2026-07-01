@@ -46,8 +46,7 @@ func TestValidateFIPSProfile_requiresPinnedGoFIPS140(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestValidateFIPSProfile_rejectsOpenSSLWithoutProvider(t *testing.T) {
-	// Given: OpenSSL FIPS profile only inherits wolfi-fips base.
+func TestValidateFIPSProfile_acceptsOpenSSLWithProviderBase(t *testing.T) {
 	def := &config.ImageDef{
 		Name:     "nginx",
 		Upstream: config.Upstream{Package: "nginx"},
@@ -55,15 +54,31 @@ func TestValidateFIPSProfile_rejectsOpenSSLWithoutProvider(t *testing.T) {
 			"fips": {
 				Base:        "wolfi-fips",
 				FIPSProfile: config.FIPSProfileOpenSSL,
+				Packages:    []string{"nginx", "openssl-provider-fips"},
+				Entrypoint:  "/usr/bin/openssl-fips-entrypoint /usr/sbin/nginx",
+				Environment: map[string]string{
+					"OPENSSL_MODULES": "/usr/lib/ossl-modules",
+					"OPENSSL_CONF":    "/etc/ssl/openssl-fips.cnf",
+				},
+				Melange: &config.MelangeSpec{Bespoke: "openssl-provider-fips.yaml"},
 			},
 		},
 	}
 
-	// When: config is validated.
-	err := config.Validate(def)
+	require.NoError(t, config.Validate(def))
+}
 
-	// Then: profile without provider artifact is rejected.
-	require.Error(t, err)
+func TestValidateFIPSProfile_rejectsOpenSSLWithoutProviderWiring(t *testing.T) {
+	def := &config.ImageDef{
+		Name:     "nginx",
+		Upstream: config.Upstream{Package: "nginx"},
+		Types: map[string]config.TypeTemplate{
+			"fips": {Base: "wolfi-fips", FIPSProfile: config.FIPSProfileOpenSSL},
+		},
+	}
+
+	err := config.Validate(def)
+	require.ErrorIs(t, err, config.ErrUnsupportedFIPSProfile)
 }
 
 func TestValidateFIPSProfile_rejectsJavaWithoutProvider(t *testing.T) {
