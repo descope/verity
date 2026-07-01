@@ -46,7 +46,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "rust", source: "integer", variants: ["default", "dev"] },
       { name: "ruby", source: "integer", variants: ["default", "dev", "fips"] },
       { name: "dotnet", source: "integer", variants: ["default", "dev"] },
-      { name: "erlang", source: "integer" },
+      { name: "erlang", source: "integer", variants: ["default", "fips"] },
       { name: "openjdk", source: "integer", variants: ["default", "dev"] },
       { name: "php", source: "integer", variants: ["default", "dev", "fips"] },
       { name: "deno", source: "integer" },
