@@ -380,10 +380,12 @@ jobs:
             ref="${INPUT_REGISTRY}/${INPUT_IMAGE}:${tag}"
             refs="${refs:+$refs }$ref"
           done
-          echo "refs=$refs" >> "$GITHUB_OUTPUT"
-          echo "primary_tag=${TAGS[0]// /}" >> "$GITHUB_OUTPUT"
-          # Artifact names reject '/', so flatten slashed image names.
-          echo "safe_image=${INPUT_IMAGE//\//-}" >> "$GITHUB_OUTPUT"
+          {
+            echo "refs=$refs"
+            echo "primary_tag=${TAGS[0]// /}"
+            # Artifact names reject '/', so flatten slashed image names.
+            echo "safe_image=${INPUT_IMAGE//\//-}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Read image metadata
         id: meta
