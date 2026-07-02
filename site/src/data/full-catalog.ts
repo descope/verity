@@ -674,7 +674,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     id: "security",
     label: "Security & Identity",
     images: [
-      { name: "vault", source: "integer" },
+      { name: "vault", source: "integer", variants: ["default", "fips"] },
       {
         name: "hashicorp/vault-k8s",
         label: "vault-k8s",
