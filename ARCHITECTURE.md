@@ -36,7 +36,7 @@ FIPS variants are available for a curated set of Go-backed images (`golang`,
 `caddy`, `docker-cli`, `etcd`, `helm`, `terraform`, `cosign`, `crane`,
 `pgweb`, `vault`) and OpenSSL-backed images using Verity's OpenSSL FIPS provider
 (`node`, `nginx`, `php`, `ruby`, `erlang`, `haproxy`, `httpd`, `python`,
-`postgres`, `valkey`).
+`postgres`, `valkey`, `dotnet`).
 
 ## Experimental APK Repository
 
