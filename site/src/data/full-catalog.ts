@@ -41,12 +41,12 @@ export const fullCatalog: FullCatalogCategory[] = [
     label: "Languages & Build Tools",
     images: [
       { name: "golang", source: "integer", variants: ["default", "dev", "fips"] },
-      { name: "python", source: "integer", variants: ["default", "dev"] },
+      { name: "python", source: "integer", variants: ["default", "dev", "fips"] },
       { name: "node", source: "integer", variants: ["default", "dev", "fips"] },
       { name: "rust", source: "integer", variants: ["default", "dev"] },
       { name: "ruby", source: "integer", variants: ["default", "dev", "fips"] },
-      { name: "dotnet", source: "integer", variants: ["default", "dev"] },
-      { name: "erlang", source: "integer" },
+      { name: "dotnet", source: "integer", variants: ["default", "sdk", "aspnet", "sdk-fips"] },
+      { name: "erlang", source: "integer", variants: ["default", "dev", "fips"] },
       { name: "openjdk", source: "integer", variants: ["default", "dev"] },
       { name: "php", source: "integer", variants: ["default", "dev", "fips"] },
       { name: "deno", source: "integer" },
@@ -124,8 +124,8 @@ export const fullCatalog: FullCatalogCategory[] = [
     id: "databases",
     label: "Databases & Caching",
     images: [
-      { name: "postgres", source: "integer", variants: ["default", "dev"] },
-      { name: "valkey", source: "integer" },
+      { name: "postgres", source: "integer", variants: ["default", "fips"] },
+      { name: "valkey", source: "integer", variants: ["default", "fips"] },
       {
         name: "mongodb/mongodb-community-server",
         label: "mongodb",
@@ -674,7 +674,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     id: "security",
     label: "Security & Identity",
     images: [
-      { name: "vault", source: "integer" },
+      { name: "vault", source: "integer", variants: ["default", "fips"] },
       {
         name: "hashicorp/vault-k8s",
         label: "vault-k8s",

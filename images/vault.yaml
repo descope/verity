@@ -18,15 +18,22 @@ types:
       - {path: /home/vault, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
 
   fips:
-    base: wolfi-fips
-    fips-profile: review
+    base: wolfi-base
+    fips-profile: go
+    # Go-FIPS rebuild from upstream source (bespoke recipe): wolfi removed
+    # its vault recipe at the BUSL relicense and the remaining wolfi apk is
+    # a stale 1.14.1 with known CVEs, so the FIPS variant builds the current
+    # release with GOFIPS140=v1.0.0 (via fips.env). Built without the web
+    # UI; API/CLI unaffected. See packages/bespoke/vault-fips.yaml.
     packages: ["vault"]
     entrypoint: vault server
     environment:
       VAULT_DEV_ROOT_TOKEN_ID: ""
       HOME: /home/vault
-      OPENSSL_MODULES: /usr/lib/ossl-modules
-      OPENSSL_CONF: /etc/ssl/openssl-fips.cnf
+      GODEBUG: "fips140=on"
+    melange:
+      bespoke: "vault-fips.yaml"
+      env-file: "fips.env"
     paths:
       - {path: /vault/config, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
       - {path: /vault/data, type: directory, uid: 65532, gid: 65532, permissions: 0o700}
@@ -34,4 +41,10 @@ types:
       - {path: /home/vault, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
 
 versions:
-  "1": {}
+  # default ships the wolfi vault apk (1.14.x line); the fips variant is a
+  # bespoke source build of the current release, so each version label only
+  # publishes the type whose contents match it.
+  "1":
+    skip-types: [fips]
+  "2":
+    skip-types: [default]

@@ -137,6 +137,39 @@ subpackages:
         - runs: |
             haproxy -c -f /etc/haproxy/haproxy.cfg
 
+  - name: valkey-fips-shim
+    description: PATH shim routing valkey-server through the FIPS entrypoint
+    dependencies:
+      provides:
+        - valkey-fips-shim=${{package.full-version}}
+      runtime:
+        - busybox
+    pipeline:
+      - runs: |
+          # The cloudpirates valkey chart hardcodes a `/bin/sh -c` pod command
+          # that launches `valkey-server` by PATH lookup, bypassing the image
+          # entrypoint (and therefore runtime fipsinstall). /usr/local/bin
+          # precedes /usr/bin on PATH, so this shim intercepts every
+          # unqualified valkey-server invocation and routes it through the
+          # FIPS entrypoint. The wrapper and the image entrypoint both exec
+          # /usr/bin/valkey-server by absolute path, so no recursion.
+          mkdir -p "${{targets.subpkgdir}}"/usr/local/bin
+          cat > "${{targets.subpkgdir}}"/usr/local/bin/valkey-server <<'EOF'
+          #!/bin/sh
+          exec /usr/bin/openssl-fips-entrypoint /usr/bin/valkey-server "$@"
+          EOF
+          chmod 755 "${{targets.subpkgdir}}"/usr/local/bin/valkey-server
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - runs: |
+            test -x /usr/local/bin/valkey-server
+            head -1 /usr/local/bin/valkey-server | grep -q '^#!/bin/sh$'
+            grep -q 'exec /usr/bin/openssl-fips-entrypoint /usr/bin/valkey-server' /usr/local/bin/valkey-server
+
 test:
   pipeline:
     - runs: |
