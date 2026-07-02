@@ -69,7 +69,7 @@ jobs:
               exit 1
             fi
           }
-          check image "$INPUT_IMAGE" '^[a-z][a-z0-9-]*$'
+          check image "$INPUT_IMAGE" '^[a-z][a-z0-9-]*(/[a-z][a-z0-9-]*)*$'
           check type  "$INPUT_TYPE"  '^[a-z][a-z0-9-]*$'
 
       - name: Check if melange build needed
@@ -327,7 +327,7 @@ jobs:
               exit 1
             fi
           }
-          check image    "$INPUT_IMAGE"    '^[a-z][a-z0-9-]*$'
+          check image    "$INPUT_IMAGE"    '^[a-z][a-z0-9-]*(/[a-z][a-z0-9-]*)*$'
           check version  "$INPUT_VERSION"  '^[a-zA-Z0-9][a-zA-Z0-9._-]*$'
           check type     "$INPUT_TYPE"     '^[a-z][a-z0-9-]*$'
           check tags     "$INPUT_TAGS"     '^[a-zA-Z0-9.,_-]+$'
@@ -382,6 +382,8 @@ jobs:
           done
           echo "refs=$refs" >> "$GITHUB_OUTPUT"
           echo "primary_tag=${TAGS[0]// /}" >> "$GITHUB_OUTPUT"
+          # Artifact names reject '/', so flatten slashed image names.
+          echo "safe_image=${INPUT_IMAGE//\//-}" >> "$GITHUB_OUTPUT"
 
       - name: Read image metadata
         id: meta
@@ -524,7 +526,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: "trivy-${{ inputs.image }}-${{ inputs.version }}-${{ inputs.type }}"
+          name: "trivy-${{ steps.gen.outputs.safe_image }}-${{ inputs.version }}-${{ inputs.type }}"
           path: trivy-report.json
           retention-days: 30
 

@@ -41,11 +41,11 @@ type Options struct {
 	GenDir string
 }
 
-// DiscoverFromFiles walks imagesDir for *.yaml files (not subdirectories),
-// resolves versions from APKINDEX, and returns every buildable combination.
-// This is the primary entry point for the v2 flat-file layout.
+// DiscoverFromFiles walks imagesDir recursively for image *.yaml files
+// (excluding _base/), resolves versions from APKINDEX, and returns every
+// buildable combination.
 func DiscoverFromFiles(opts Options) ([]DiscoveredImage, error) {
-	entries, err := os.ReadDir(opts.ImagesDir)
+	imageFiles, err := config.ImageFilePaths(opts.ImagesDir)
 	if err != nil {
 		return nil, fmt.Errorf("reading images dir %q: %w", opts.ImagesDir, err)
 	}
@@ -61,21 +61,13 @@ func DiscoverFromFiles(opts Options) ([]DiscoveredImage, error) {
 
 	var results []DiscoveredImage
 
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		if filepath.Ext(entry.Name()) != ".yaml" {
-			continue
-		}
-
-		defPath := filepath.Join(opts.ImagesDir, entry.Name())
+	for _, defPath := range imageFiles {
 		def, err := config.LoadImage(defPath)
 		if err != nil {
-			return nil, fmt.Errorf("loading %q: %w", entry.Name(), err)
+			return nil, fmt.Errorf("loading %q: %w", defPath, err)
 		}
 		if err := config.Validate(def); err != nil {
-			return nil, fmt.Errorf("invalid image %q: %w", entry.Name(), err)
+			return nil, fmt.Errorf("invalid image %q: %w", defPath, err)
 		}
 
 		imgs, err := expandImage(def, opts.ImagesDir, opts.Registry, opts.Packages, genDir)
@@ -290,22 +282,24 @@ func DeriveTags(streamVersion, latestVersion, fullVersion string) []string {
 	return tags
 }
 
-// FindLatestVersion returns the highest numeric version from a sorted slice.
-// The literal "latest" sentinel (used by unversioned packages) is skipped when
-// numeric versions are present. Returns empty string if the slice is empty.
+// FindLatestVersion returns the version that should carry the "latest" tag:
+// the highest numeric version, else an explicit "latest" entry, else ""
+// (no version carries the tag).
 func FindLatestVersion(versions []string) string {
-	if len(versions) == 0 {
-		return ""
-	}
-	// Backward iteration via slices.Backward so the modernize linter
-	// is satisfied while keeping the highest-numeric-first walk
-	// semantics (highest version is at the end of the sorted slice).
+	hasLatest := false
 	for _, v := range slices.Backward(versions) {
-		if v != latestSentinel {
+		if v == latestSentinel {
+			hasLatest = true
+			continue
+		}
+		if apkindex.StartsNumeric(v) {
 			return v
 		}
 	}
-	return versions[len(versions)-1]
+	if hasLatest {
+		return latestSentinel
+	}
+	return ""
 }
 
 // ApplyTypeSuffix appends "-<type>" to each tag for non-default types.

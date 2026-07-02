@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"maps"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -57,17 +56,14 @@ func runIntegerSync(_ context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	entries, err := os.ReadDir(imagesDir)
+	imageFiles, err := intconfig.ImageFilePaths(imagesDir)
 	if err != nil {
 		return fmt.Errorf("reading images directory: %w", err)
 	}
 
 	totalNew, totalStale := 0, 0
-	for _, entry := range entries {
-		if entry.IsDir() || filepath.Ext(entry.Name()) != yamlExt {
-			continue
-		}
-		n, s := integerProcessSyncEntry(entry, imagesDir, pkgs, apply)
+	for _, defPath := range imageFiles {
+		n, s := integerProcessSyncEntry(defPath, pkgs, apply)
 		totalNew += n
 		totalStale += s
 	}
@@ -76,11 +72,10 @@ func runIntegerSync(_ context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-func integerProcessSyncEntry(entry os.DirEntry, imagesDir string, pkgs []apkindex.Package, apply bool) (newCount, staleCount int) {
-	defPath := filepath.Join(imagesDir, entry.Name())
+func integerProcessSyncEntry(defPath string, pkgs []apkindex.Package, apply bool) (newCount, staleCount int) {
 	def, err := intconfig.LoadImage(defPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "WARN %s: %v\n", entry.Name(), err)
+		fmt.Fprintf(os.Stderr, "WARN %s: %v\n", defPath, err)
 		return 0, 0
 	}
 
@@ -103,7 +98,10 @@ func integerProcessSyncEntry(entry os.DirEntry, imagesDir string, pkgs []apkinde
 		}
 	}
 	for v := range def.Versions {
-		if !discoveredSet[v] && v != latestSentinel {
+		// Non-numeric keys (nonroot, debug, …) are variant aliases, not
+		// APKINDEX streams — they never appear in discovery, so flagging
+		// them stale would be permanent noise.
+		if !discoveredSet[v] && v != latestSentinel && apkindex.StartsNumeric(v) {
 			staleVersions = append(staleVersions, v)
 		}
 	}
@@ -114,7 +112,7 @@ func integerProcessSyncEntry(entry os.DirEntry, imagesDir string, pkgs []apkinde
 
 	if apply && len(newVersions) > 0 {
 		if err := integerApplySyncUpdates(defPath, def, newVersions); err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR applying updates to %s: %v\n", entry.Name(), err)
+			fmt.Fprintf(os.Stderr, "ERROR applying updates to %s: %v\n", defPath, err)
 		}
 	}
 

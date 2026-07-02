@@ -74,9 +74,9 @@ func runIntegerCatalog(_ context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	var eolClient *eol.Client
+	var eolFetcher eol.Fetcher
 	if cmd.Bool("fetch-eol") {
-		eolClient = eol.NewClient()
+		eolFetcher = eol.NewClient()
 	}
 
 	cat, err := catalog.Generate(
@@ -84,7 +84,7 @@ func runIntegerCatalog(_ context.Context, cmd *cli.Command) error {
 		cmd.String("reports-dir"),
 		cfg.Target.Registry,
 		pkgs,
-		eolClient,
+		eolFetcher,
 	)
 	if err != nil {
 		return fmt.Errorf("generating catalog: %w", err)

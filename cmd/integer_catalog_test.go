@@ -66,6 +66,7 @@ func TestIntegerCatalogCommand_StdoutOutput(t *testing.T) {
 		"--config", cfgPath,
 		"--images-dir", imagesDir,
 		"--apkindex-url", "",
+		"--fetch-eol=false",
 		"--output", "-",
 	})
 	require.NoError(t, err)
