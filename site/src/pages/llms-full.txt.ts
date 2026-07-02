@@ -168,6 +168,7 @@ All patched images follow the same convention:
 |----------|---------|
 | \`quay.io/prometheus/prometheus:v3.9.1\` | \`ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched\` |
 | \`docker.io/library/nginx:1.29.5\` | \`ghcr.io/verity-org/library/nginx:1.29.5-patched\` |
+| \`gcr.io/distroless/static:nonroot\` | \`ghcr.io/verity-org/distroless/static:nonroot-patched\` |
 
 For Wolfi-based images (no upstream equivalent):
 \`\`\`
