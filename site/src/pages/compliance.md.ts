@@ -69,7 +69,7 @@ Every signature is recorded in the Rekor transparency log — tamper-evident, pu
 FIPS variants declare a machine-readable \`fips-profile\` so Verity can map each image to the right cryptographic evidence path:
 
 - **\`go\`** — Go binaries/toolchains use the Go Cryptographic Module path, with \`GODEBUG=fips140=on\` and build-time \`GOFIPS140=v1.0.0\` evidence where Verity rebuilds the package
-- **\`openssl\`** — OpenSSL-backed images use Verity's OpenSSL 3.1.2 FIPS provider package and runtime \`fipsinstall\` evidence; currently enabled for \`node\` and \`nginx\`
+- **\`openssl\`** — OpenSSL-backed images use Verity's OpenSSL 3.1.2 FIPS provider package and runtime \`fipsinstall\` evidence; currently enabled for \`node\`, \`nginx\`, \`php\`, \`ruby\`, \`erlang\`, \`haproxy\`, \`httpd\`, \`python\`, and \`postgres\`
 - **\`java\`** — Provider-backed profile; blocked/review-only until Verity ships real Java FIPS provider artifacts. No active FIPS claim.
 - **\`review\`** — Images whose crypto path is hybrid or not yet proven are explicitly marked for follow-up instead of inheriting a blanket FIPS claim
 

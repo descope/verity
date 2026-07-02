@@ -41,7 +41,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     label: "Languages & Build Tools",
     images: [
       { name: "golang", source: "integer", variants: ["default", "dev", "fips"] },
-      { name: "python", source: "integer", variants: ["default", "dev"] },
+      { name: "python", source: "integer", variants: ["default", "dev", "fips"] },
       { name: "node", source: "integer", variants: ["default", "dev", "fips"] },
       { name: "rust", source: "integer", variants: ["default", "dev"] },
       { name: "ruby", source: "integer", variants: ["default", "dev", "fips"] },
@@ -124,7 +124,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     id: "databases",
     label: "Databases & Caching",
     images: [
-      { name: "postgres", source: "integer", variants: ["default", "dev"] },
+      { name: "postgres", source: "integer", variants: ["default", "fips"] },
       { name: "valkey", source: "integer" },
       {
         name: "mongodb/mongodb-community-server",
