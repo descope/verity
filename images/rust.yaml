@@ -32,6 +32,10 @@ types:
 
   fips:
     base: wolfi-fips
+    # Stays `review`: the entrypoint is rustc, a compiler. It performs no
+    # runtime crypto that a FIPS provider could govern, and it cannot make
+    # any FIPS claim about the binaries it produces. There is no honest
+    # openssl/go promotion path for a toolchain image. Reviewed 2026-07-02.
     fips-profile: review
     packages: ["rust-1.86"]
     entrypoint: /usr/bin/rustc

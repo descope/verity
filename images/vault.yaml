@@ -19,6 +19,12 @@ types:
 
   fips:
     base: wolfi-fips
+    # Stays `review`: vault is a Go binary whose crypto is Go's stdlib, not
+    # OpenSSL, so openssl-provider-fips wiring would be a false claim. The
+    # honest path is a Go-FIPS rebuild (GOFIPS140, like etcd/argocd), but
+    # vault has no packages/upstream.lock.json entry to rebuild from.
+    # Reviewed 2026-07-02; promote via the go profile once a lock entry and
+    # a proven GOFIPS140 build exist.
     fips-profile: review
     packages: ["vault"]
     entrypoint: vault server

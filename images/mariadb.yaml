@@ -19,6 +19,13 @@ types:
 
   fips:
     base: wolfi-fips
+    # Stays `review`: empirically NOT promotable to the openssl profile.
+    # 2026-07-02 runtime test with openssl-provider-fips wired in: `openssl
+    # list -providers` showed fips 3.1.2 active, yet `SELECT MD5('x')`
+    # returned a digest — mariadbd's SQL crypto uses bundled implementations
+    # that bypass OpenSSL EVP, so the provider governs only TLS, not the
+    # server's crypto surface. Claiming the openssl profile would overstate
+    # FIPS coverage. Contrast postgres, where md5() fails under the provider.
     fips-profile: review
     packages: ["mariadb-{{version}}"]
     entrypoint: mariadbd

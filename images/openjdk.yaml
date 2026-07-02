@@ -30,6 +30,11 @@ types:
 
   fips:
     base: wolfi-fips
+    # Stays `review`: JVM crypto goes through JCE providers (SunJCE et al),
+    # not OpenSSL, so the openssl-provider-fips wiring cannot govern Java
+    # workloads. Promotion requires a FIPS-validated JCE provider (e.g.
+    # Bouncy Castle BC-FIPS) wired via java.security, which Wolfi does not
+    # ship. The go profile does not apply either. Reviewed 2026-07-02.
     fips-profile: review
     packages: ["openjdk-{{version}}", "openjdk-{{version}}-default-jvm"]
     entrypoint: /usr/bin/java

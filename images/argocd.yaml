@@ -91,4 +91,7 @@ types:
 
 versions:
   "3.3":
-    skip-types: [fips]  # go/bump + GOFIPS140 fails: golang/go#73649
+    # go/bump + GOFIPS140 fails: golang/go#73649. Re-verified 2026-07-02 on
+    # Go 1.26.4: go mod tidy cannot resolve crypto/internal/fips140/
+    # v1.0.0-c2097c7c/* snapshot packages. Retry when the upstream fix lands.
+    skip-types: [fips]
