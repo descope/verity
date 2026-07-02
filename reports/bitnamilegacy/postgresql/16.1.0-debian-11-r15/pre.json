@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.70.0"
   },
-  "ReportID": "019f1c72-156b-7cd6-aeff-35965bb24959",
-  "CreatedAt": "2026-07-01T06:51:06.475843171Z",
+  "ReportID": "019f20b0-4383-75df-a0b0-8818878ade11",
+  "CreatedAt": "2026-07-02T02:37:30.371386251Z",
   "ArtifactID": "sha256:36685bf93b8c09ff25abfec43346d4a554cc5f18b524b790eba1c73658368003",
   "ArtifactName": "bitnamilegacy/postgresql:16.1.0-debian-11-r15",
   "ArtifactType": "container_image",
@@ -10774,6 +10774,7 @@
             "https://access.redhat.com/errata/RHSA-2026:33124",
             "https://access.redhat.com/errata/RHSA-2026:33313",
             "https://access.redhat.com/errata/RHSA-2026:33612",
+            "https://access.redhat.com/errata/RHSA-2026:34102",
             "https://access.redhat.com/security/cve/CVE-2025-5278",
             "https://bugzilla.redhat.com/2368764",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2368764",
@@ -10790,7 +10791,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2025-5278"
           ],
           "PublishedDate": "2025-05-27T21:15:23.197Z",
-          "LastModifiedDate": "2026-06-30T17:16:19.61Z"
+          "LastModifiedDate": "2026-07-01T11:16:20.657Z"
         },
         {
           "VulnerabilityID": "CVE-2025-6297",
@@ -11186,6 +11187,7 @@
             "CWE-1284"
           ],
           "VendorSeverity": {
+            "photon": 1,
             "redhat": 1
           },
           "CVSS": {
@@ -11205,6 +11207,51 @@
           "LastModifiedDate": "2026-06-25T20:16:05.473Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-41992",
+          "PkgID": "gzip@1.10-4+deb11u1",
+          "PkgName": "gzip",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/gzip@1.10-4%2Bdeb11u1?arch=amd64\u0026distro=debian-11.8",
+            "UID": "886dcd8ca9ef4bf1"
+          },
+          "InstalledVersion": "1.10-4+deb11u1",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:8e248d9790e37ac00cdc74d5e92886f87438902fe7f09c72f6f95bda693311af",
+            "DiffID": "sha256:99d698db9c4b2c3e12746ed2efed30a8d26dc5b05d61cb31f792d678ff7b15c4"
+          },
+          "SeveritySource": "nvd",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-41992",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:152095452d3f43439eb81a36dee484b07e2995ccccf516a79a88f96cd7bc5e68",
+          "Title": "GNU gzip contains a global buffer overflow vulnerability in the LZH de ...",
+          "Description": "GNU gzip contains a global buffer overflow vulnerability in the LZH decompression logic caused by improper reuse of shared global state between different decompression formats within a single execution. GNU gzip maintains a global array that is shared across the LZ77, LZW, and LZH decompression routines and is not reinitialized between files processed in the same invocation.\nBy decompressing a specially crafted LZW file followed by a specially crafted LZH file in a single gzip -d command, an attacker can poison the shared global state and subsequently trigger an out‑of‑bounds read in the LZH decoder. The LZH decompression logic follows stale values left in the shared array, causing reads past the end of the allocated global buffer.\n\nThis issue has been fixed in the commit 63dbf6b3b9e6e781df1a6a64e609b10e23969681",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-126"
+          ],
+          "VendorSeverity": {
+            "nvd": 3
+          },
+          "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://cert.pl/en/posts/2026/04/CVE-2026-41991/",
+            "https://cgit.git.savannah.gnu.org/cgit/gzip.git/commit/?id=63dbf6b3b9e6e781df1a6a64e609b10e23969681",
+            "https://www.gnu.org/software/gzip/"
+          ],
+          "PublishedDate": "2026-06-29T12:16:29.94Z",
+          "LastModifiedDate": "2026-07-01T14:02:20.173Z"
+        },
+        {
           "VulnerabilityID": "CVE-2026-41991",
           "PkgID": "gzip@1.10-4+deb11u1",
           "PkgName": "gzip",
@@ -11218,6 +11265,7 @@
             "Digest": "sha256:8e248d9790e37ac00cdc74d5e92886f87438902fe7f09c72f6f95bda693311af",
             "DiffID": "sha256:99d698db9c4b2c3e12746ed2efed30a8d26dc5b05d61cb31f792d678ff7b15c4"
           },
+          "SeveritySource": "nvd",
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-41991",
           "DataSource": {
             "ID": "debian",
@@ -11232,9 +11280,14 @@
             "CWE-377"
           ],
           "VendorSeverity": {
+            "nvd": 2,
             "redhat": 2
           },
           "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:N/I:H/A:N",
+              "V3Score": 4.7
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:R/S:U/C:N/I:H/A:H",
               "V3Score": 6
@@ -11249,42 +11302,7 @@
             "https://www.gnu.org/software/gzip/"
           ],
           "PublishedDate": "2026-06-29T12:16:29.77Z",
-          "LastModifiedDate": "2026-06-29T19:12:56.173Z"
-        },
-        {
-          "VulnerabilityID": "CVE-2026-41992",
-          "PkgID": "gzip@1.10-4+deb11u1",
-          "PkgName": "gzip",
-          "PkgIdentifier": {
-            "PURL": "pkg:deb/debian/gzip@1.10-4%2Bdeb11u1?arch=amd64\u0026distro=debian-11.8",
-            "UID": "886dcd8ca9ef4bf1"
-          },
-          "InstalledVersion": "1.10-4+deb11u1",
-          "Status": "affected",
-          "Layer": {
-            "Digest": "sha256:8e248d9790e37ac00cdc74d5e92886f87438902fe7f09c72f6f95bda693311af",
-            "DiffID": "sha256:99d698db9c4b2c3e12746ed2efed30a8d26dc5b05d61cb31f792d678ff7b15c4"
-          },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-41992",
-          "DataSource": {
-            "ID": "debian",
-            "Name": "Debian Security Tracker",
-            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
-          },
-          "Fingerprint": "sha256:152095452d3f43439eb81a36dee484b07e2995ccccf516a79a88f96cd7bc5e68",
-          "Title": "GNU gzip contains a global buffer overflow vulnerability in the LZH de ...",
-          "Description": "GNU gzip contains a global buffer overflow vulnerability in the LZH decompression logic caused by improper reuse of shared global state between different decompression formats within a single execution. GNU gzip maintains a global array that is shared across the LZ77, LZW, and LZH decompression routines and is not reinitialized between files processed in the same invocation.\nBy decompressing a specially crafted LZW file followed by a specially crafted LZH file in a single gzip -d command, an attacker can poison the shared global state and subsequently trigger an out‑of‑bounds read in the LZH decoder. The LZH decompression logic follows stale values left in the shared array, causing reads past the end of the allocated global buffer.\n\nThis issue has been fixed in the commit 63dbf6b3b9e6e781df1a6a64e609b10e23969681",
-          "Severity": "UNKNOWN",
-          "CweIDs": [
-            "CWE-126"
-          ],
-          "References": [
-            "https://cert.pl/en/posts/2026/04/CVE-2026-41991/",
-            "https://cgit.git.savannah.gnu.org/cgit/gzip.git/commit/?id=63dbf6b3b9e6e781df1a6a64e609b10e23969681",
-            "https://www.gnu.org/software/gzip/"
-          ],
-          "PublishedDate": "2026-06-29T12:16:29.94Z",
-          "LastModifiedDate": "2026-06-29T19:12:56.173Z"
+          "LastModifiedDate": "2026-07-01T14:02:24.45Z"
         },
         {
           "VulnerabilityID": "CVE-2026-54369",
@@ -12835,6 +12853,7 @@
           ],
           "VendorSeverity": {
             "alma": 2,
+            "oracle-oval": 2,
             "photon": 4,
             "redhat": 2
           },
@@ -12850,6 +12869,8 @@
             "https://bugzilla.redhat.com/2459853",
             "https://errata.almalinux.org/9/ALSA-2026-33226.html",
             "https://inbox.sourceware.org/libc-announce/b11f0003-6ec1-4bd6-b9de-9e38a4efeca3@redhat.com/T/#u",
+            "https://linux.oracle.com/cve/CVE-2026-5450.html",
+            "https://linux.oracle.com/errata/ELSA-2026-33226.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-5450",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-5450#range-21286997",
             "https://sourceware.org/bugzilla/show_bug.cgi?id=CVE-2026-5450",
@@ -14557,6 +14578,7 @@
           ],
           "VendorSeverity": {
             "alma": 2,
+            "oracle-oval": 2,
             "photon": 4,
             "redhat": 2
           },
@@ -14572,6 +14594,8 @@
             "https://bugzilla.redhat.com/2459853",
             "https://errata.almalinux.org/9/ALSA-2026-33226.html",
             "https://inbox.sourceware.org/libc-announce/b11f0003-6ec1-4bd6-b9de-9e38a4efeca3@redhat.com/T/#u",
+            "https://linux.oracle.com/cve/CVE-2026-5450.html",
+            "https://linux.oracle.com/errata/ELSA-2026-33226.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-5450",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-5450#range-21286997",
             "https://sourceware.org/bugzilla/show_bug.cgi?id=CVE-2026-5450",
@@ -16279,6 +16303,7 @@
           ],
           "VendorSeverity": {
             "alma": 2,
+            "oracle-oval": 2,
             "photon": 4,
             "redhat": 2
           },
@@ -16294,6 +16319,8 @@
             "https://bugzilla.redhat.com/2459853",
             "https://errata.almalinux.org/9/ALSA-2026-33226.html",
             "https://inbox.sourceware.org/libc-announce/b11f0003-6ec1-4bd6-b9de-9e38a4efeca3@redhat.com/T/#u",
+            "https://linux.oracle.com/cve/CVE-2026-5450.html",
+            "https://linux.oracle.com/errata/ELSA-2026-33226.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-5450",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-5450#range-21286997",
             "https://sourceware.org/bugzilla/show_bug.cgi?id=CVE-2026-5450",
@@ -17593,6 +17620,7 @@
             "https://access.redhat.com/errata/RHSA-2026:30850",
             "https://access.redhat.com/errata/RHSA-2026:32962",
             "https://access.redhat.com/errata/RHSA-2026:33125",
+            "https://access.redhat.com/errata/RHSA-2026:34372",
             "https://access.redhat.com/security/cve/CVE-2026-33845",
             "https://bugzilla.redhat.com/2445763",
             "https://bugzilla.redhat.com/2450624",
@@ -17637,7 +17665,7 @@
             "https://www.gnutls.org/security-new.html#GNUTLS-SA-2026-04-29-3"
           ],
           "PublishedDate": "2026-04-30T18:16:28.003Z",
-          "LastModifiedDate": "2026-06-30T03:18:44.02Z"
+          "LastModifiedDate": "2026-07-01T20:17:08.49Z"
         },
         {
           "VulnerabilityID": "CVE-2026-42010",
@@ -18158,6 +18186,7 @@
             "https://access.redhat.com/errata/RHSA-2026:30850",
             "https://access.redhat.com/errata/RHSA-2026:32962",
             "https://access.redhat.com/errata/RHSA-2026:33125",
+            "https://access.redhat.com/errata/RHSA-2026:34372",
             "https://access.redhat.com/security/cve/CVE-2026-33846",
             "https://bugzilla.redhat.com/2445763",
             "https://bugzilla.redhat.com/2450624",
@@ -18202,7 +18231,7 @@
             "https://www.gnutls.org/security-new.html#GNUTLS-SA-2026-04-29-1"
           ],
           "PublishedDate": "2026-05-04T10:15:59.69Z",
-          "LastModifiedDate": "2026-06-30T03:18:44.443Z"
+          "LastModifiedDate": "2026-07-01T20:17:08.987Z"
         },
         {
           "VulnerabilityID": "CVE-2026-3833",
@@ -18376,6 +18405,7 @@
             "https://access.redhat.com/errata/RHSA-2026:30850",
             "https://access.redhat.com/errata/RHSA-2026:32962",
             "https://access.redhat.com/errata/RHSA-2026:33125",
+            "https://access.redhat.com/errata/RHSA-2026:34372",
             "https://access.redhat.com/security/cve/CVE-2026-42009",
             "https://bugzilla.redhat.com/2445763",
             "https://bugzilla.redhat.com/2450624",
@@ -18420,7 +18450,7 @@
             "https://www.gnutls.org/security-new.html#GNUTLS-SA-2026-04-29-2"
           ],
           "PublishedDate": "2026-05-18T13:16:32.707Z",
-          "LastModifiedDate": "2026-06-30T17:16:21.107Z"
+          "LastModifiedDate": "2026-07-01T20:17:09.697Z"
         },
         {
           "VulnerabilityID": "CVE-2023-5981",
@@ -20567,6 +20597,7 @@
           ],
           "VendorSeverity": {
             "debian": 1,
+            "photon": 2,
             "redhat": 2
           },
           "CVSS": {
@@ -21459,6 +21490,7 @@
           ],
           "VendorSeverity": {
             "debian": 1,
+            "photon": 2,
             "redhat": 2
           },
           "CVSS": {
@@ -22281,6 +22313,7 @@
           ],
           "VendorSeverity": {
             "debian": 1,
+            "photon": 2,
             "redhat": 2
           },
           "CVSS": {
@@ -23103,6 +23136,7 @@
           ],
           "VendorSeverity": {
             "debian": 1,
+            "photon": 2,
             "redhat": 2
           },
           "CVSS": {
@@ -24389,7 +24423,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-13757"
           ],
           "PublishedDate": "2026-06-29T19:16:40.907Z",
-          "LastModifiedDate": "2026-06-29T20:17:33.013Z"
+          "LastModifiedDate": "2026-07-01T15:16:30.19Z"
         },
         {
           "VulnerabilityID": "CVE-2025-6020",
@@ -27803,6 +27837,7 @@
             "https://access.redhat.com/errata/RHSA-2026:26275",
             "https://access.redhat.com/errata/RHSA-2026:26319",
             "https://access.redhat.com/errata/RHSA-2026:29197",
+            "https://access.redhat.com/errata/RHSA-2026:34102",
             "https://access.redhat.com/security/cve/CVE-2026-45447",
             "https://bugzilla.redhat.com/2481879",
             "https://bugzilla.redhat.com/2481880",
@@ -27866,7 +27901,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-45447"
           ],
           "PublishedDate": "2026-06-09T17:17:19.277Z",
-          "LastModifiedDate": "2026-06-30T03:20:04.08Z"
+          "LastModifiedDate": "2026-07-01T13:17:32.217Z"
         },
         {
           "VulnerabilityID": "CVE-2023-5678",
@@ -34451,7 +34486,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2025-8732"
           ],
           "PublishedDate": "2025-08-08T17:15:30.583Z",
-          "LastModifiedDate": "2026-06-29T19:05:40.607Z"
+          "LastModifiedDate": "2026-07-01T15:25:19.593Z"
         },
         {
           "VulnerabilityID": "CVE-2026-0989",
@@ -36349,6 +36384,7 @@
           ],
           "VendorSeverity": {
             "alma": 2,
+            "oracle-oval": 2,
             "photon": 4,
             "redhat": 2
           },
@@ -36364,6 +36400,8 @@
             "https://bugzilla.redhat.com/2459853",
             "https://errata.almalinux.org/9/ALSA-2026-33226.html",
             "https://inbox.sourceware.org/libc-announce/b11f0003-6ec1-4bd6-b9de-9e38a4efeca3@redhat.com/T/#u",
+            "https://linux.oracle.com/cve/CVE-2026-5450.html",
+            "https://linux.oracle.com/errata/ELSA-2026-33226.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-5450",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-5450#range-21286997",
             "https://sourceware.org/bugzilla/show_bug.cgi?id=CVE-2026-5450",
@@ -38598,6 +38636,7 @@
             "https://access.redhat.com/errata/RHSA-2026:26275",
             "https://access.redhat.com/errata/RHSA-2026:26319",
             "https://access.redhat.com/errata/RHSA-2026:29197",
+            "https://access.redhat.com/errata/RHSA-2026:34102",
             "https://access.redhat.com/security/cve/CVE-2026-45447",
             "https://bugzilla.redhat.com/2481879",
             "https://bugzilla.redhat.com/2481880",
@@ -38661,7 +38700,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-45447"
           ],
           "PublishedDate": "2026-06-09T17:17:19.277Z",
-          "LastModifiedDate": "2026-06-30T03:20:04.08Z"
+          "LastModifiedDate": "2026-07-01T13:17:32.217Z"
         },
         {
           "VulnerabilityID": "CVE-2023-5678",
