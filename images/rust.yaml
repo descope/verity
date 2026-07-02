@@ -30,25 +30,9 @@ types:
       - {path: /app, type: directory, uid: 0, gid: 0, permissions: 0o755}
       - {path: /usr/local/cargo, type: directory, uid: 0, gid: 0, permissions: 0o755}
 
-  fips:
-    base: wolfi-fips
-    # Stays `review`: the entrypoint is rustc, a compiler. It performs no
-    # runtime crypto that a FIPS provider could govern, and it cannot make
-    # any FIPS claim about the binaries it produces. There is no honest
-    # openssl/go promotion path for a toolchain image. Reviewed 2026-07-02.
-    fips-profile: review
-    packages: ["rust-1.86"]
-    entrypoint: /usr/bin/rustc
-    work-dir: /app
-    environment:
-      RUST_BACKTRACE: "1"
-      CARGO_HOME: /usr/local/cargo
-      OPENSSL_MODULES: /usr/lib/ossl-modules
-      OPENSSL_CONF: /etc/ssl/openssl-fips.cnf
-      PATH: /usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-    paths:
-      - {path: /app, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
-      - {path: /usr/local/cargo, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+  # No fips variant: rustc is a compiler - it performs no runtime crypto a
+  # FIPS provider could govern and cannot make FIPS claims about binaries
+  # it produces. Reviewed 2026-07-02.
 
 versions:
   "1": {}

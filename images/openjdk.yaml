@@ -28,28 +28,11 @@ types:
     paths:
       - {path: /app, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
 
-  fips:
-    base: wolfi-fips
-    # Stays `review`: JVM crypto goes through JCE providers (SunJCE et al),
-    # not OpenSSL, so the openssl-provider-fips wiring cannot govern Java
-    # workloads. Promotion requires a FIPS-validated JCE provider (e.g.
-    # Bouncy Castle BC-FIPS) wired via java.security, which Wolfi does not
-    # ship. The go profile does not apply either. Reviewed 2026-07-02.
-    fips-profile: review
-    packages: ["openjdk-{{version}}", "openjdk-{{version}}-default-jvm"]
-    entrypoint: /usr/bin/java
-    work-dir: /app
-    environment:
-      JAVA_HOME: /usr/lib/jvm/java-{{version}}-openjdk
-      PATH: /usr/lib/jvm/java-{{version}}-openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-      LANG: en_US.UTF-8
-      OPENSSL_MODULES: /usr/lib/ossl-modules
-      OPENSSL_CONF: /etc/ssl/openssl-fips.cnf
-      JAVA_TOOL_OPTIONS: >-
-        -Dcom.sun.net.ssl.checkRevocation=false
-        -Djava.security.properties=/etc/java-{{version}}-openjdk/security/java.security.fips
-    paths:
-      - {path: /app, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
+  # No fips variant: JVM crypto goes through JCE providers (SunJCE et al),
+  # not OpenSSL, so the openssl provider cannot govern Java workloads.
+  # A fips tag requires a FIPS-validated JCE provider (e.g. Bouncy Castle
+  # BC-FIPS) wired via java.security, which Wolfi does not ship.
+  # Reviewed 2026-07-02.
 
 versions:
   "17": {}
