@@ -23,9 +23,17 @@ types:
 
   fips:
     base: wolfi-fips
-    fips-profile: review
-    packages: ["valkey-{{version}}", "valkey-{{version}}-cli", "busybox"]
-    entrypoint: /usr/bin/valkey-server
+    fips-profile: openssl
+    # valkey-fips-shim ships /usr/local/bin/valkey-server, which precedes
+    # /usr/bin on PATH. The cloudpirates valkey chart hardcodes a
+    # `/bin/sh -c` pod command that launches `valkey-server` by PATH lookup,
+    # bypassing the image entrypoint; the shim routes that path through the
+    # FIPS entrypoint too, so fipsinstall runs on the entrypoint and chart
+    # invocation paths (a manual absolute-path exec can still bypass it).
+    packages: ["valkey-{{version}}", "valkey-{{version}}-cli", "busybox", "openssl-provider-fips", "valkey-fips-shim"]
+    entrypoint: /usr/bin/openssl-fips-entrypoint /usr/bin/valkey-server
+    melange:
+      bespoke: "openssl-provider-fips.yaml"
     environment:
       OPENSSL_MODULES: /usr/lib/ossl-modules
       OPENSSL_CONF: /etc/ssl/openssl-fips.cnf

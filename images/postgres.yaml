@@ -22,9 +22,9 @@ types:
 
   fips:
     base: wolfi-fips
-    fips-profile: review
-    packages: ["postgresql-{{version}}", "postgresql-{{version}}-client"]
-    entrypoint: postgres
+    fips-profile: openssl
+    packages: ["postgresql-{{version}}", "postgresql-{{version}}-client", "openssl-provider-fips"]
+    entrypoint: /usr/bin/openssl-fips-entrypoint postgres
     work-dir: /var/lib/postgresql
     environment:
       PGDATA: /var/lib/postgresql/data
@@ -33,6 +33,8 @@ types:
       PG_MAJOR: "{{version}}"
       OPENSSL_MODULES: /usr/lib/ossl-modules
       OPENSSL_CONF: /etc/ssl/openssl-fips.cnf
+    melange:
+      bespoke: "openssl-provider-fips.yaml"
     paths:
       - {path: /var/lib/postgresql, type: directory, uid: 65532, gid: 65532, permissions: 0o700}
       - {path: /var/lib/postgresql/data, type: directory, uid: 65532, gid: 65532, permissions: 0o700}
