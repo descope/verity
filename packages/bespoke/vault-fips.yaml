@@ -1,0 +1,53 @@
+# Bespoke Vault build for the Verity FIPS variant.
+#
+# Wolfi removed its vault recipe when HashiCorp relicensed to BUSL-1.1
+# (moved to Chainguard enterprise-packages, May 2024); the wolfi apk repo
+# still serves a stale vault 1.14.1 with known CVEs. This recipe builds the
+# current upstream release from source so the FIPS variant ships a
+# zero-known-CVE binary. BUSL-1.1 redistribution reviewed and accepted by
+# the Verity maintainers (see PR #545).
+#
+# Built WITHOUT the `ui` tag: no ember/yarn toolchain, and a smaller attack
+# surface for a hardened variant. API and CLI are unaffected; only the web
+# UI is absent.
+#
+# GOFIPS140=v1.0.0 is injected by the melange env-file (fips.env), matching
+# the etcd/go-profile pattern.
+package:
+  name: vault
+  version: 2.0.3
+  epoch: 0
+  description: Tool for encryption as a service, secrets and privileged access management
+  copyright:
+    - license: BUSL-1.1
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      expected-commit: 7193f9a48ff6093ca61b3b627a8671e770428ba6
+      repository: https://github.com/hashicorp/vault
+      tag: v${{package.version}}
+
+  - uses: go/build
+    with:
+      packages: .
+      output: vault
+      tags: "vault"
+
+
+  - uses: strip
+
+test:
+  pipeline:
+    - runs: |
+        set -o pipefail
+        vault version | grep "${{package.version}}"
