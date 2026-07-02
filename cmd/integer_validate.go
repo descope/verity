@@ -91,7 +91,7 @@ func runIntegerValidate(_ context.Context, cmd *cli.Command) error {
 		fmt.Fprintf(os.Stdout, "OK   %s\n", cfgPath)
 	}
 
-	entries, err := os.ReadDir(imagesDir)
+	imageFiles, err := intconfig.ImageFilePaths(imagesDir)
 	if err != nil {
 		return fmt.Errorf("reading images directory: %w", err)
 	}
@@ -100,12 +100,7 @@ func runIntegerValidate(_ context.Context, cmd *cli.Command) error {
 	referencedBespoke := map[string]string{} // bespoke filename → image yaml path
 
 	checked := 0
-	for _, entry := range entries {
-		if entry.IsDir() || filepath.Ext(entry.Name()) != yamlExt {
-			continue
-		}
-
-		defPath := filepath.Join(imagesDir, entry.Name())
+	for _, defPath := range imageFiles {
 		def, err := intconfig.LoadImage(defPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", defPath, err)

@@ -1,0 +1,21 @@
+name: static
+description: "Verity static runtime base — nonroot, ca-certificates + tzdata, no shell, no package manager; for statically linked binaries"
+upstream:
+  package: wolfi-baselayout
+
+types:
+  default:
+    base: wolfi-base
+    packages: ["tzdata"]
+
+  fips:
+    base: wolfi-base
+    fips-profile: go
+    packages: ["tzdata"]
+    environment:
+      GODEBUG: "fips140=on"
+      GOFIPS140: "v1.0.0"
+
+versions:
+  latest:
+    latest: true

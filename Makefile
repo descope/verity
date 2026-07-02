@@ -110,7 +110,7 @@ integer-build-all: build
 integer-melange-prep:
 	@[ -n "$(IMAGE)" ] || (echo "Usage: IMAGE=caddy TYPE=fips make integer-melange-prep" && exit 1)
 	@[ -n "$(TYPE)" ] || (echo "Usage: IMAGE=caddy TYPE=fips make integer-melange-prep" && exit 1)
-	@echo "$(IMAGE)" | grep -Eq '^[a-z][a-z0-9-]*$$' || (echo "Invalid IMAGE: '$(IMAGE)'. Expected ^[a-z][a-z0-9-]*$$" && exit 1)
+	@echo "$(IMAGE)" | grep -Eq '^[a-z][a-z0-9-]*(/[a-z][a-z0-9-]*)*$$' || (echo "Invalid IMAGE: '$(IMAGE)'. Expected slash-separated lowercase image path" && exit 1)
 	@echo "$(TYPE)"  | grep -Eq '^[a-z][a-z0-9-]*$$' || (echo "Invalid TYPE: '$(TYPE)'. Expected ^[a-z][a-z0-9-]*$$"  && exit 1)
 	@which melange > /dev/null || (echo "melange not found. Run: mise install" && exit 1)
 	bash scripts/integer-melange-prep.sh "$(IMAGE)" "$(TYPE)"

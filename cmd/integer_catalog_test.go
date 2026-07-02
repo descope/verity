@@ -27,6 +27,7 @@ func TestIntegerCatalogCommand_Basic(t *testing.T) {
 		"--config", cfgPath,
 		"--images-dir", imagesDir,
 		"--apkindex-url", "",
+		"--fetch-eol=false",
 		"--output", outputPath,
 	})
 	require.NoError(t, err)
@@ -53,6 +54,7 @@ func TestIntegerCatalogCommand_WithAPKINDEX(t *testing.T) {
 		"--images-dir", imagesDir,
 		"--apkindex-url", srv.URL,
 		"--cache-dir", t.TempDir(),
+		"--fetch-eol=false",
 		"--output", outputPath,
 	})
 	require.NoError(t, err)
@@ -66,6 +68,7 @@ func TestIntegerCatalogCommand_StdoutOutput(t *testing.T) {
 		"--config", cfgPath,
 		"--images-dir", imagesDir,
 		"--apkindex-url", "",
+		"--fetch-eol=false",
 		"--output", "-",
 	})
 	require.NoError(t, err)

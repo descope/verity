@@ -104,6 +104,11 @@ var integerDiscoverCmd = &cli.Command{
 			fmt.Fprintf(os.Stderr, "Preflight: Integer images build from source — no digest filtering applied\n")
 		}
 
+		// CI consumers (jq 'length') require a JSON array even for zero matches.
+		if imgs == nil {
+			imgs = []discovery.DiscoveredImage{}
+		}
+
 		out, err := json.MarshalIndent(imgs, "", "  ")
 		if err != nil {
 			return fmt.Errorf("marshalling output: %w", err)

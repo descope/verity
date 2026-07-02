@@ -68,19 +68,14 @@ func Generate(imagesDir, reportsDir, registry string, pkgs []apkindex.Package, e
 		}
 	}
 
-	entries, err := os.ReadDir(imagesDir)
+	imageFiles, err := config.ImageFilePaths(imagesDir)
 	if err != nil {
 		return nil, fmt.Errorf("reading images dir %q: %w", imagesDir, err)
 	}
 
 	images := []Image{}
 
-	for _, entry := range entries {
-		if entry.IsDir() || filepath.Ext(entry.Name()) != ".yaml" {
-			continue
-		}
-
-		defPath := filepath.Join(imagesDir, entry.Name())
+	for _, defPath := range imageFiles {
 		def, err := config.LoadImage(defPath)
 		if err != nil {
 			return nil, fmt.Errorf("loading %s: %w", defPath, err)
@@ -224,17 +219,22 @@ func sortedKeys(m map[string]config.TypeTemplate) []string {
 }
 
 // findLatestVersion returns the index of the highest non-EOL version.
-// If all versions are EOL, the highest version wins.
-// Returns -1 if versions is empty.
+// If all numeric versions are EOL, the highest numeric version wins; an
+// explicit "latest" version is the fallback when no numeric version exists.
+// Returns -1 when no version should carry the latest tag.
 func findLatestVersion(versions []Version) int {
-	if len(versions) == 0 {
-		return -1
-	}
-
+	latestIdx := -1
 	bestNonEOL := -1
-	bestOverall := 0
+	bestOverall := -1
 	for i, v := range versions {
-		if i > 0 && apkindex.VersionLess(versions[bestOverall].Version, v.Version) {
+		if v.Version == "latest" {
+			latestIdx = i
+			continue
+		}
+		if !apkindex.StartsNumeric(v.Version) {
+			continue
+		}
+		if bestOverall < 0 || apkindex.VersionLess(versions[bestOverall].Version, v.Version) {
 			bestOverall = i
 		}
 		if !isEOL(v.EOL) && (bestNonEOL < 0 || apkindex.VersionLess(versions[bestNonEOL].Version, v.Version)) {
@@ -245,7 +245,10 @@ func findLatestVersion(versions []Version) int {
 	if bestNonEOL >= 0 {
 		return bestNonEOL
 	}
-	return bestOverall
+	if bestOverall >= 0 {
+		return bestOverall
+	}
+	return latestIdx
 }
 
 func isEOL(eolDate string) bool {

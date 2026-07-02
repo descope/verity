@@ -886,6 +886,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     id: "base",
     label: "Base & Utilities",
     images: [
+      { name: "static", source: "integer", variants: ["default", "fips"] },
       { name: "distroless/static", source: "copa", upstream: "gcr.io/distroless/static" },
       {
         name: "library/busybox",

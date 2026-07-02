@@ -98,6 +98,12 @@ func VersionLess(a, b string) bool {
 	return versionLess(a, b)
 }
 
+// StartsNumeric reports whether v begins with an ASCII digit — the shape of
+// a version stream ("22", "1.17") as opposed to a variant alias ("nonroot").
+func StartsNumeric(v string) bool {
+	return v != "" && v[0] >= '0' && v[0] <= '9'
+}
+
 // versionLess compares version stems lexicographically with numeric awareness.
 // "1.10" > "1.9" and "22" > "20".
 func versionLess(a, b string) bool {

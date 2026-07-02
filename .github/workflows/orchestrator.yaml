@@ -225,7 +225,7 @@ jobs:
           # Derive Integer/Wolfi image names to exclude from chart discovery.
           # Chart-discovered images that share a name with an Integer image are
           # skipped because the Wolfi rebuild is the preferred zero-CVE variant.
-          EXCLUDE_NAMES=$(find images -maxdepth 1 -name '*.yaml' -printf '%f\n' 2>/dev/null | sed 's/\.yaml$//' | paste -sd, || true)
+          EXCLUDE_NAMES=$(find images -name '*.yaml' -not -path 'images/_base/*' -printf '%P\n' 2>/dev/null | sed 's/\.yaml$//' | paste -sd, || true)
           DISCOVER_ARGS+=(--exclude-names "${EXCLUDE_NAMES}")
 
           ./verity discover "${DISCOVER_ARGS[@]}" > images.json
