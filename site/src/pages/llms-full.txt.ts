@@ -174,7 +174,8 @@ For Wolfi-based images (no upstream equivalent):
 ghcr.io/verity-org/golang:latest
 ghcr.io/verity-org/python:latest-dev
 ghcr.io/verity-org/caddy:latest-fips
-ghcr.io/verity-org/distroless/static:nonroot
+ghcr.io/verity-org/static:latest
+ghcr.io/verity-org/static:latest-fips
 \`\`\`
 
 On subsequent re-patches, the suffix increments: \`-patched-2\`, \`-patched-3\`, etc.
