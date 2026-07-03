@@ -117,6 +117,28 @@ func TestLoadImage(t *testing.T) {
 	assert.True(t, v24.Latest)
 }
 
+func TestLoadImage_AllowsAliasedBespokeListEntries(t *testing.T) {
+	dir := t.TempDir()
+	path := writeFile(t, dir, "aliased.yaml", `
+name: custom
+description: "Custom image"
+upstream:
+  package: custom
+types:
+  default:
+    base: wolfi-base
+    melange:
+      bespoke:
+        - &spec custom.melange.yaml
+        - *spec
+`)
+
+	def, err := config.LoadImage(path)
+	require.NoError(t, err)
+	require.NotNil(t, def.Types["default"].Melange)
+	assert.Equal(t, config.StringList{"custom.melange.yaml", "custom.melange.yaml"}, def.Types["default"].Melange.Bespoke)
+}
+
 func TestValidate(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		def := &config.ImageDef{
@@ -237,7 +259,7 @@ func TestValidate(t *testing.T) {
 				"default": {
 					Base: "wolfi-base",
 					Melange: &config.MelangeSpec{
-						Bespoke: "custom.melange.yaml",
+						Bespoke: config.StringList{"custom.melange.yaml"},
 					},
 				},
 			},
@@ -256,7 +278,7 @@ func TestValidate(t *testing.T) {
 					Environment: map[string]string{"GODEBUG": "fips140=on"},
 					Melange: &config.MelangeSpec{
 						Upstream: "caddy",
-						Bespoke:  "caddy.melange.yaml",
+						Bespoke:  config.StringList{"caddy.melange.yaml"},
 					},
 				},
 			},
@@ -291,7 +313,7 @@ func TestValidate(t *testing.T) {
 					Base:        "wolfi-base",
 					FIPSProfile: config.FIPSProfileGo,
 					Environment: map[string]string{"GODEBUG": "fips140=on"},
-					Melange:     &config.MelangeSpec{Bespoke: "../evil/caddy.yaml"},
+					Melange:     &config.MelangeSpec{Bespoke: config.StringList{"../evil/caddy.yaml"}},
 				},
 			},
 		}
@@ -328,7 +350,7 @@ func TestValidate(t *testing.T) {
 					Base:        "wolfi-base",
 					FIPSProfile: config.FIPSProfileGo,
 					Environment: map[string]string{"GODEBUG": "fips140=on"},
-					Melange:     &config.MelangeSpec{Bespoke: `subdir\caddy.yaml`},
+					Melange:     &config.MelangeSpec{Bespoke: config.StringList{`subdir\caddy.yaml`}},
 				},
 			},
 		}

@@ -22,9 +22,9 @@ func TestOpenSearchDashboardsImageUsesConfigScrubbingEntrypoint(t *testing.T) {
 	assert.Equal(t, "/usr/local/bin/verity-opensearch-dashboards-entrypoint", tmpl.Entrypoint)
 	assert.True(t, slices.Contains(tmpl.Packages, "verity-opensearch-dashboards-config"))
 	require.NotNil(t, tmpl.Melange)
-	assert.Equal(t, "verity-opensearch-dashboards-config.yaml", tmpl.Melange.Bespoke)
+	assert.Equal(t, "verity-opensearch-dashboards-config.yaml", tmpl.Melange.Bespoke.First())
 
-	bespoke, err := os.ReadFile(filepath.Join(repo, "packages", "bespoke", tmpl.Melange.Bespoke))
+	bespoke, err := os.ReadFile(filepath.Join(repo, "packages", "bespoke", tmpl.Melange.Bespoke.First()))
 	require.NoError(t, err)
 	text := string(bespoke)
 	assert.Contains(t, text, "name: verity-opensearch-dashboards-config")
