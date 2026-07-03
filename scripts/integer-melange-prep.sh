@@ -7,7 +7,7 @@ usage() {
   echo "  type   image type, e.g. fips" >&2
   echo "" >&2
   echo "Runs the melange prep + build steps locally, mirroring CI." >&2
-  echo "Requires: jq, yq, curl, git, sha256sum (or shasum), awk, melange (install via: mise install)" >&2
+  echo "Requires: jq, yq, curl, git, sha256sum (or shasum), awk, melange (used by .github/scripts/melange-build.sh; install via: mise install)" >&2
   exit 1
 }
 
