@@ -558,6 +558,15 @@ jobs:
           path: trivy-report.json
           retention-days: 30
 
+      - name: Enforce zero HIGH/CRITICAL for vault default
+        if: inputs.image == 'vault' && inputs.type == 'default'
+        run: |
+          findings=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH" or .Severity == "CRITICAL")] | length' trivy-report.json)
+          if [ "$findings" -ne 0 ]; then
+            echo "vault default image must stay zero HIGH/CRITICAL, found ${findings}" >&2
+            exit 1
+          fi
+
       # ── Sign & attest ──────────────────────────────────────────────────────
 
       - name: Sign image with cosign (keyless)

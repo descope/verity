@@ -1,9 +1,9 @@
-# Bespoke Vault build for the Verity FIPS variant.
+# Bespoke Vault build for Verity vault variants.
 #
 # Wolfi removed its vault recipe when HashiCorp relicensed to BUSL-1.1
 # (moved to Chainguard enterprise-packages, May 2024); the wolfi apk repo
 # still serves a stale vault 1.14.1 with known CVEs. This recipe builds the
-# current upstream release from source so the FIPS variant ships a
+# current upstream release from source so Verity vault variants ship a
 # zero-known-CVE binary. BUSL-1.1 redistribution reviewed and accepted by
 # the Verity maintainers (see PR #545).
 #
@@ -11,8 +11,8 @@
 # surface for a hardened variant. API and CLI are unaffected; only the web
 # UI is absent.
 #
-# GOFIPS140=v1.0.0 is injected by the melange env-file (fips.env), matching
-# the etcd/go-profile pattern.
+# GOFIPS140=v1.0.0 is injected only when the FIPS image type uses the melange
+# env-file (fips.env), matching the etcd/go-profile pattern.
 package:
   name: vault
   version: 2.0.3
