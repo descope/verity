@@ -541,6 +541,14 @@ func TestRepoStandaloneSourceRegression_556_579(t *testing.T) {
 		}
 	}
 
+	defaultBackend, ok := byName["kubernetes/ingress-nginx/defaultbackend"]
+	if !ok {
+		t.Fatal("config missing kubernetes/ingress-nginx/defaultbackend")
+	}
+	if got := strings.Join(defaultBackend.Tags.Exclude, ","); got != "1.0,1.1,1.2" {
+		t.Errorf("defaultbackend exclude = %q, want %q", got, "1.0,1.1,1.2")
+	}
+
 	removed := []string{"spiffe/spiffe-helper", "tektoncd/cli", "kubeflow/spark-operator", "aws/eks-distro/kubernetes/kube-proxy"}
 	for _, name := range removed {
 		if _, ok := byName[name]; ok {
