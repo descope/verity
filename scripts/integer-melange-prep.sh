@@ -2,21 +2,19 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 <image> <type> [version]" >&2
+  echo "Usage: $0 <image> <type>" >&2
   echo "  image  image name, e.g. caddy" >&2
   echo "  type   image type, e.g. fips" >&2
-  echo "  version optional concrete version for {{version}} placeholder substitution" >&2
   echo "" >&2
   echo "Runs the melange prep + build steps locally, mirroring CI." >&2
   echo "Requires: jq, yq, curl, git, sha256sum (or shasum), awk, melange (install via: mise install)" >&2
   exit 1
 }
 
-[[ $# -eq 2 || $# -eq 3 ]] || usage
+[[ $# -eq 2 ]] || usage
 
 IMAGE="$1"
 TYPE="$2"
-VERSION="${3:-}"
 
 validate_ci_identifier() {
   local label="$1" value="$2"
@@ -43,26 +41,9 @@ if [ -z "$melange_block" ] || [ "$melange_block" = "null" ]; then
 fi
 
 UPSTREAM=$(yq -r ".types.\"${TYPE}\".melange.upstream // \"\"" "$image_yaml")
-RAW_BESPOKE=$(yq -o=json ".types.\"${TYPE}\".melange.bespoke // []" "$image_yaml")
+BESPOKE=$(yq -r ".types.\"${TYPE}\".melange.bespoke // \"\"" "$image_yaml")
 ENV_FILE=$(yq -r ".types.\"${TYPE}\".melange.env-file // \"\"" "$image_yaml")
 BUILD_OPTION=$(yq -r ".types.\"${TYPE}\".melange.build-option // \"\"" "$image_yaml")
-
-substitute_version() {
-  local value="$1"
-  if [[ "$value" == *"{{version}}"* ]]; then
-    if [ -z "$VERSION" ]; then
-      echo "melange field requires a version but none was passed: ${value}" >&2
-      exit 1
-    fi
-    value="${value//\{\{version\}\}/$VERSION}"
-  fi
-  printf '%s' "$value"
-}
-
-UPSTREAM=$(substitute_version "$UPSTREAM")
-ENV_FILE=$(substitute_version "$ENV_FILE")
-BUILD_OPTION=$(substitute_version "$BUILD_OPTION")
-BESPOKE_JSON=$(printf '%s' "$RAW_BESPOKE" | jq -c --arg version "$VERSION" 'if type == "array" then map(gsub("\\{\\{version\\}\\}"; $version)) elif . == null or . == "" then [] else [gsub("\\{\\{version\\}\\}"; $version)] end')
 
 # Validate a filename value: must be non-empty, contain only safe characters,
 # and must not contain path separators or traversal sequences.
@@ -87,20 +68,14 @@ sha256_file() {
   fi
 }
 
+[ -n "$BESPOKE" ]  && validate_filename "bespoke"  "$BESPOKE"
 [ -n "$ENV_FILE" ] && validate_filename "env-file"  "$ENV_FILE"
-[ "$BESPOKE_JSON" != '[]' ] && while IFS= read -r bespoke; do
-  validate_filename "bespoke" "$bespoke"
-done < <(printf '%s' "$BESPOKE_JSON" | jq -r '.[]')
 
 rm -rf melange-work
-mkdir -p melange-work/specs
+mkdir -p melange-work
 
-if [ "$BESPOKE_JSON" != '[]' ]; then
-  while IFS= read -r bespoke; do
-    spec_dir="melange-work/specs/${bespoke}"
-    mkdir -p "$spec_dir"
-    cp "packages/bespoke/${bespoke}" "$spec_dir/build.yaml"
-  done < <(printf '%s' "$BESPOKE_JSON" | jq -r '.[]')
+if [ -n "$BESPOKE" ]; then
+  cp "packages/bespoke/${BESPOKE}" melange-work/build.yaml
 elif [ -n "$UPSTREAM" ]; then
   commit=$(jq -r '.wolfi_commit' packages/upstream.lock.json)
   if [ "$commit" = "null" ] || [ -z "$commit" ]; then
@@ -120,16 +95,14 @@ elif [ -n "$UPSTREAM" ]; then
 
   url="https://raw.githubusercontent.com/wolfi-dev/os/${commit}/${file}"
   echo "Fetching upstream melange YAML: ${url}"
-  spec_dir="melange-work/specs/${UPSTREAM}"
-  mkdir -p "$spec_dir"
-  curl -fsSL "$url" -o "$spec_dir/build.yaml.tmp"
-  actual_sha=$(sha256_file "$spec_dir/build.yaml.tmp")
+  curl -fsSL "$url" -o melange-work/build.yaml.tmp
+  actual_sha=$(sha256_file melange-work/build.yaml.tmp)
   if [ "$actual_sha" != "$expected_sha" ]; then
     echo "sha256 mismatch for ${UPSTREAM}: expected ${expected_sha}, got ${actual_sha}" >&2
-    rm -f "$spec_dir/build.yaml.tmp"
+    rm -f melange-work/build.yaml.tmp
     exit 1
   fi
-  mv "$spec_dir/build.yaml.tmp" "$spec_dir/build.yaml"
+  mv melange-work/build.yaml.tmp melange-work/build.yaml
 
   if [[ ! "$UPSTREAM" =~ ^[A-Za-z0-9._-]+$ ]]; then
     echo "upstream value contains unsafe characters: '${UPSTREAM}'" >&2
@@ -167,6 +140,7 @@ case "$ARCH" in
 esac
 
 MELANGE_ARGS=(
+  build melange-work/build.yaml
   --arch "$MELANGE_ARCH"
   --signing-key melange-work/melange.rsa
   --out-dir packages/repo
@@ -186,17 +160,8 @@ if [ -n "$BUILD_OPTION" ]; then
   MELANGE_ARGS+=(--build-option "$BUILD_OPTION")
 fi
 
-shopt -s nullglob
-builds=(melange-work/specs/*/build.yaml)
-if [ ${#builds[@]} -eq 0 ]; then
-  echo "No melange build YAMLs staged in melange-work/specs" >&2
-  exit 1
-fi
-
-for build_yaml in "${builds[@]}"; do
-  echo "Running: melange build ${build_yaml} ${MELANGE_ARGS[*]}"
-  melange build "$build_yaml" "${MELANGE_ARGS[@]}"
-done
+echo "Running: melange ${MELANGE_ARGS[*]}"
+melange "${MELANGE_ARGS[@]}"
 
 echo ""
 echo "Built packages:"

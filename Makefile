@@ -106,14 +106,14 @@ integer-build-all: build
 	@echo "✓ All images built"
 
 # Run melange prep+build locally for a single image type (mirrors CI exactly).
-# Usage: IMAGE=caddy TYPE=fips [VERSION=2] make integer-melange-prep
+# Usage: IMAGE=caddy TYPE=fips make integer-melange-prep
 integer-melange-prep:
 	@[ -n "$(IMAGE)" ] || (echo "Usage: IMAGE=caddy TYPE=fips make integer-melange-prep" && exit 1)
 	@[ -n "$(TYPE)" ] || (echo "Usage: IMAGE=caddy TYPE=fips make integer-melange-prep" && exit 1)
 	@echo "$(IMAGE)" | grep -Eq '^[a-z][a-z0-9-]*(/[a-z][a-z0-9-]*)*$$' || (echo "Invalid IMAGE: '$(IMAGE)'. Expected slash-separated lowercase image path" && exit 1)
 	@echo "$(TYPE)"  | grep -Eq '^[a-z][a-z0-9-]*$$' || (echo "Invalid TYPE: '$(TYPE)'. Expected ^[a-z][a-z0-9-]*$$"  && exit 1)
 	@which melange > /dev/null || (echo "melange not found. Run: mise install" && exit 1)
-	bash scripts/integer-melange-prep.sh "$(IMAGE)" "$(TYPE)" "$(VERSION)"
+	bash scripts/integer-melange-prep.sh "$(IMAGE)" "$(TYPE)"
 
 # Run all quality checks (golangci-lint handles gofumpt, goimports, vet, gosec)
 quality: lint lint-vuln lint-workflows lint-yaml lint-shell lint-markdown check-frontend integer-validate test
