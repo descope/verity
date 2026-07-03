@@ -1,0 +1,31 @@
+package:
+  name: istio-pilot-agent-1.28
+  version: "1.28.7"
+  epoch: 3
+  description: Istio pilot agent
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/istio/istio
+      tag: ${{package.version}}
+      expected-commit: 8841aa2300644a6f2086a0d20b1ec1699387d4db
+  - uses: go/build
+    with:
+      packages: ./pilot/cmd/pilot-agent
+      output: pilot-agent
+  - uses: strip
