@@ -11,6 +11,8 @@ import (
 	"sort"
 	"strings"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/verity-org/verity/internal/integer/apkindex"
 	"github.com/verity-org/verity/internal/integer/config"
 	"github.com/verity-org/verity/internal/integer/render"
@@ -39,6 +41,12 @@ type Options struct {
 	// GenDir is the directory where generated apko YAML files are written.
 	// Defaults to a system temp directory if empty.
 	GenDir string
+}
+
+type bespokeTagPackageFile struct {
+	Package struct {
+		Version string `yaml:"version"`
+	} `yaml:"package"`
 }
 
 // DiscoverFromFiles walks imagesDir recursively for image *.yaml files
@@ -149,17 +157,20 @@ func expandImage(def *config.ImageDef, imagesDir, registry string, pkgs []apkind
 	for _, v := range versions {
 		renderVersion := ResolveStreamRenderVersion(def, pkgs, v)
 
-		// Resolve full version from APKINDEX for semver tag expansion. Use
-		// the aliased stem so semver cascade tags ("1.17", "1.17.5") still
-		// expand correctly when the declared stream is a floating-major.
-		fullVersion := apkindex.ResolveFullVersion(pkgs, resolutionPattern, renderVersion)
-		tags := DeriveTags(v, latestVersion, fullVersion)
-
 		for typeName := range def.Types {
 			if ShouldSkipType(def, v, typeName) {
 				continue
 			}
 			tmpl := def.Types[typeName]
+
+			// Resolve full version from APKINDEX for semver tag expansion. Use
+			// the aliased stem so semver cascade tags ("1.17", "1.17.5") still
+			// expand correctly when the declared stream is a floating-major.
+			fullVersion := apkindex.ResolveFullVersion(pkgs, resolutionPattern, renderVersion)
+			if bespokeVersion, ok := resolveSingleBespokeVersion(imagesDir, &tmpl, v); ok {
+				fullVersion = bespokeVersion
+			}
+			tags := DeriveTags(v, latestVersion, fullVersion)
 
 			out, err := render.Config(&tmpl, renderVersion, basePath)
 			if err != nil {
@@ -195,6 +206,32 @@ func expandImage(def *config.ImageDef, imagesDir, registry string, pkgs []apkind
 	})
 
 	return results, nil
+}
+
+func resolveSingleBespokeVersion(imagesDir string, tmpl *config.TypeTemplate, version string) (string, bool) {
+	if tmpl == nil || tmpl.Melange == nil || len(tmpl.Melange.Bespoke) != 1 {
+		return "", false
+	}
+
+	bespokeFile := tmpl.Melange.Bespoke[0]
+	if strings.Contains(bespokeFile, "{{version}}") {
+		bespokeFile = strings.ReplaceAll(bespokeFile, "{{version}}", version)
+	}
+
+	bespokePath := filepath.Join(filepath.Dir(imagesDir), "packages", "bespoke", bespokeFile)
+	data, err := os.ReadFile(bespokePath)
+	if err != nil {
+		return "", false
+	}
+
+	var pkgFile bespokeTagPackageFile
+	if err := yaml.Unmarshal(data, &pkgFile); err != nil {
+		return "", false
+	}
+	if pkgFile.Package.Version == "" {
+		return "", false
+	}
+	return pkgFile.Package.Version, true
 }
 
 // ShouldSkipType reports whether a type should be omitted for a specific

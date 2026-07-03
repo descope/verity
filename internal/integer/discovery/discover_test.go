@@ -570,6 +570,70 @@ func TestDiscoverFromFiles_FullSemverTags(t *testing.T) {
 	}
 }
 
+func TestDiscoverFromFiles_BespokeVersionOverridesSemverTags(t *testing.T) {
+	const istioYAML = `
+name: istio-pilot
+description: "Istio Pilot"
+upstream:
+  package: "istio-pilot-discovery-{{version}}"
+types:
+  default:
+    base: wolfi-base
+    packages: ["istio-pilot-discovery-{{version}}"]
+    entrypoint: /usr/bin/pilot-discovery
+    melange:
+      bespoke: "istio-pilot-discovery-{{version}}.yaml"
+versions:
+  "1":
+    latest: true
+  "1.26": {}
+  "1.30": {}
+`
+	const bespoke126 = `
+package:
+  name: istio-pilot-discovery-1.26
+  version: "1.26.8"
+  epoch: 4
+`
+	const bespoke1 = `
+package:
+  name: istio-pilot-discovery-1.30
+  version: "1.30.2"
+  epoch: 0
+`
+	const bespoke130 = `
+package:
+  name: istio-pilot-discovery-1.30
+  version: "1.30.2"
+  epoch: 0
+`
+
+	imagesDir := setupImages(t, map[string]string{"istio-pilot.yaml": istioYAML})
+	writeFile(t, filepath.Dir(imagesDir), filepath.Join("packages", "bespoke", "istio-pilot-discovery-1.26.yaml"), bespoke126)
+	writeFile(t, filepath.Dir(imagesDir), filepath.Join("packages", "bespoke", "istio-pilot-discovery-1.yaml"), bespoke1)
+	writeFile(t, filepath.Dir(imagesDir), filepath.Join("packages", "bespoke", "istio-pilot-discovery-1.30.yaml"), bespoke130)
+	genDir := t.TempDir()
+
+	pkgs := []apkindex.Package{
+		{Name: "istio-pilot-discovery-1.26", Version: "1.26.4-r1"},
+		{Name: "istio-pilot-discovery-1.30", Version: "1.30.1-r0"},
+	}
+
+	imgs, err := discovery.DiscoverFromFiles(opts(imagesDir, genDir, pkgs))
+	require.NoError(t, err)
+
+	got := map[string][]string{}
+	for _, img := range imgs {
+		if img.Type == typeDefault {
+			got[img.Version] = img.Tags
+		}
+	}
+
+	assert.Equal(t, []string{"1", "1.30", "1.30.2"}, got["1"])
+	assert.Equal(t, []string{"1.26", "1.26.8"}, got["1.26"])
+	assert.Equal(t, []string{"1.30", "1.30.2", "latest"}, got["1.30"])
+}
+
 func TestDiscoverFromFiles_UnversionedLatestGuard(t *testing.T) {
 	// Unversioned package (caddy-like) with explicit version stream "2".
 	// ResolveVersions drops auto-discovered "latest" when explicit versions
