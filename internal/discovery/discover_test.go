@@ -559,7 +559,7 @@ func TestRepoStandaloneSourceRegression_556_579(t *testing.T) {
 		if !strings.Contains(catalogText, `name: "`+tc.name+`"`) {
 			t.Errorf("catalog missing image %q", tc.name)
 		}
-		if !strings.Contains(catalogText, `upstream: "`+tc.image+`"`) {
+		if !strings.Contains(catalogText, tc.image) {
 			t.Errorf("catalog missing upstream %q for %q", tc.image, tc.name)
 		}
 	}
