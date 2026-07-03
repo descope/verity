@@ -551,7 +551,7 @@ jobs:
         continue-on-error: true  # Report only — images publish even with CVEs
 
       - name: Resolve Trivy gate policy
-        id: trivy-gate
+        id: trivy-gate-postgres
         run: |
           case "${{ inputs.image }}:${{ inputs.version }}:${{ inputs.type }}" in
             postgres:14:fips)
@@ -568,11 +568,11 @@ jobs:
           esac
 
       - name: Enforce Trivy gate
-        if: steps.trivy-gate.outputs.enabled == 'true'
+        if: steps.trivy-gate-postgres.outputs.enabled == 'true'
         run: |
           findings=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH" or .Severity == "CRITICAL")] | length' trivy-report.json)
           if [ "$findings" -ne 0 ]; then
-            echo "${{ steps.trivy-gate.outputs.label }} image must stay zero HIGH/CRITICAL, found ${findings}" >&2
+            echo "${{ steps.trivy-gate-postgres.outputs.label }} image must stay zero HIGH/CRITICAL, found ${findings}" >&2
             exit 1
           fi
 
@@ -585,7 +585,7 @@ jobs:
           retention-days: 30
 
       - name: Resolve Trivy gate policy
-        id: trivy-gate
+        id: trivy-gate-vault
         run: |
           case "${{ inputs.image }}:${{ inputs.type }}" in
             vault:default)
@@ -598,11 +598,11 @@ jobs:
           esac
 
       - name: Enforce Trivy gate
-        if: steps.trivy-gate.outputs.enabled == 'true'
+        if: steps.trivy-gate-vault.outputs.enabled == 'true'
         run: |
           findings=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH" or .Severity == "CRITICAL")] | length' trivy-report.json)
           if [ "$findings" -ne 0 ]; then
-            echo "${{ steps.trivy-gate.outputs.label }} image must stay zero HIGH/CRITICAL, found ${findings}" >&2
+            echo "${{ steps.trivy-gate-vault.outputs.label }} image must stay zero HIGH/CRITICAL, found ${findings}" >&2
             exit 1
           fi
 
