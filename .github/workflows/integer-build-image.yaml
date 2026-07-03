@@ -550,19 +550,31 @@ jobs:
             "${INPUT_REGISTRY}/${INPUT_IMAGE}:${PRIMARY_TAG}"
         continue-on-error: true  # Report only — images publish even with CVEs
 
-      - name: Enforce zero HIGH/CRITICAL for postgres 14/15 fips
-        if: inputs.image == 'postgres' && inputs.type == 'fips' && (inputs.version == '14' || inputs.version == '15')
-        env:
-          INPUT_IMAGE: ${{ inputs.image }}
-          INPUT_REGISTRY: ${{ inputs.registry }}
-          PRIMARY_TAG: ${{ steps.gen.outputs.primary_tag }}
+      - name: Resolve Trivy gate policy
+        id: trivy-gate
         run: |
-          trivy image \
-            --exit-code 1 \
-            --severity CRITICAL,HIGH \
-            --vuln-type os,library \
-            --format table \
-            "${INPUT_REGISTRY}/${INPUT_IMAGE}:${PRIMARY_TAG}"
+          case "${{ inputs.image }}:${{ inputs.version }}:${{ inputs.type }}" in
+            postgres:14:fips)
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              echo "label=postgres 14 fips" >> "$GITHUB_OUTPUT"
+              ;;
+            postgres:15:fips)
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              echo "label=postgres 15 fips" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "enabled=false" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Enforce Trivy gate
+        if: steps.trivy-gate.outputs.enabled == 'true'
+        run: |
+          findings=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH" or .Severity == "CRITICAL")] | length' trivy-report.json)
+          if [ "$findings" -ne 0 ]; then
+            echo "${{ steps.trivy-gate.outputs.label }} image must stay zero HIGH/CRITICAL, found ${findings}" >&2
+            exit 1
+          fi
 
       - name: Upload Trivy report
         if: always()
