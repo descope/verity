@@ -23,6 +23,10 @@ var digestFn = func(ref string) (string, error) {
 	return crane.Digest(ref)
 }
 
+var targetDigestFn = func(ref string) (string, error) {
+	return crane.Digest(ref)
+}
+
 // extractTag returns the tag portion of a full image reference,
 // e.g. "mirror.gcr.io/library/nginx:1.29.3" yields "1.29.3".
 // Digest-pinned references (containing "@") return "" to signal
@@ -56,6 +60,12 @@ func checkCopaImage(img *discovery.DiscoveredImage, manifest Manifest) CheckResu
 	entry, exists := manifest[key]
 	if !exists {
 		return CheckResult{NeedsWork: true, Reason: key + ": first time (not in manifest)"}
+	}
+	if img.TargetRegistry != "" {
+		targetRef := strings.TrimRight(img.TargetRegistry, "/") + "/" + img.Name + ":" + tag
+		if _, err := targetDigestFn(targetRef); err != nil {
+			return CheckResult{NeedsWork: true, Reason: key + ": target image missing"}
+		}
 	}
 
 	currentDigest, err := digestFn(img.Source)

@@ -32,12 +32,6 @@ type DiscoveredImage struct {
 //     re-patching chart images that already have an Integer/Wolfi rebuild
 //     stub at images/<name>.yaml. Logged as "excluded via --exclude-names".
 //
-//   - unpatchable: applies to BOTH standalone and chart-discovered images.
-//     Sourced from verity.yaml's unpatchableImages list — images we
-//     deliberately skip because they have no replacement we can patch
-//     (distroless without a rebuild, deprecated registry references, etc.).
-//     Logged as "in verity.yaml unpatchableImages" so operators can tell
-//     the two attribution paths apart.
 //
 // unpatchable is checked first; an image listed in both sets is skipped
 // with the unpatchable log line.
@@ -72,10 +66,6 @@ func DiscoverWithChartValues(
 			continue
 		}
 		for _, img := range imgs {
-			if isUnpatchable(&img, unpatchable) {
-				fmt.Fprintf(os.Stderr, "Skipping standalone image %q: name %q in verity.yaml unpatchableImages\n", img.Source, img.Name)
-				continue
-			}
 			key := img.Name + "|" + img.Source
 			if _, exists := seen[key]; !exists {
 				seen[key] = struct{}{}

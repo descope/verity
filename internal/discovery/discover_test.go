@@ -814,12 +814,7 @@ func TestIsExcluded(t *testing.T) {
 	})
 }
 
-// Regression test for the review feedback that unpatchable entries from
-// verity.yaml were being merged into excludeNames and emitting the
-// "excluded via --exclude-names" log line, mis-attributing the source.
-// Discover() now takes unpatchable as a separate parameter and applies it
-// to BOTH standalone and chart-discovered images with a distinct skip path.
-func TestDiscover_UnpatchableStandalone(t *testing.T) {
+func TestDiscover_UnpatchableStandaloneStillIncluded(t *testing.T) {
 	cfg := &config.CopaConfig{
 		Target: config.TargetSpec{Registry: "ghcr.io/verity-org"},
 		Images: []config.ImageSpec{
@@ -845,8 +840,11 @@ func TestDiscover_UnpatchableStandalone(t *testing.T) {
 		t.Fatalf("Discover() error = %v", err)
 	}
 
-	if len(got) != 1 || got[0].Name != testNginxName {
-		t.Errorf("Discover() returned %v, want only [{nginx}]; unpatchable standalone leaked through", got)
+	if len(got) != 2 {
+		t.Fatalf("Discover() returned %v, want both standalone images", got)
+	}
+	if got[0].Name != "cert-manager/cert-manager-openshift-routes" || got[1].Name != testNginxName {
+		t.Errorf("Discover() returned %v, want unpatchable standalone preserved plus nginx", got)
 	}
 }
 
