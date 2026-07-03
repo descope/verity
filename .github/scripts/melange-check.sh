@@ -8,14 +8,42 @@ set -euo pipefail
 : "${IMAGE:?IMAGE is required}"
 : "${TYPE:?TYPE is required}"
 
+resolve_version_template() {
+  local value="$1"
+
+  if [[ "$value" == *"{{version}}"* ]]; then
+    if [ -z "${VERSION:-}" ]; then
+      echo "melange value ${value} contains {{version}} but VERSION is not set" >&2
+      exit 1
+    fi
+    value=${value//\{\{version\}\}/$VERSION}
+  fi
+
+  printf '%s' "$value"
+}
+
 image_yaml="images/${IMAGE}.yaml"
 
 raw_bespoke=$(yq -o=json ".types.\"${TYPE}\".melange.bespoke // []" "$image_yaml")
-upstream=$(yq -r ".types.\"${TYPE}\".melange.upstream // \"\"" "$image_yaml")
-env_file=$(yq -r ".types.\"${TYPE}\".melange.env-file // \"\"" "$image_yaml")
-build_option=$(yq -r ".types.\"${TYPE}\".melange.build-option // \"\"" "$image_yaml")
+upstream=$(resolve_version_template "$(yq -r ".types.\"${TYPE}\".melange.upstream // \"\"" "$image_yaml")")
+env_file=$(resolve_version_template "$(yq -r ".types.\"${TYPE}\".melange.env-file // \"\"" "$image_yaml")")
+build_option=$(resolve_version_template "$(yq -r ".types.\"${TYPE}\".melange.build-option // \"\"" "$image_yaml")")
 
-bespoke_json=$(printf '%s' "$raw_bespoke" | jq -c 'if type == "array" then . elif . == null or . == "" then [] else [.] end')
+bespoke_json=$(printf '%s' "$raw_bespoke" | jq -c --arg version "${VERSION:-}" '
+  def resolve:
+    if type != "string" then .
+    elif contains("{{version}}") then
+      if $version == "" then error("melange.bespoke contains {{version}} but VERSION is not set")
+      else gsub("\\{\\{version\\}\\}"; $version)
+      end
+    else .
+    end;
+
+  if type == "array" then map(resolve)
+  elif . == null or . == "" then []
+  else [resolve]
+  end
+')
 
 if [ "$bespoke_json" != '[]' ] || [ -n "$upstream" ]; then
   needed=true

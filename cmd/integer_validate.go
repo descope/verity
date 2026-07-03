@@ -172,34 +172,44 @@ func validateBespokeRefs(def *intconfig.ImageDef, defPath, bespokeDir string, re
 			continue
 		}
 		for _, bespokeFile := range tmpl.Melange.Bespoke {
-			referenced[bespokeFile] = defPath
-			bespokeRefs++
-
-			if !dirExists {
-				continue
-			}
-
-			bespokePath := filepath.Join(bespokeDir, bespokeFile)
-			pkgName, berr := readBespokePackageName(bespokePath)
-			if berr != nil {
+			resolvedFiles, rerr := resolveBespokeFiles(def, typeName, bespokeFile)
+			if rerr != nil {
 				fmt.Fprintf(os.Stderr, "FAIL %s type %q: bespoke %s: %v\n",
-					defPath, typeName, bespokeFile, berr)
+					defPath, typeName, bespokeFile, rerr)
 				failures++
 				continue
 			}
-			if pkgName == "" {
-				fmt.Fprintf(os.Stderr, "FAIL %s type %q: bespoke %s: missing package.name\n",
-					defPath, typeName, bespokeFile)
-				failures++
-				continue
-			}
-			if !tmplPackageMatchesBespoke(def, typeName, tmpl.Packages, pkgName) {
-				fmt.Fprintf(os.Stderr,
-					"FAIL %s type %q: bespoke package.name %q not satisfiable by apko packages %v "+
-						"for any declared version of this type (apko will fail with 'not in indexes' at publish time)\n",
-					defPath, typeName, pkgName, tmpl.Packages)
-				failures++
-				continue
+
+			for _, resolvedFile := range resolvedFiles {
+				referenced[resolvedFile] = defPath
+				bespokeRefs++
+
+				if !dirExists {
+					continue
+				}
+
+				bespokePath := filepath.Join(bespokeDir, resolvedFile)
+				pkgName, berr := readBespokePackageName(bespokePath)
+				if berr != nil {
+					fmt.Fprintf(os.Stderr, "FAIL %s type %q: bespoke %s: %v\n",
+						defPath, typeName, resolvedFile, berr)
+					failures++
+					continue
+				}
+				if pkgName == "" {
+					fmt.Fprintf(os.Stderr, "FAIL %s type %q: bespoke %s: missing package.name\n",
+						defPath, typeName, resolvedFile)
+					failures++
+					continue
+				}
+				if !tmplPackageMatchesBespoke(def, typeName, tmpl.Packages, pkgName) {
+					fmt.Fprintf(os.Stderr,
+						"FAIL %s type %q: bespoke package.name %q not satisfiable by apko packages %v "+
+							"for any declared version of this type (apko will fail with 'not in indexes' at publish time)\n",
+						defPath, typeName, pkgName, tmpl.Packages)
+					failures++
+					continue
+				}
 			}
 		}
 	}
@@ -212,6 +222,36 @@ func validateBespokeRefs(def *intconfig.ImageDef, defPath, bespokeDir string, re
 	}
 
 	return failures
+}
+
+func resolveBespokeFiles(def *intconfig.ImageDef, typeName, bespokeFile string) ([]string, error) {
+	if !strings.Contains(bespokeFile, "{{version}}") {
+		return []string{bespokeFile}, nil
+	}
+
+	versions := make([]string, 0, len(def.Versions))
+	for version, meta := range def.Versions {
+		if slices.Contains(meta.SkipTypes, typeName) {
+			continue
+		}
+		versions = append(versions, version)
+	}
+	if len(versions) == 0 {
+		return nil, fmt.Errorf("contains {{version}} but type %q has no declared versions to resolve", typeName)
+	}
+
+	apkindex.SortVersions(versions)
+	resolved := make([]string, 0, len(versions))
+	seen := make(map[string]struct{}, len(versions))
+	for _, version := range versions {
+		name := strings.ReplaceAll(bespokeFile, "{{version}}", version)
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		seen[name] = struct{}{}
+		resolved = append(resolved, name)
+	}
+	return resolved, nil
 }
 
 func tmplPackageMatchesBespoke(def *intconfig.ImageDef, typeName string, packages []string, pkgName string) bool {
