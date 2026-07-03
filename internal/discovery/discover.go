@@ -32,7 +32,6 @@ type DiscoveredImage struct {
 //     re-patching chart images that already have an Integer/Wolfi rebuild
 //     stub at images/<name>.yaml. Logged as "excluded via --exclude-names".
 //
-//
 // unpatchable is checked first; an image listed in both sets is skipped
 // with the unpatchable log line.
 func Discover(cfg *config.CopaConfig, targetRegistry string, overrides map[string]config.Override, excludeNames, unpatchable map[string]struct{}) ([]DiscoveredImage, error) {
