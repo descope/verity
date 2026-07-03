@@ -93,7 +93,7 @@ func Validate(def *ImageDef) error {
 		if tmpl.Base == "" {
 			return fmt.Errorf("image %q type %q: %w", def.Name, typeName, ErrMissingBase)
 		}
-		if err := validateMelanges(def.Name, typeName, &tmpl); err != nil {
+		if err := validateMelange(def.Name, typeName, tmpl.Melange); err != nil {
 			return err
 		}
 		if err := validateFIPSProfile(def.Name, typeName, &tmpl); err != nil {
@@ -183,18 +183,6 @@ func envContains(tmpl *TypeTemplate, key, token string) bool {
 
 func usesFIPSEnvFile(tmpl *TypeTemplate) bool {
 	return tmpl.Melange != nil && tmpl.Melange.EnvFile == "fips.env"
-}
-
-func validateMelanges(image, typeName string, tmpl *TypeTemplate) error {
-	if err := validateMelange(image, typeName, tmpl.Melange); err != nil {
-		return err
-	}
-	for i := range tmpl.ExtraMelanges {
-		if err := validateMelange(image, fmt.Sprintf("%s extra-melanges[%d]", typeName, i), &tmpl.ExtraMelanges[i]); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func validateMelange(image, typeName string, m *MelangeSpec) error {

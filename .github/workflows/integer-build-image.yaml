@@ -550,6 +550,20 @@ jobs:
             "${INPUT_REGISTRY}/${INPUT_IMAGE}:${PRIMARY_TAG}"
         continue-on-error: true  # Report only — images publish even with CVEs
 
+      - name: Enforce zero HIGH/CRITICAL for postgres 14/15 fips
+        if: inputs.image == 'postgres' && inputs.type == 'fips' && (inputs.version == '14' || inputs.version == '15')
+        env:
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_REGISTRY: ${{ inputs.registry }}
+          PRIMARY_TAG: ${{ steps.gen.outputs.primary_tag }}
+        run: |
+          trivy image \
+            --exit-code 1 \
+            --severity CRITICAL,HIGH \
+            --vuln-type os,library \
+            --format table \
+            "${INPUT_REGISTRY}/${INPUT_IMAGE}:${PRIMARY_TAG}"
+
       - name: Upload Trivy report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
