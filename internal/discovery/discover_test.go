@@ -516,17 +516,17 @@ func TestRepoStandaloneSourceRegression_556_579(t *testing.T) {
 		{name: "googlecloudplatform/secrets-store-csi-driver-provider-gcp", image: "us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin", pattern: `^v\d+\.\d+\.\d+$`},
 		{name: "kubernetes-sigs/node-feature-discovery", image: "registry.k8s.io/nfd/node-feature-discovery", pattern: `^v\d+\.\d+\.\d+$`},
 		{name: "rancher/k3s", image: "mirror.gcr.io/rancher/k3s", pattern: `^v\d+\.\d+\.\d+-k3s\d+$`},
-		{name: "aws/eks-distro/coredns/coredns", image: "public.ecr.aws/eks-distro/coredns/coredns", pattern: `^v\d+\.\d+\.\d+-eks-.*$`},
-		{name: "aws/eks-distro/kubernetes/kube-apiserver", image: "public.ecr.aws/eks-distro/kubernetes/kube-apiserver", pattern: `^v\d+\.\d+\.\d+-eks-.*$`},
-		{name: "aws/eks-distro/kubernetes/kube-scheduler", image: "public.ecr.aws/eks-distro/kubernetes/kube-scheduler", pattern: `^v\d+\.\d+\.\d+-eks-.*$`},
-		{name: "aws/eks-distro/kubernetes/kube-proxy", image: "public.ecr.aws/eks-distro/kubernetes/kube-proxy", pattern: `^v\d+\.\d+\.\d+-eks-.*$`},
-		{name: "aws/eks-distro/kubernetes-csi/node-driver-registrar", image: "public.ecr.aws/eks-distro/kubernetes-csi/node-driver-registrar", pattern: `^v\d+\.\d+\.\d+-eks-.*$`},
+		{name: "aws/eks-distro/coredns/coredns", image: "public.ecr.aws/eks-distro/coredns/coredns", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
+		{name: "aws/eks-distro/kubernetes/kube-apiserver", image: "public.ecr.aws/eks-distro/kubernetes/kube-apiserver", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
+		{name: "aws/eks-distro/kubernetes/kube-scheduler", image: "public.ecr.aws/eks-distro/kubernetes/kube-scheduler", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
+		{name: "aws/eks-distro/kubernetes/kube-proxy", image: "public.ecr.aws/eks-distro/kubernetes/kube-proxy", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
+		{name: "aws/eks-distro/kubernetes-csi/node-driver-registrar", image: "public.ecr.aws/eks-distro/kubernetes-csi/node-driver-registrar", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
 		{name: "prometheus/mysqld-exporter", image: "quay.io/prometheus/mysqld-exporter", pattern: `^v\d+\.\d+\.\d+$`},
 		{name: "datadog/agent", image: "docker.io/datadog/agent", pattern: `^\d+\.\d+\.\d+$`},
 		{name: "datadog/cluster-agent", image: "docker.io/datadog/cluster-agent", pattern: `^\d+\.\d+\.\d+$`},
 		{name: "fluent/fluent-operator", image: "ghcr.io/fluent/fluent-operator/fluent-operator", pattern: `^v\d+\.\d+\.\d+$`},
-		{name: "kubeflow/spark-operator", image: "ghcr.io/kubeflow/spark-operator", pattern: `^v1beta2-\d+\.\d+\.\d+-\d+\.\d+\.\d+$`},
 		{name: "kyverno/policy-reporter-ui", image: "ghcr.io/kyverno/policy-reporter-ui", pattern: `^\d+\.\d+\.\d+$`},
+		{name: "victoriametrics/victoria-logs", image: "quay.io/victoriametrics/victoria-logs", pattern: `^v\d+\.\d+\.\d+$`},
 	}
 
 	for _, tc := range kept {
@@ -542,7 +542,7 @@ func TestRepoStandaloneSourceRegression_556_579(t *testing.T) {
 		}
 	}
 
-	removed := []string{"spiffe/spiffe-helper", "tektoncd/cli", "victoriametrics/victoria-logs"}
+	removed := []string{"spiffe/spiffe-helper", "tektoncd/cli", "kubeflow/spark-operator"}
 	for _, name := range removed {
 		if _, ok := byName[name]; ok {
 			t.Errorf("config still contains removed unsupported image %q", name)

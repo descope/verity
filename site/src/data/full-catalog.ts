@@ -282,7 +282,8 @@ export const fullCatalog: FullCatalogCategory[] = [
         name: "googlecloudplatform/secrets-store-csi-driver-provider-gcp",
         label: "secrets-store-csi-provider-gcp",
         source: "copa",
-        upstream: "us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin",
+        upstream:
+          "us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin",
       },
       {
         name: "kiwigrid/k8s-sidecar",
@@ -540,6 +541,12 @@ export const fullCatalog: FullCatalogCategory[] = [
         label: "datadog-cluster-agent",
         source: "copa",
         upstream: "docker.io/datadog/cluster-agent",
+      },
+      {
+        name: "victoriametrics/victoria-logs",
+        label: "victoria-logs",
+        source: "copa",
+        upstream: "quay.io/victoriametrics/victoria-logs",
       },
       {
         name: "newrelic/infrastructure-bundle",
@@ -838,12 +845,6 @@ export const fullCatalog: FullCatalogCategory[] = [
     label: "Data & ML",
     images: [
       { name: "apache/airflow", source: "copa", upstream: "mirror.gcr.io/apache/airflow" },
-      {
-        name: "kubeflow/spark-operator",
-        label: "spark-operator",
-        source: "copa",
-        upstream: "ghcr.io/kubeflow/spark-operator",
-      },
       { name: "mlflow/mlflow", label: "mlflow", source: "copa", upstream: "ghcr.io/mlflow/mlflow" },
       { name: "temporal", source: "integer" },
       { name: "meilisearch", source: "integer" },

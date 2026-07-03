@@ -66,6 +66,7 @@ images:
       strategy: "pattern"
       pattern: '^\d+\.\d+$'
       maxTags: 3
+      exclude: ["1.2"]
 
   # ============================================================================
   #  DATABASES
@@ -214,7 +215,7 @@ images:
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+-eks-.*$'
+      pattern: '^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$'
       maxTags: 3
 
   - name: "aws/eks-distro/kubernetes/kube-apiserver"
@@ -222,7 +223,7 @@ images:
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+-eks-.*$'
+      pattern: '^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$'
       maxTags: 3
 
   - name: "aws/eks-distro/kubernetes/kube-scheduler"
@@ -230,7 +231,7 @@ images:
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+-eks-.*$'
+      pattern: '^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$'
       maxTags: 3
 
   - name: "aws/eks-distro/kubernetes/kube-proxy"
@@ -238,15 +239,16 @@ images:
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+-eks-.*$'
+      pattern: '^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$'
       maxTags: 3
+      exclude: ["v1.36.0-eks-1-36-2"]
 
   - name: "aws/eks-distro/kubernetes-csi/node-driver-registrar"
     image: "public.ecr.aws/eks-distro/kubernetes-csi/node-driver-registrar"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+-eks-.*$'
+      pattern: '^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$'
       maxTags: 3
 
   # ============================================================================
@@ -267,6 +269,19 @@ images:
   # ============================================================================
   #  MONITORING & OBSERVABILITY
   # ============================================================================
+
+  # -- VictoriaMetrics --
+  - name: "victoriametrics/victoria-logs"
+    image: "quay.io/victoriametrics/victoria-logs"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 1
+    # Go binary built with -trimpath (no VCS info in binary).
+    # OCI label points to monorepo (wrong directory at older tags).
+    # goVcsUrl overrides to the correct standalone source repo.
+    goVcsUrl: "https://github.com/VictoriaMetrics/VictoriaLogs"
 
   # -- Prometheus ecosystem --
 
@@ -419,14 +434,6 @@ images:
   # ============================================================================
   #  DATA / ML
   # ============================================================================
-
-  - name: "kubeflow/spark-operator"
-    image: "ghcr.io/kubeflow/spark-operator"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v1beta2-\d+\.\d+\.\d+-\d+\.\d+\.\d+$'
-      maxTags: 3
 
   - name: "tensorflow/serving"
     image: "mirror.gcr.io/tensorflow/serving"
