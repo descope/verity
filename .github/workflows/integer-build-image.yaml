@@ -558,6 +558,28 @@ jobs:
           path: trivy-report.json
           retention-days: 30
 
+      - name: Resolve Trivy gate policy
+        id: trivy-gate
+        run: |
+          case "${{ inputs.image }}:${{ inputs.type }}" in
+            vault:default)
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              echo "label=vault default" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "enabled=false" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Enforce Trivy gate
+        if: steps.trivy-gate.outputs.enabled == 'true'
+        run: |
+          findings=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH" or .Severity == "CRITICAL")] | length' trivy-report.json)
+          if [ "$findings" -ne 0 ]; then
+            echo "${{ steps.trivy-gate.outputs.label }} image must stay zero HIGH/CRITICAL, found ${findings}" >&2
+            exit 1
+          fi
+
       # ── Sign & attest ──────────────────────────────────────────────────────
 
       - name: Sign image with cosign (keyless)
