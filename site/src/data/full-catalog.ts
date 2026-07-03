@@ -332,12 +332,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "public.ecr.aws/eks-distro/kubernetes/kube-scheduler",
       },
       {
-        name: "aws/eks-distro/kubernetes/kube-proxy",
-        label: "eks-distro-kube-proxy",
-        source: "copa",
-        upstream: "public.ecr.aws/eks-distro/kubernetes/kube-proxy",
-      },
-      {
         name: "aws/eks-distro/kubernetes-csi/node-driver-registrar",
         label: "eks-distro-csi-node-driver-registrar",
         source: "copa",

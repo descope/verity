@@ -519,7 +519,6 @@ func TestRepoStandaloneSourceRegression_556_579(t *testing.T) {
 		{name: "aws/eks-distro/coredns/coredns", image: "public.ecr.aws/eks-distro/coredns/coredns", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
 		{name: "aws/eks-distro/kubernetes/kube-apiserver", image: "public.ecr.aws/eks-distro/kubernetes/kube-apiserver", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
 		{name: "aws/eks-distro/kubernetes/kube-scheduler", image: "public.ecr.aws/eks-distro/kubernetes/kube-scheduler", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
-		{name: "aws/eks-distro/kubernetes/kube-proxy", image: "public.ecr.aws/eks-distro/kubernetes/kube-proxy", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
 		{name: "aws/eks-distro/kubernetes-csi/node-driver-registrar", image: "public.ecr.aws/eks-distro/kubernetes-csi/node-driver-registrar", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
 		{name: "prometheus/mysqld-exporter", image: "quay.io/prometheus/mysqld-exporter", pattern: `^v\d+\.\d+\.\d+$`},
 		{name: "datadog/agent", image: "docker.io/datadog/agent", pattern: `^\d+\.\d+\.\d+$`},
@@ -542,7 +541,7 @@ func TestRepoStandaloneSourceRegression_556_579(t *testing.T) {
 		}
 	}
 
-	removed := []string{"spiffe/spiffe-helper", "tektoncd/cli", "kubeflow/spark-operator"}
+	removed := []string{"spiffe/spiffe-helper", "tektoncd/cli", "kubeflow/spark-operator", "aws/eks-distro/kubernetes/kube-proxy"}
 	for _, name := range removed {
 		if _, ok := byName[name]; ok {
 			t.Errorf("config still contains removed unsupported image %q", name)
