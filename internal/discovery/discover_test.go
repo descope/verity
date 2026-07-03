@@ -3,6 +3,7 @@ package discovery
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/verity-org/verity/internal/config"
@@ -479,6 +480,94 @@ func TestLoadConfig_InvalidYAML(t *testing.T) {
 	_, err := LoadConfig(path)
 	if err == nil {
 		t.Fatal("LoadConfig() expected error for invalid YAML, got nil")
+	}
+}
+
+func TestRepoStandaloneSourceRegression_556_579(t *testing.T) {
+	t.Helper()
+
+	type expectedEntry struct {
+		name    string
+		image   string
+		pattern string
+	}
+
+	repoConfigPath := filepath.Join("..", "..", "copa-config.yaml")
+	repoCatalogPath := filepath.Join("..", "..", "site", "src", "data", "full-catalog.ts")
+
+	cfg, err := LoadConfig(repoConfigPath)
+	if err != nil {
+		t.Fatalf("LoadConfig(%q) error = %v", repoConfigPath, err)
+	}
+
+	byName := make(map[string]config.ImageSpec, len(cfg.Images))
+	for _, img := range cfg.Images {
+		byName[img.Name] = img
+	}
+
+	kept := []expectedEntry{
+		{name: "nginxinc/nginx-s3-gateway", image: "docker.io/nginxinc/nginx-s3-gateway", pattern: `^unprivileged-oss-\d{8}$`},
+		{name: "kubernetes/ingress-nginx/controller", image: "registry.k8s.io/ingress-nginx/controller", pattern: `^v\d+\.\d+\.\d+$`},
+		{name: "kubernetes/ingress-nginx/kube-webhook-certgen", image: "registry.k8s.io/ingress-nginx/kube-webhook-certgen", pattern: `^v\d+\.\d+\.\d+$`},
+		{name: "kubernetes/ingress-nginx/defaultbackend", image: "registry.k8s.io/defaultbackend", pattern: `^\d+\.\d+$`},
+		{name: "kubernetes-sigs/external-dns", image: "registry.k8s.io/external-dns/external-dns", pattern: `^v\d+\.\d+\.\d+$`},
+		{name: "emberstack/kubernetes-reflector", image: "ghcr.io/emberstack/kubernetes-reflector", pattern: `^\d+\.\d+\.\d+$`},
+		{name: "kubernetes-sigs/secrets-store-csi-driver", image: "registry.k8s.io/csi-secrets-store/driver", pattern: `^v\d+\.\d+\.\d+$`},
+		{name: "googlecloudplatform/secrets-store-csi-driver-provider-gcp", image: "us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin", pattern: `^v\d+\.\d+\.\d+$`},
+		{name: "kubernetes-sigs/node-feature-discovery", image: "registry.k8s.io/nfd/node-feature-discovery", pattern: `^v\d+\.\d+\.\d+$`},
+		{name: "rancher/k3s", image: "mirror.gcr.io/rancher/k3s", pattern: `^v\d+\.\d+\.\d+-k3s\d+$`},
+		{name: "aws/eks-distro/coredns/coredns", image: "public.ecr.aws/eks-distro/coredns/coredns", pattern: `^v\d+\.\d+\.\d+-eks-.*$`},
+		{name: "aws/eks-distro/kubernetes/kube-apiserver", image: "public.ecr.aws/eks-distro/kubernetes/kube-apiserver", pattern: `^v\d+\.\d+\.\d+-eks-.*$`},
+		{name: "aws/eks-distro/kubernetes/kube-scheduler", image: "public.ecr.aws/eks-distro/kubernetes/kube-scheduler", pattern: `^v\d+\.\d+\.\d+-eks-.*$`},
+		{name: "aws/eks-distro/kubernetes/kube-proxy", image: "public.ecr.aws/eks-distro/kubernetes/kube-proxy", pattern: `^v\d+\.\d+\.\d+-eks-.*$`},
+		{name: "aws/eks-distro/kubernetes-csi/node-driver-registrar", image: "public.ecr.aws/eks-distro/kubernetes-csi/node-driver-registrar", pattern: `^v\d+\.\d+\.\d+-eks-.*$`},
+		{name: "prometheus/mysqld-exporter", image: "quay.io/prometheus/mysqld-exporter", pattern: `^v\d+\.\d+\.\d+$`},
+		{name: "datadog/agent", image: "docker.io/datadog/agent", pattern: `^\d+\.\d+\.\d+$`},
+		{name: "datadog/cluster-agent", image: "docker.io/datadog/cluster-agent", pattern: `^\d+\.\d+\.\d+$`},
+		{name: "fluent/fluent-operator", image: "ghcr.io/fluent/fluent-operator/fluent-operator", pattern: `^v\d+\.\d+\.\d+$`},
+		{name: "kubeflow/spark-operator", image: "ghcr.io/kubeflow/spark-operator", pattern: `^v1beta2-\d+\.\d+\.\d+-\d+\.\d+\.\d+$`},
+		{name: "kyverno/policy-reporter-ui", image: "ghcr.io/kyverno/policy-reporter-ui", pattern: `^\d+\.\d+\.\d+$`},
+	}
+
+	for _, tc := range kept {
+		img, ok := byName[tc.name]
+		if !ok {
+			t.Fatalf("config missing %q", tc.name)
+		}
+		if img.Image != tc.image {
+			t.Errorf("config image for %q = %q, want %q", tc.name, img.Image, tc.image)
+		}
+		if img.Tags.Pattern != tc.pattern {
+			t.Errorf("config pattern for %q = %q, want %q", tc.name, img.Tags.Pattern, tc.pattern)
+		}
+	}
+
+	removed := []string{"spiffe/spiffe-helper", "tektoncd/cli", "victoriametrics/victoria-logs"}
+	for _, name := range removed {
+		if _, ok := byName[name]; ok {
+			t.Errorf("config still contains removed unsupported image %q", name)
+		}
+	}
+
+	catalog, err := os.ReadFile(repoCatalogPath)
+	if err != nil {
+		t.Fatalf("os.ReadFile(%q) error = %v", repoCatalogPath, err)
+	}
+	catalogText := string(catalog)
+
+	for _, tc := range kept {
+		if !strings.Contains(catalogText, `name: "`+tc.name+`"`) {
+			t.Errorf("catalog missing image %q", tc.name)
+		}
+		if !strings.Contains(catalogText, `upstream: "`+tc.image+`"`) {
+			t.Errorf("catalog missing upstream %q for %q", tc.image, tc.name)
+		}
+	}
+
+	for _, name := range removed {
+		if strings.Contains(catalogText, `name: "`+name+`"`) {
+			t.Errorf("catalog still contains removed unsupported image %q", name)
+		}
 	}
 }
 

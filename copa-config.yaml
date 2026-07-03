@@ -36,15 +36,15 @@ images:
   # ============================================================================
 
   - name: "nginxinc/nginx-s3-gateway"
-    image: "ghcr.io/nginxinc/nginx-s3-gateway"
+    image: "docker.io/nginxinc/nginx-s3-gateway"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
+      pattern: '^unprivileged-oss-\d{8}$'
       maxTags: 3
 
   - name: "kubernetes/ingress-nginx/controller"
-    image: "ghcr.io/kubernetes/ingress-nginx/controller"
+    image: "registry.k8s.io/ingress-nginx/controller"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -52,7 +52,7 @@ images:
       maxTags: 3
 
   - name: "kubernetes/ingress-nginx/kube-webhook-certgen"
-    image: "ghcr.io/kubernetes/ingress-nginx/kube-webhook-certgen"
+    image: "registry.k8s.io/ingress-nginx/kube-webhook-certgen"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -60,7 +60,7 @@ images:
       maxTags: 3
 
   - name: "kubernetes/ingress-nginx/defaultbackend"
-    image: "ghcr.io/kubernetes/ingress-nginx/defaultbackend"
+    image: "registry.k8s.io/defaultbackend"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -150,7 +150,7 @@ images:
   # ============================================================================
 
   - name: "kubernetes-sigs/external-dns"
-    image: "ghcr.io/kubernetes-sigs/external-dns"
+    image: "registry.k8s.io/external-dns/external-dns"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -162,11 +162,11 @@ images:
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
+      pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
 
   - name: "kubernetes-sigs/secrets-store-csi-driver"
-    image: "ghcr.io/kubernetes-sigs/secrets-store-csi-driver"
+    image: "registry.k8s.io/csi-secrets-store/driver"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -174,7 +174,7 @@ images:
       maxTags: 3
 
   - name: "googlecloudplatform/secrets-store-csi-driver-provider-gcp"
-    image: "ghcr.io/googlecloudplatform/secrets-store-csi-driver-provider-gcp"
+    image: "us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -190,7 +190,7 @@ images:
       maxTags: 3
 
   - name: "kubernetes-sigs/node-feature-discovery"
-    image: "ghcr.io/kubernetes-sigs/node-feature-discovery"
+    image: "registry.k8s.io/nfd/node-feature-discovery"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -202,7 +202,7 @@ images:
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+\+k3s\d+$'
+      pattern: '^v\d+\.\d+\.\d+-k3s\d+$'
       maxTags: 3
 
   # ============================================================================
@@ -210,7 +210,7 @@ images:
   # ============================================================================
 
   - name: "aws/eks-distro/coredns/coredns"
-    image: "ghcr.io/aws/eks-distro/coredns/coredns"
+    image: "public.ecr.aws/eks-distro/coredns/coredns"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -218,7 +218,7 @@ images:
       maxTags: 3
 
   - name: "aws/eks-distro/kubernetes/kube-apiserver"
-    image: "ghcr.io/aws/eks-distro/kubernetes/kube-apiserver"
+    image: "public.ecr.aws/eks-distro/kubernetes/kube-apiserver"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -226,7 +226,7 @@ images:
       maxTags: 3
 
   - name: "aws/eks-distro/kubernetes/kube-scheduler"
-    image: "ghcr.io/aws/eks-distro/kubernetes/kube-scheduler"
+    image: "public.ecr.aws/eks-distro/kubernetes/kube-scheduler"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -234,7 +234,7 @@ images:
       maxTags: 3
 
   - name: "aws/eks-distro/kubernetes/kube-proxy"
-    image: "ghcr.io/aws/eks-distro/kubernetes/kube-proxy"
+    image: "public.ecr.aws/eks-distro/kubernetes/kube-proxy"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -242,7 +242,7 @@ images:
       maxTags: 3
 
   - name: "aws/eks-distro/kubernetes-csi/node-driver-registrar"
-    image: "ghcr.io/aws/eks-distro/kubernetes-csi/node-driver-registrar"
+    image: "public.ecr.aws/eks-distro/kubernetes-csi/node-driver-registrar"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -267,19 +267,6 @@ images:
   # ============================================================================
   #  MONITORING & OBSERVABILITY
   # ============================================================================
-
-  # -- VictoriaMetrics --
-  - name: "victoriametrics/victoria-logs"
-    image: "quay.io/victoriametrics/victoria-logs"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 1
-    # Go binary built with -trimpath (no VCS info in binary).
-    # OCI label points to monorepo (wrong directory at older tags).
-    # goVcsUrl overrides to the correct standalone source repo.
-    goVcsUrl: "https://github.com/VictoriaMetrics/VictoriaLogs"
 
   # -- Prometheus ecosystem --
 
@@ -306,7 +293,7 @@ images:
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+-distroless$'
+      pattern: '^v\d+\.\d+\.\d+$'
       maxTags: 3
 
   # prometheus-config-reloader is built from the prometheus-operator monorepo
@@ -343,7 +330,7 @@ images:
 
   # -- Agents --
   - name: "datadog/agent"
-    image: "ghcr.io/datadog/agent"
+    image: "docker.io/datadog/agent"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -351,7 +338,7 @@ images:
       maxTags: 3
 
   - name: "datadog/cluster-agent"
-    image: "ghcr.io/datadog/cluster-agent"
+    image: "docker.io/datadog/cluster-agent"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -363,7 +350,7 @@ images:
   # ============================================================================
 
   - name: "fluent/fluent-operator"
-    image: "ghcr.io/fluent/fluent-operator"
+    image: "ghcr.io/fluent/fluent-operator/fluent-operator"
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
@@ -373,14 +360,6 @@ images:
   # ============================================================================
   #  CI/CD & GITOPS
   # ============================================================================
-
-  - name: "tektoncd/cli"
-    image: "ghcr.io/tektoncd/cli"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
 
   # ============================================================================
   #  SECURITY & IDENTITY
@@ -404,16 +383,6 @@ images:
     goVcsUrl: "https://github.com/hashicorp/consul"
     goVcsTagPrefix: "v"
 
-  # ⚠ spiffe-helper is scratch-based since ~v1.8+. Copa CANNOT patch it.
-  # Kept for tracking; Copa will no-op. spire-server/agent moved to Integer.
-  - name: "spiffe/spiffe-helper"
-    image: "ghcr.io/spiffe/spiffe-helper"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-
   # ============================================================================
   #  POLICY & COMPLIANCE
   # ============================================================================
@@ -423,7 +392,7 @@ images:
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
+      pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
 
   - name: "openpolicyagent/gatekeeper"
@@ -456,7 +425,7 @@ images:
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
+      pattern: '^v1beta2-\d+\.\d+\.\d+-\d+\.\d+\.\d+$'
       maxTags: 3
 
   - name: "tensorflow/serving"
