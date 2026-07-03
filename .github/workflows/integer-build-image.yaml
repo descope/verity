@@ -566,6 +566,56 @@ jobs:
             exit 1
           fi
 
+      - name: Resolve Trivy gate policy
+        id: trivy-gate-rebuildable-sweep
+        run: |
+          case "${{ inputs.image }}:${{ inputs.version }}:${{ inputs.type }}" in
+            cloudflared:2025:default)
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              echo "label=cloudflared 2025 default" >> "$GITHUB_OUTPUT"
+              ;;
+            conftest:0:default)
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              echo "label=conftest 0 default" >> "$GITHUB_OUTPUT"
+              ;;
+            filebrowser:2:default)
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              echo "label=filebrowser 2 default" >> "$GITHUB_OUTPUT"
+              ;;
+            harbor-cli:0:default)
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              echo "label=harbor-cli 0 default" >> "$GITHUB_OUTPUT"
+              ;;
+            k9s:0:default)
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              echo "label=k9s 0 default" >> "$GITHUB_OUTPUT"
+              ;;
+            mailpit:1:default)
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              echo "label=mailpit 1 default" >> "$GITHUB_OUTPUT"
+              ;;
+            rclone:1:default)
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              echo "label=rclone 1 default" >> "$GITHUB_OUTPUT"
+              ;;
+            trufflehog:3:default)
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              echo "label=trufflehog 3 default" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "enabled=false" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Enforce Trivy gate
+        if: steps.trivy-gate-rebuildable-sweep.outputs.enabled == 'true'
+        run: |
+          findings=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH" or .Severity == "CRITICAL")] | length' trivy-report.json)
+          if [ "$findings" -ne 0 ]; then
+            echo "${{ steps.trivy-gate-rebuildable-sweep.outputs.label }} image must stay zero HIGH/CRITICAL, found ${findings}" >&2
+            exit 1
+          fi
+
       # ── Sign & attest ──────────────────────────────────────────────────────
 
       - name: Sign image with cosign (keyless)
