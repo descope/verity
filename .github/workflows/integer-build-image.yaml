@@ -76,58 +76,10 @@ jobs:
       - name: Check if melange build needed
         id: check
         env:
-          INPUT_IMAGE: ${{ inputs.image }}
-          INPUT_TYPE: ${{ inputs.type }}
-        run: |
-          image_yaml="images/${INPUT_IMAGE}.yaml"
-          melange_block=$(yq -e ".types.\"${INPUT_TYPE}\".melange" "$image_yaml" 2>/dev/null) || true
-          if [ -z "$melange_block" ] || [ "$melange_block" = "null" ]; then
-            echo "needed=false" >> "$GITHUB_OUTPUT"
-            echo "Melange build not needed for ${INPUT_IMAGE}:${INPUT_TYPE}"
-            exit 0
-          fi
-
-          raw_bespoke=$(yq -o=json ".types.\"${INPUT_TYPE}\".melange.bespoke // []" "$image_yaml")
-          upstream=$(yq -r ".types.\"${INPUT_TYPE}\".melange.upstream // \"\"" "$image_yaml")
-          env_file=$(yq -r ".types.\"${INPUT_TYPE}\".melange.env-file // \"\"" "$image_yaml")
-          build_option=$(yq -r ".types.\"${INPUT_TYPE}\".melange.build-option // \"\"" "$image_yaml")
-
-          bespoke_json=$(printf '%s' "$raw_bespoke" | jq -c 'if type == "array" then . elif . == null or . == "" then [] else [.] end')
-
-          # Require exactly one source
-          if [ -z "$upstream" ] && [ "$bespoke_json" = '[]' ]; then
-            echo "melange block present but neither upstream nor bespoke is set" >&2
-            exit 1
-          fi
-          if [ -n "$upstream" ] && [ "$bespoke_json" != '[]' ]; then
-            echo "melange block has both upstream and bespoke set — choose one" >&2
-            exit 1
-          fi
-
-          while IFS= read -r bespoke; do
-            if [[ ! "$bespoke" =~ ^[A-Za-z0-9._-]+$ ]]; then
-              echo "melange.bespoke contains unsafe characters: '${bespoke}'" >&2
-              exit 1
-            fi
-          done < <(printf '%s' "$bespoke_json" | jq -r '.[]')
-
-          # Guard scalar fields: reject multi-line values (yq emits sequences/maps with newlines)
-          for field_name in env_file build_option; do
-            field_val="${!field_name}"
-            if [[ "$field_val" == *$'\n'* ]]; then
-              echo "melange.${field_name//_/-} must be a scalar string, got multi-line value" >&2
-              exit 1
-            fi
-          done
-
-          {
-            echo "needed=true"
-            echo "upstream=${upstream}"
-            echo "bespoke_json=${bespoke_json}"
-            echo "env_file=${env_file}"
-            echo "build_option=${build_option}"
-          } >> "$GITHUB_OUTPUT"
-          echo "Melange build needed: upstream=${upstream} bespoke=${bespoke_json}"
+          IMAGE: ${{ inputs.image }}
+          TYPE: ${{ inputs.type }}
+          VERSION: ${{ inputs.version }}
+        run: .github/scripts/melange-check.sh
 
       - name: Resolve melange YAML source
         if: steps.check.outputs.needed == 'true'
@@ -562,6 +514,10 @@ jobs:
               echo "enabled=true" >> "$GITHUB_OUTPUT"
               echo "label=postgres 15 fips" >> "$GITHUB_OUTPUT"
               ;;
+            istio-install-cni:*:default|istio-pilot:*:default|istio-proxyv2:*:default)
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              echo "label=${{ inputs.image }} ${{ inputs.version }} default" >> "$GITHUB_OUTPUT"
+              ;;
             *)
               echo "enabled=false" >> "$GITHUB_OUTPUT"
               ;;
@@ -591,6 +547,10 @@ jobs:
             vault:default)
               echo "enabled=true" >> "$GITHUB_OUTPUT"
               echo "label=vault default" >> "$GITHUB_OUTPUT"
+              ;;
+            istio-install-cni:default|istio-pilot:default|istio-proxyv2:default)
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              echo "label=${{ inputs.image }} default" >> "$GITHUB_OUTPUT"
               ;;
             *)
               echo "enabled=false" >> "$GITHUB_OUTPUT"

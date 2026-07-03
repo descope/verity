@@ -142,13 +142,10 @@ types:
     packages: ["haproxy-{{version}}"]
     entrypoint: /usr/bin/haproxy
     melange:
-      bespoke:
-        - haproxy-3.0.yaml
-        - haproxy-3.1.yaml
+      bespoke: "haproxy-{{version}}.yaml"
 versions:
   "3.0": {}
   "3.1": {}
-  "3.2": {}
 `
 
 const intTestHaproxy30BespokeYAML = `

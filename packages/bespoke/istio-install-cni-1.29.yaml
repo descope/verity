@@ -1,0 +1,31 @@
+package:
+  name: istio-install-cni-1.29
+  version: "1.29.5"
+  epoch: 0
+  description: Istio CNI installer
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/istio/istio
+      tag: ${{package.version}}
+      expected-commit: f31fd6420e773538b031d4d6c9a770f33ee4144a
+  - uses: go/build
+    with:
+      packages: ./cni/cmd/install-cni
+      output: install-cni
+  - uses: strip
