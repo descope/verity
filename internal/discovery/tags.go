@@ -81,20 +81,33 @@ func findTagsByPattern(spec *config.ImageSpec) ([]string, error) {
 		}
 	}
 
-	versions := tagsToSortedVersions(ExcludeTags(matchingTags, spec.Tags.Exclude))
-	if len(versions) == 0 {
-		return []string{}, nil
+	return selectPatternTags(matchingTags, spec.Tags.Exclude, spec.Tags.MaxTags), nil
+}
+
+func selectPatternTags(matchingTags, exclusions []string, maxTags int) []string {
+	filtered := ExcludeTags(matchingTags, exclusions)
+	versions := tagsToSortedVersions(filtered)
+	if len(versions) > 0 {
+		if maxTags > 0 && len(versions) > maxTags {
+			versions = versions[len(versions)-maxTags:]
+		}
+
+		result := make([]string, len(versions))
+		for i, v := range versions {
+			result[i] = v.Original()
+		}
+		return result
 	}
 
-	if spec.Tags.MaxTags > 0 && len(versions) > spec.Tags.MaxTags {
-		versions = versions[len(versions)-spec.Tags.MaxTags:]
+	if len(filtered) == 0 {
+		return []string{}
 	}
 
-	result := make([]string, len(versions))
-	for i, v := range versions {
-		result[i] = v.Original()
+	sort.Strings(filtered)
+	if maxTags > 0 && len(filtered) > maxTags {
+		filtered = filtered[len(filtered)-maxTags:]
 	}
-	return result, nil
+	return filtered
 }
 
 // tagsToSortedVersions parses tags as semver and returns them sorted ascending.

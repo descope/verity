@@ -142,6 +142,24 @@ func TestTagsToSortedVersions(t *testing.T) {
 	}
 }
 
+func TestSelectPatternTags_NonSemverFallback(t *testing.T) {
+	got := selectPatternTags(
+		[]string{"unprivileged-oss-20260302", "unprivileged-oss-20260316", "unprivileged-oss-20260413"},
+		nil,
+		2,
+	)
+
+	want := []string{"unprivileged-oss-20260316", "unprivileged-oss-20260413"}
+	if len(got) != len(want) {
+		t.Fatalf("selectPatternTags() = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("selectPatternTags()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
 func TestCraneOptions(t *testing.T) {
 	tests := []struct {
 		image     string
