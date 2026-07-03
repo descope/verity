@@ -37,6 +37,7 @@ environment:
       - lz4-dev
       - openldap-dev
       - openssl-dev
+      - patch
       - tzdata
       - util-linux-dev
       - zlib-dev
@@ -58,10 +59,29 @@ pipeline:
       expected-commit: 4e9da016ade3e75400f6fdc22ed1fed7fdd32f7a
       repository: https://github.com/postgres/postgres
       tag: REL_${{vars.mangled-package-version}}
-  - uses: patch
-    with:
-      patches: |
-        per-version-dirs.patch
+  - runs: |
+      patch -p1 <<'EOF'
+      --- a/src/Makefile.global.in
+      +++ b/src/Makefile.global.in
+      @@ -119,7 +119,7 @@ libdir := @libdir@
+       pkglibdir = $(libdir)
+       ifeq "$(findstring pgsql, $(pkglibdir))" ""
+       ifeq "$(findstring postgres, $(pkglibdir))" ""
+      -override pkglibdir := $(pkglibdir)/postgresql
+      +override pkglibdir := /usr/lib/postgresql14
+       endif
+       endif
+       
+      @@ -167,7 +167,7 @@ endif # PGXS
+       
+       # These derived path variables aren't separately configurable.
+       
+      -includedir_server = $(pkgincludedir)/server
+      +includedir_server = $(pkgincludedir)/14/server
+       includedir_internal = $(pkgincludedir)/internal
+       pgxsdir = $(pkglibdir)/pgxs
+       bitcodedir = $(pkglibdir)/bitcode
+      EOF
   - uses: autoconf/configure
     with:
       opts: |
