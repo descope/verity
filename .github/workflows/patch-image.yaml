@@ -524,18 +524,30 @@ jobs:
 
       - name: Compare with previous post-patch report
         id: compare
+        env:
+          IMAGE_NAME: ${{ inputs.image-name }}
+          SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
+          TARGET_REGISTRY: ${{ inputs.target-registry }}
         run: |
           # Extract sorted vuln IDs from both reports for comparison
           NEW_IDS=$(jq -r '[.Results[]?.Vulnerabilities // [] | .[] | .VulnerabilityID] | sort | .[]' post.json | sha256sum)
           PREV_IDS=$(jq -r '[.Results[]?.Vulnerabilities // [] | .[] | .VulnerabilityID] | sort | .[]' prev-post.json 2>/dev/null | sha256sum || echo "")
 
           PREV_EXISTED="${{ needs.scan.outputs.prev-report-exists }}"
+          FINAL_TAG="${TARGET_REGISTRY}/${IMAGE_NAME}:${SOURCE_TAG}"
 
-          if [ "$PREV_EXISTED" = "true" ] && [ "$NEW_IDS" = "$PREV_IDS" ]; then
-            echo "Vuln set unchanged — discarding new image (no-op)"
+
+          if crane digest "$FINAL_TAG" > /dev/null 2>&1; then
+            TARGET_EXISTS=true
+          else
+            TARGET_EXISTS=false
+          fi
+
+          if [ "$PREV_EXISTED" = "true" ] && [ "$NEW_IDS" = "$PREV_IDS" ] && [ "$TARGET_EXISTS" = "true" ]; then
+            echo "Vuln set unchanged and target exists — discarding new image (no-op)"
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
-            echo "Vuln set changed (or first time) — publishing"
+            echo "First time, vuln set changed, or target missing — publishing"
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 

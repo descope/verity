@@ -104,17 +104,43 @@ func TestCheckCopaImage_UnchangedClean(t *testing.T) {
 		"nginx/1.29.3": {UpstreamDigest: testDigestSame, PatchedVulns: 0},
 	}
 	img := discovery.DiscoveredImage{
-		Name:   "nginx",
-		Source: "mirror.gcr.io/library/nginx:1.29.3",
+		Name:           "nginx",
+		Source:         "mirror.gcr.io/library/nginx:1.29.3",
+		TargetRegistry: "ghcr.io/verity-org",
 	}
 
 	origFn := digestFn
 	digestFn = func(_ string) (string, error) { return testDigestSame, nil }
 	defer func() { digestFn = origFn }()
+	origTargetFn := targetDigestFn
+	targetDigestFn = func(_ string) (string, error) { return testDigestSame, nil }
+	defer func() { targetDigestFn = origTargetFn }()
 
 	result := checkCopaImage(&img, manifest)
 	assert.False(t, result.NeedsWork)
 	assert.Contains(t, result.Reason, "unchanged")
+}
+
+func TestCheckCopaImage_MissingTargetForcesBuild(t *testing.T) {
+	manifest := Manifest{
+		"nginx/1.29.3": {UpstreamDigest: testDigestSame, PatchedVulns: 0},
+	}
+	img := discovery.DiscoveredImage{
+		Name:           "nginx",
+		Source:         "mirror.gcr.io/library/nginx:1.29.3",
+		TargetRegistry: "ghcr.io/verity-org",
+	}
+
+	origDigest := digestFn
+	digestFn = func(_ string) (string, error) { return testDigestSame, nil }
+	defer func() { digestFn = origDigest }()
+	origTarget := targetDigestFn
+	targetDigestFn = func(_ string) (string, error) { return "", assert.AnError }
+	defer func() { targetDigestFn = origTarget }()
+
+	result := checkCopaImage(&img, manifest)
+	assert.True(t, result.NeedsWork)
+	assert.Contains(t, result.Reason, "target image missing")
 }
 
 func TestCheckCopaImage_DigestRef(t *testing.T) {
