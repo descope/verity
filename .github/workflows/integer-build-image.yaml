@@ -41,6 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       needed: ${{ steps.check.outputs.needed }}
+      bespoke_json: ${{ steps.check.outputs.bespoke_json }}
       env_file: ${{ steps.check.outputs.env_file }}
       build_option: ${{ steps.check.outputs.build_option }}
     steps:
@@ -86,20 +87,29 @@ jobs:
             exit 0
           fi
 
+          raw_bespoke=$(yq -o=json ".types.\"${INPUT_TYPE}\".melange.bespoke // []" "$image_yaml")
           upstream=$(yq -r ".types.\"${INPUT_TYPE}\".melange.upstream // \"\"" "$image_yaml")
-          bespoke=$(yq -r ".types.\"${INPUT_TYPE}\".melange.bespoke // \"\"" "$image_yaml")
           env_file=$(yq -r ".types.\"${INPUT_TYPE}\".melange.env-file // \"\"" "$image_yaml")
           build_option=$(yq -r ".types.\"${INPUT_TYPE}\".melange.build-option // \"\"" "$image_yaml")
 
+          bespoke_json=$(printf '%s' "$raw_bespoke" | jq -c 'if type == "array" then . elif . == null or . == "" then [] else [.] end')
+
           # Require exactly one source
-          if [ -z "$upstream" ] && [ -z "$bespoke" ]; then
+          if [ -z "$upstream" ] && [ "$bespoke_json" = '[]' ]; then
             echo "melange block present but neither upstream nor bespoke is set" >&2
             exit 1
           fi
-          if [ -n "$upstream" ] && [ -n "$bespoke" ]; then
+          if [ -n "$upstream" ] && [ "$bespoke_json" != '[]' ]; then
             echo "melange block has both upstream and bespoke set — choose one" >&2
             exit 1
           fi
+
+          while IFS= read -r bespoke; do
+            if [[ ! "$bespoke" =~ ^[A-Za-z0-9._-]+$ ]]; then
+              echo "melange.bespoke contains unsafe characters: '${bespoke}'" >&2
+              exit 1
+            fi
+          done < <(printf '%s' "$bespoke_json" | jq -r '.[]')
 
           # Guard scalar fields: reject multi-line values (yq emits sequences/maps with newlines)
           for field_name in env_file build_option; do
@@ -113,19 +123,19 @@ jobs:
           {
             echo "needed=true"
             echo "upstream=${upstream}"
-            echo "bespoke=${bespoke}"
+            echo "bespoke_json=${bespoke_json}"
             echo "env_file=${env_file}"
             echo "build_option=${build_option}"
           } >> "$GITHUB_OUTPUT"
-          echo "Melange build needed: upstream=${upstream} bespoke=${bespoke}"
+          echo "Melange build needed: upstream=${upstream} bespoke=${bespoke_json}"
 
       - name: Resolve melange YAML source
         if: steps.check.outputs.needed == 'true'
         env:
           UPSTREAM: ${{ steps.check.outputs.upstream }}
-          BESPOKE: ${{ steps.check.outputs.bespoke }}
+          BESPOKE_JSON: ${{ steps.check.outputs.bespoke_json }}
         run: |
-          mkdir -p melange-work
+          mkdir -p melange-work/specs
 
           commit=$(jq -r '.wolfi_commit' packages/upstream.lock.json)
           if [ "$commit" = "null" ] || [ -z "$commit" ]; then
@@ -133,8 +143,13 @@ jobs:
             exit 1
           fi
 
-          if [ -n "$BESPOKE" ]; then
-            cp "packages/bespoke/${BESPOKE}" melange-work/build.yaml
+          if [ "$BESPOKE_JSON" != '[]' ]; then
+            while IFS= read -r bespoke; do
+              spec_dir="melange-work/specs/${bespoke}"
+              rm -rf "$spec_dir"
+              mkdir -p "$spec_dir"
+              cp "packages/bespoke/${bespoke}" "$spec_dir/build.yaml"
+            done < <(printf '%s' "$BESPOKE_JSON" | jq -r '.[]')
           elif [ -n "$UPSTREAM" ]; then
             file=$(jq -r --arg pkg "$UPSTREAM" '.packages[$pkg].file' packages/upstream.lock.json)
             expected_sha=$(jq -r --arg pkg "$UPSTREAM" '.packages[$pkg].sha256' packages/upstream.lock.json)
@@ -148,14 +163,17 @@ jobs:
             fi
             url="https://raw.githubusercontent.com/wolfi-dev/os/${commit}/${file}"
             echo "Fetching upstream melange YAML: ${url}"
-            curl -fsSL "$url" -o melange-work/build.yaml.tmp
-            actual_sha=$(sha256sum melange-work/build.yaml.tmp | awk '{print $1}')
+            spec_dir="melange-work/specs/${UPSTREAM}"
+            rm -rf "$spec_dir"
+            mkdir -p "$spec_dir"
+            curl -fsSL "$url" -o "$spec_dir/build.yaml.tmp"
+            actual_sha=$(sha256sum "$spec_dir/build.yaml.tmp" | awk '{print $1}')
             if [ "$actual_sha" != "$expected_sha" ]; then
               echo "sha256 mismatch for ${UPSTREAM}: expected ${expected_sha}, got ${actual_sha}" >&2
-              rm -f melange-work/build.yaml.tmp
+              rm -f "$spec_dir/build.yaml.tmp"
               exit 1
             fi
-            mv melange-work/build.yaml.tmp melange-work/build.yaml
+            mv "$spec_dir/build.yaml.tmp" "$spec_dir/build.yaml"
           fi
 
           echo "Fetching wolfi pipelines/ at commit ${commit}"
@@ -185,8 +203,7 @@ jobs:
           cp -r "$tmp_wolfi/pipelines" melange-work/pipelines
           if [ -n "$UPSTREAM" ]; then
             if [ -d "$tmp_wolfi/${UPSTREAM}" ]; then
-              cp -r "$tmp_wolfi/${UPSTREAM}/." melange-work/
-              echo "Copied ${UPSTREAM}/ companion files into melange-work/"
+              cp -r "$tmp_wolfi/${UPSTREAM}/." "$spec_dir/"
             fi
           fi
 
@@ -250,29 +267,38 @@ jobs:
         run: |
           chmod 600 melange-work/melange.rsa
 
-          MELANGE_ARGS=(
-            build melange-work/build.yaml
-            --arch "${{ matrix.arch }}"
-            --signing-key melange-work/melange.rsa
-            --out-dir packages/repo
-            --repository-append https://packages.wolfi.dev/os
-            --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-            --runner docker
-          )
-
-          if [ -d melange-work/pipelines ]; then
-            MELANGE_ARGS+=(--pipeline-dirs melange-work/pipelines)
+          shopt -s nullglob
+          builds=(melange-work/specs/*/build.yaml)
+          if [ ${#builds[@]} -eq 0 ]; then
+            echo "No melange build YAMLs staged in melange-work/specs" >&2
+            exit 1
           fi
 
-          if [ -n "$ENV_FILE" ]; then
-            MELANGE_ARGS+=(--env-file "packages/overrides/${ENV_FILE}")
-          fi
-          if [ -n "$BUILD_OPTION" ]; then
-            MELANGE_ARGS+=(--build-option "$BUILD_OPTION")
-          fi
+          for build_yaml in "${builds[@]}"; do
+            MELANGE_ARGS=(
+              build "$build_yaml"
+              --arch "${{ matrix.arch }}"
+              --signing-key melange-work/melange.rsa
+              --out-dir packages/repo
+              --repository-append https://packages.wolfi.dev/os
+              --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+              --runner docker
+            )
 
-          echo "Running: melange ${MELANGE_ARGS[*]}"
-          melange "${MELANGE_ARGS[@]}"
+            if [ -d melange-work/pipelines ]; then
+              MELANGE_ARGS+=(--pipeline-dirs melange-work/pipelines)
+            fi
+
+            if [ -n "$ENV_FILE" ]; then
+              MELANGE_ARGS+=(--env-file "packages/overrides/${ENV_FILE}")
+            fi
+            if [ -n "$BUILD_OPTION" ]; then
+              MELANGE_ARGS+=(--build-option "$BUILD_OPTION")
+            fi
+
+            echo "Running: melange ${MELANGE_ARGS[*]}"
+            melange "${MELANGE_ARGS[@]}"
+          done
 
           echo "Built packages:"
           find packages/repo -type f -name '*.apk'

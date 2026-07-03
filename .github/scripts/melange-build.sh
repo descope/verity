@@ -1,11 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-#
-# Resolves the melange YAML source (bespoke or upstream), generates
-# an ephemeral signing key, and builds a single-arch APK package.
-# Expects BESPOKE/UPSTREAM, ENV_FILE, and BUILD_OPTION env vars.
-
-mkdir -p melange-work
+mkdir -p melange-work/specs
 
 validate_filename() {
   local label="$1" value="$2"
@@ -21,24 +16,14 @@ validate_filename() {
   fi
 }
 
-if [ -n "${BESPOKE:-}" ]; then
-  validate_filename "BESPOKE" "$BESPOKE"
-  if [ ! -f "packages/bespoke/${BESPOKE}" ]; then
-    echo "Bespoke build file not found: packages/bespoke/${BESPOKE}" >&2
-    exit 1
-  fi
-
-  cp "packages/bespoke/${BESPOKE}" melange-work/build.yaml
-
-  # Bespoke builds may use Wolfi-specific pipelines (e.g. py/pip-build-install).
-  # Fetch the pipelines/ tree from the pinned wolfi_commit so they resolve.
+fetch_wolfi_pipelines() {
   commit=$(jq -r '.wolfi_commit' packages/upstream.lock.json)
   if [ "$commit" = "null" ] || [ -z "$commit" ]; then
     echo "wolfi_commit missing or null in packages/upstream.lock.json" >&2
     exit 1
   fi
 
-  echo "Fetching wolfi pipelines/ at commit ${commit} for bespoke build"
+  echo "Fetching wolfi pipelines/ at commit ${commit}"
   tmp_wolfi=$(mktemp -d)
   trap 'rm -rf "$tmp_wolfi"' EXIT
   git -C "$tmp_wolfi" init --quiet
@@ -48,6 +33,52 @@ if [ -n "${BESPOKE:-}" ]; then
   git -C "$tmp_wolfi" checkout --quiet FETCH_HEAD -- pipelines
   rm -rf melange-work/pipelines
   cp -r "$tmp_wolfi/pipelines" melange-work/pipelines
+}
+
+build_one() {
+  local build_yaml="$1"
+
+  MELANGE_ARGS=(
+    build "$build_yaml"
+    --arch x86_64
+    --signing-key melange-work/melange.rsa
+    --out-dir packages/repo
+    --repository-append https://packages.wolfi.dev/os
+    --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    --runner docker
+  )
+
+  if [ -d melange-work/pipelines ]; then
+    MELANGE_ARGS+=(--pipeline-dirs melange-work/pipelines)
+  fi
+
+  if [ -n "${ENV_FILE:-}" ]; then
+    MELANGE_ARGS+=(--env-file "packages/overrides/${ENV_FILE}")
+  fi
+  if [ -n "${BUILD_OPTION:-}" ]; then
+    MELANGE_ARGS+=(--build-option "$BUILD_OPTION")
+  fi
+
+  echo "Running: melange ${MELANGE_ARGS[*]}"
+  melange "${MELANGE_ARGS[@]}"
+}
+
+BESPOKE_JSON=${BESPOKE_JSON:-[]}
+
+if [ "$BESPOKE_JSON" != '[]' ]; then
+  while IFS= read -r bespoke; do
+    validate_filename "BESPOKE" "$bespoke"
+    if [ ! -f "packages/bespoke/${bespoke}" ]; then
+      echo "Bespoke build file not found: packages/bespoke/${bespoke}" >&2
+      exit 1
+    fi
+    spec_dir="melange-work/specs/${bespoke}"
+    rm -rf "$spec_dir"
+    mkdir -p "$spec_dir"
+    cp "packages/bespoke/${bespoke}" "$spec_dir/build.yaml"
+  done < <(printf '%s' "$BESPOKE_JSON" | jq -r '.[]')
+
+  fetch_wolfi_pipelines
 elif [ -n "${UPSTREAM:-}" ]; then
   commit=$(jq -r '.wolfi_commit' packages/upstream.lock.json)
   if [ "$commit" = "null" ] || [ -z "$commit" ]; then
@@ -66,14 +97,17 @@ elif [ -n "${UPSTREAM:-}" ]; then
   fi
   url="https://raw.githubusercontent.com/wolfi-dev/os/${commit}/${file}"
   echo "Fetching upstream melange YAML: ${url}"
-  curl -fsSL "$url" -o melange-work/build.yaml.tmp
-  actual_sha=$(sha256sum melange-work/build.yaml.tmp | awk '{print $1}')
+  spec_dir="melange-work/specs/${UPSTREAM}"
+  rm -rf "$spec_dir"
+  mkdir -p "$spec_dir"
+  curl -fsSL "$url" -o "$spec_dir/build.yaml.tmp"
+  actual_sha=$(sha256sum "$spec_dir/build.yaml.tmp" | awk '{print $1}')
   if [ "$actual_sha" != "$expected_sha" ]; then
     echo "sha256 mismatch for ${UPSTREAM}: expected ${expected_sha}, got ${actual_sha}" >&2
-    rm -f melange-work/build.yaml.tmp
+    rm -f "$spec_dir/build.yaml.tmp"
     exit 1
   fi
-  mv melange-work/build.yaml.tmp melange-work/build.yaml
+  mv "$spec_dir/build.yaml.tmp" "$spec_dir/build.yaml"
 
   echo "Fetching wolfi pipelines/ and ${UPSTREAM}/ companion dir at commit ${commit}"
   tmp_wolfi=$(mktemp -d)
@@ -93,36 +127,22 @@ elif [ -n "${UPSTREAM:-}" ]; then
   rm -rf melange-work/pipelines
   cp -r "$tmp_wolfi/pipelines" melange-work/pipelines
   if [ -d "$tmp_wolfi/${UPSTREAM}" ]; then
-    cp -r "$tmp_wolfi/${UPSTREAM}/." melange-work/
-    echo "Copied ${UPSTREAM}/ companion files into melange-work/"
+    cp -r "$tmp_wolfi/${UPSTREAM}/." "$spec_dir/"
   fi
 else
-  echo "Neither BESPOKE nor UPSTREAM is set" >&2
+  echo "Neither BESPOKE_JSON nor UPSTREAM is set" >&2
   exit 1
 fi
 
 melange keygen melange-work/melange.rsa
 
-MELANGE_ARGS=(
-  build melange-work/build.yaml
-  --arch x86_64
-  --signing-key melange-work/melange.rsa
-  --out-dir packages/repo
-  --repository-append https://packages.wolfi.dev/os
-  --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-  --runner docker
-)
-
-if [ -d melange-work/pipelines ]; then
-  MELANGE_ARGS+=(--pipeline-dirs melange-work/pipelines)
+shopt -s nullglob
+builds=(melange-work/specs/*/build.yaml)
+if [ ${#builds[@]} -eq 0 ]; then
+  echo "No melange build YAMLs staged in melange-work/specs" >&2
+  exit 1
 fi
 
-if [ -n "${ENV_FILE:-}" ]; then
-  MELANGE_ARGS+=(--env-file "packages/overrides/${ENV_FILE}")
-fi
-if [ -n "${BUILD_OPTION:-}" ]; then
-  MELANGE_ARGS+=(--build-option "$BUILD_OPTION")
-fi
-
-echo "Running: melange ${MELANGE_ARGS[*]}"
-melange "${MELANGE_ARGS[@]}"
+for build_yaml in "${builds[@]}"; do
+  build_one "$build_yaml"
+done
