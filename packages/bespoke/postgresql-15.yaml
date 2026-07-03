@@ -1,0 +1,188 @@
+package:
+  name: postgresql-15
+  version: "15.14"
+  epoch: 0
+  description: A sophisticated object-relational DBMS
+  copyright:
+    - license: BSD-3-Clause
+  dependencies:
+    provides:
+      - postgresql=${{package.full-version}}
+    runtime:
+      - ${{package.name}}-base=${{package.full-version}}
+      - libpq-15=${{package.full-version}}
+      - tzdata
+
+environment:
+  contents:
+    packages:
+      - autoconf
+      - automake
+      - bash
+      - bison
+      - build-base
+      - busybox
+      - ca-certificates-bundle
+      - clang-19
+      - flex
+      - icu-dev
+      - krb5-dev
+      - libedit-dev
+      - libuuid
+      - libxml2-dev
+      - libxslt-dev
+      - linux-pam-dev
+      - llvm-19-dev
+      - llvm-lld-19-dev
+      - lz4-dev
+      - openldap-dev
+      - openssl-dev
+      - patch
+      - tzdata
+      - util-linux-dev
+      - zlib-dev
+      - zstd-dev
+
+var-transforms:
+  - from: ${{package.name}}
+    match: "-"
+    replace: ""
+    to: mangled-package-name
+  - from: ${{package.version}}
+    match: '\.'
+    replace: "_"
+    to: mangled-package-version
+
+pipeline:
+  - uses: git-checkout
+    with:
+      expected-commit: 0ab43b548237b3791261480d6a023f6b95b53942
+      repository: https://github.com/postgres/postgres
+      tag: REL_${{vars.mangled-package-version}}
+  - runs: |
+      patch -p1 <<'EOF'
+      --- a/src/Makefile.global.in
+      +++ b/src/Makefile.global.in
+      @@ -119,7 +119,7 @@ libdir := @libdir@
+       pkglibdir = $(libdir)
+       ifeq "$(findstring pgsql, $(pkglibdir))" ""
+       ifeq "$(findstring postgres, $(pkglibdir))" ""
+      -override pkglibdir := $(pkglibdir)/postgresql
+      +override pkglibdir := /usr/lib/postgresql15
+       endif
+       endif
+       
+      @@ -167,7 +167,7 @@ endif # PGXS
+       
+       # These derived path variables aren't separately configurable.
+       
+      -includedir_server = $(pkgincludedir)/server
+      +includedir_server = $(pkgincludedir)/15/server
+       includedir_internal = $(pkgincludedir)/internal
+       pgxsdir = $(pkglibdir)/pgxs
+       bitcodedir = $(pkglibdir)/bitcode
+      EOF
+  - uses: autoconf/configure
+    with:
+      opts: |
+        --bindir=/usr/libexec/${{vars.mangled-package-name}} \
+        --datadir=/usr/share/${{vars.mangled-package-name}} \
+        --docdir=/usr/share/doc/${{vars.mangled-package-name}} \
+        --mandir=/usr/share/${{vars.mangled-package-name}}/man \
+        --with-openssl \
+        --with-libedit-preferred \
+        --with-uuid=e2fs \
+        --with-libxml \
+        --with-libxslt \
+        --with-icu \
+        --with-lz4 \
+        --with-zstd \
+        --with-gssapi \
+        --with-ldap \
+        --with-llvm \
+        --with-pam \
+        --enable-thread-safety
+  - uses: autoconf/make
+  - uses: autoconf/make-install
+  - uses: strip
+
+vars:
+  client-tools: clusterdb createdb createuser dropdb dropuser pg_amcheck pg_basebackup pg_dump pg_dumpall pg_isready pg_receivewal pg_recvlogical pg_restore pg_verifybackup psql reindexdb vacuumdb
+
+subpackages:
+  - name: ${{package.name}}-client-base
+    description: PostgreSQL client base
+    pipeline:
+      - runs: |
+          mkdir -p ${{targets.subpkgdir}}/usr/libexec/${{vars.mangled-package-name}}
+          for binary in ${{vars.client-tools}}; do
+            mv ${{targets.destdir}}/usr/libexec/${{vars.mangled-package-name}}/${binary} ${{targets.subpkgdir}}/usr/libexec/${{vars.mangled-package-name}}/${binary}
+          done
+
+  - name: ${{package.name}}-client
+    description: PostgreSQL client
+    dependencies:
+      runtime:
+        - ${{package.name}}-client-base=${{package.full-version}}
+        - libpq-15=${{package.full-version}}
+      provides:
+        - postgresql-client=${{package.full-version}}
+    pipeline:
+      - runs: |
+          mkdir -p ${{targets.subpkgdir}}/usr/bin
+          for binary in ${{vars.client-tools}}; do
+            ln -sf /usr/libexec/${{vars.mangled-package-name}}/${binary} ${{targets.subpkgdir}}/usr/bin/${binary}
+          done
+
+  - name: libpq-15
+    description: PostgreSQL libraries
+    pipeline:
+      - runs: |
+          mkdir -p ${{targets.subpkgdir}}/usr/lib
+          mv ${{targets.destdir}}/usr/lib/libpq.so* ${{targets.subpkgdir}}/usr/lib/
+    dependencies:
+      provider-priority: 15
+      provides:
+        - libpq=${{package.full-version}}
+
+  - name: ${{package.name}}-base
+    description: Base for PostgreSQL 15
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.subpkgdir}}"
+          mv "${{targets.destdir}}"/* "${{targets.subpkgdir}}"
+          bindir="${{targets.destdir}}/usr/bin"
+          execdir="/usr/libexec/${{vars.mangled-package-name}}"
+          mkdir -p "$bindir"
+          cd "${{targets.subpkgdir}}/${execdir}"
+          for binary in *; do
+            ln -sf "${execdir}/${binary}" "$bindir/${binary}"
+          done
+
+test:
+  environment:
+    contents:
+      packages:
+        - ${{package.name}}-client
+        - shadow
+        - sudo-rs
+    environment:
+      PGDATA: /tmp/test_db
+      PGUSER: wolfi
+  pipeline:
+    - uses: test/tw/help-check
+      with:
+        bins: initdb pg_ctl psql postgres
+    - uses: test/tw/ver-check
+      with:
+        bins: initdb pg_ctl psql postgres
+    - runs: |
+        useradd $PGUSER
+        sudo -u $PGUSER initdb -D /tmp/test_db
+        sudo -u $PGUSER pg_ctl -D /tmp/test_db -l /tmp/logfile start
+        createdb testdb
+        psql -lqt | cut -d \| -f 1 | grep -qw testdb
+    - runs: |
+        psql -d testdb -c "CREATE TABLE test_table (id SERIAL PRIMARY KEY, test_value VARCHAR(50));"
+        psql -d testdb -c "INSERT INTO test_table (test_value) VALUES ('Hello, PostgreSQL!');"
+        psql -d testdb -t -A -c "SELECT test_value FROM test_table WHERE id=1;" | grep '^Hello, PostgreSQL!$'

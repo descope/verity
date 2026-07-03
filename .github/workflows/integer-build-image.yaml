@@ -550,6 +550,32 @@ jobs:
             "${INPUT_REGISTRY}/${INPUT_IMAGE}:${PRIMARY_TAG}"
         continue-on-error: true  # Report only — images publish even with CVEs
 
+      - name: Resolve Trivy gate policy
+        id: trivy-gate
+        run: |
+          case "${{ inputs.image }}:${{ inputs.version }}:${{ inputs.type }}" in
+            postgres:14:fips)
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              echo "label=postgres 14 fips" >> "$GITHUB_OUTPUT"
+              ;;
+            postgres:15:fips)
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              echo "label=postgres 15 fips" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "enabled=false" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Enforce Trivy gate
+        if: steps.trivy-gate.outputs.enabled == 'true'
+        run: |
+          findings=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH" or .Severity == "CRITICAL")] | length' trivy-report.json)
+          if [ "$findings" -ne 0 ]; then
+            echo "${{ steps.trivy-gate.outputs.label }} image must stay zero HIGH/CRITICAL, found ${findings}" >&2
+            exit 1
+          fi
+
       - name: Upload Trivy report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
