@@ -147,28 +147,53 @@ jobs:
       - name: Validate all image configs
         run: ./verity integer validate
 
+  # ── Detect Integer smoke scope ───────────────────────────────────────
+  detect-smoke-scope:
+    name: Detect smoke scope
+    needs: [changes, detect-changed-images]
+    if: needs.changes.outputs.integer == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.scope.outputs.matrix }}
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Build smoke matrix
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CHANGED_IMAGE_SMOKE_MATRIX: ${{ needs.detect-changed-images.outputs.smoke-matrix }}
+        run: |
+          changed_files=$(git diff --name-only "$BASE_SHA"..."$HEAD_SHA" || true)
+
+          # Rare path: core Integer mechanism changed, so keep full representative smoke matrix.
+          # Common path: reuse detect-changed-images output so smoke and build share one source of truth.
+          if echo "$changed_files" | grep -Eq '^internal/integer/|^cmd/(integer|discover|scan).*\.go$|^\.github/scripts/(melange-check|melange-build)\.sh$|^\.github/workflows/(pr-test|integer-.*)\.yaml$|^integer\.yaml$'; then
+            matrix='{"include":[{"image":"golang","version":"1.24","type":"fips"},{"image":"haproxy","version":"3.0","type":"fips"},{"image":"haproxy","version":"3.1","type":"fips"},{"image":"node","version":"22","type":"dev"}]}'
+          else
+            matrix="$CHANGED_IMAGE_SMOKE_MATRIX"
+          fi
+
+          echo "$matrix" | jq .
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+
   # ── Integer (Wolfi-based) smoke test ─────────────────────────────────
   integer-smoke-test:
     name: "Integer ${{ matrix.image }}:${{ matrix.version }}-${{ matrix.type }}"
-    needs: changes
+    needs: [changes, detect-smoke-scope]
     if: needs.changes.outputs.integer == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - image: golang
-            version: "1.24"
-            type: fips
-          - image: haproxy
-            version: "3.0"
-            type: fips
-          - image: haproxy
-            version: "3.1"
-            type: fips
-          - image: node
-            version: "22"
-            type: dev
+      matrix: ${{ fromJson(needs.detect-smoke-scope.outputs.matrix) }}
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -266,6 +291,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.detect.outputs.matrix }}
+      smoke-matrix: ${{ steps.detect.outputs.smoke-matrix }}
       has-changes: ${{ steps.detect.outputs.has-changes }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -306,8 +332,11 @@ jobs:
 
           if [ -z "$all_changed" ]; then
             echo "No image YAML files changed"
-            echo 'has-changes=false' >> "$GITHUB_OUTPUT"
-            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            {
+              echo 'has-changes=false'
+              echo 'matrix={"include":[]}'
+              echo 'smoke-matrix={"include":[]}'
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -323,8 +352,11 @@ jobs:
             echo "Changed images: $names"
           else
             echo "No actionable changes"
-            echo 'has-changes=false' >> "$GITHUB_OUTPUT"
-            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            {
+              echo 'has-changes=false'
+              echo 'matrix={"include":[]}'
+              echo 'smoke-matrix={"include":[]}'
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -342,10 +374,15 @@ jobs:
 
           if [ -z "$all" ] || [ "$all" = "null" ] || [ "$all" = "[]" ]; then
             echo "No discoverable images"
-            echo 'has-changes=false' >> "$GITHUB_OUTPUT"
-            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            {
+              echo 'has-changes=false'
+              echo 'matrix={"include":[]}'
+              echo 'smoke-matrix={"include":[]}'
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
+
+          smoke_matrix=$(echo "$all" | jq -c 'map({image: .name, version: .version, type: .type}) | {include: .}')
 
           # Build matrix: pick the latest version per image+type.
           # sort_by(.version | split(".") | map(tonumber? // .)) handles numeric ordering.
@@ -361,8 +398,11 @@ jobs:
           count=$(echo "$matrix" | jq '.include | length')
           echo "Matrix: ${count} image builds"
           echo "$matrix" | jq .
-          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
-          echo 'has-changes=true' >> "$GITHUB_OUTPUT"
+          {
+            echo "matrix=${matrix}"
+            echo "smoke-matrix=${smoke_matrix}"
+            echo 'has-changes=true'
+          } >> "$GITHUB_OUTPUT"
 
   integer-build-changed:
     name: "Build ${{ matrix.image }}:${{ matrix.version }}-${{ matrix.type }}"
