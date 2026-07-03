@@ -204,6 +204,7 @@ type TypeTemplate struct {
 	Environment map[string]string `yaml:"environment,omitempty"`
 	Paths       []PathDef         `yaml:"paths,omitempty"`
 	Melange     *MelangeSpec      `yaml:"melange,omitempty"`
+	ExtraMelanges []MelangeSpec   `yaml:"extra-melanges,omitempty"`
 }
 
 // MelangeSpec describes a custom melange package build that runs before apko
@@ -227,6 +228,8 @@ type MelangeSpec struct {
 	// BuildOption is passed to melange build via --build-option. It selects a
 	// named variant defined in the melange YAML's options: block.
 	BuildOption string `yaml:"build-option,omitempty"`
+
+	Versions []string `yaml:"versions,omitempty"`
 }
 
 // PathDef is one path entry in an apko config.

@@ -267,6 +267,31 @@ func TestValidate(t *testing.T) {
 		require.NoError(t, config.Validate(def))
 	})
 
+	t.Run("melange with extra melanges", func(t *testing.T) {
+		def := &config.ImageDef{
+			Name:     "postgres",
+			Upstream: config.Upstream{Package: "postgresql-{{version}}"},
+			Types: map[string]config.TypeTemplate{
+				"fips": {
+					Base:        "wolfi-fips",
+					FIPSProfile: config.FIPSProfileOpenSSL,
+					Packages:    []string{"postgresql-{{version}}", "postgresql-{{version}}-client", "openssl-provider-fips"},
+					Entrypoint:  "/usr/bin/openssl-fips-entrypoint postgres",
+					Environment: map[string]string{
+						"OPENSSL_MODULES": "/usr/lib/ossl-modules",
+						"OPENSSL_CONF":    "/etc/ssl/openssl-fips.cnf",
+					},
+					Melange: &config.MelangeSpec{Bespoke: "openssl-provider-fips.yaml"},
+					ExtraMelanges: []config.MelangeSpec{
+						{Bespoke: "postgresql-14.yaml", Versions: []string{"14"}},
+						{Bespoke: "postgresql-15.yaml", Versions: []string{"15"}},
+					},
+				},
+			},
+		}
+		require.NoError(t, config.Validate(def))
+	})
+
 	t.Run("melange both upstream and bespoke", func(t *testing.T) {
 		def := &config.ImageDef{
 			Name:     "caddy",
@@ -351,6 +376,31 @@ func TestValidate(t *testing.T) {
 					FIPSProfile: config.FIPSProfileGo,
 					Environment: map[string]string{"GODEBUG": "fips140=on"},
 					Melange:     &config.MelangeSpec{Bespoke: config.StringList{`subdir\caddy.yaml`}},
+				},
+			},
+		}
+		err := config.Validate(def)
+		require.ErrorIs(t, err, config.ErrMelangePathTraversal)
+	})
+
+	t.Run("extra melange bespoke with path separator", func(t *testing.T) {
+		def := &config.ImageDef{
+			Name:     "postgres",
+			Upstream: config.Upstream{Package: "postgresql-{{version}}"},
+			Types: map[string]config.TypeTemplate{
+				"fips": {
+					Base:        "wolfi-fips",
+					FIPSProfile: config.FIPSProfileOpenSSL,
+					Packages:    []string{"postgresql-{{version}}", "postgresql-{{version}}-client", "openssl-provider-fips"},
+					Entrypoint:  "/usr/bin/openssl-fips-entrypoint postgres",
+					Environment: map[string]string{
+						"OPENSSL_MODULES": "/usr/lib/ossl-modules",
+						"OPENSSL_CONF":    "/etc/ssl/openssl-fips.cnf",
+					},
+					Melange: &config.MelangeSpec{Bespoke: "openssl-provider-fips.yaml"},
+					ExtraMelanges: []config.MelangeSpec{
+						{Bespoke: "subdir/postgresql-14.yaml", Versions: []string{"14"}},
+					},
 				},
 			},
 		}
