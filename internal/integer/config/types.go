@@ -1,11 +1,85 @@
 package config
 
-import "strings"
+import (
+	"errors"
+	"fmt"
+	"slices"
+	"strings"
+
+	"gopkg.in/yaml.v3"
+)
 
 // versionPlaceholder is the literal string substituted with concrete version
 // values when rendering apko configs. Mirrors apkindex.versionPlaceholder so
 // the helper below can stay independent of the apkindex package.
 const versionPlaceholder = "{{version}}"
+
+var (
+	errStringListItemNotScalar = errors.New("string list item must be a scalar string")
+	errStringListAliasNil      = errors.New("string list alias must reference a node")
+	errStringListNodeKind      = errors.New("string list value must be a string or string sequence")
+)
+
+type StringList []string
+
+func (s *StringList) UnmarshalYAML(node *yaml.Node) error {
+	resolved, err := resolveStringListNode(node)
+	if err != nil {
+		return err
+	}
+
+	switch resolved.Kind {
+	case 0:
+		*s = nil
+		return nil
+	case yaml.ScalarNode:
+		if resolved.Value == "" {
+			*s = nil
+			return nil
+		}
+		*s = StringList{resolved.Value}
+		return nil
+	case yaml.SequenceNode:
+		vals := make([]string, 0, len(resolved.Content))
+		for _, child := range resolved.Content {
+			resolvedChild, err := resolveStringListNode(child)
+			if err != nil {
+				return err
+			}
+			if resolvedChild.Kind != yaml.ScalarNode {
+				return fmt.Errorf("%w: yaml kind %d", errStringListItemNotScalar, resolvedChild.Kind)
+			}
+			if resolvedChild.Value != "" {
+				vals = append(vals, resolvedChild.Value)
+			}
+		}
+		*s = vals
+		return nil
+	default:
+		return fmt.Errorf("%w: yaml kind %d", errStringListNodeKind, resolved.Kind)
+	}
+}
+
+func resolveStringListNode(node *yaml.Node) (*yaml.Node, error) {
+	for node != nil && node.Kind == yaml.AliasNode {
+		if node.Alias == nil {
+			return nil, errStringListAliasNil
+		}
+		node = node.Alias
+	}
+	return node, nil
+}
+
+func (s StringList) First() string {
+	if len(s) == 0 {
+		return ""
+	}
+	return s[0]
+}
+
+func (s StringList) Contains(value string) bool {
+	return slices.Contains(s, value)
+}
 
 // FIPSProfile records which cryptographic validation path a fips image type uses.
 type FIPSProfile string
@@ -143,9 +217,7 @@ type MelangeSpec struct {
 	// YAML is fetched from wolfi-dev/os at the pinned commit.
 	Upstream string `yaml:"upstream,omitempty"`
 
-	// Bespoke is a filename (without path) in packages/bespoke/. Used for
-	// packages that don't exist in Wolfi or need radical changes.
-	Bespoke string `yaml:"bespoke,omitempty"`
+	Bespoke StringList `yaml:"bespoke,omitempty"`
 
 	// EnvFile is a filename (without path) in packages/overrides/. Passed to
 	// melange build via --env-file to inject build-time environment variables

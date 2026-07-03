@@ -149,7 +149,7 @@ func validateOpenSSLFIPS(image, typeName string, tmpl *TypeTemplate) error {
 	if tmpl.Base != "wolfi-fips" {
 		return fmt.Errorf("image %q type %q profile %q base %q: %w", image, typeName, tmpl.FIPSProfile, tmpl.Base, ErrInvalidFIPSBase)
 	}
-	if !hasPackage(tmpl, "openssl-provider-fips") || tmpl.Melange == nil || tmpl.Melange.Bespoke != "openssl-provider-fips.yaml" {
+	if !hasPackage(tmpl, "openssl-provider-fips") || tmpl.Melange == nil || !tmpl.Melange.Bespoke.Contains("openssl-provider-fips.yaml") {
 		return fmt.Errorf("image %q type %q profile %q: %w", image, typeName, tmpl.FIPSProfile, ErrUnsupportedFIPSProfile)
 	}
 	command, ok := strings.CutPrefix(tmpl.Entrypoint, "/usr/bin/openssl-fips-entrypoint ")
@@ -189,14 +189,16 @@ func validateMelange(image, typeName string, m *MelangeSpec) error {
 	if m == nil {
 		return nil
 	}
-	if m.Upstream != "" && m.Bespoke != "" {
+	if m.Upstream != "" && len(m.Bespoke) > 0 {
 		return fmt.Errorf("image %q type %q: %w", image, typeName, ErrMelangeSourceConflict)
 	}
-	if m.Upstream == "" && m.Bespoke == "" {
+	if m.Upstream == "" && len(m.Bespoke) == 0 {
 		return fmt.Errorf("image %q type %q: %w", image, typeName, ErrMelangeNoSource)
 	}
-	if err := validateFilename(image, typeName, "bespoke", m.Bespoke); err != nil {
-		return err
+	for _, bespoke := range m.Bespoke {
+		if err := validateFilename(image, typeName, "bespoke", bespoke); err != nil {
+			return err
+		}
 	}
 	if err := validateFilename(image, typeName, "env-file", m.EnvFile); err != nil {
 		return err

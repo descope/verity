@@ -45,7 +45,7 @@ func TestMelangeBuildRejectsUnsafeBespokeValue(t *testing.T) {
 	repoRoot := t.TempDir()
 
 	output, err := runMelangeBuild(t, repoRoot, map[string]string{
-		"BESPOKE": "../evil.yaml",
+		"BESPOKE_JSON": `["../evil.yaml"]`,
 	})
 
 	require.Error(t, err)
@@ -57,7 +57,7 @@ func TestMelangeBuildFailsWhenBespokeFileMissing(t *testing.T) {
 	writeTempFile(t, filepath.Join(repoRoot, "packages", "upstream.lock.json"), `{"wolfi_commit":"abc123"}`)
 
 	output, err := runMelangeBuild(t, repoRoot, map[string]string{
-		"BESPOKE": "custom.yaml",
+		"BESPOKE_JSON": `["custom.yaml"]`,
 	})
 
 	require.Error(t, err)
@@ -70,7 +70,7 @@ func TestMelangeBuildFailsWhenBespokeWolfiCommitMissing(t *testing.T) {
 	writeTempFile(t, filepath.Join(repoRoot, "packages", "upstream.lock.json"), `{"wolfi_commit":null}`)
 
 	output, err := runMelangeBuild(t, repoRoot, map[string]string{
-		"BESPOKE": "custom.yaml",
+		"BESPOKE_JSON": `["custom.yaml"]`,
 	})
 
 	require.Error(t, err)

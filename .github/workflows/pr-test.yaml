@@ -160,6 +160,12 @@ jobs:
           - image: golang
             version: "1.24"
             type: fips
+          - image: haproxy
+            version: "3.0"
+            type: fips
+          - image: haproxy
+            version: "3.1"
+            type: fips
           - image: node
             version: "22"
             type: dev
@@ -190,21 +196,48 @@ jobs:
       - name: Build verity CLI
         run: go build -o verity .
 
+      - name: Check if melange build needed
+        id: melange-check
+        env:
+          IMAGE: ${{ matrix.image }}
+          TYPE: ${{ matrix.type }}
+        run: .github/scripts/melange-check.sh
+
+      - name: Build melange package
+        if: steps.melange-check.outputs.needed == 'true'
+        env:
+          UPSTREAM: ${{ steps.melange-check.outputs.upstream }}
+          BESPOKE_JSON: ${{ steps.melange-check.outputs.bespoke_json }}
+          ENV_FILE: ${{ steps.melange-check.outputs.env_file }}
+          BUILD_OPTION: ${{ steps.melange-check.outputs.build_option }}
+        run: .github/scripts/melange-build.sh
+
       - name: Generate apko config and build image (local, no push)
         run: |
-          ./verity integer discover --gen-dir ./gen
+          if [ "${{ steps.melange-check.outputs.needed }}" != "true" ]; then
+            ./verity integer build \
+              --image ${{ matrix.image }} \
+              --version ${{ matrix.version }} \
+              --type ${{ matrix.type }} \
+              --output image.tar \
+              --arch amd64
+          else
+            ./verity integer discover --gen-dir ./gen
 
-          config="gen/${{ matrix.image }}/${{ matrix.version }}/${{ matrix.type }}.apko.yaml"
-          if [ ! -f "$config" ]; then
-            echo "Config not found: $config" >&2
-            exit 1
+            config="gen/${{ matrix.image }}/${{ matrix.version }}/${{ matrix.type }}.apko.yaml"
+            if [ ! -f "$config" ]; then
+              echo "Config not found: $config" >&2
+              exit 1
+            fi
+
+            apko build \
+              --arch amd64 \
+              --repository-append "${GITHUB_WORKSPACE}/packages/repo" \
+              --keyring-append "${GITHUB_WORKSPACE}/melange-work/melange.rsa.pub" \
+              "$config" \
+              "${{ matrix.image }}:smoke-test" \
+              "$GITHUB_WORKSPACE/image.tar"
           fi
-
-          apko build \
-            --arch amd64 \
-            "$config" \
-            "${{ matrix.image }}:smoke-test" \
-            "$GITHUB_WORKSPACE/image.tar"
 
       - name: Trivy vulnerability scan
         run: |
@@ -377,7 +410,7 @@ jobs:
         if: steps.melange-check.outputs.needed == 'true'
         env:
           UPSTREAM: ${{ steps.melange-check.outputs.upstream }}
-          BESPOKE: ${{ steps.melange-check.outputs.bespoke }}
+          BESPOKE_JSON: ${{ steps.melange-check.outputs.bespoke_json }}
           ENV_FILE: ${{ steps.melange-check.outputs.env_file }}
           BUILD_OPTION: ${{ steps.melange-check.outputs.build_option }}
         run: .github/scripts/melange-build.sh

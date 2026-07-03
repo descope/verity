@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/urfave/cli/v3"
 	"gopkg.in/yaml.v3"
@@ -167,40 +168,39 @@ func validateBespokeRefs(def *intconfig.ImageDef, defPath, bespokeDir string, re
 	bespokeRefs := 0
 	for typeName := range def.Types {
 		tmpl := def.Types[typeName]
-		if tmpl.Melange == nil || tmpl.Melange.Bespoke == "" {
+		if tmpl.Melange == nil || len(tmpl.Melange.Bespoke) == 0 {
 			continue
 		}
-		bespokeFile := tmpl.Melange.Bespoke
-		referenced[bespokeFile] = defPath
-		bespokeRefs++
+		for _, bespokeFile := range tmpl.Melange.Bespoke {
+			referenced[bespokeFile] = defPath
+			bespokeRefs++
 
-		// Defer the per-file reads to the post-loop summary when the
-		// entire bespoke directory is missing — see the function comment.
-		if !dirExists {
-			continue
-		}
+			if !dirExists {
+				continue
+			}
 
-		bespokePath := filepath.Join(bespokeDir, bespokeFile)
-		pkgName, berr := readBespokePackageName(bespokePath)
-		if berr != nil {
-			fmt.Fprintf(os.Stderr, "FAIL %s type %q: bespoke %s: %v\n",
-				defPath, typeName, bespokeFile, berr)
-			failures++
-			continue
-		}
-		if pkgName == "" {
-			fmt.Fprintf(os.Stderr, "FAIL %s type %q: bespoke %s: missing package.name\n",
-				defPath, typeName, bespokeFile)
-			failures++
-			continue
-		}
-		if !slices.Contains(tmpl.Packages, pkgName) {
-			fmt.Fprintf(os.Stderr,
-				"FAIL %s type %q: bespoke package.name %q not in apko packages: %v "+
-					"(apko will fail with 'not in indexes' at publish time)\n",
-				defPath, typeName, pkgName, tmpl.Packages)
-			failures++
-			continue
+			bespokePath := filepath.Join(bespokeDir, bespokeFile)
+			pkgName, berr := readBespokePackageName(bespokePath)
+			if berr != nil {
+				fmt.Fprintf(os.Stderr, "FAIL %s type %q: bespoke %s: %v\n",
+					defPath, typeName, bespokeFile, berr)
+				failures++
+				continue
+			}
+			if pkgName == "" {
+				fmt.Fprintf(os.Stderr, "FAIL %s type %q: bespoke %s: missing package.name\n",
+					defPath, typeName, bespokeFile)
+				failures++
+				continue
+			}
+			if !tmplPackageMatchesBespoke(def, typeName, tmpl.Packages, pkgName) {
+				fmt.Fprintf(os.Stderr,
+					"FAIL %s type %q: bespoke package.name %q not satisfiable by apko packages %v "+
+						"for any declared version of this type (apko will fail with 'not in indexes' at publish time)\n",
+					defPath, typeName, pkgName, tmpl.Packages)
+				failures++
+				continue
+			}
 		}
 	}
 
@@ -212,6 +212,26 @@ func validateBespokeRefs(def *intconfig.ImageDef, defPath, bespokeDir string, re
 	}
 
 	return failures
+}
+
+func tmplPackageMatchesBespoke(def *intconfig.ImageDef, typeName string, packages []string, pkgName string) bool {
+	if slices.Contains(packages, pkgName) {
+		return true
+	}
+	for _, pkg := range packages {
+		if !strings.Contains(pkg, "{{version}}") {
+			continue
+		}
+		for version, meta := range def.Versions {
+			if slices.Contains(meta.SkipTypes, typeName) {
+				continue
+			}
+			if strings.ReplaceAll(pkg, "{{version}}", version) == pkgName {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // isExistingDir returns true iff path is a non-empty string and refers to

@@ -60,7 +60,7 @@ func TestValidateFIPSProfile_acceptsOpenSSLWithProviderBase(t *testing.T) {
 					"OPENSSL_MODULES": "/usr/lib/ossl-modules",
 					"OPENSSL_CONF":    "/etc/ssl/openssl-fips.cnf",
 				},
-				Melange: &config.MelangeSpec{Bespoke: "openssl-provider-fips.yaml"},
+				Melange: &config.MelangeSpec{Bespoke: config.StringList{"openssl-provider-fips.yaml"}},
 			},
 		},
 	}
@@ -95,7 +95,7 @@ func TestValidateFIPSProfile_rejectsOpenSSLWrapperWithoutCommand(t *testing.T) {
 					"OPENSSL_MODULES": "/usr/lib/ossl-modules",
 					"OPENSSL_CONF":    "/etc/ssl/openssl-fips.cnf",
 				},
-				Melange: &config.MelangeSpec{Bespoke: "openssl-provider-fips.yaml"},
+				Melange: &config.MelangeSpec{Bespoke: config.StringList{"openssl-provider-fips.yaml"}},
 			},
 		},
 	}

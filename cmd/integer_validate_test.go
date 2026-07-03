@@ -131,6 +131,40 @@ package:
   epoch: 0
 `
 
+const intTestHaproxyImageYAML = `
+name: haproxy
+description: "HAProxy"
+upstream:
+  package: haproxy
+types:
+  default:
+    base: wolfi-base
+    packages: ["haproxy-{{version}}"]
+    entrypoint: /usr/bin/haproxy
+    melange:
+      bespoke:
+        - haproxy-3.0.yaml
+        - haproxy-3.1.yaml
+versions:
+  "3.0": {}
+  "3.1": {}
+  "3.2": {}
+`
+
+const intTestHaproxy30BespokeYAML = `
+package:
+  name: haproxy-3.0
+  version: "3.0.24"
+  epoch: 0
+`
+
+const intTestHaproxy31BespokeYAML = `
+package:
+  name: haproxy-3.1
+  version: "3.1.17"
+  epoch: 0
+`
+
 // TestIntegerValidateCommand_BespokeOK exercises the happy path: an image
 // declares melange.bespoke and a matching packages/bespoke/<file>.yaml exists
 // whose package.name matches the apko packages: constraint.
@@ -140,6 +174,24 @@ func TestIntegerValidateCommand_BespokeOK(t *testing.T) {
 
 	bespokeDir := filepath.Join(filepath.Dir(imagesDir), "packages", "bespoke")
 	intWriteFile(t, filepath.Join(bespokeDir, "popeye.yaml"), intTestPopeyeBespokeYAML)
+
+	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
+	err := root.Run(context.Background(), []string{
+		"verity", "integer", "validate",
+		"--config", cfgPath,
+		"--images-dir", imagesDir,
+		"--bespoke-dir", bespokeDir,
+	})
+	assert.NoError(t, err)
+}
+
+func TestIntegerValidateCommand_BespokeVersionTemplateOK(t *testing.T) {
+	imagesDir, cfgPath := intSetupCmdImages(t)
+	intWriteFile(t, filepath.Join(imagesDir, "haproxy.yaml"), intTestHaproxyImageYAML)
+
+	bespokeDir := filepath.Join(filepath.Dir(imagesDir), "packages", "bespoke")
+	intWriteFile(t, filepath.Join(bespokeDir, "haproxy-3.0.yaml"), intTestHaproxy30BespokeYAML)
+	intWriteFile(t, filepath.Join(bespokeDir, "haproxy-3.1.yaml"), intTestHaproxy31BespokeYAML)
 
 	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
 	err := root.Run(context.Background(), []string{
@@ -182,6 +234,25 @@ func TestIntegerValidateCommand_BespokeNameMismatch(t *testing.T) {
 
 	bespokeDir := filepath.Join(filepath.Dir(imagesDir), "packages", "bespoke")
 	intWriteFile(t, filepath.Join(bespokeDir, "popeye.yaml"), intTestMismatchedBespokeYAML)
+
+	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
+	err := root.Run(context.Background(), []string{
+		"verity", "integer", "validate",
+		"--config", cfgPath,
+		"--images-dir", imagesDir,
+		"--bespoke-dir", bespokeDir,
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, errIntegerValidationFailed)
+}
+
+func TestIntegerValidateCommand_BespokeVersionTemplateMismatch(t *testing.T) {
+	imagesDir, cfgPath := intSetupCmdImages(t)
+	intWriteFile(t, filepath.Join(imagesDir, "haproxy.yaml"), intTestHaproxyImageYAML)
+
+	bespokeDir := filepath.Join(filepath.Dir(imagesDir), "packages", "bespoke")
+	intWriteFile(t, filepath.Join(bespokeDir, "haproxy-3.0.yaml"), intTestHaproxy30BespokeYAML)
+	intWriteFile(t, filepath.Join(bespokeDir, "haproxy-3.1.yaml"), intTestMismatchedBespokeYAML)
 
 	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
 	err := root.Run(context.Background(), []string{
