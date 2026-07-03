@@ -28,6 +28,7 @@ types:
     base: wolfi-base
     packages: ["nodejs-{{version}}", "libstdc++"]
     entrypoint: /usr/bin/node
+    cmd: --version
     work-dir: /app
     environment:
       NODE_ENV: production
@@ -97,6 +98,7 @@ func TestLoadImage(t *testing.T) {
 	assert.Equal(t, "wolfi-base", dflt.Base)
 	assert.Equal(t, []string{"nodejs-{{version}}", "libstdc++"}, dflt.Packages)
 	assert.Equal(t, "/usr/bin/node", dflt.Entrypoint)
+	assert.Equal(t, "--version", dflt.Cmd)
 	assert.Equal(t, "/app", dflt.WorkDir)
 	assert.Equal(t, "production", dflt.Environment["NODE_ENV"])
 	require.Len(t, dflt.Paths, 1)

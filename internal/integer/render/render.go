@@ -34,6 +34,7 @@ type apkoConfig struct {
 	Include    string            `yaml:"include,omitempty"`
 	Contents   *apkoContents     `yaml:"contents,omitempty"`
 	Entrypoint *apkoEntrypoint   `yaml:"entrypoint,omitempty"`
+	Cmd        string            `yaml:"cmd,omitempty"`
 	WorkDir    string            `yaml:"work-dir,omitempty"`
 	Environ    map[string]string `yaml:"environment,omitempty"`
 	Paths      []apkoPath        `yaml:"paths,omitempty"`
@@ -87,6 +88,9 @@ func Config(tmpl *config.TypeTemplate, version, basePath string) ([]byte, error)
 	// Entrypoint.
 	if tmpl.Entrypoint != "" {
 		cfg.Entrypoint = &apkoEntrypoint{Command: sub(tmpl.Entrypoint, version)}
+	}
+	if tmpl.Cmd != "" {
+		cfg.Cmd = sub(tmpl.Cmd, version)
 	}
 
 	// Working directory.

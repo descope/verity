@@ -200,6 +200,7 @@ type TypeTemplate struct {
 	FIPSProfile FIPSProfile       `yaml:"fips-profile,omitempty"`
 	Packages    []string          `yaml:"packages"`
 	Entrypoint  string            `yaml:"entrypoint,omitempty"`
+	Cmd         string            `yaml:"cmd,omitempty"`
 	WorkDir     string            `yaml:"work-dir,omitempty"`
 	Environment map[string]string `yaml:"environment,omitempty"`
 	Paths       []PathDef         `yaml:"paths,omitempty"`

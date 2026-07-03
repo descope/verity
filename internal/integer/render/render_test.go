@@ -16,6 +16,7 @@ var nodeDefault = config.TypeTemplate{
 	Base:       "wolfi-base",
 	Packages:   []string{"nodejs-{{version}}", "libstdc++"},
 	Entrypoint: "/usr/bin/node",
+	Cmd:        "--version",
 	WorkDir:    "/app",
 	Environment: map[string]string{
 		"NODE_ENV": "production",
@@ -47,6 +48,7 @@ func TestConfig_VersionSubstitution(t *testing.T) {
 	ep, ok := cfg["entrypoint"].(map[string]any)
 	require.True(t, ok, "expected entrypoint key to be map[string]any")
 	assert.Equal(t, "/usr/bin/node", ep["command"])
+	assert.Equal(t, "--version", cfg["cmd"])
 
 	// work-dir
 	assert.Equal(t, "/app", cfg["work-dir"])
@@ -77,6 +79,7 @@ func TestConfig_DifferentVersions(t *testing.T) {
 	assert.True(t, strings.Contains(string(out22), "nodejs-22"))
 	assert.True(t, strings.Contains(string(out24), "nodejs-24"))
 	assert.False(t, strings.Contains(string(out22), "nodejs-24"))
+	assert.True(t, strings.Contains(string(out22), "cmd: --version"))
 }
 
 func TestConfig_VersionInEnv(t *testing.T) {
