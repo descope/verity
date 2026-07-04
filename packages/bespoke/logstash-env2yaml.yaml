@@ -1,0 +1,33 @@
+package:
+  name: verity-logstash-env2yaml
+  version: "1.0.0"
+  epoch: 0
+  description: Minimal env2yaml shim for Verity Logstash smoke/runtime entrypoint compatibility
+  copyright:
+    - license: Apache-2.0
+
+environment:
+  contents:
+    packages:
+      - busybox
+
+pipeline:
+  - runs: |
+      install -Dm755 /dev/stdin "${{targets.destdir}}/usr/bin/env2yaml" <<'EOF'
+      #!/bin/sh
+      set -eu
+
+      if [ "$#" -ne 1 ]; then
+        echo "usage: env2yaml FILENAME" >&2
+        exit 1
+      fi
+
+      test -f "$1"
+      exit 0
+      EOF
+
+test:
+  pipeline:
+    - runs: |
+        tmp="$(mktemp)"
+        env2yaml "$tmp"

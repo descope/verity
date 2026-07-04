@@ -118,6 +118,11 @@ var integerBuildCmd = &cli.Command{
 			}
 		}
 
+		extraRepos, extraKeyrings, err := integerPrepareMelangeBuild(ctx, tmpl.Melange)
+		if err != nil {
+			return fmt.Errorf("preparing melange build: %w", err)
+		}
+
 		// Resolve the declared stream to the actual stem render.Config will
 		// substitute. For "22"-style streams that map 1:1 to a Wolfi APK
 		// (`nodejs-22`) renderVersion == version. For floating-major
@@ -147,7 +152,7 @@ var integerBuildCmd = &cli.Command{
 		output := cmd.String("output")
 		arch := cmd.String("arch")
 		fmt.Fprintf(os.Stderr, "Building %s:%s-%s (%s) → %s\n", imageName, version, typeName, arch, output)
-		return integerRunApkoBuild(ctx, tmp.Name(), output, arch)
+		return integerRunApkoBuild(ctx, tmp.Name(), output, arch, extraRepos, extraKeyrings)
 	},
 }
 
@@ -213,12 +218,20 @@ func integerBuildNeedsAPKINDEX(def *intconfig.ImageDef, version string) bool {
 	return strings.Count(version, ".") <= 1
 }
 
-func integerRunApkoBuild(ctx context.Context, configFile, output, arch string) error {
+func integerRunApkoBuild(ctx context.Context, configFile, output, arch string, extraRepositories, extraKeyrings []string) error {
 	apkoPath, err := exec.LookPath("apko")
 	if err != nil {
 		return fmt.Errorf("apko not found in PATH (install via mise): %w", err)
 	}
-	cmd := exec.CommandContext(ctx, apkoPath, "build", "--arch", arch, configFile, "integer:local", output)
+	args := []string{"build", "--arch", arch}
+	for _, repo := range extraRepositories {
+		args = append(args, "--repository-append", repo)
+	}
+	for _, keyring := range extraKeyrings {
+		args = append(args, "--keyring-append", keyring)
+	}
+	args = append(args, configFile, "integer:local", output)
+	cmd := exec.CommandContext(ctx, apkoPath, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
