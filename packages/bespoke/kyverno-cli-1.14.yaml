@@ -1,0 +1,35 @@
+package:
+  name: kyverno-cli-1.14
+  version: "1.14.5"
+  epoch: 99
+  description: "Kyverno CLI rebuilt from source"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - bash
+      - ca-certificates-bundle
+      - git
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/kyverno/kyverno
+      tag: v${{package.version}}
+  - runs: |
+      mkdir -p "${{targets.contextdir}}/usr/bin"
+      go build -trimpath -ldflags='-s -w' -o "${{targets.contextdir}}/usr/bin/kubectl-kyverno" ./cmd/cli/kubectl-kyverno
+
+test:
+  pipeline:
+    - runs: /usr/bin/kubectl-kyverno --help
