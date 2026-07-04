@@ -1,0 +1,93 @@
+package:
+  name: kyverno-1.15
+  version: "1.15.3"
+  epoch: 99
+  description: "Kyverno policy engine rebuilt from source for zero-CVE Integer images"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - bash
+      - ca-certificates-bundle
+      - git
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/kyverno/kyverno
+      tag: v${{package.version}}
+
+  - runs: |
+      mkdir -p "${{targets.contextdir}}/usr/bin"
+      go build -trimpath -ldflags='-s -w' -o "${{targets.contextdir}}/usr/bin/kyverno" ./cmd/kyverno
+      go build -trimpath -ldflags='-s -w' -o "${{targets.contextdir}}/usr/bin/background-controller" ./cmd/background-controller
+      go build -trimpath -ldflags='-s -w' -o "${{targets.contextdir}}/usr/bin/cleanup-controller" ./cmd/cleanup-controller
+      go build -trimpath -ldflags='-s -w' -o "${{targets.contextdir}}/usr/bin/reports-controller" ./cmd/reports-controller
+      go build -trimpath -ldflags='-s -w' -o "${{targets.contextdir}}/usr/bin/kubectl-kyverno" ./cmd/cli/kubectl-kyverno
+      go build -trimpath -ldflags='-s -w' -o "${{targets.contextdir}}/usr/bin/kyvernopre" ./cmd/kyverno-init
+
+subpackages:
+  - name: kyverno-background-controller-1.15
+    dependencies:
+      runtime:
+        - ca-certificates-bundle
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.subpkgdir}}/usr/bin"
+          mv "${{targets.destdir}}/usr/bin/background-controller" "${{targets.subpkgdir}}/usr/bin/background-controller"
+
+  - name: kyverno-cleanup-controller-1.15
+    dependencies:
+      runtime:
+        - ca-certificates-bundle
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.subpkgdir}}/usr/bin"
+          mv "${{targets.destdir}}/usr/bin/cleanup-controller" "${{targets.subpkgdir}}/usr/bin/cleanup-controller"
+
+  - name: kyverno-reports-controller-1.15
+    dependencies:
+      runtime:
+        - ca-certificates-bundle
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.subpkgdir}}/usr/bin"
+          mv "${{targets.destdir}}/usr/bin/reports-controller" "${{targets.subpkgdir}}/usr/bin/reports-controller"
+
+  - name: kyverno-cli-1.15
+    dependencies:
+      runtime:
+        - ca-certificates-bundle
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.subpkgdir}}/usr/bin"
+          mv "${{targets.destdir}}/usr/bin/kubectl-kyverno" "${{targets.subpkgdir}}/usr/bin/kubectl-kyverno"
+
+  - name: kyverno-init-container-1.15
+    dependencies:
+      runtime:
+        - ca-certificates-bundle
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.subpkgdir}}/usr/bin"
+          mv "${{targets.destdir}}/usr/bin/kyvernopre" "${{targets.subpkgdir}}/usr/bin/kyvernopre"
+
+test:
+  pipeline:
+    - runs: |
+        kyverno version --help
+        /usr/bin/background-controller --help
+        /usr/bin/cleanup-controller --help
+        /usr/bin/reports-controller --help
+        /usr/bin/kubectl-kyverno --help
+        /usr/bin/kyvernopre --help

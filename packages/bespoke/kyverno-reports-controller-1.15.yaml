@@ -1,0 +1,35 @@
+package:
+  name: kyverno-reports-controller-1.15
+  version: "1.15.3"
+  epoch: 99
+  description: "Kyverno reports controller rebuilt from source"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - bash
+      - ca-certificates-bundle
+      - git
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/kyverno/kyverno
+      tag: v${{package.version}}
+  - runs: |
+      mkdir -p "${{targets.contextdir}}/usr/bin"
+      go build -trimpath -ldflags='-s -w' -o "${{targets.contextdir}}/usr/bin/reports-controller" ./cmd/reports-controller
+
+test:
+  pipeline:
+    - runs: /usr/bin/reports-controller --help
