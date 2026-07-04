@@ -955,3 +955,50 @@ images:
       strategy: "pattern"
       pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
+
+
+  # ============================================================================
+  #  Copa-first coverage (batch 9) — final fixable CVE tail.
+  #  kubectl: canonical registry.k8s.io image, Go-source patched.
+  #  linkerd: Rust proxy, OS-package Copa (edge channel).
+  #  eks-pod-identity-agent + crossplane(crank): Go-source patched.
+  #  Not covered (documented-blocked): cert-manager-cmctl (upstream quay image
+  #  inaccessible/deprecated), falco (kernel/eBPF module).
+  # ============================================================================
+  - name: "kubectl"
+    image: "registry.k8s.io/kubectl"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v1\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/kubernetes/kubernetes"
+    goVcsTagPrefix: ""
+
+  - name: "linkerd/proxy"
+    image: "cr.l5d.io/linkerd/proxy"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^edge-2[0-9]\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "eks/eks-pod-identity-agent"
+    image: "public.ecr.aws/eks/eks-pod-identity-agent"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/aws/eks-pod-identity-agent"
+    goVcsTagPrefix: "v"
+
+  - name: "crossplane/crank"
+    image: "docker.io/crossplane/crossplane"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/crossplane/crossplane"
+    goVcsTagPrefix: ""
