@@ -534,3 +534,51 @@ images:
       pattern: '^v\d+\.\d+\.\d+$'
       maxTags: 3
     goVcsUrl: "https://github.com/projectcalico/calico"
+
+
+  # ============================================================================
+  #  Copa-first coverage (batch 2) — more withheld families. OS-package Copa for
+  #  all; goVcsUrl added only where image-tag == VCS-tag (confident). Go-binary
+  #  patching for the trickier tag schemes (cluster-autoscaler, karpenter) is a
+  #  follow-up. See docs/product/remediation-policy.md.
+  # ============================================================================
+  - name: "keycloak/keycloak"
+    image: "quay.io/keycloak/keycloak"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "opensearchproject/opensearch"
+    image: "docker.io/opensearchproject/opensearch"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "kube-state-metrics/kube-state-metrics"
+    image: "registry.k8s.io/kube-state-metrics/kube-state-metrics"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/kubernetes/kube-state-metrics"
+
+  - name: "autoscaling/cluster-autoscaler"
+    image: "registry.k8s.io/autoscaling/cluster-autoscaler"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "karpenter/controller"
+    image: "public.ecr.aws/karpenter/controller"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
