@@ -1002,3 +1002,221 @@ images:
       maxTags: 3
     goVcsUrl: "https://github.com/crossplane/crossplane"
     goVcsTagPrefix: ""
+
+
+  # ============================================================================
+  #  Copa-first coverage (batch 10) — families surfaced by the full gated rebuild.
+  #  Go tools carry goVcsUrl (distroless → OS-Copa is a no-op); DB/runtime images
+  #  use OS-package Copa. crane-verified upstreams. See remediation-policy.md.
+  #  Deferred (no clean upstream): ghz, cert-manager-openshift-routes,
+  #  fluentd-kubernetes-daemonset, kyverno-readiness-checker, checkov.
+  # ============================================================================
+  # --- Go tools (goVcsUrl) ---
+  - name: "etcd"
+    image: "registry.k8s.io/etcd"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/etcd-io/etcd"
+    goVcsTagPrefix: ""
+
+  - name: "projectcontour/contour"
+    image: "ghcr.io/projectcontour/contour"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/projectcontour/contour"
+    goVcsTagPrefix: ""
+
+  - name: "sigstore/cosign"
+    image: "ghcr.io/sigstore/cosign/cosign"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/sigstore/cosign"
+    goVcsTagPrefix: ""
+
+  - name: "go-containerregistry/crane"
+    image: "gcr.io/go-containerregistry/crane"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/google/go-containerregistry"
+    goVcsTagPrefix: ""
+
+  - name: "wagoodman/dive"
+    image: "docker.io/wagoodman/dive"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/wagoodman/dive"
+    goVcsTagPrefix: ""
+
+  - name: "goss-org/goss"
+    image: "ghcr.io/goss-org/goss"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/goss-org/goss"
+    goVcsTagPrefix: ""
+
+  - name: "earthly/earthly"
+    image: "docker.io/earthly/earthly"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/earthly/earthly"
+    goVcsTagPrefix: ""
+
+  - name: "caddy"
+    image: "docker.io/library/caddy"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/caddyserver/caddy"
+    goVcsTagPrefix: "v"
+
+  - name: "prometheus/blackbox-exporter"
+    image: "quay.io/prometheus/blackbox-exporter"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^v\d+\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/prometheus/blackbox_exporter"
+    goVcsTagPrefix: ""
+
+  - name: "spiffe/spire-server"
+    image: "ghcr.io/spiffe/spire-server"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/spiffe/spire"
+    goVcsTagPrefix: "v"
+
+  - name: "spiffe/spire-agent"
+    image: "ghcr.io/spiffe/spire-agent"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/spiffe/spire"
+    goVcsTagPrefix: "v"
+
+  - name: "spiffe/oidc-discovery-provider"
+    image: "ghcr.io/spiffe/oidc-discovery-provider"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+    goVcsUrl: "https://github.com/spiffe/spire"
+    goVcsTagPrefix: "v"
+
+  # --- DB / runtime (OS-package Copa) ---
+  - name: "library/cassandra"
+    image: "docker.io/library/cassandra"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "library/mariadb"
+    image: "docker.io/library/mariadb"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "library/solr"
+    image: "docker.io/library/solr"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "library/influxdb"
+    image: "docker.io/library/influxdb"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "library/erlang"
+    image: "docker.io/library/erlang"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "library/gradle"
+    image: "docker.io/library/gradle"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "library/haproxy"
+    image: "docker.io/library/haproxy"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "library/docker"
+    image: "docker.io/library/docker"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "dotnet/sdk"
+    image: "mcr.microsoft.com/dotnet/sdk"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "renovatebot/renovate"
+    image: "ghcr.io/renovatebot/renovate"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+\.\d+\.\d+$'
+      maxTags: 3
+
+  - name: "trinodb/trino"
+    image: "docker.io/trinodb/trino"
+    platforms: ["linux/amd64", "linux/arm64"]
+    tags:
+      strategy: "pattern"
+      pattern: '^\d+$'
+      maxTags: 3
