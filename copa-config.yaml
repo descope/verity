@@ -4,10 +4,12 @@ kind: PatchConfig
 # Standalone images to patch. Chart-sourced images are declared in Chart.yaml
 # (dependencies:) and picked up automatically by `verity discover`.
 #
-# NOTE: Basic core images (node, python, golang, nginx, postgres, etc.) are
-# maintained as Wolfi-based rebuilds (previously in github.com/verity-org/integer, now consolidated).
-# Only complex upstream images that cannot be trivially rebuilt from Wolfi
-# packages belong here.
+# REMEDIATION POLICY: Copa-first (see docs/product/remediation-policy.md).
+# Copa-patching the upstream image is the DEFAULT path — max compatibility, and
+# Copa can apply distro-patched packages a Wolfi rebuild can't. A Wolfi/bespoke
+# Integer rebuild is the LAST RESORT (only when Copa can't reach zero
+# HIGH/CRITICAL, or a minimal-attack-surface / FIPS variant is required).
+# The publish gate withholds any image that isn't clean on both arches.
 target:
   registry: "ghcr.io/verity-org"
 
