@@ -529,3 +529,25 @@ versions:
 		})
 	}
 }
+
+
+func intFakeTrivy(t *testing.T, exitCode int) {
+	t.Helper()
+	tmpDir := t.TempDir()
+	script := filepath.Join(tmpDir, "trivy")
+	content := "#!/bin/sh\nexit " + string(rune('0'+exitCode)) + "\n"
+	require.NoError(t, os.WriteFile(script, []byte(content), 0o755))
+	t.Setenv("PATH", tmpDir+":"+os.Getenv("PATH"))
+}
+
+func TestIntegerTrivyGate_Clean(t *testing.T) {
+	intFakeTrivy(t, 0)
+	require.NoError(t, integerTrivyGate(context.Background(), "image.tar", "HIGH,CRITICAL"))
+}
+
+func TestIntegerTrivyGate_Findings(t *testing.T) {
+	intFakeTrivy(t, 1)
+	err := integerTrivyGate(context.Background(), "image.tar", "HIGH,CRITICAL")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "refusing to publish")
+}

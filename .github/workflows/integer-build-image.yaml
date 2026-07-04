@@ -416,6 +416,26 @@ jobs:
 
       # ── Build ──────────────────────────────────────────────────────────────
 
+      # ── Zero-CVE publish gate: build locally & scan BEFORE any push ──────────
+      - name: Trivy publish gate (not clean, no go)
+        env:
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TYPE: ${{ inputs.type }}
+        run: |
+          # The verity binary owns this gate (cmd/integer_build.go
+          # integerTrivyGate) — it is unit-tested and cannot silently regress,
+          # unlike inline workflow bash. Build the image LOCALLY and Trivy-scan
+          # it here; if HIGH/CRITICAL CVEs are found this step FAILS and the
+          # publish step below never runs. Verity never uploads an image with a CVE.
+          ./verity integer build \
+            --image "$INPUT_IMAGE" \
+            --version "$INPUT_VERSION" \
+            --type "$INPUT_TYPE" \
+            --arch amd64 \
+            --fail-on-severity HIGH,CRITICAL \
+            --output gate.tar
+
       - name: Build and publish multi-arch image
         id: build
         env:

@@ -64,6 +64,10 @@ var integerBuildCmd = &cli.Command{
 			Usage: "Wolfi APKINDEX URL",
 			Value: apkindex.DefaultAPKINDEXURL,
 		},
+		&cli.StringFlag{
+			Name:  "fail-on-severity",
+			Usage: "Comma-separated Trivy severities that fail the build before publish (e.g. HIGH,CRITICAL). Empty disables the gate.",
+		},
 	},
 	Action: func(ctx context.Context, cmd *cli.Command) error {
 		imageName := cmd.String("image")
@@ -152,7 +156,14 @@ var integerBuildCmd = &cli.Command{
 		output := cmd.String("output")
 		arch := cmd.String("arch")
 		fmt.Fprintf(os.Stderr, "Building %s:%s-%s (%s) → %s\n", imageName, version, typeName, arch, output)
-		return integerRunApkoBuild(ctx, tmp.Name(), output, arch, extraRepos, extraKeyrings)
+		if err := integerRunApkoBuild(ctx, tmp.Name(), output, arch, extraRepos, extraKeyrings); err != nil {
+			return err
+		}
+		if sev := cmd.String("fail-on-severity"); sev != "" {
+			fmt.Fprintf(os.Stderr, "Trivy gate: scanning %s for %s CVEs before publish\n", output, sev)
+			return integerTrivyGate(ctx, output, sev)
+		}
+		return nil
 	},
 }
 
@@ -236,6 +247,31 @@ func integerRunApkoBuild(ctx context.Context, configFile, output, arch string, e
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("apko build failed: %w", err)
+	}
+	return nil
+}
+
+
+// integerTrivyGate scans a locally-built image tarball and returns a non-nil
+// error if Trivy finds vulnerabilities at any of the comma-separated
+// severities. This is the publish gate: the caller MUST stop before pushing
+// the image when this returns an error ("not clean, no go").
+func integerTrivyGate(ctx context.Context, tarPath, severity string) error {
+	trivyPath, err := exec.LookPath("trivy")
+	if err != nil {
+		return fmt.Errorf("trivy not found in PATH (install via mise): %w", err)
+	}
+	c := exec.CommandContext(ctx, trivyPath, "image",
+		"--input", tarPath,
+		"--exit-code", "1",
+		"--severity", severity,
+		"--vuln-type", "os,library",
+		"--format", "table",
+	)
+	c.Stdout = os.Stderr
+	c.Stderr = os.Stderr
+	if err := c.Run(); err != nil {
+		return fmt.Errorf("trivy gate: image has %s vulnerabilities — refusing to publish: %w", severity, err)
 	}
 	return nil
 }
