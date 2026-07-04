@@ -16,7 +16,10 @@ import (
 	intconfig "github.com/verity-org/verity/internal/integer/config"
 )
 
-var errIntegerValidationFailed = errors.New("validation failed")
+var (
+	errIntegerValidationFailed    = errors.New("validation failed")
+	errMissingDeclaredVersionType = errors.New("contains {{version}} but type has no declared versions to resolve")
+)
 
 // bespokePkgFile is the minimal subset of a melange yaml needed to verify the
 // package name. Other fields (environment, pipeline, etc.) are intentionally
@@ -237,7 +240,7 @@ func resolveBespokeFiles(def *intconfig.ImageDef, typeName, bespokeFile string) 
 		versions = append(versions, version)
 	}
 	if len(versions) == 0 {
-		return nil, fmt.Errorf("contains {{version}} but type %q has no declared versions to resolve", typeName)
+		return nil, fmt.Errorf("%w: %q", errMissingDeclaredVersionType, typeName)
 	}
 
 	apkindex.SortVersions(versions)
