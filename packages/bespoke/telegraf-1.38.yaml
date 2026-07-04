@@ -1,0 +1,39 @@
+package:
+  name: telegraf-1.38
+  version: "1.38.4"
+  epoch: 99
+  description: "Telegraf rebuilt from source for zero-CVE Integer images"
+  copyright:
+    - license: MIT
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - git
+      - go
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/influxdata/telegraf
+      tag: v${{package.version}}
+  - runs: |
+      mkdir -p "${{targets.contextdir}}/usr/bin"
+      mkdir -p "${{targets.contextdir}}/etc/telegraf/telegraf.d"
+      go build -trimpath -ldflags="-s -w -X github.com/influxdata/telegraf/internal.Version=${{package.version}}" -o "${{targets.contextdir}}/usr/bin/telegraf" ./cmd/telegraf
+      "${{targets.contextdir}}/usr/bin/telegraf" --sample-config > "${{targets.contextdir}}/etc/telegraf/telegraf.conf"
+      rm -rf .cache "${HOME}/.cache"
+
+test:
+  pipeline:
+    - runs: |
+        telegraf --version
+        telegraf --help
