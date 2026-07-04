@@ -428,13 +428,21 @@ jobs:
           # unlike inline workflow bash. Build the image LOCALLY and Trivy-scan
           # it here; if HIGH/CRITICAL CVEs are found this step FAILS and the
           # publish step below never runs. Verity never uploads an image with a CVE.
-          ./verity integer build \
-            --image "$INPUT_IMAGE" \
-            --version "$INPUT_VERSION" \
-            --type "$INPUT_TYPE" \
-            --arch amd64 \
-            --fail-on-severity HIGH,CRITICAL \
-            --output gate.tar
+          # Gate BOTH published arches (publish pushes amd64+arm64). apko build
+          # and trivy scan assemble/read packages without executing arch
+          # binaries, so no QEMU is needed. If EITHER arch has HIGH/CRITICAL
+          # CVEs, this step fails and the multi-arch publish below never runs.
+          for gate_arch in amd64 arm64; do
+            echo "::group::Trivy publish gate ($gate_arch)"
+            ./verity integer build \
+              --image "$INPUT_IMAGE" \
+              --version "$INPUT_VERSION" \
+              --type "$INPUT_TYPE" \
+              --arch "$gate_arch" \
+              --fail-on-severity HIGH,CRITICAL \
+              --output "gate-$gate_arch.tar"
+            echo "::endgroup::"
+          done
 
       - name: Build and publish multi-arch image
         id: build
