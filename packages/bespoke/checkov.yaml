@@ -7,6 +7,7 @@ package:
     - license: Apache-2.0
   dependencies:
     runtime:
+      - py${{vars.python-version}}-pyyaml
       - python-${{vars.python-version}}
 
 vars:
@@ -35,9 +36,12 @@ pipeline:
       tag: ${{package.version}}
       expected-commit: 68c02db9f1fb66ac561e7deb068be23413ace6bb
 
-  - uses: py/pip-build-install
-    with:
-      python: python${{vars.python-version}}
+  - runs: |
+      PIP_DISABLE_PIP_VERSION_CHECK=1 python${{vars.python-version}} -m pip install \
+        --prefix=/usr \
+        --root "${{targets.destdir}}" \
+        --no-compile \
+        .
 
   - uses: strip
 
