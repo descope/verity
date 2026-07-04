@@ -85,21 +85,21 @@ func TestIntegerBuildCommand_MissingImage(t *testing.T) {
 
 func TestIntegerRunApkoBuild_NotInPath(t *testing.T) {
 	t.Setenv("PATH", "")
-	err := integerRunApkoBuild(context.Background(), "config.yaml", "out.tar", "amd64")
+	err := integerRunApkoBuild(context.Background(), "config.yaml", "out.tar", "amd64", nil, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "apko not found")
 }
 
 func TestIntegerRunApkoBuild_Fails(t *testing.T) {
 	intFakeApko(t, 1)
-	err := integerRunApkoBuild(context.Background(), "config.yaml", "out.tar", "amd64")
+	err := integerRunApkoBuild(context.Background(), "config.yaml", "out.tar", "amd64", nil, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "apko build failed")
 }
 
 func TestIntegerRunApkoBuild_Success(t *testing.T) {
 	intFakeApko(t, 0)
-	err := integerRunApkoBuild(context.Background(), "config.yaml", "out.tar", "amd64")
+	err := integerRunApkoBuild(context.Background(), "config.yaml", "out.tar", "amd64", nil, nil)
 	require.NoError(t, err)
 }
 
