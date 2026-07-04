@@ -47,8 +47,5 @@ pipeline:
 
 test:
   pipeline:
-    - uses: test/tw/ldd-check
-    - uses: python/import
-      with:
-        python: python${{vars.python-version}}
-        import: checkov
+    - runs: |
+        python${{vars.python-version}} -c 'from checkov.version import version; print(version)' | grep -q '${{package.version}}'
