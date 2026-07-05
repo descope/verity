@@ -715,6 +715,7 @@ images:
       strategy: "pattern"
       pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
+      exclude: ["18.9.0", "18.9.1"]
     goVcsUrl: "https://github.com/gravitational/teleport"
     goVcsTagPrefix: "v"
 
@@ -779,9 +780,10 @@ images:
     platforms: ["linux/amd64", "linux/arm64"]
     tags:
       strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
+      pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
     goVcsUrl: "https://github.com/pulumi/pulumi"
+    goVcsTagPrefix: "v"
 
 
   # ============================================================================
@@ -873,6 +875,7 @@ images:
       strategy: "pattern"
       pattern: '^\d+\.\d+\.\d+$'
       maxTags: 3
+      exclude: ["3.2.0"]
 
   - name: "opensearchproject/opensearch-dashboards"
     image: "docker.io/opensearchproject/opensearch-dashboards"
@@ -960,7 +963,9 @@ images:
   # ============================================================================
   #  Copa-first coverage (batch 9) — final fixable CVE tail.
   #  kubectl: canonical registry.k8s.io image, Go-source patched.
-  #  linkerd: Rust proxy, OS-package Copa (edge channel).
+  #  linkerd/proxy moved off Copa: upstream now declares Wolfi and Copa rejects
+  #  that osType outright (`unsupported osType wolfi specified`). Keep catalog
+  #  coverage on the Integer side instead of burning patch jobs.
   #  eks-pod-identity-agent + crossplane(crank): Go-source patched.
   #  Not covered (documented-blocked): cert-manager-cmctl (upstream quay image
   #  inaccessible/deprecated), falco (kernel/eBPF module).
@@ -974,14 +979,6 @@ images:
       maxTags: 3
     goVcsUrl: "https://github.com/kubernetes/kubernetes"
     goVcsTagPrefix: ""
-
-  - name: "linkerd/proxy"
-    image: "cr.l5d.io/linkerd/proxy"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^edge-2[0-9]\.\d+\.\d+$'
-      maxTags: 3
 
   - name: "eks/eks-pod-identity-agent"
     image: "public.ecr.aws/eks/eks-pod-identity-agent"
@@ -1072,15 +1069,9 @@ images:
     goVcsUrl: "https://github.com/goss-org/goss"
     goVcsTagPrefix: ""
 
-  - name: "earthly/earthly"
-    image: "docker.io/earthly/earthly"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-    goVcsUrl: "https://github.com/earthly/earthly"
-    goVcsTagPrefix: ""
+  # earthly moved off Copa: current patch runs explode with repeated apt-layer
+  # solver failures on both arches, while the bespoke Integer build already
+  # produces a clean receipt for v0.8.16.
 
   - name: "caddy"
     image: "docker.io/library/caddy"

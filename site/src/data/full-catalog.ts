@@ -622,6 +622,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "buildah", source: "integer" },
       { name: "podman", source: "integer" },
       { name: "pulumi", source: "integer" },
+      { name: "earthly", source: "integer" },
       { name: "argo-workflows", source: "integer" },
       { name: "argo-rollouts", source: "integer" },
       { name: "gomplate", source: "integer" },
