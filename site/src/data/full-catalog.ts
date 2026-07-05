@@ -697,12 +697,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         integerName: "spire-agent",
         upstream: "ghcr.io/spiffe/spire-agent",
       },
-      {
-        name: "gravitational/teleport",
-        label: "teleport",
-        source: "copa",
-        upstream: "quay.io/gravitational/teleport",
-      },
+      { name: "teleport", source: "integer" },
       {
         name: "openbao/openbao",
         label: "openbao",
