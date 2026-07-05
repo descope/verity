@@ -622,6 +622,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "buildah", source: "integer" },
       { name: "podman", source: "integer" },
       { name: "pulumi", source: "integer" },
+      { name: "earthly", source: "integer" },
       { name: "argo-workflows", source: "integer" },
       { name: "argo-rollouts", source: "integer" },
       { name: "gomplate", source: "integer" },
@@ -696,12 +697,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         integerName: "spire-agent",
         upstream: "ghcr.io/spiffe/spire-agent",
       },
-      {
-        name: "gravitational/teleport",
-        label: "teleport",
-        source: "copa",
-        upstream: "quay.io/gravitational/teleport",
-      },
+      { name: "teleport", source: "integer" },
       {
         name: "openbao/openbao",
         label: "openbao",
@@ -838,7 +834,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     id: "data",
     label: "Data & ML",
     images: [
-      { name: "apache/airflow", source: "copa", upstream: "mirror.gcr.io/apache/airflow" },
+      { name: "airflow", source: "integer" },
       { name: "mlflow/mlflow", label: "mlflow", source: "copa", upstream: "ghcr.io/mlflow/mlflow" },
       { name: "temporal", source: "integer" },
       { name: "meilisearch", source: "integer" },
