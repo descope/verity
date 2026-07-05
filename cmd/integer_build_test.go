@@ -129,6 +129,44 @@ func TestIntegerResolveLatestVersion_NoVersions(t *testing.T) {
 	assert.Contains(t, err.Error(), "no versions found")
 }
 
+func TestIntegerBuildCommand_RejectsUndeclaredVersionWhenAutoDiscoveryDisabled(t *testing.T) {
+	const yamlBody = `
+name: teleport
+upstream:
+  package: "teleport-{{version}}"
+  auto-discover: false
+types:
+  default:
+    base: wolfi-base
+    packages: ["teleport-{{version}}"]
+    entrypoint: /usr/bin/teleport start
+versions:
+  "18.6": {}
+`
+	dir := t.TempDir()
+	imagesDir := filepath.Join(dir, "images")
+	baseDir := filepath.Join(imagesDir, "_base")
+	require.NoError(t, os.MkdirAll(baseDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(baseDir, "wolfi-base.yaml"), []byte("# base\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(imagesDir, "teleport.yaml"), []byte(yamlBody), 0o644))
+
+	srv := intMakeAPKINDEXServer(t, "P:teleport-17\nV:17.7.8-r0\n\nP:teleport-18\nV:18.6.6-r0\n\nP:teleport-18.6\nV:18.6.6-r0\n\n")
+	t.Setenv("PATH", "")
+
+	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
+	err := root.Run(context.Background(), []string{
+		"verity", "integer", "build",
+		"--image", "teleport",
+		"--version", "18",
+		"--type", "default",
+		"--images-dir", imagesDir,
+		"--apkindex-url", srv.URL,
+		"--output", filepath.Join(dir, "image.tar"),
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, errIntegerVariantNotFound)
+}
+
 // intCapturingApko installs a fake `apko` on PATH that copies its config-file
 // argument to capturePath and exits 0. The capture path's parent directory is
 // created if needed. The fake mirrors the real apko CLI surface used by
@@ -529,7 +567,6 @@ versions:
 		})
 	}
 }
-
 
 func intFakeTrivy(t *testing.T, exitCode int) {
 	t.Helper()
