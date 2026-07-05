@@ -839,7 +839,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     id: "data",
     label: "Data & ML",
     images: [
-      { name: "apache/airflow", source: "copa", upstream: "mirror.gcr.io/apache/airflow" },
+      { name: "airflow", source: "integer" },
       { name: "mlflow/mlflow", label: "mlflow", source: "copa", upstream: "ghcr.io/mlflow/mlflow" },
       { name: "temporal", source: "integer" },
       { name: "meilisearch", source: "integer" },
