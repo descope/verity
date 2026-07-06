@@ -92,12 +92,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "registry.k8s.io/ingress-nginx/controller",
       },
       {
-        name: "kubernetes/ingress-nginx/kube-webhook-certgen",
-        label: "kube-webhook-certgen",
-        source: "copa",
-        upstream: "registry.k8s.io/ingress-nginx/kube-webhook-certgen",
-      },
-      {
         name: "kubernetes/ingress-nginx/defaultbackend",
         label: "ingress-defaultbackend",
         source: "copa",
@@ -203,12 +197,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "ghcr.io/kubernetes/autoscaler/cluster-autoscaler",
       },
       {
-        name: "kubernetes-sigs/external-dns",
-        label: "external-dns",
-        source: "copa",
-        upstream: "registry.k8s.io/external-dns/external-dns",
-      },
-      {
         name: "kubernetes/kube-state-metrics/kube-state-metrics",
         label: "kube-state-metrics",
         source: "integer",
@@ -219,19 +207,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         label: "kubernetes-reflector",
         source: "copa",
         upstream: "ghcr.io/emberstack/kubernetes-reflector",
-      },
-      {
-        name: "kubernetes-sigs/secrets-store-csi-driver",
-        label: "secrets-store-csi-driver",
-        source: "copa",
-        upstream: "registry.k8s.io/csi-secrets-store/driver",
-      },
-      {
-        name: "googlecloudplatform/secrets-store-csi-driver-provider-gcp",
-        label: "secrets-store-csi-provider-gcp",
-        source: "copa",
-        upstream:
-          "us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin",
       },
       {
         name: "kiwigrid/k8s-sidecar",
@@ -245,12 +220,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         source: "integer",
         integerName: "configmap-reload",
         upstream: "ghcr.io/jimmidyson/configmap-reload",
-      },
-      {
-        name: "kubernetes-sigs/node-feature-discovery",
-        label: "node-feature-discovery",
-        source: "copa",
-        upstream: "registry.k8s.io/nfd/node-feature-discovery",
       },
       { name: "rancher/k3s", label: "k3s", source: "copa", upstream: "mirror.gcr.io/rancher/k3s" },
       {
