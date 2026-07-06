@@ -12,7 +12,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
@@ -69,7 +68,7 @@ jobs:
             echo 'static=false' >> "$GITHUB_OUTPUT"
           fi
 
-          if grep -Eq '^site/|^\.github/workflows/ci\.yaml$' changed-files.txt; then
+          if grep -Eq '^site/|^\.github/workflows/ci\.yaml$|^mise\.toml$' changed-files.txt; then
             echo 'node=true' >> "$GITHUB_OUTPUT"
           else
             echo 'node=false' >> "$GITHUB_OUTPUT"
@@ -176,6 +175,9 @@ jobs:
 
       - name: Validate chart-integration workflow guards
         run: python3 .github/scripts/validate-chart-integration-workflow.py
+
+      - name: Validate CI workflow guards
+        run: python3 .github/scripts/validate-ci-workflow.py
 
       - name: Validate retry helpers
         run: bash .github/scripts/validate-retry-helpers.sh
