@@ -561,6 +561,11 @@ func TestRepoStandaloneSourceRegression_556_579(t *testing.T) {
 			t.Errorf("config still contains removed unsupported image %q", name)
 		}
 	}
+	for _, name := range catalogWithheld {
+		if _, ok := byName[name]; !ok {
+			t.Errorf("config missing catalog-withheld image %q", name)
+		}
+	}
 
 	catalog, err := os.ReadFile(repoCatalogPath)
 	if err != nil {
