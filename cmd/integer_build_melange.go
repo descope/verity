@@ -18,7 +18,7 @@ const (
 	integerMelangeKeyPath = "melange-work/melange.rsa.pub"
 )
 
-func integerPrepareMelangeBuild(ctx context.Context, melange *intconfig.MelangeSpec) (repos []string, keyrings []string, err error) {
+func integerPrepareMelangeBuild(ctx context.Context, melange *intconfig.MelangeSpec) (repos, keyrings []string, err error) {
 	if melange == nil {
 		return nil, nil, nil
 	}
