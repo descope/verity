@@ -618,20 +618,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         source: "copa",
         upstream: "mirror.gcr.io/hashicorp/consul",
       },
-      {
-        name: "spiffe/spire-server",
-        label: "spire-server",
-        source: "integer",
-        integerName: "spire-server",
-        upstream: "ghcr.io/spiffe/spire-server",
-      },
-      {
-        name: "spiffe/spire-agent",
-        label: "spire-agent",
-        source: "integer",
-        integerName: "spire-agent",
-        upstream: "ghcr.io/spiffe/spire-agent",
-      },
       { name: "teleport", source: "integer" },
       {
         name: "openbao/openbao",
