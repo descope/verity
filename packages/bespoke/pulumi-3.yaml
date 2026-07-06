@@ -1,0 +1,68 @@
+package:
+  name: pulumi
+  version: "3.250.0"
+  epoch: 99
+  description: Infrastructure as Code in any programming language
+  copyright:
+    - license: Apache-2.0
+  resources:
+    cpu: "8"
+    memory: 11Gi
+
+environment:
+  contents:
+    packages:
+      - build-base
+      - busybox
+      - ca-certificates-bundle
+      - coreutils
+      - go
+      - jq
+      - nodejs
+      - patch
+      - python-3.11
+      - python-3.11-dev
+      - uv
+      - yarn
+  environment:
+    CGO_ENABLED: "0"
+    GO111MODULE: "on"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      destination: ${{package.name}}
+      expected-commit: 7549635909277a54490acc87186590b816762fd5
+      repository: https://github.com/pulumi/pulumi.git
+      tag: v${{package.version}}
+
+  - pipeline:
+      - runs: |
+          set -x
+
+          export PULUMI_VERSION="v${{package.version}}"
+          export PULUMI_ROOT="$(mktemp -d)"
+          export GOBIN="${PULUMI_ROOT}/bin"
+          mkdir -p "${{targets.contextdir}}/usr/bin" "${{targets.contextdir}}/usr/lib"
+
+          mkdir -p .make
+          touch .make/proto
+
+          SDKS= make install
+          mv -v "${PULUMI_ROOT}"/bin/pulumi* "${{targets.contextdir}}/usr/bin"
+          chmod -R a+rwX .
+      - uses: strip
+    working-directory: ${{package.name}}
+
+test:
+  pipeline:
+    - name: Verify Pulumi installation
+      runs: |
+        pulumi version | grep ${{package.version}}
+        pulumi --help
+
+update:
+  enabled: true
+  github:
+    identifier: pulumi/pulumi
+    strip-prefix: v
