@@ -18,9 +18,14 @@ const (
 	integerMelangeKeyPath = "melange-work/melange.rsa.pub"
 )
 
-func integerPrepareMelangeBuild(ctx context.Context, melange *intconfig.MelangeSpec) (repos, keyrings []string, err error) {
+func integerPrepareMelangeBuild(ctx context.Context, melange *intconfig.MelangeSpec, arch string) (repos, keyrings []string, err error) {
 	if melange == nil {
 		return nil, nil, nil
+	}
+
+	melangeArch := integerMelangeArch(arch)
+	if integerMelangeArtifactsExist(melangeArch) {
+		return []string{integerMelangeRepoDir}, []string{integerMelangeKeyPath}, nil
 	}
 
 	bespokeJSON, err := json.Marshal([]string(melange.Bespoke))
@@ -37,6 +42,7 @@ func integerPrepareMelangeBuild(ctx context.Context, melange *intconfig.MelangeS
 		"UPSTREAM="+melange.Upstream,
 		"ENV_FILE="+melange.EnvFile,
 		"BUILD_OPTION="+melange.BuildOption,
+		"BUILD_ARCH="+melangeArch,
 	)
 	if err := cmd.Run(); err != nil {
 		return nil, nil, fmt.Errorf("run %s: %w", integerMelangeBuildScriptPath, err)
@@ -49,4 +55,25 @@ func integerPrepareMelangeBuild(ctx context.Context, melange *intconfig.MelangeS
 	}
 
 	return []string{integerMelangeRepoDir}, []string{integerMelangeKeyPath}, nil
+}
+
+func integerMelangeArtifactsExist(arch string) bool {
+	if _, err := os.Stat(filepath.Join(integerMelangeRepoDir, arch, "APKINDEX.tar.gz")); err != nil {
+		return false
+	}
+	if _, err := os.Stat(integerMelangeKeyPath); err != nil {
+		return false
+	}
+	return true
+}
+
+func integerMelangeArch(arch string) string {
+	switch arch {
+	case "amd64":
+		return "x86_64"
+	case "arm64":
+		return "aarch64"
+	default:
+		return arch
+	}
 }

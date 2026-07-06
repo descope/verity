@@ -37,10 +37,11 @@ fetch_wolfi_pipelines() {
 
 build_one() {
   local build_yaml="$1"
+  local build_arch="${BUILD_ARCH:-x86_64}"
 
   MELANGE_ARGS=(
     build "$build_yaml"
-    --arch x86_64
+    --arch "$build_arch"
     --signing-key melange-work/melange.rsa
     --out-dir packages/repo
     --repository-append https://packages.wolfi.dev/os

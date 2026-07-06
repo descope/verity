@@ -16,7 +16,7 @@ func TestIntegerPrepareMelangeBuild_RunsScriptAndReturnsRepoAndKey(t *testing.T)
 	repoRoot := t.TempDir()
 	scriptPath := filepath.Join(repoRoot, "melange-build.sh")
 	envCapturePath := filepath.Join(repoRoot, "env.txt")
-	require.NoError(t, os.WriteFile(scriptPath, []byte("#!/bin/sh\nset -eu\nprintf '%s\\n%s\\n%s\\n%s\\n' \"$BESPOKE_JSON\" \"$UPSTREAM\" \"$ENV_FILE\" \"$BUILD_OPTION\" > \""+envCapturePath+"\"\nmkdir -p packages/repo melange-work\n: > melange-work/melange.rsa.pub\n"), 0o755))
+	require.NoError(t, os.WriteFile(scriptPath, []byte("#!/bin/sh\nset -eu\nprintf '%s\\n%s\\n%s\\n%s\\n%s\\n' \"$BESPOKE_JSON\" \"$UPSTREAM\" \"$ENV_FILE\" \"$BUILD_OPTION\" \"$BUILD_ARCH\" > \""+envCapturePath+"\"\nmkdir -p packages/repo/\"$BUILD_ARCH\" melange-work\n: > melange-work/melange.rsa.pub\n"), 0o755))
 
 	originalScriptPath := integerMelangeBuildScriptPath
 	integerMelangeBuildScriptPath = scriptPath
@@ -35,14 +35,44 @@ func TestIntegerPrepareMelangeBuild_RunsScriptAndReturnsRepoAndKey(t *testing.T)
 		Bespoke:     intconfig.StringList{"custom.yaml"},
 		EnvFile:     "fips.env",
 		BuildOption: "fips",
-	})
+	}, "arm64")
 	require.NoError(t, err)
 	assert.Equal(t, []string{integerMelangeRepoDir}, repos)
 	assert.Equal(t, []string{integerMelangeKeyPath}, keyrings)
 
 	data, err := os.ReadFile(envCapturePath)
 	require.NoError(t, err)
-	assert.Equal(t, "[\"custom.yaml\"]\n\nfips.env\nfips\n", string(data))
+	assert.Equal(t, "[\"custom.yaml\"]\n\nfips.env\nfips\naarch64\n", string(data))
+}
+
+func TestIntegerPrepareMelangeBuild_ReusesExistingArtifacts(t *testing.T) {
+	repoRoot := t.TempDir()
+	scriptPath := filepath.Join(repoRoot, "melange-build.sh")
+	require.NoError(t, os.WriteFile(scriptPath, []byte("#!/bin/sh\nexit 99\n"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(repoRoot, integerMelangeRepoDir, "aarch64"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(repoRoot, integerMelangeRepoDir, "aarch64", "APKINDEX.tar.gz"), []byte("index"), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(repoRoot, "melange-work"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(repoRoot, integerMelangeKeyPath), []byte("pubkey"), 0o644))
+
+	originalScriptPath := integerMelangeBuildScriptPath
+	integerMelangeBuildScriptPath = scriptPath
+	t.Cleanup(func() { integerMelangeBuildScriptPath = originalScriptPath })
+
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(repoRoot))
+	t.Cleanup(func() {
+		if err := os.Chdir(wd); err != nil {
+			t.Errorf("restore working directory: %v", err)
+		}
+	})
+
+	repos, keyrings, err := integerPrepareMelangeBuild(context.Background(), &intconfig.MelangeSpec{
+		Bespoke: intconfig.StringList{"custom.yaml"},
+	}, "arm64")
+	require.NoError(t, err)
+	assert.Equal(t, []string{integerMelangeRepoDir}, repos)
+	assert.Equal(t, []string{integerMelangeKeyPath}, keyrings)
 }
 
 func TestIntegerRunApkoBuild_AppendsExtraRepositoriesAndKeyrings(t *testing.T) {

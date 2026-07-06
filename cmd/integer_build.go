@@ -125,7 +125,8 @@ var integerBuildCmd = &cli.Command{
 			return fmt.Errorf("image %q version %q not defined for build: %w", imageName, version, errIntegerVariantNotFound)
 		}
 
-		extraRepos, extraKeyrings, err := integerPrepareMelangeBuild(ctx, tmpl.Melange)
+		arch := cmd.String("arch")
+		extraRepos, extraKeyrings, err := integerPrepareMelangeBuild(ctx, tmpl.Melange, arch)
 		if err != nil {
 			return fmt.Errorf("preparing melange build: %w", err)
 		}
@@ -157,7 +158,6 @@ var integerBuildCmd = &cli.Command{
 		tmp.Close()
 
 		output := cmd.String("output")
-		arch := cmd.String("arch")
 		fmt.Fprintf(os.Stderr, "Building %s:%s-%s (%s) → %s\n", imageName, version, typeName, arch, output)
 		if err := integerRunApkoBuild(ctx, tmp.Name(), output, arch, extraRepos, extraKeyrings); err != nil {
 			return err
@@ -168,17 +168,6 @@ var integerBuildCmd = &cli.Command{
 		}
 		return nil
 	},
-}
-
-// integerResolveLatestVersion fetches APKINDEX and returns the highest stream
-// version for def. Kept as a thin wrapper so external tests can drive
-// `verity integer build --version latest` without rewiring the action body.
-func integerResolveLatestVersion(def *intconfig.ImageDef, apkindexURL string) (string, error) {
-	pkgs, err := apkindex.Fetch(apkindexURL, "", 0)
-	if err != nil {
-		return "", fmt.Errorf("fetching APKINDEX: %w", err)
-	}
-	return integerResolveLatestVersionFromPkgs(def, pkgs)
 }
 
 // integerResolveLatestVersionFromPkgs is the inner form used by the build
