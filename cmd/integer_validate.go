@@ -258,10 +258,10 @@ func resolveBespokeFiles(def *intconfig.ImageDef, typeName, bespokeFile string) 
 }
 
 func tmplPackageMatchesBespoke(def *intconfig.ImageDef, typeName string, packages []string, pkgName string) bool {
-	if slices.Contains(packages, pkgName) {
-		return true
-	}
 	for _, pkg := range packages {
+		if apkPackageName(pkg) == pkgName {
+			return true
+		}
 		if !strings.Contains(pkg, "{{version}}") {
 			continue
 		}
@@ -269,12 +269,20 @@ func tmplPackageMatchesBespoke(def *intconfig.ImageDef, typeName string, package
 			if slices.Contains(meta.SkipTypes, typeName) {
 				continue
 			}
-			if strings.ReplaceAll(pkg, "{{version}}", version) == pkgName {
+			if apkPackageName(strings.ReplaceAll(pkg, "{{version}}", version)) == pkgName {
 				return true
 			}
 		}
 	}
 	return false
+}
+
+func apkPackageName(pkg string) string {
+	idx := strings.IndexAny(pkg, "<>=~!")
+	if idx < 0 {
+		return pkg
+	}
+	return pkg[:idx]
 }
 
 // isExistingDir returns true iff path is a non-empty string and refers to

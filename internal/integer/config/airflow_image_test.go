@@ -41,6 +41,9 @@ func TestAirflowImageExposesConsoleScriptsOnPath(t *testing.T) {
 	if tmpl.Environment["AIRFLOW_USER_HOME_DIR"] != "/opt/airflow" {
 		t.Fatalf("AIRFLOW_USER_HOME_DIR=%q want /opt/airflow for /entrypoint-based chart probes", tmpl.Environment["AIRFLOW_USER_HOME_DIR"])
 	}
+	if tmpl.Melange == nil || !tmpl.Melange.Bespoke.Contains("airflow-3.yaml") {
+		t.Fatalf("melange=%v want bespoke airflow-3.yaml rebuild for Trivy-clean airflow-3", tmpl.Melange)
+	}
 
 	foundSymlink := false
 	for _, p := range tmpl.Paths {
