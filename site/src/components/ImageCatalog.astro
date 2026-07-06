@@ -1,7 +1,8 @@
 ---
 import type { FullCatalogImage } from "../data/full-catalog.ts";
-import { fullCatalog, REGISTRY, totalImages, upstreamPath } from "../data/full-catalog.ts";
+import { fullCatalog, REGISTRY, upstreamPath } from "../data/full-catalog.ts";
 import { getIntegerCatalog } from "../data/integer-catalog.ts";
+import { filterCatalogCategories } from "../lib/catalog-visibility.ts";
 import type { SiteImage, VulnSummary } from "../lib/catalog.ts";
 import { getAllImages } from "../lib/catalog.ts";
 import { patchedRefToName } from "../lib/refs.ts";
@@ -47,13 +48,16 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary {
   // copa images without scan data are either newly added or awaiting first scan)
   return { total: 0, severityCounts: {} };
 }
+
+const visibleCatalog = filterCatalogCategories(fullCatalog, getVulnSummary);
+const visibleTotalImages = visibleCatalog.reduce((total, category) => total + category.images.length, 0);
 ---
 
 <div>
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
     <input
       type="text"
-      placeholder={`Search ${totalImages} images...`}
+      placeholder={`Search ${visibleTotalImages} images...`}
       class="w-full sm:w-96 px-3 py-2 border border-verity-border rounded-lg text-sm bg-verity-surface text-verity-text-primary placeholder-verity-text-secondary focus:outline-hidden focus:ring-2 focus:ring-verity-nucleus focus:border-verity-nucleus"
       id="catalog-search"
       aria-label="Search images"
@@ -91,7 +95,7 @@ function getVulnSummary(image: FullCatalogImage): VulnSummary {
 
   <div id="catalog-grid" class="space-y-10">
     {
-      fullCatalog.map((category) => (
+      visibleCatalog.map((category) => (
         <div class="catalog-category" data-category={category.id}>
           <div class="flex items-center gap-3 mb-4 pb-2 border-b border-verity-border">
             <h3 class="text-sm font-semibold text-verity-text-primary tracking-wider uppercase">

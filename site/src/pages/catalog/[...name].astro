@@ -8,6 +8,7 @@ import type { FullCatalogCategory, FullCatalogImage } from "../../data/full-cata
 import { fullCatalog, REGISTRY, stripTag, upstreamPath } from "../../data/full-catalog.ts";
 import { getIntegerImage } from "../../data/integer-catalog.ts";
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import { shouldShowCatalogImage } from "../../lib/catalog-visibility.ts";
 import type { IntegerImage, IntegerVariant, IntegerVersion, SiteImage } from "../../lib/catalog.ts";
 import { getAllImages } from "../../lib/catalog.ts";
 import { extractVersionFromRef, patchedRefToName } from "../../lib/refs.ts";
@@ -83,6 +84,9 @@ export function getStaticPaths() {
     for (const image of category.images) {
       const allScanData = scanDataByName.get(image.name) ?? [];
       const scanData = allScanData[0];
+      if (!shouldShowCatalogImage(image, scanData?.afterVulns ?? { total: 0, severityCounts: {} })) {
+        continue;
+      }
 
       // Fetch integer version data for integer source images
       let integerData: IntegerDataWithRegistry | undefined;
