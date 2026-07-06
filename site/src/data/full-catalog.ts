@@ -52,14 +52,6 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "deno", source: "integer" },
       { name: "gcc", source: "integer" },
       {
-        name: "library/gradle",
-        label: "gradle",
-        source: "integer",
-        integerName: "gradle",
-        upstream: "mirror.gcr.io/library/gradle",
-      },
-      { name: "maven", source: "integer" },
-      {
         name: "bazelbuild/bazel",
         label: "bazel",
         source: "integer",
@@ -111,12 +103,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         source: "copa",
         upstream: "registry.k8s.io/defaultbackend",
       },
-      {
-        name: "library/tomcat",
-        label: "tomcat",
-        source: "copa",
-        upstream: "mirror.gcr.io/library/tomcat",
-      },
     ],
   },
 
@@ -133,24 +119,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "quay.io/mongodb/mongodb-community-server",
       },
       { name: "mariadb", source: "integer" },
-      {
-        name: "library/elasticsearch",
-        label: "elasticsearch",
-        source: "copa",
-        upstream: "mirror.gcr.io/library/elasticsearch",
-      },
-      {
-        name: "opensearchproject/opensearch",
-        label: "opensearch",
-        source: "copa",
-        upstream: "mirror.gcr.io/opensearchproject/opensearch",
-      },
-      {
-        name: "opensearchproject/opensearch-dashboards",
-        label: "opensearch-dashboards",
-        source: "copa",
-        upstream: "mirror.gcr.io/opensearchproject/opensearch-dashboards",
-      },
       {
         name: "cockroachdb/cockroach",
         label: "cockroachdb",
@@ -209,27 +177,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         source: "copa",
         upstream: "mirror.gcr.io/rabbitmqoperator/messaging-topology-operator",
       },
-      {
-        name: "confluentinc/cp-kafka",
-        label: "Kafka (Confluent)",
-        source: "copa",
-        upstream: "mirror.gcr.io/confluentinc/cp-kafka",
-      },
-      {
-        name: "strimzi/kafka",
-        label: "strimzi-kafka",
-        source: "integer",
-        integerName: "strimzi-kafka",
-        upstream: "quay.io/strimzi/kafka",
-      },
       { name: "nats", source: "integer" },
-      { name: "kafka", source: "integer" },
-      {
-        name: "library/zookeeper",
-        label: "zookeeper",
-        source: "copa",
-        upstream: "mirror.gcr.io/library/zookeeper",
-      },
     ],
   },
 
@@ -589,13 +537,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         source: "copa",
         upstream: "ghcr.io/fluent/fluent-operator/fluent-operator",
       },
-      {
-        name: "opensearchproject/logstash-oss-with-opensearch-output-plugin",
-        label: "logstash-oss-opensearch",
-        source: "integer",
-        integerName: "logstash-oss",
-        upstream: "mirror.gcr.io/opensearchproject/logstash-oss-with-opensearch-output-plugin",
-      },
     ],
   },
 
@@ -676,12 +617,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         label: "consul",
         source: "copa",
         upstream: "mirror.gcr.io/hashicorp/consul",
-      },
-      {
-        name: "keycloak/keycloak",
-        label: "keycloak",
-        source: "copa",
-        upstream: "quay.io/keycloak/keycloak",
       },
       {
         name: "spiffe/spire-server",
@@ -897,12 +832,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         label: "wordpress",
         source: "copa",
         upstream: "mirror.gcr.io/library/wordpress",
-      },
-      {
-        name: "library/sonarqube",
-        label: "sonarqube",
-        source: "copa",
-        upstream: "mirror.gcr.io/library/sonarqube",
       },
       {
         name: "sonarsource/sonar-scanner-cli",
