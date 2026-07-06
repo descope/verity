@@ -422,8 +422,7 @@ This keeps PR feedback fast while still exercising the real patch path. See
 
 | Workflow | Purpose |
 | --- | --- |
-| `ci.yaml` | Go unit tests on every PR |
-| `lint.yaml` | Code quality (`golangci-lint`, `shellcheck`, `yamllint`, `actionlint`, `markdownlint`, `gosec`, `govulncheck`) |
+| `ci.yaml` | Required PR checks: Go unit tests plus code quality (`golangci-lint`, `shellcheck`, `yamllint`, `actionlint`, `markdownlint`, `govulncheck`) |
 | `new-issue.yaml` | Parses `new-image` issue form; opens PR that adds the entry to `copa-config.yaml` |
 
 ### Chart-integration smoke tests
