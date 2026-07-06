@@ -99,6 +99,8 @@ chartValues:
   # false` via `mimir.structuredConfig` — the chart's documented hook
   # for overriding the rendered text-config.
   mimir-distributed:
+    image.repository: ghcr.io/verity-org/mimir
+    image.tag: "3.0"
     gateway.enabled: false
     kafka.enabled: false
     minio.enabled: false
@@ -164,6 +166,15 @@ chartValues:
     mimir.structuredConfig.alertmanager_storage.filesystem.dir: /data/storage-alertmanager
     mimir.structuredConfig.ruler_storage.backend: filesystem
     mimir.structuredConfig.ruler_storage.filesystem.dir: /data/storage-ruler
+
+  # traefik 41.0.1 leaves `image.registry`, `image.repository`, and `image.tag`
+  # null in values.yaml, so chart-gen cannot auto-detect the split registry+
+  # repository shape from defaults. Hard-set the wrapper values here so the
+  # rendered Deployment uses ghcr.io/verity-org/traefik:3.7.
+  traefik:
+    image.registry: ghcr.io
+    image.repository: verity-org/traefik
+    image.tag: "3.7"
 
   # tempo-distributed 1.61.3 defaults to a separate Memcached statefulset;
   # the minimal CI-friendly wrapper just runs the Tempo microservices
