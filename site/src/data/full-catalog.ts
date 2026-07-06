@@ -100,19 +100,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     images: [
       { name: "postgres", source: "integer", variants: ["default", "fips"] },
       { name: "valkey", source: "integer", variants: ["default", "fips"] },
-      {
-        name: "mongodb/mongodb-community-server",
-        label: "mongodb",
-        source: "copa",
-        upstream: "quay.io/mongodb/mongodb-community-server",
-      },
       { name: "mariadb", source: "integer" },
-      {
-        name: "cockroachdb/cockroach",
-        label: "cockroachdb",
-        source: "copa",
-        upstream: "mirror.gcr.io/cockroachdb/cockroach",
-      },
       {
         name: "clickhouse/clickhouse-server",
         label: "clickhouse",
