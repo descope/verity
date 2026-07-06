@@ -12,16 +12,10 @@ on:
         required: false
         type: string
   pull_request:
-    paths:
-      - 'test/chart-integration/**'
-      - '.github/workflows/chart-integration.yaml'
-      - 'mise.toml'
-      - 'Makefile'
-      - 'Chart.yaml'
-      - 'verity.yaml'
-      - 'images/**'
-      - 'internal/chartgen/**'
-      - 'internal/discovery/**'
+    # No path filter: the "Chart Integration" gate job is a required status
+    # check, so it must report on EVERY PR. Scoping happens in discover-charts
+    # (changed-file grep -> chart matrix); PRs touching no chart-relevant
+    # paths get an empty matrix and the gate passes immediately.
   schedule:
     - cron: '0 5 * * *'
 
@@ -42,6 +36,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       matrix: ${{ steps.build-matrix.outputs.matrix }}
+      strict: ${{ steps.build-matrix.outputs.strict }}
     steps:
       - name: Harden the runner
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
@@ -68,18 +63,18 @@ jobs:
           INPUT_CHART: ${{ github.event.inputs.chart }}
         run: |
           set -euo pipefail
+          strict=false
           if [[ -n "$INPUT_CHART" ]]; then
             charts="$INPUT_CHART"
           elif [[ "$EVENT_NAME" == "pull_request" ]]; then
             git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
-            if grep -Eq '^(test/chart-integration/|\.github/workflows/chart-integration\.yaml|mise\.toml|Makefile|Chart\.yaml|verity\.yaml|internal/chartgen/|internal/discovery/)' changed-files.txt; then
+            if grep -Eq '^(test/chart-integration/|\.github/workflows/chart-integration\.yaml|mise\.toml|Makefile|verity\.yaml|internal/chartgen/|internal/discovery/)' changed-files.txt; then
               charts="$(yq -r '.dependencies[].name' Chart.yaml)"
             elif grep -Eq '^images/_base/' changed-files.txt; then
               charts="$(yq -r '.dependencies[].name' Chart.yaml)"
-            elif grep -Eq '^images/.*\.ya?ml$' changed-files.txt; then
+            else
               mapfile -t chart_deps < <(yq -r '.dependencies[].name' Chart.yaml)
               mapfile -t chart_value_keys < <(yq -r '(.chartValues // {}) | keys[]' verity.yaml)
-              mapfile -t changed_images < <(sed -n 's|^images/\([^/]*\)\.ya\?ml$|\1|p' changed-files.txt | sort -u)
               declare -A chart_set=()
 
               norm() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]'; }
@@ -104,34 +99,54 @@ jobs:
                 return 0
               }
 
-              for image in "${changed_images[@]}"; do
-                image_re="$(printf '%s' "$image" | sed 's/[][(){}.^$?+*|\\/]/\\&/g')"
-                image_norm="$(norm "$image")"
-                match_chart_name "$image_norm"
-                for values_file in test/chart-integration/values/*.yaml; do
-                  if grep -Eq "verity-org/(.*/)?${image_re}([:@'\"[:space:]]|$)|\b${image_re}\b" "$values_file"; then
-                    add_chart "$(basename "$values_file" .yaml)"
+              if grep -q '^Chart\.yaml$' changed-files.txt; then
+                # Chart dependency bump (e.g. a Renovate helm PR): test ONLY
+                # the dependencies whose (name, version, repository) tuple was
+                # added or changed vs the base branch — not all ~53 charts.
+                # These scoped runs are strict: a failing shard must block the
+                # merge (see continue-on-error on chart-test).
+                strict=true
+                git show "$BASE_SHA:Chart.yaml" > base-Chart.yaml 2>/dev/null || : > base-Chart.yaml
+                { yq -r '.dependencies[] | [.name, .version, .repository] | @tsv' base-Chart.yaml 2>/dev/null || true; } | sort > base-deps.tsv
+                yq -r '.dependencies[] | [.name, .version, .repository] | @tsv' Chart.yaml | sort > head-deps.tsv
+                while IFS= read -r dep_name; do
+                  if [[ -n "$dep_name" ]]; then
+                    add_chart "$dep_name"
                   fi
+                done < <(comm -13 base-deps.tsv head-deps.tsv | cut -f1 | sort -u)
+              fi
+
+              if grep -Eq '^images/.*\.ya?ml$' changed-files.txt; then
+                mapfile -t changed_images < <(sed -n 's|^images/\([^/]*\)\.ya\?ml$|\1|p' changed-files.txt | sort -u)
+
+                for image in "${changed_images[@]}"; do
+                  image_re="$(printf '%s' "$image" | sed 's/[][(){}.^$?+*|\\/]/\\&/g')"
+                  image_norm="$(norm "$image")"
+                  match_chart_name "$image_norm"
+                  for values_file in test/chart-integration/values/*.yaml; do
+                    if grep -Eq "verity-org/(.*/)?${image_re}([:@'\"[:space:]]|$)|\b${image_re}\b" "$values_file"; then
+                      add_chart "$(basename "$values_file" .yaml)"
+                    fi
+                  done
+                  while IFS=$'\t' read -r _ replacement; do
+                    replacement_image="${replacement##*/}"
+                    replacement_norm="$(norm "$replacement_image")"
+                    if [[ "$replacement_norm" == "$image_norm" || "$replacement_norm" == "$image_norm"* || "$image_norm" == "$replacement_norm"* ]]; then
+                      match_chart_name "$replacement_norm"
+                    fi
+                  done < <(yq -r '(.replacements // {}) | to_entries[] | [.key, .value.image] | @tsv' verity.yaml)
                 done
-                while IFS=$'\t' read -r _ replacement; do
-                  replacement_image="${replacement##*/}"
-                  replacement_norm="$(norm "$replacement_image")"
-                  if [[ "$replacement_norm" == "$image_norm" || "$replacement_norm" == "$image_norm"* || "$image_norm" == "$replacement_norm"* ]]; then
-                    match_chart_name "$replacement_norm"
-                  fi
-                done < <(yq -r '(.replacements // {}) | to_entries[] | [.key, .value.image] | @tsv' verity.yaml)
-              done
+              fi
 
               charts="$(printf '%s\n' "${!chart_set[@]}" | sort)"
-            else
-              charts=""
             fi
           else
             charts="$(yq -r '.dependencies[].name' Chart.yaml)"
           fi
           json="$(printf '%s\n' "$charts" | jq -R -s -c 'split("\n") | map(select(length > 0))')"
           echo "matrix=$json" >> "$GITHUB_OUTPUT"
-          echo "Discovered charts: $json"
+          echo "strict=$strict" >> "$GITHUB_OUTPUT"
+          echo "Discovered charts: $json (strict=$strict)"
 
   chart-test:
     name: ${{ matrix.chart }}
@@ -197,20 +212,23 @@ jobs:
 
       - name: Run chart smoke test
         id: smoke
-        # PR-strict policy (SCR-2026-04-30-001, Option E) is **DEFERRED**.
-        # Investigation while landing this PR revealed that ~30 of 41
-        # wrapper charts have chronic helm-install timeouts of the same
-        # class as kyverno's bug #254 (broken image refs / missing
-        # chartValues overrides), not just a missing-allowlist gap.
-        # Flipping strict mode today would surface ~30+ pre-existing
-        # chart-wrapper bugs as red shards on every PR, not the ~9
-        # genuine missing-allowlist cases the SCR anticipated. The
-        # typed-error infrastructure (`errAllowlistMissing`,
-        # `CollectNamespaceImages`, `classifyMissingAllowlist`) lands
-        # in this PR — ready to activate. A follow-up PR will flip
-        # the strictness once the chart-wrapper backlog clears.
+        # PR-strict policy (SCR-2026-04-30-001, Option E) is PARTIALLY active:
+        # - Chart.yaml dependency bumps (Renovate helm PRs) run only the
+        #   changed charts' shards and are STRICT (discover-charts emits
+        #   strict=true): a failing shard fails this job, which fails the
+        #   "Chart Integration" gate below and blocks (auto)merge. #905
+        #   merged while its chart tests were still running because nothing
+        #   gated the merge — this closes that hole for chart bumps.
+        # - All other PR shards stay lenient (continue-on-error) because
+        #   ~30 of the wrapper charts have chronic helm-install timeouts of
+        #   the same class as kyverno's bug #254 (broken image refs /
+        #   missing chartValues overrides). Flipping strict globally would
+        #   surface those as red shards on every PR. The typed-error
+        #   infrastructure (`errAllowlistMissing`, `CollectNamespaceImages`,
+        #   `classifyMissingAllowlist`) is ready — flip once the
+        #   chart-wrapper backlog clears.
         # Tracking issue: TBD (chart-wrapper backlog).
-        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: ${{ github.event_name == 'pull_request' && needs.discover-charts.outputs.strict != 'true' }}
         run: make chart-integration
 
       - name: Record shard outcome
@@ -265,3 +283,38 @@ jobs:
             _kind-logs-${{ matrix.chart }}
           retention-days: 7
           if-no-files-found: ignore
+
+  chart-integration-result:
+    name: Chart Integration
+    # Single stable-name aggregation gate for branch protection: matrix
+    # shard names vary per PR (one job per chart), so they can't be listed
+    # as required checks. This job is the required check. It runs on every
+    # PR — chart-test result "skipped" (empty matrix) counts as pass — so
+    # the check always reports and automerge can never bypass chart tests
+    # the way #905 did.
+    needs: [discover-charts, chart-test]
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
+      - name: Aggregate chart shard results
+        env:
+          DISCOVER_RESULT: ${{ needs.discover-charts.result }}
+          TEST_RESULT: ${{ needs.chart-test.result }}
+        run: |
+          set -euo pipefail
+          echo "discover-charts: ${DISCOVER_RESULT}"
+          echo "chart-test: ${TEST_RESULT}"
+          if [[ "$DISCOVER_RESULT" != "success" ]]; then
+            echo "::error::discover-charts did not succeed"
+            exit 1
+          fi
+          if [[ "$TEST_RESULT" == "failure" || "$TEST_RESULT" == "cancelled" ]]; then
+            echo "::error::one or more chart shards failed"
+            exit 1
+          fi

@@ -54,6 +54,9 @@ Custom manager tracks:
 - Go minor/patch updates
 - GitHub Actions patch updates
 - Security vulnerability fixes
+- Helm chart minor/patch updates — one PR per chart (never grouped), and
+  automerge is gated by the required "Chart Integration" check, which runs
+  the smoke test for exactly the bumped chart
 
 ⚠️ Requires review:
 
