@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -168,6 +169,23 @@ package:
 func TestIntegerValidateCommand_BespokeOK(t *testing.T) {
 	imagesDir, cfgPath := intSetupCmdImages(t)
 	intWriteFile(t, filepath.Join(imagesDir, "popeye.yaml"), intTestPopeyeImageYAML)
+
+	bespokeDir := filepath.Join(filepath.Dir(imagesDir), "packages", "bespoke")
+	intWriteFile(t, filepath.Join(bespokeDir, "popeye.yaml"), intTestPopeyeBespokeYAML)
+
+	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
+	err := root.Run(context.Background(), []string{
+		"verity", "integer", "validate",
+		"--config", cfgPath,
+		"--images-dir", imagesDir,
+		"--bespoke-dir", bespokeDir,
+	})
+	assert.NoError(t, err)
+}
+
+func TestIntegerValidateCommand_BespokePackageConstraintOK(t *testing.T) {
+	imagesDir, cfgPath := intSetupCmdImages(t)
+	intWriteFile(t, filepath.Join(imagesDir, "popeye.yaml"), strings.ReplaceAll(intTestPopeyeImageYAML, `packages: ["popeye"]`, `packages: ["popeye=0.22.1-r99"]`))
 
 	bespokeDir := filepath.Join(filepath.Dir(imagesDir), "packages", "bespoke")
 	intWriteFile(t, filepath.Join(bespokeDir, "popeye.yaml"), intTestPopeyeBespokeYAML)
