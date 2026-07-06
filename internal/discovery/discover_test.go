@@ -510,18 +510,20 @@ func TestRepoStandaloneSourceRegression_556_579(t *testing.T) {
 		{name: "kubernetes/ingress-nginx/defaultbackend", image: "registry.k8s.io/defaultbackend", pattern: `^\d+\.\d+$`},
 		{name: "emberstack/kubernetes-reflector", image: "ghcr.io/emberstack/kubernetes-reflector", pattern: `^\d+\.\d+\.\d+$`},
 		{name: "rancher/k3s", image: "mirror.gcr.io/rancher/k3s", pattern: `^v\d+\.\d+\.\d+-k3s\d+$`},
-		{name: "aws/eks-distro/coredns/coredns", image: "public.ecr.aws/eks-distro/coredns/coredns", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
-		{name: "aws/eks-distro/kubernetes/kube-apiserver", image: "public.ecr.aws/eks-distro/kubernetes/kube-apiserver", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
-		{name: "aws/eks-distro/kubernetes/kube-scheduler", image: "public.ecr.aws/eks-distro/kubernetes/kube-scheduler", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
-		{name: "aws/eks-distro/kubernetes-csi/node-driver-registrar", image: "public.ecr.aws/eks-distro/kubernetes-csi/node-driver-registrar", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
 		{name: "prometheus/mysqld-exporter", image: "quay.io/prometheus/mysqld-exporter", pattern: `^v\d+\.\d+\.\d+$`},
 		{name: "datadog/agent", image: "docker.io/datadog/agent", pattern: `^\d+\.\d+\.\d+$`},
 		{name: "datadog/cluster-agent", image: "docker.io/datadog/cluster-agent", pattern: `^\d+\.\d+\.\d+$`},
 		{name: "fluent/fluent-operator", image: "ghcr.io/fluent/fluent-operator/fluent-operator", pattern: `^v\d+\.\d+\.\d+$`},
 		{name: "victoriametrics/victoria-logs", image: "quay.io/victoriametrics/victoria-logs", pattern: `^v\d+\.\d+\.\d+$`},
 	}
+	hiddenFromCatalog := []expectedEntry{
+		{name: "aws/eks-distro/coredns/coredns", image: "public.ecr.aws/eks-distro/coredns/coredns", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
+		{name: "aws/eks-distro/kubernetes/kube-apiserver", image: "public.ecr.aws/eks-distro/kubernetes/kube-apiserver", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
+		{name: "aws/eks-distro/kubernetes/kube-scheduler", image: "public.ecr.aws/eks-distro/kubernetes/kube-scheduler", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
+		{name: "aws/eks-distro/kubernetes-csi/node-driver-registrar", image: "public.ecr.aws/eks-distro/kubernetes-csi/node-driver-registrar", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
+	}
 
-	for _, tc := range kept {
+	for _, tc := range append(kept, hiddenFromCatalog...) {
 		img, ok := byName[tc.name]
 		if !ok {
 			t.Fatalf("config missing %q", tc.name)
@@ -580,16 +582,9 @@ func TestRepoStandaloneSourceRegression_556_579(t *testing.T) {
 		}
 	}
 
-	removedFromFullCatalog := []string{
-		"kubernetes/ingress-nginx/kube-webhook-certgen",
-		"kubernetes-sigs/external-dns",
-		"kubernetes-sigs/secrets-store-csi-driver",
-		"googlecloudplatform/secrets-store-csi-driver-provider-gcp",
-		"kubernetes-sigs/node-feature-discovery",
-	}
-	for _, name := range removedFromFullCatalog {
-		if strings.Contains(catalogText, `name: "`+name+`"`) {
-			t.Errorf("catalog still contains dirty Copa-only image %q", name)
+	for _, tc := range hiddenFromCatalog {
+		if strings.Contains(catalogText, `name: "`+tc.name+`"`) {
+			t.Errorf("catalog still contains hidden dirty image %q", tc.name)
 		}
 	}
 }
