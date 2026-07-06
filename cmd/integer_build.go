@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 
 	"github.com/urfave/cli/v3"
@@ -120,6 +121,8 @@ var integerBuildCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
+		} else if !slices.Contains(discovery.ResolveVersions(def, pkgs), version) {
+			return fmt.Errorf("image %q version %q not defined for build: %w", imageName, version, errIntegerVariantNotFound)
 		}
 
 		extraRepos, extraKeyrings, err := integerPrepareMelangeBuild(ctx, tmpl.Melange)
@@ -250,7 +253,6 @@ func integerRunApkoBuild(ctx context.Context, configFile, output, arch string, e
 	}
 	return nil
 }
-
 
 // integerTrivyGate scans a locally-built image tarball and returns a non-nil
 // error if Trivy finds vulnerabilities at any of the comma-separated

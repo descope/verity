@@ -187,7 +187,12 @@ func (d *ImageDef) VersionedPackagePattern() string {
 // If Package contains no "{{version}}", the package is unversioned and only
 // a single "latest" version is built.
 type Upstream struct {
-	Package string `yaml:"package"`
+	Package      string `yaml:"package"`
+	AutoDiscover *bool  `yaml:"auto-discover,omitempty"`
+}
+
+func (u Upstream) AutoDiscoveryEnabled() bool {
+	return u.AutoDiscover == nil || *u.AutoDiscover
 }
 
 // TypeTemplate is the apko config template for one build type (default, dev, fips, …).

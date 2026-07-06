@@ -260,7 +260,7 @@ func ResolveVersions(def *config.ImageDef, pkgs []apkindex.Package) []string {
 	seen := make(map[string]bool)
 
 	// Auto-discover from APKINDEX.
-	if len(pkgs) > 0 {
+	if def.Upstream.AutoDiscoveryEnabled() && len(pkgs) > 0 {
 		for _, v := range apkindex.DiscoverVersions(pkgs, def.Upstream.Package) {
 			seen[v] = true
 		}

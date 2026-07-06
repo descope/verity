@@ -400,6 +400,36 @@ versions:
 	assert.Equal(t, []string{"3.9"}, fipsVersions, "only explicit version should get fips")
 }
 
+func TestDiscoverFromFiles_AutoDiscoveryDisabledUsesExplicitVersionsOnly(t *testing.T) {
+	const teleportYAML = `
+name: teleport
+description: "Teleport"
+upstream:
+  package: "teleport-{{version}}"
+  auto-discover: false
+types:
+  default:
+    base: wolfi-base
+    packages: ["teleport-{{version}}"]
+    entrypoint: /usr/bin/teleport start
+versions:
+  "18.6": {}
+`
+	imagesDir := setupImages(t, map[string]string{"teleport.yaml": teleportYAML})
+	genDir := t.TempDir()
+	pkgs := []apkindex.Package{
+		{Name: "teleport-17", Version: "17.7.8-r0"},
+		{Name: "teleport-18", Version: "18.6.6-r0"},
+		{Name: "teleport-18.6", Version: "18.6.6-r0"},
+	}
+
+	imgs, err := discovery.DiscoverFromFiles(opts(imagesDir, genDir, pkgs))
+	require.NoError(t, err)
+	require.Len(t, imgs, 1)
+	assert.Equal(t, "18.6", imgs[0].Version)
+	assert.Equal(t, typeDefault, imgs[0].Type)
+}
+
 func TestDiscoverFromFiles_ReviewFIPSProfileSkipped(t *testing.T) {
 	const reviewYAML = `
 name: review-only
