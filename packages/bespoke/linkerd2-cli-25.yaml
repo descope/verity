@@ -1,0 +1,42 @@
+package:
+  name: linkerd2-cli
+  version: "25.12.3"
+  epoch: 99
+  description: "Linkerd CLI"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - curl
+
+pipeline:
+  - runs: |
+      case "$(uname -m)" in
+        x86_64)
+          url="https://github.com/linkerd/linkerd2/releases/download/edge-${{package.version}}/linkerd2-cli-edge-${{package.version}}-linux-amd64"
+          sha="ef536e1d2efa8cb5e02e45c9baf5ed83fdfbc8c17403259af989dd8c88049b31"
+          ;;
+        aarch64)
+          url="https://github.com/linkerd/linkerd2/releases/download/edge-${{package.version}}/linkerd2-cli-edge-${{package.version}}-linux-arm64"
+          sha="69c4e6a8275204d1a77dd33c4a60ee00aab27f62915db34e121e3cd97eb46e6e"
+          ;;
+        *)
+          exit 1
+          ;;
+      esac
+      curl -fsSL "$url" -o linkerd
+      printf '%s  %s\n' "$sha" linkerd | sha256sum -c -
+      install -Dm755 linkerd "${{targets.contextdir}}/usr/bin/linkerd"
+
+test:
+  pipeline:
+    - runs: |
+        linkerd version --client | grep -F edge-${{package.version}}
+        linkerd --help
