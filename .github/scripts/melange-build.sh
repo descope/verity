@@ -147,3 +147,11 @@ fi
 for build_yaml in "${builds[@]}"; do
   build_one "$build_yaml"
 done
+
+cp melange-work/melange.rsa.pub packages/repo/
+
+for index in packages/repo/*/APKINDEX.tar.gz; do
+  [ -f "$index" ] || continue
+  echo "Signing APKINDEX: $index"
+  melange sign-index --signing-key melange-work/melange.rsa "$index" --force
+done
