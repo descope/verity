@@ -555,6 +555,8 @@ func TestRepoStandaloneSourceRegression_556_579(t *testing.T) {
 		"nginxinc/nginx-s3-gateway",
 		"grafana/promtail",
 		"kyverno/policy-reporter-ui",
+		"argoproj/argocd",
+		"mlflow/mlflow",
 	}
 	for _, name := range removed {
 		if _, ok := byName[name]; ok {
