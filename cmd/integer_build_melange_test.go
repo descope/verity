@@ -25,7 +25,7 @@ func TestIntegerPrepareMelangeBuild_RunsScriptAndReturnsRepoAndKey(t *testing.T)
 	wd, err := os.Getwd()
 	require.NoError(t, err)
 	require.NoError(t, os.Chdir(repoRoot))
-	t.Cleanup(func() { _ = os.Chdir(wd) })
+	t.Cleanup(func() { require.NoError(t, os.Chdir(wd)) })
 
 	repos, keyrings, err := integerPrepareMelangeBuild(context.Background(), &intconfig.MelangeSpec{
 		Bespoke:     intconfig.StringList{"custom.yaml"},
