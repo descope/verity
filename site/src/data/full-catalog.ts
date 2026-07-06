@@ -707,7 +707,6 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "cosign", source: "integer", variants: ["default", "fips"] },
       { name: "trivy", source: "integer" },
       { name: "dex", source: "integer" },
-      { name: "falco", source: "integer" },
       { name: "oauth2-proxy", source: "integer" },
       { name: "trivy-operator", source: "integer" },
       { name: "kube-bench", source: "integer" },
@@ -812,13 +811,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         source: "integer",
         integerName: "cert-manager-webhook",
         upstream: "quay.io/jetstack/cert-manager-webhook",
-      },
-      {
-        name: "jetstack/cert-manager-cmctl",
-        label: "cert-manager-cmctl",
-        source: "integer",
-        integerName: "cert-manager-cmctl",
-        upstream: "quay.io/jetstack/cert-manager-cmctl",
       },
       { name: "cert-manager-csi-driver", source: "integer" },
       {
