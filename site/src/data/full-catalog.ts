@@ -73,12 +73,6 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "traefik", source: "integer" },
       { name: "envoy", source: "integer" },
       {
-        name: "nginxinc/nginx-s3-gateway",
-        label: "nginx-s3-gateway",
-        source: "copa",
-        upstream: "docker.io/nginxinc/nginx-s3-gateway",
-      },
-      {
         name: "jcmoraisjr/haproxy-ingress",
         label: "haproxy-ingress",
         source: "integer",
@@ -467,12 +461,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "quay.io/prometheuscommunity/elasticsearch-exporter",
       },
       {
-        name: "grafana/promtail",
-        label: "promtail",
-        source: "copa",
-        upstream: "mirror.gcr.io/grafana/promtail",
-      },
-      {
         name: "datadog/agent",
         label: "datadog-agent",
         source: "copa",
@@ -544,7 +532,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     id: "cicd",
     label: "CI/CD & GitOps",
     images: [
-      { name: "argoproj/argocd", source: "copa", upstream: "quay.io/argoproj/argocd" },
+      { name: "argocd", source: "integer" },
       {
         name: "jenkins/jenkins",
         label: "jenkins",
@@ -701,12 +689,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         upstream: "ghcr.io/kyverno/reports-controller",
       },
       {
-        name: "kyverno/policy-reporter-ui",
-        label: "kyverno-policy-reporter-ui",
-        source: "copa",
-        upstream: "ghcr.io/kyverno/policy-reporter-ui",
-      },
-      {
         name: "openpolicyagent/gatekeeper",
         label: "gatekeeper",
         source: "copa",
@@ -762,7 +744,7 @@ export const fullCatalog: FullCatalogCategory[] = [
     label: "Data & ML",
     images: [
       { name: "airflow", source: "integer" },
-      { name: "mlflow/mlflow", label: "mlflow", source: "copa", upstream: "ghcr.io/mlflow/mlflow" },
+      { name: "mlflow", source: "integer" },
       { name: "temporal", source: "integer" },
       { name: "meilisearch", source: "integer" },
       { name: "qdrant", source: "integer" },

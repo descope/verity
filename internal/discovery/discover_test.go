@@ -506,7 +506,6 @@ func TestRepoStandaloneSourceRegression_556_579(t *testing.T) {
 	}
 
 	kept := []expectedEntry{
-		{name: "nginxinc/nginx-s3-gateway", image: "docker.io/nginxinc/nginx-s3-gateway", pattern: `^unprivileged-oss-\d{8}$`},
 		{name: "kubernetes/ingress-nginx/controller", image: "registry.k8s.io/ingress-nginx/controller", pattern: `^v\d+\.\d+\.\d+$`},
 		{name: "kubernetes/ingress-nginx/kube-webhook-certgen", image: "registry.k8s.io/ingress-nginx/kube-webhook-certgen", pattern: `^v\d+\.\d+\.\d+$`},
 		{name: "kubernetes/ingress-nginx/defaultbackend", image: "registry.k8s.io/defaultbackend", pattern: `^\d+\.\d+$`},
@@ -524,7 +523,6 @@ func TestRepoStandaloneSourceRegression_556_579(t *testing.T) {
 		{name: "datadog/agent", image: "docker.io/datadog/agent", pattern: `^\d+\.\d+\.\d+$`},
 		{name: "datadog/cluster-agent", image: "docker.io/datadog/cluster-agent", pattern: `^\d+\.\d+\.\d+$`},
 		{name: "fluent/fluent-operator", image: "ghcr.io/fluent/fluent-operator/fluent-operator", pattern: `^v\d+\.\d+\.\d+$`},
-		{name: "kyverno/policy-reporter-ui", image: "ghcr.io/kyverno/policy-reporter-ui", pattern: `^\d+\.\d+\.\d+$`},
 		{name: "victoriametrics/victoria-logs", image: "quay.io/victoriametrics/victoria-logs", pattern: `^v\d+\.\d+\.\d+$`},
 	}
 
@@ -549,7 +547,15 @@ func TestRepoStandaloneSourceRegression_556_579(t *testing.T) {
 		t.Errorf("defaultbackend exclude = %q, want %q", got, "1.0,1.1,1.2")
 	}
 
-	removed := []string{"spiffe/spiffe-helper", "tektoncd/cli", "kubeflow/spark-operator", "aws/eks-distro/kubernetes/kube-proxy"}
+	removed := []string{
+		"spiffe/spiffe-helper",
+		"tektoncd/cli",
+		"kubeflow/spark-operator",
+		"aws/eks-distro/kubernetes/kube-proxy",
+		"nginxinc/nginx-s3-gateway",
+		"grafana/promtail",
+		"kyverno/policy-reporter-ui",
+	}
 	for _, name := range removed {
 		if _, ok := byName[name]; ok {
 			t.Errorf("config still contains removed unsupported image %q", name)
