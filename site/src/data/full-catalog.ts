@@ -203,7 +203,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         integerName: "configmap-reload",
         upstream: "ghcr.io/jimmidyson/configmap-reload",
       },
-      { name: "rancher/k3s", label: "k3s", source: "copa", upstream: "mirror.gcr.io/rancher/k3s" },
       {
         name: "crossplane/crossplane",
         label: "crossplane",
@@ -269,13 +268,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         source: "integer",
         integerName: "istio-install-cni",
         upstream: "mirror.gcr.io/istio/install-cni",
-      },
-      {
-        name: "cilium/cilium",
-        label: "cilium-agent",
-        source: "integer",
-        integerName: "cilium",
-        upstream: "quay.io/cilium/cilium",
       },
       {
         name: "cilium/hubble-ui",
