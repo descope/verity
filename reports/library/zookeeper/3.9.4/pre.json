@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.70.0"
   },
-  "ReportID": "019f3b55-5206-7a2b-9895-1fadacd22b49",
-  "CreatedAt": "2026-07-07T06:47:55.142667675Z",
+  "ReportID": "019f3c71-6648-73d5-98c1-9a053db7f9bd",
+  "CreatedAt": "2026-07-07T11:58:12.552253538Z",
   "ArtifactID": "sha256:172216181f93894e2a5243d6cfdb3637d4226db1b58279665bed6a846b551336",
   "ArtifactName": "docker.io/library/zookeeper:3.9.4",
   "ArtifactType": "container_image",
@@ -11814,7 +11814,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-11856"
           ],
           "PublishedDate": "2026-07-03T07:16:23.973Z",
-          "LastModifiedDate": "2026-07-03T07:16:23.973Z"
+          "LastModifiedDate": "2026-07-06T19:16:54.983Z"
         },
         {
           "VulnerabilityID": "CVE-2026-1965",
@@ -12179,22 +12179,31 @@
             "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
           },
           "Fingerprint": "sha256:62e1f2a90670993e2bb6741f22a049d9ce6c7a8e91b340456c82b339e110863c",
-          "Title": "The curl logic that works with SASL authentication could end up cleani ...",
+          "Title": "curl: curl: Double-free vulnerability in SASL authentication",
           "Description": "The curl logic that works with SASL authentication could end up cleaning up\nthe GSASL context *twice* without clearing the pointer in between, making it\n`free()` the same pointer twice.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "redhat": 3,
             "ubuntu": 2
           },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 8.1
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-8925",
             "https://curl.se/L7HzKXisfJ/CVE-2026-8925.md",
             "https://curl.se/docs/CVE-2026-8925.html",
             "https://curl.se/docs/CVE-2026-8925.json",
             "https://hackerone.com/reports/3735193",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-8925",
             "https://ubuntu.com/security/notices/USN-8487-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-8925"
           ],
           "PublishedDate": "2026-07-03T07:16:24.95Z",
-          "LastModifiedDate": "2026-07-03T07:16:24.95Z"
+          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
         },
         {
           "VulnerabilityID": "CVE-2026-8927",
@@ -12219,22 +12228,31 @@
             "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
           },
           "Fingerprint": "sha256:ada09435ac771f2264c0582184adf025413b3cf7fcf4238c577933e87b6fe0b9",
-          "Title": "When reusing a libcurl handle for sequential transfers driven by envir ...",
+          "Title": "libcurl: libcurl: Information disclosure due to uncleared proxy authentication state",
           "Description": "When reusing a libcurl handle for sequential transfers driven by\nenvironment-variable proxy configuration, libcurl fails to clear the proxy\nauthentication state between requests. Specifically, if the initial transfer\nauthenticates against `proxyA` using Digest auth, a subsequent transfer routed\nthrough `proxyB` erroneously leaks the `Proxy-Authorization:` header intended\nsolely for `proxyA`.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "redhat": 3,
             "ubuntu": 2
           },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 7.5
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-8927",
             "https://curl.se/L7HzKXisfJ/CVE-2026-8927.md",
             "https://curl.se/docs/CVE-2026-8927.html",
             "https://curl.se/docs/CVE-2026-8927.json",
             "https://hackerone.com/reports/3744543",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-8927",
             "https://ubuntu.com/security/notices/USN-8487-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-8927"
           ],
           "PublishedDate": "2026-07-03T07:16:25.123Z",
-          "LastModifiedDate": "2026-07-03T07:16:25.123Z"
+          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
         },
         {
           "VulnerabilityID": "CVE-2025-0167",
@@ -12496,21 +12514,30 @@
             "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
           },
           "Fingerprint": "sha256:e3eec8cf060b2e8d9af3d133d47f884fa136f8a79cce59b62f52fc1ef2c66069",
-          "Title": "When a user invokes curl using a schemeless URL combined with `--proto ...",
+          "Title": "curl: curl: SSH host verification bypass when using schemeless URLs with SFTP/SCP",
           "Description": "When a user invokes curl using a schemeless URL combined with\n`--proto-default` sftp (or scp), a disconnect occurs between the tool layer\nand libcurl. The tool layer incorrectly infers the URL scheme, which\nerroneously bypasses the initialization of critical SSH security options like\nCURLOPT_SSH_HOST_PUBLIC_KEY_SHA256 and CURLOPT_SSH_KNOWNHOSTS. Conversely, the\nlibcurl runtime successfully honors CURLOPT_DEFAULT_PROTOCOL and establishes\nthe connection via SFTP/SCP as specified. Because the tool layer skipped the\nsecurity configuration, these SSH host verification options are silently\nomitted, causing curl to connect to an unverified SSH remote host without\nthrowing an error.",
           "Severity": "LOW",
           "VendorSeverity": {
+            "redhat": 3,
             "ubuntu": 1
           },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+              "V3Score": 7.5
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-12064",
             "https://curl.se/L7HzKXisfJ/CVE-2026-12064.md",
             "https://curl.se/docs/CVE-2026-12064.html",
             "https://curl.se/docs/CVE-2026-12064.json",
             "https://hackerone.com/reports/3797526",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-12064",
             "https://www.cve.org/CVERecord?id=CVE-2026-12064"
           ],
           "PublishedDate": "2026-07-03T07:16:24.217Z",
-          "LastModifiedDate": "2026-07-03T07:16:24.217Z"
+          "LastModifiedDate": "2026-07-06T19:16:55.27Z"
         },
         {
           "VulnerabilityID": "CVE-2026-3784",
@@ -12769,22 +12796,31 @@
             "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
           },
           "Fingerprint": "sha256:b8eb6934d82d44444c57cdc1992603f1fd91defafc928646df3704c9f8d5ab0b",
-          "Title": "A vulnerability exists where a new transfer that uses STARTTLS to upgr ...",
+          "Title": "curl: curl: Insecure connection establishment due to TLS configuration mismatch",
           "Description": "A vulnerability exists where a new transfer that uses STARTTLS to upgrade the\nconnection might reuse an existing live connection even though the TLS\nconfiguration mismatches so it should not.",
           "Severity": "LOW",
           "VendorSeverity": {
+            "redhat": 3,
             "ubuntu": 1
           },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N",
+              "V3Score": 8.1
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-8286",
             "https://curl.se/L7HzKXisfJ/CVE-2026-8286.md",
             "https://curl.se/docs/CVE-2026-8286.html",
             "https://curl.se/docs/CVE-2026-8286.json",
             "https://hackerone.com/reports/3718195",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-8286",
             "https://ubuntu.com/security/notices/USN-8487-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-8286"
           ],
           "PublishedDate": "2026-07-03T07:16:24.453Z",
-          "LastModifiedDate": "2026-07-03T07:16:24.453Z"
+          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
         },
         {
           "VulnerabilityID": "CVE-2026-8458",
@@ -12824,7 +12860,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-8458"
           ],
           "PublishedDate": "2026-07-03T07:16:24.63Z",
-          "LastModifiedDate": "2026-07-03T07:16:24.63Z"
+          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
         },
         {
           "VulnerabilityID": "CVE-2026-8924",
@@ -12864,7 +12900,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-8924"
           ],
           "PublishedDate": "2026-07-03T07:16:24.793Z",
-          "LastModifiedDate": "2026-07-03T07:16:24.793Z"
+          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
         },
         {
           "VulnerabilityID": "CVE-2026-9547",
@@ -12889,22 +12925,31 @@
             "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
           },
           "Fingerprint": "sha256:9d414113ce96a7080a04ec8ff3c70c832108e497fad598a0ea0b205e8cc9e5d3",
-          "Title": "When a libcurl-based application performs transfers via `SCP://` or `S ...",
+          "Title": "curl: curl: Man-in-the-middle attack via SSH host key bypass",
           "Description": "When a libcurl-based application performs transfers via `SCP://` or `SFTP://`\nand utilizes the `CURLOPT_SSH_KEYFUNCTION` callback, it may silently accept an\nuntrusted server. This vulnerability occurs when a server presents a host key\ntype that does not match the specific key type already recorded for that host\nin the `known_hosts` file. Instead of rejecting the mismatch, the callback\nmechanism fails to properly enforce the restriction, allowing the connection\nto succeed without warning and risking a potential man-in-the-middle attack.",
           "Severity": "LOW",
           "VendorSeverity": {
+            "redhat": 3,
             "ubuntu": 1
           },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N",
+              "V3Score": 7.4
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-9547",
             "https://curl.se/L7HzKXisfJ/CVE-2026-9547.md",
             "https://curl.se/docs/CVE-2026-9547.html",
             "https://curl.se/docs/CVE-2026-9547.json",
             "https://hackerone.com/reports/3751712",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-9547",
             "https://ubuntu.com/security/notices/USN-8487-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-9547"
           ],
           "PublishedDate": "2026-07-03T07:16:25.99Z",
-          "LastModifiedDate": "2026-07-03T07:16:25.99Z"
+          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
         },
         {
           "VulnerabilityID": "CVE-2022-27943",
@@ -12966,6 +13011,111 @@
           ],
           "PublishedDate": "2022-03-26T13:15:07.9Z",
           "LastModifiedDate": "2026-06-17T04:37:46.95Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-41991",
+          "PkgID": "gzip@1.10-4ubuntu4.1",
+          "PkgName": "gzip",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/gzip@1.10-4ubuntu4.1?arch=amd64\u0026distro=ubuntu-22.04",
+            "UID": "6deaadd23a9dfa4c"
+          },
+          "InstalledVersion": "1.10-4ubuntu4.1",
+          "FixedVersion": "1.10-4ubuntu4.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:b1cba2e842ca52b95817f958faf99734080c78e92e43ce609cde9244867b49ed",
+            "DiffID": "sha256:6b7908e4c7473003628ddbd1d8ad378db659f0bf29a3019f7bb7150e9bfd109d"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-41991",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:f87c883e3b6cfc87f0d046d268e9a18e6d0dc02b403ca99292745894ed3f8213",
+          "Title": "gzip: gzip: Arbitrary file overwrite via insecure temporary file handling in gzexe utility",
+          "Description": "GNU gzip contains a vulnerability in the gzexe utility related to insecure temporary file handling. When the mktemp utility is not available in the user’s PATH, gzexe falls back to constructing a temporary file path based solely on the process ID (PID). This predictable filename is created without exclusive access or existence checks.\nA local attacker can pre‑create the predicted temporary file path as a symbolic link pointing to an arbitrary file writable by the victim. When gzexe runs, it follows the symlink and overwrites the target file, resulting in a time‑of‑check to time‑of‑use (TOCTOU) condition that allows arbitrary file overwrite.\n\nThis issue has been fixed in the commit 4e6f8b24ab823146ab8776f0b7fe486ab34d4269",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-377"
+          ],
+          "VendorSeverity": {
+            "nvd": 2,
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:N/I:H/A:N",
+              "V3Score": 4.7
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:R/S:U/C:N/I:H/A:H",
+              "V3Score": 6
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-41991",
+            "https://cert.pl/en/posts/2026/04/CVE-2026-41991/",
+            "https://cgit.git.savannah.gnu.org/cgit/gzip.git/commit/?id=4e6f8b24ab823146ab8776f0b7fe486ab34d4269",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-41991",
+            "https://ubuntu.com/security/notices/USN-8512-1",
+            "https://www.cve.org/CVERecord?id=CVE-2026-41991",
+            "https://www.gnu.org/software/gzip/"
+          ],
+          "PublishedDate": "2026-06-29T12:16:29.77Z",
+          "LastModifiedDate": "2026-07-01T14:02:24.45Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-41992",
+          "PkgID": "gzip@1.10-4ubuntu4.1",
+          "PkgName": "gzip",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/gzip@1.10-4ubuntu4.1?arch=amd64\u0026distro=ubuntu-22.04",
+            "UID": "6deaadd23a9dfa4c"
+          },
+          "InstalledVersion": "1.10-4ubuntu4.1",
+          "FixedVersion": "1.10-4ubuntu4.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:b1cba2e842ca52b95817f958faf99734080c78e92e43ce609cde9244867b49ed",
+            "DiffID": "sha256:6b7908e4c7473003628ddbd1d8ad378db659f0bf29a3019f7bb7150e9bfd109d"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-41992",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:69a2cd119cd9fa70876bddbcaba50d9dabb45a7b7ee309e2660541a63bd1518f",
+          "Title": "GNU gzip contains a global buffer overflow vulnerability in the LZH de ...",
+          "Description": "GNU gzip contains a global buffer overflow vulnerability in the LZH decompression logic caused by improper reuse of shared global state between different decompression formats within a single execution. GNU gzip maintains a global array that is shared across the LZ77, LZW, and LZH decompression routines and is not reinitialized between files processed in the same invocation.\nBy decompressing a specially crafted LZW file followed by a specially crafted LZH file in a single gzip -d command, an attacker can poison the shared global state and subsequently trigger an out‑of‑bounds read in the LZH decoder. The LZH decompression logic follows stale values left in the shared array, causing reads past the end of the allocated global buffer.\n\nThis issue has been fixed in the commit 63dbf6b3b9e6e781df1a6a64e609b10e23969681",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-126"
+          ],
+          "VendorSeverity": {
+            "nvd": 3,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://cert.pl/en/posts/2026/04/CVE-2026-41991/",
+            "https://cgit.git.savannah.gnu.org/cgit/gzip.git/commit/?id=63dbf6b3b9e6e781df1a6a64e609b10e23969681",
+            "https://ubuntu.com/security/notices/USN-8512-1",
+            "https://www.cve.org/CVERecord?id=CVE-2026-41992",
+            "https://www.gnu.org/software/gzip/"
+          ],
+          "PublishedDate": "2026-06-29T12:16:29.94Z",
+          "LastModifiedDate": "2026-07-01T14:02:20.173Z"
         },
         {
           "VulnerabilityID": "CVE-2026-27456",
@@ -13566,7 +13716,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-11856"
           ],
           "PublishedDate": "2026-07-03T07:16:23.973Z",
-          "LastModifiedDate": "2026-07-03T07:16:23.973Z"
+          "LastModifiedDate": "2026-07-06T19:16:54.983Z"
         },
         {
           "VulnerabilityID": "CVE-2026-1965",
@@ -13931,22 +14081,31 @@
             "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
           },
           "Fingerprint": "sha256:a74bb6fba8b3df77f6b915192aff8c7d38ece99f6b5990ca8aa5ed8487e26d9e",
-          "Title": "The curl logic that works with SASL authentication could end up cleani ...",
+          "Title": "curl: curl: Double-free vulnerability in SASL authentication",
           "Description": "The curl logic that works with SASL authentication could end up cleaning up\nthe GSASL context *twice* without clearing the pointer in between, making it\n`free()` the same pointer twice.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "redhat": 3,
             "ubuntu": 2
           },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 8.1
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-8925",
             "https://curl.se/L7HzKXisfJ/CVE-2026-8925.md",
             "https://curl.se/docs/CVE-2026-8925.html",
             "https://curl.se/docs/CVE-2026-8925.json",
             "https://hackerone.com/reports/3735193",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-8925",
             "https://ubuntu.com/security/notices/USN-8487-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-8925"
           ],
           "PublishedDate": "2026-07-03T07:16:24.95Z",
-          "LastModifiedDate": "2026-07-03T07:16:24.95Z"
+          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
         },
         {
           "VulnerabilityID": "CVE-2026-8927",
@@ -13971,22 +14130,31 @@
             "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
           },
           "Fingerprint": "sha256:40638a8bc59a530e8eed6680ea72a6c5e1e9610610c8a0df29419f740f0d8dd9",
-          "Title": "When reusing a libcurl handle for sequential transfers driven by envir ...",
+          "Title": "libcurl: libcurl: Information disclosure due to uncleared proxy authentication state",
           "Description": "When reusing a libcurl handle for sequential transfers driven by\nenvironment-variable proxy configuration, libcurl fails to clear the proxy\nauthentication state between requests. Specifically, if the initial transfer\nauthenticates against `proxyA` using Digest auth, a subsequent transfer routed\nthrough `proxyB` erroneously leaks the `Proxy-Authorization:` header intended\nsolely for `proxyA`.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "redhat": 3,
             "ubuntu": 2
           },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 7.5
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-8927",
             "https://curl.se/L7HzKXisfJ/CVE-2026-8927.md",
             "https://curl.se/docs/CVE-2026-8927.html",
             "https://curl.se/docs/CVE-2026-8927.json",
             "https://hackerone.com/reports/3744543",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-8927",
             "https://ubuntu.com/security/notices/USN-8487-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-8927"
           ],
           "PublishedDate": "2026-07-03T07:16:25.123Z",
-          "LastModifiedDate": "2026-07-03T07:16:25.123Z"
+          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
         },
         {
           "VulnerabilityID": "CVE-2025-0167",
@@ -14248,21 +14416,30 @@
             "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
           },
           "Fingerprint": "sha256:59910dc0bd292a7a0d6d7f5d0aca4c4c107e074bfc26f37dda12487b47aa2d34",
-          "Title": "When a user invokes curl using a schemeless URL combined with `--proto ...",
+          "Title": "curl: curl: SSH host verification bypass when using schemeless URLs with SFTP/SCP",
           "Description": "When a user invokes curl using a schemeless URL combined with\n`--proto-default` sftp (or scp), a disconnect occurs between the tool layer\nand libcurl. The tool layer incorrectly infers the URL scheme, which\nerroneously bypasses the initialization of critical SSH security options like\nCURLOPT_SSH_HOST_PUBLIC_KEY_SHA256 and CURLOPT_SSH_KNOWNHOSTS. Conversely, the\nlibcurl runtime successfully honors CURLOPT_DEFAULT_PROTOCOL and establishes\nthe connection via SFTP/SCP as specified. Because the tool layer skipped the\nsecurity configuration, these SSH host verification options are silently\nomitted, causing curl to connect to an unverified SSH remote host without\nthrowing an error.",
           "Severity": "LOW",
           "VendorSeverity": {
+            "redhat": 3,
             "ubuntu": 1
           },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+              "V3Score": 7.5
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-12064",
             "https://curl.se/L7HzKXisfJ/CVE-2026-12064.md",
             "https://curl.se/docs/CVE-2026-12064.html",
             "https://curl.se/docs/CVE-2026-12064.json",
             "https://hackerone.com/reports/3797526",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-12064",
             "https://www.cve.org/CVERecord?id=CVE-2026-12064"
           ],
           "PublishedDate": "2026-07-03T07:16:24.217Z",
-          "LastModifiedDate": "2026-07-03T07:16:24.217Z"
+          "LastModifiedDate": "2026-07-06T19:16:55.27Z"
         },
         {
           "VulnerabilityID": "CVE-2026-3784",
@@ -14521,22 +14698,31 @@
             "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
           },
           "Fingerprint": "sha256:6840d52d26572fe5377feeb06879498785812ec5d20ae3b9ced94985741813ca",
-          "Title": "A vulnerability exists where a new transfer that uses STARTTLS to upgr ...",
+          "Title": "curl: curl: Insecure connection establishment due to TLS configuration mismatch",
           "Description": "A vulnerability exists where a new transfer that uses STARTTLS to upgrade the\nconnection might reuse an existing live connection even though the TLS\nconfiguration mismatches so it should not.",
           "Severity": "LOW",
           "VendorSeverity": {
+            "redhat": 3,
             "ubuntu": 1
           },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N",
+              "V3Score": 8.1
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-8286",
             "https://curl.se/L7HzKXisfJ/CVE-2026-8286.md",
             "https://curl.se/docs/CVE-2026-8286.html",
             "https://curl.se/docs/CVE-2026-8286.json",
             "https://hackerone.com/reports/3718195",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-8286",
             "https://ubuntu.com/security/notices/USN-8487-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-8286"
           ],
           "PublishedDate": "2026-07-03T07:16:24.453Z",
-          "LastModifiedDate": "2026-07-03T07:16:24.453Z"
+          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
         },
         {
           "VulnerabilityID": "CVE-2026-8458",
@@ -14576,7 +14762,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-8458"
           ],
           "PublishedDate": "2026-07-03T07:16:24.63Z",
-          "LastModifiedDate": "2026-07-03T07:16:24.63Z"
+          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
         },
         {
           "VulnerabilityID": "CVE-2026-8924",
@@ -14616,7 +14802,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-8924"
           ],
           "PublishedDate": "2026-07-03T07:16:24.793Z",
-          "LastModifiedDate": "2026-07-03T07:16:24.793Z"
+          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
         },
         {
           "VulnerabilityID": "CVE-2026-9547",
@@ -14641,22 +14827,31 @@
             "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
           },
           "Fingerprint": "sha256:16ac3fc4a176183c427ccd73fc7be1569eec279bab5146171dc0162081da484f",
-          "Title": "When a libcurl-based application performs transfers via `SCP://` or `S ...",
+          "Title": "curl: curl: Man-in-the-middle attack via SSH host key bypass",
           "Description": "When a libcurl-based application performs transfers via `SCP://` or `SFTP://`\nand utilizes the `CURLOPT_SSH_KEYFUNCTION` callback, it may silently accept an\nuntrusted server. This vulnerability occurs when a server presents a host key\ntype that does not match the specific key type already recorded for that host\nin the `known_hosts` file. Instead of rejecting the mismatch, the callback\nmechanism fails to properly enforce the restriction, allowing the connection\nto succeed without warning and risking a potential man-in-the-middle attack.",
           "Severity": "LOW",
           "VendorSeverity": {
+            "redhat": 3,
             "ubuntu": 1
           },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N",
+              "V3Score": 7.4
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-9547",
             "https://curl.se/L7HzKXisfJ/CVE-2026-9547.md",
             "https://curl.se/docs/CVE-2026-9547.html",
             "https://curl.se/docs/CVE-2026-9547.json",
             "https://hackerone.com/reports/3751712",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-9547",
             "https://ubuntu.com/security/notices/USN-8487-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-9547"
           ],
           "PublishedDate": "2026-07-03T07:16:25.99Z",
-          "LastModifiedDate": "2026-07-03T07:16:25.99Z"
+          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
         },
         {
           "VulnerabilityID": "CVE-2025-66382",
@@ -14981,6 +15176,7 @@
             "https://linux.oracle.com/errata/ELSA-2026-5585.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2025-14831",
             "https://ubuntu.com/security/notices/USN-8043-1",
+            "https://ubuntu.com/security/notices/USN-8502-1",
             "https://www.cve.org/CVERecord?id=CVE-2025-14831"
           ],
           "PublishedDate": "2026-02-09T15:16:09.937Z",
@@ -15050,6 +15246,9 @@
             "https://access.redhat.com/errata/RHSA-2026:32962",
             "https://access.redhat.com/errata/RHSA-2026:33125",
             "https://access.redhat.com/errata/RHSA-2026:34372",
+            "https://access.redhat.com/errata/RHSA-2026:36004",
+            "https://access.redhat.com/errata/RHSA-2026:36005",
+            "https://access.redhat.com/errata/RHSA-2026:36006",
             "https://access.redhat.com/security/cve/CVE-2026-33845",
             "https://bugzilla.redhat.com/2445763",
             "https://bugzilla.redhat.com/2450624",
@@ -15090,11 +15289,12 @@
             "https://nvd.nist.gov/vuln/detail/CVE-2026-33845",
             "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-33845.json",
             "https://ubuntu.com/security/notices/USN-8284-1",
+            "https://ubuntu.com/security/notices/USN-8502-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-33845",
             "https://www.gnutls.org/security-new.html#GNUTLS-SA-2026-04-29-3"
           ],
           "PublishedDate": "2026-04-30T18:16:28.003Z",
-          "LastModifiedDate": "2026-07-02T12:17:06.57Z"
+          "LastModifiedDate": "2026-07-06T20:16:31.017Z"
         },
         {
           "VulnerabilityID": "CVE-2026-33846",
@@ -15155,6 +15355,9 @@
             "https://access.redhat.com/errata/RHSA-2026:32962",
             "https://access.redhat.com/errata/RHSA-2026:33125",
             "https://access.redhat.com/errata/RHSA-2026:34372",
+            "https://access.redhat.com/errata/RHSA-2026:36004",
+            "https://access.redhat.com/errata/RHSA-2026:36005",
+            "https://access.redhat.com/errata/RHSA-2026:36006",
             "https://access.redhat.com/security/cve/CVE-2026-33846",
             "https://bugzilla.redhat.com/2445763",
             "https://bugzilla.redhat.com/2450624",
@@ -15195,11 +15398,12 @@
             "https://nvd.nist.gov/vuln/detail/CVE-2026-33846",
             "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-33846.json",
             "https://ubuntu.com/security/notices/USN-8284-1",
+            "https://ubuntu.com/security/notices/USN-8502-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-33846",
             "https://www.gnutls.org/security-new.html#GNUTLS-SA-2026-04-29-1"
           ],
           "PublishedDate": "2026-05-04T10:15:59.69Z",
-          "LastModifiedDate": "2026-07-02T12:17:07.043Z"
+          "LastModifiedDate": "2026-07-06T20:16:31.47Z"
         },
         {
           "VulnerabilityID": "CVE-2026-3832",
@@ -15399,6 +15603,7 @@
             "https://linux.oracle.com/errata/ELSA-2026-50346.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-3833",
             "https://ubuntu.com/security/notices/USN-8284-1",
+            "https://ubuntu.com/security/notices/USN-8502-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-3833",
             "https://www.gnutls.org/security-new.html#GNUTLS-SA-2026-04-29-5"
           ],
@@ -15465,6 +15670,9 @@
             "https://access.redhat.com/errata/RHSA-2026:32962",
             "https://access.redhat.com/errata/RHSA-2026:33125",
             "https://access.redhat.com/errata/RHSA-2026:34372",
+            "https://access.redhat.com/errata/RHSA-2026:36004",
+            "https://access.redhat.com/errata/RHSA-2026:36005",
+            "https://access.redhat.com/errata/RHSA-2026:36006",
             "https://access.redhat.com/security/cve/CVE-2026-42009",
             "https://bugzilla.redhat.com/2445763",
             "https://bugzilla.redhat.com/2450624",
@@ -15505,11 +15713,12 @@
             "https://nvd.nist.gov/vuln/detail/CVE-2026-42009",
             "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-42009.json",
             "https://ubuntu.com/security/notices/USN-8284-1",
+            "https://ubuntu.com/security/notices/USN-8502-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-42009",
             "https://www.gnutls.org/security-new.html#GNUTLS-SA-2026-04-29-2"
           ],
           "PublishedDate": "2026-05-18T13:16:32.707Z",
-          "LastModifiedDate": "2026-07-02T12:17:15.02Z"
+          "LastModifiedDate": "2026-07-06T20:16:32.333Z"
         },
         {
           "VulnerabilityID": "CVE-2026-42010",
@@ -15575,6 +15784,9 @@
             "https://access.redhat.com/errata/RHSA-2026:30850",
             "https://access.redhat.com/errata/RHSA-2026:32962",
             "https://access.redhat.com/errata/RHSA-2026:33125",
+            "https://access.redhat.com/errata/RHSA-2026:36004",
+            "https://access.redhat.com/errata/RHSA-2026:36005",
+            "https://access.redhat.com/errata/RHSA-2026:36006",
             "https://access.redhat.com/security/cve/CVE-2026-42010",
             "https://bugzilla.redhat.com/2445763",
             "https://bugzilla.redhat.com/2450624",
@@ -15615,11 +15827,12 @@
             "https://nvd.nist.gov/vuln/detail/CVE-2026-42010",
             "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-42010.json",
             "https://ubuntu.com/security/notices/USN-8284-1",
+            "https://ubuntu.com/security/notices/USN-8502-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-42010",
             "https://www.gnutls.org/security-new.html#GNUTLS-SA-2026-04-29-4"
           ],
           "PublishedDate": "2026-05-07T12:16:17.977Z",
-          "LastModifiedDate": "2026-06-30T03:19:30.147Z"
+          "LastModifiedDate": "2026-07-06T20:16:32.79Z"
         },
         {
           "VulnerabilityID": "CVE-2026-42011",
@@ -16223,6 +16436,7 @@
             "https://linux.oracle.com/errata/ELSA-2026-50346.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-5260",
             "https://ubuntu.com/security/notices/USN-8284-1",
+            "https://ubuntu.com/security/notices/USN-8502-1",
             "https://www.cve.org/CVERecord?id=CVE-2026-5260",
             "https://www.gnutls.org/security-new.html#GNUTLS-SA-2026-04-29-10"
           ],
@@ -16300,6 +16514,7 @@
             "https://linux.oracle.com/errata/ELSA-2026-5585.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2025-9820",
             "https://ubuntu.com/security/notices/USN-8043-1",
+            "https://ubuntu.com/security/notices/USN-8502-1",
             "https://www.cve.org/CVERecord?id=CVE-2025-9820",
             "https://www.gnutls.org/security-new.html#GNUTLS-SA-2025-11-18"
           ],
@@ -18086,6 +18301,7 @@
             "https://access.redhat.com/errata/RHSA-2026:26319",
             "https://access.redhat.com/errata/RHSA-2026:29197",
             "https://access.redhat.com/errata/RHSA-2026:34102",
+            "https://access.redhat.com/errata/RHSA-2026:35869",
             "https://access.redhat.com/security/cve/CVE-2026-45447",
             "https://bugzilla.redhat.com/2283757",
             "https://bugzilla.redhat.com/2481898",
@@ -18136,7 +18352,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-45447"
           ],
           "PublishedDate": "2026-06-09T17:17:19.277Z",
-          "LastModifiedDate": "2026-07-01T13:17:32.217Z"
+          "LastModifiedDate": "2026-07-06T13:16:59.4Z"
         },
         {
           "VulnerabilityID": "CVE-2026-31790",
@@ -21406,6 +21622,7 @@
             "https://access.redhat.com/errata/RHSA-2026:26319",
             "https://access.redhat.com/errata/RHSA-2026:29197",
             "https://access.redhat.com/errata/RHSA-2026:34102",
+            "https://access.redhat.com/errata/RHSA-2026:35869",
             "https://access.redhat.com/security/cve/CVE-2026-45447",
             "https://bugzilla.redhat.com/2283757",
             "https://bugzilla.redhat.com/2481898",
@@ -21456,7 +21673,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-45447"
           ],
           "PublishedDate": "2026-06-09T17:17:19.277Z",
-          "LastModifiedDate": "2026-07-01T13:17:32.217Z"
+          "LastModifiedDate": "2026-07-06T13:16:59.4Z"
         },
         {
           "VulnerabilityID": "CVE-2026-31790",
@@ -23300,7 +23517,8 @@
             "UID": "b33551ad39ec42b8"
           },
           "InstalledVersion": "1.34+dfsg-1ubuntu0.1.22.04.2",
-          "Status": "affected",
+          "FixedVersion": "1.34+dfsg-1ubuntu0.1.22.04.4",
+          "Status": "fixed",
           "Layer": {
             "Digest": "sha256:b1cba2e842ca52b95817f958faf99734080c78e92e43ce609cde9244867b49ed",
             "DiffID": "sha256:6b7908e4c7473003628ddbd1d8ad378db659f0bf29a3019f7bb7150e9bfd109d"
@@ -23346,6 +23564,7 @@
             "https://linux.oracle.com/errata/ELSA-2026-0067.html",
             "https://lists.gnu.org/archive/html/bug-tar/2025-08/msg00012.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2025-45582",
+            "https://ubuntu.com/security/notices/USN-8510-1",
             "https://www.cve.org/CVERecord?id=CVE-2025-45582",
             "https://www.gnu.org/software/tar/",
             "https://www.gnu.org/software/tar/manual/html_node/Integrity.html",
