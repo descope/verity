@@ -464,12 +464,6 @@ export const fullCatalog: FullCatalogCategory[] = [
         source: "copa",
         upstream: "mirror.gcr.io/jenkins/jenkins",
       },
-      {
-        name: "renovatebot/renovate",
-        label: "renovate",
-        source: "copa",
-        upstream: "ghcr.io/renovatebot/renovate",
-      },
       { name: "kaniko", source: "integer" },
       { name: "flux", source: "integer" },
       { name: "gitea", source: "integer" },
