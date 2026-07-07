@@ -522,6 +522,7 @@ func TestRepoStandaloneSourceRegression_556_579(t *testing.T) {
 		{name: "aws/eks-distro/kubernetes-csi/node-driver-registrar", image: "public.ecr.aws/eks-distro/kubernetes-csi/node-driver-registrar", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
 		{name: "rancher/k3s", image: "mirror.gcr.io/rancher/k3s", pattern: `^v\d+\.\d+\.\d+-k3s\d+$`},
 		{name: "cilium/cilium", image: "quay.io/cilium/cilium", pattern: `^v\d+\.\d+\.\d+$`},
+		{name: "renovatebot/renovate", image: "ghcr.io/renovatebot/renovate", pattern: `^\d+\.\d+\.\d+$`},
 	}
 
 	for _, tc := range append(kept, hiddenFromCatalog...) {
