@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.70.0"
   },
-  "ReportID": "019f3b59-bbf2-7603-aee4-81cacb7d8797",
-  "CreatedAt": "2026-07-07T06:52:44.402395308Z",
+  "ReportID": "019f3c81-c92c-743e-b4a4-153a165c452a",
+  "CreatedAt": "2026-07-07T12:16:06.444280995Z",
   "ArtifactID": "sha256:20e1ffde859ee38245706dcfd67d00803cf7cd637fc56a521b1ec1addbdb2d1c",
   "ArtifactName": "docker.io/library/solr:9.10.1",
   "ArtifactType": "container_image",
@@ -11066,7 +11066,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-11856"
           ],
           "PublishedDate": "2026-07-03T07:16:23.973Z",
-          "LastModifiedDate": "2026-07-03T07:16:23.973Z"
+          "LastModifiedDate": "2026-07-06T19:16:54.983Z"
         },
         {
           "VulnerabilityID": "CVE-2026-12064",
@@ -11090,21 +11090,30 @@
             "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
           },
           "Fingerprint": "sha256:ffa13b39c03618b14911f62599a9b0fd63c091d4dc4e836b9369ce7896a8195a",
-          "Title": "When a user invokes curl using a schemeless URL combined with `--proto ...",
+          "Title": "curl: curl: SSH host verification bypass when using schemeless URLs with SFTP/SCP",
           "Description": "When a user invokes curl using a schemeless URL combined with\n`--proto-default` sftp (or scp), a disconnect occurs between the tool layer\nand libcurl. The tool layer incorrectly infers the URL scheme, which\nerroneously bypasses the initialization of critical SSH security options like\nCURLOPT_SSH_HOST_PUBLIC_KEY_SHA256 and CURLOPT_SSH_KNOWNHOSTS. Conversely, the\nlibcurl runtime successfully honors CURLOPT_DEFAULT_PROTOCOL and establishes\nthe connection via SFTP/SCP as specified. Because the tool layer skipped the\nsecurity configuration, these SSH host verification options are silently\nomitted, causing curl to connect to an unverified SSH remote host without\nthrowing an error.",
           "Severity": "LOW",
           "VendorSeverity": {
+            "redhat": 3,
             "ubuntu": 1
           },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+              "V3Score": 7.5
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-12064",
             "https://curl.se/L7HzKXisfJ/CVE-2026-12064.md",
             "https://curl.se/docs/CVE-2026-12064.html",
             "https://curl.se/docs/CVE-2026-12064.json",
             "https://hackerone.com/reports/3797526",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-12064",
             "https://www.cve.org/CVERecord?id=CVE-2026-12064"
           ],
           "PublishedDate": "2026-07-03T07:16:24.217Z",
-          "LastModifiedDate": "2026-07-03T07:16:24.217Z"
+          "LastModifiedDate": "2026-07-06T19:16:55.27Z"
         },
         {
           "VulnerabilityID": "CVE-2022-27943",
@@ -11166,6 +11175,111 @@
           ],
           "PublishedDate": "2022-03-26T13:15:07.9Z",
           "LastModifiedDate": "2026-06-17T04:37:46.95Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-41991",
+          "PkgID": "gzip@1.10-4ubuntu4.1",
+          "PkgName": "gzip",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/gzip@1.10-4ubuntu4.1?arch=amd64\u0026distro=ubuntu-22.04",
+            "UID": "6deaadd23a9dfa4c"
+          },
+          "InstalledVersion": "1.10-4ubuntu4.1",
+          "FixedVersion": "1.10-4ubuntu4.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:d6834b4a794c03efa2c998853e64969fa8851b11b2ade63292268872a37759d0",
+            "DiffID": "sha256:10f9108f6cebf96e05cadfab3c188071f3c6d084abe680fd0bc9f61c268e854d"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-41991",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:2e3b3a738e2c1bb75fdf778c9fb49473ef9ef262f5b015aea4942d1af70d10fa",
+          "Title": "gzip: gzip: Arbitrary file overwrite via insecure temporary file handling in gzexe utility",
+          "Description": "GNU gzip contains a vulnerability in the gzexe utility related to insecure temporary file handling. When the mktemp utility is not available in the user’s PATH, gzexe falls back to constructing a temporary file path based solely on the process ID (PID). This predictable filename is created without exclusive access or existence checks.\nA local attacker can pre‑create the predicted temporary file path as a symbolic link pointing to an arbitrary file writable by the victim. When gzexe runs, it follows the symlink and overwrites the target file, resulting in a time‑of‑check to time‑of‑use (TOCTOU) condition that allows arbitrary file overwrite.\n\nThis issue has been fixed in the commit 4e6f8b24ab823146ab8776f0b7fe486ab34d4269",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-377"
+          ],
+          "VendorSeverity": {
+            "nvd": 2,
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:N/I:H/A:N",
+              "V3Score": 4.7
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:R/S:U/C:N/I:H/A:H",
+              "V3Score": 6
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-41991",
+            "https://cert.pl/en/posts/2026/04/CVE-2026-41991/",
+            "https://cgit.git.savannah.gnu.org/cgit/gzip.git/commit/?id=4e6f8b24ab823146ab8776f0b7fe486ab34d4269",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-41991",
+            "https://ubuntu.com/security/notices/USN-8512-1",
+            "https://www.cve.org/CVERecord?id=CVE-2026-41991",
+            "https://www.gnu.org/software/gzip/"
+          ],
+          "PublishedDate": "2026-06-29T12:16:29.77Z",
+          "LastModifiedDate": "2026-07-01T14:02:24.45Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-41992",
+          "PkgID": "gzip@1.10-4ubuntu4.1",
+          "PkgName": "gzip",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/gzip@1.10-4ubuntu4.1?arch=amd64\u0026distro=ubuntu-22.04",
+            "UID": "6deaadd23a9dfa4c"
+          },
+          "InstalledVersion": "1.10-4ubuntu4.1",
+          "FixedVersion": "1.10-4ubuntu4.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:d6834b4a794c03efa2c998853e64969fa8851b11b2ade63292268872a37759d0",
+            "DiffID": "sha256:10f9108f6cebf96e05cadfab3c188071f3c6d084abe680fd0bc9f61c268e854d"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-41992",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:9f5b476ccf495d6a2f35b8cca831886e89b6e45895c2ad181897a8cba4a90938",
+          "Title": "GNU gzip contains a global buffer overflow vulnerability in the LZH de ...",
+          "Description": "GNU gzip contains a global buffer overflow vulnerability in the LZH decompression logic caused by improper reuse of shared global state between different decompression formats within a single execution. GNU gzip maintains a global array that is shared across the LZ77, LZW, and LZH decompression routines and is not reinitialized between files processed in the same invocation.\nBy decompressing a specially crafted LZW file followed by a specially crafted LZH file in a single gzip -d command, an attacker can poison the shared global state and subsequently trigger an out‑of‑bounds read in the LZH decoder. The LZH decompression logic follows stale values left in the shared array, causing reads past the end of the allocated global buffer.\n\nThis issue has been fixed in the commit 63dbf6b3b9e6e781df1a6a64e609b10e23969681",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-126"
+          ],
+          "VendorSeverity": {
+            "nvd": 3,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://cert.pl/en/posts/2026/04/CVE-2026-41991/",
+            "https://cgit.git.savannah.gnu.org/cgit/gzip.git/commit/?id=63dbf6b3b9e6e781df1a6a64e609b10e23969681",
+            "https://ubuntu.com/security/notices/USN-8512-1",
+            "https://www.cve.org/CVERecord?id=CVE-2026-41992",
+            "https://www.gnu.org/software/gzip/"
+          ],
+          "PublishedDate": "2026-06-29T12:16:29.94Z",
+          "LastModifiedDate": "2026-07-01T14:02:20.173Z"
         },
         {
           "VulnerabilityID": "CVE-2026-27456",
@@ -11601,7 +11715,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-11856"
           ],
           "PublishedDate": "2026-07-03T07:16:23.973Z",
-          "LastModifiedDate": "2026-07-03T07:16:23.973Z"
+          "LastModifiedDate": "2026-07-06T19:16:54.983Z"
         },
         {
           "VulnerabilityID": "CVE-2026-12064",
@@ -11625,21 +11739,30 @@
             "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
           },
           "Fingerprint": "sha256:bbe6223936f0adf33ccc50f00fbec2db72e3c99d0e510d2e20bf76b1a5a9f7e0",
-          "Title": "When a user invokes curl using a schemeless URL combined with `--proto ...",
+          "Title": "curl: curl: SSH host verification bypass when using schemeless URLs with SFTP/SCP",
           "Description": "When a user invokes curl using a schemeless URL combined with\n`--proto-default` sftp (or scp), a disconnect occurs between the tool layer\nand libcurl. The tool layer incorrectly infers the URL scheme, which\nerroneously bypasses the initialization of critical SSH security options like\nCURLOPT_SSH_HOST_PUBLIC_KEY_SHA256 and CURLOPT_SSH_KNOWNHOSTS. Conversely, the\nlibcurl runtime successfully honors CURLOPT_DEFAULT_PROTOCOL and establishes\nthe connection via SFTP/SCP as specified. Because the tool layer skipped the\nsecurity configuration, these SSH host verification options are silently\nomitted, causing curl to connect to an unverified SSH remote host without\nthrowing an error.",
           "Severity": "LOW",
           "VendorSeverity": {
+            "redhat": 3,
             "ubuntu": 1
           },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+              "V3Score": 7.5
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-12064",
             "https://curl.se/L7HzKXisfJ/CVE-2026-12064.md",
             "https://curl.se/docs/CVE-2026-12064.html",
             "https://curl.se/docs/CVE-2026-12064.json",
             "https://hackerone.com/reports/3797526",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-12064",
             "https://www.cve.org/CVERecord?id=CVE-2026-12064"
           ],
           "PublishedDate": "2026-07-03T07:16:24.217Z",
-          "LastModifiedDate": "2026-07-03T07:16:24.217Z"
+          "LastModifiedDate": "2026-07-06T19:16:55.27Z"
         },
         {
           "VulnerabilityID": "CVE-2025-66382",
@@ -13949,7 +14072,8 @@
             "UID": "c053fe0a7da32ac4"
           },
           "InstalledVersion": "1.34+dfsg-1ubuntu0.1.22.04.3",
-          "Status": "affected",
+          "FixedVersion": "1.34+dfsg-1ubuntu0.1.22.04.4",
+          "Status": "fixed",
           "Layer": {
             "Digest": "sha256:d6834b4a794c03efa2c998853e64969fa8851b11b2ade63292268872a37759d0",
             "DiffID": "sha256:10f9108f6cebf96e05cadfab3c188071f3c6d084abe680fd0bc9f61c268e854d"
@@ -13995,6 +14119,7 @@
             "https://linux.oracle.com/errata/ELSA-2026-0067.html",
             "https://lists.gnu.org/archive/html/bug-tar/2025-08/msg00012.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2025-45582",
+            "https://ubuntu.com/security/notices/USN-8510-1",
             "https://www.cve.org/CVERecord?id=CVE-2025-45582",
             "https://www.gnu.org/software/tar/",
             "https://www.gnu.org/software/tar/manual/html_node/Integrity.html",
@@ -25068,7 +25193,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-45292"
           ],
           "PublishedDate": "2026-05-28T17:16:32.06Z",
-          "LastModifiedDate": "2026-07-03T13:17:20.04Z"
+          "LastModifiedDate": "2026-07-06T13:16:59.033Z"
         },
         {
           "VulnerabilityID": "CVE-2024-47561",
