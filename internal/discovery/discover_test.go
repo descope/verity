@@ -507,13 +507,8 @@ func TestRepoStandaloneSourceRegression_556_579(t *testing.T) {
 
 	kept := []expectedEntry{
 		{name: "kubernetes/ingress-nginx/controller", image: "registry.k8s.io/ingress-nginx/controller", pattern: `^v\d+\.\d+\.\d+$`},
-		{name: "kubernetes/ingress-nginx/kube-webhook-certgen", image: "registry.k8s.io/ingress-nginx/kube-webhook-certgen", pattern: `^v\d+\.\d+\.\d+$`},
 		{name: "kubernetes/ingress-nginx/defaultbackend", image: "registry.k8s.io/defaultbackend", pattern: `^\d+\.\d+$`},
-		{name: "kubernetes-sigs/external-dns", image: "registry.k8s.io/external-dns/external-dns", pattern: `^v\d+\.\d+\.\d+$`},
 		{name: "emberstack/kubernetes-reflector", image: "ghcr.io/emberstack/kubernetes-reflector", pattern: `^\d+\.\d+\.\d+$`},
-		{name: "kubernetes-sigs/secrets-store-csi-driver", image: "registry.k8s.io/csi-secrets-store/driver", pattern: `^v\d+\.\d+\.\d+$`},
-		{name: "googlecloudplatform/secrets-store-csi-driver-provider-gcp", image: "us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin", pattern: `^v\d+\.\d+\.\d+$`},
-		{name: "kubernetes-sigs/node-feature-discovery", image: "registry.k8s.io/nfd/node-feature-discovery", pattern: `^v\d+\.\d+\.\d+$`},
 		{name: "rancher/k3s", image: "mirror.gcr.io/rancher/k3s", pattern: `^v\d+\.\d+\.\d+-k3s\d+$`},
 		{name: "aws/eks-distro/coredns/coredns", image: "public.ecr.aws/eks-distro/coredns/coredns", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
 		{name: "aws/eks-distro/kubernetes/kube-apiserver", image: "public.ecr.aws/eks-distro/kubernetes/kube-apiserver", pattern: `^v\d+\.\d+\.\d+-eks-\d+-\d+-\d+$`},
@@ -582,6 +577,19 @@ func TestRepoStandaloneSourceRegression_556_579(t *testing.T) {
 	for _, name := range removed {
 		if strings.Contains(catalogText, `name: "`+name+`"`) {
 			t.Errorf("catalog still contains removed unsupported image %q", name)
+		}
+	}
+
+	removedFromFullCatalog := []string{
+		"kubernetes/ingress-nginx/kube-webhook-certgen",
+		"kubernetes-sigs/external-dns",
+		"kubernetes-sigs/secrets-store-csi-driver",
+		"googlecloudplatform/secrets-store-csi-driver-provider-gcp",
+		"kubernetes-sigs/node-feature-discovery",
+	}
+	for _, name := range removedFromFullCatalog {
+		if strings.Contains(catalogText, `name: "`+name+`"`) {
+			t.Errorf("catalog still contains dirty Copa-only image %q", name)
 		}
 	}
 }
