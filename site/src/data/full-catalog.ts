@@ -724,12 +724,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         source: "copa",
         upstream: "mirror.gcr.io/tensorflow/serving",
       },
-      {
-        name: "ollama/ollama",
-        label: "ollama",
-        source: "copa",
-        upstream: "mirror.gcr.io/ollama/ollama",
-      },
+      { name: "ollama/ollama", label: "ollama", source: "integer", integerName: "ollama" },
     ],
   },
 
@@ -754,12 +749,7 @@ export const fullCatalog: FullCatalogCategory[] = [
       { name: "curl", source: "integer" },
       { name: "git", source: "integer" },
       { name: "docker-cli", source: "integer", variants: ["default", "fips"] },
-      {
-        name: "library/docker",
-        label: "docker-cli",
-        source: "copa",
-        upstream: "mirror.gcr.io/library/docker",
-      },
+      { name: "library/docker", label: "docker-cli", source: "integer", integerName: "docker-cli" },
       {
         name: "google/cloud-sdk",
         label: "google-cloud-sdk",
@@ -796,7 +786,7 @@ export const fullCatalog: FullCatalogCategory[] = [
         source: "copa",
         upstream: "ghcr.io/pendulum-project/ntpd-rs",
       },
-      { name: "wagoodman/dive", label: "dive", source: "copa", upstream: "ghcr.io/wagoodman/dive" },
+      { name: "wagoodman/dive", label: "dive", source: "integer", integerName: "dive" },
       { name: "crane", source: "integer", variants: ["default", "fips"] },
       { name: "grype", source: "integer" },
       { name: "coredns", source: "integer" },

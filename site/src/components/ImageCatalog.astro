@@ -39,12 +39,15 @@ for (const img of integerImages) {
 
 // Helper to get vulnerability summary for an image
 function getVulnSummary(image: FullCatalogImage): VulnSummary {
+  if (image.source !== "copa") {
+    return { total: 0, severityCounts: {} };
+  }
+
   const scanData = scanDataMap.get(image.name);
   if (scanData) {
     return scanData.afterVulns;
   }
-  // No scan data yet — treat as clean (integer images are built from scratch;
-  // copa images without scan data are either newly added or awaiting first scan)
+  // No scan data yet — copa images without scan data are newly added or awaiting first scan.
   return { total: 0, severityCounts: {} };
 }
 ---
