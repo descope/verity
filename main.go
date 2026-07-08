@@ -19,6 +19,7 @@ func main() {
 			cmd.CatalogCommand,
 			cmd.DiscoverCommand,
 			cmd.IntegerCommand,
+			cmd.CICommand,
 			cmd.PreflightCommand,
 			cmd.ChartGenCommand,
 			cmd.PatchCommand,

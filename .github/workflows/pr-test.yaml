@@ -328,81 +328,23 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          # Find image YAML files changed in this PR (use PR event SHAs)
-          all_changed=$(git diff --name-only "$BASE_SHA"..."$HEAD_SHA" -- 'images/*.yaml' 'images/_base/*.yaml' || true)
+          git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
+          ./verity ci plan \
+            --kind integer-pr \
+            --changed-files changed-files.txt \
+            --gen-dir "$RUNNER_TEMP/integer-gen" \
+            > ci-plan.json
 
-          if [ -z "$all_changed" ]; then
-            echo "No image YAML files changed"
-            {
-              echo 'has-changes=false'
-              echo 'matrix={"include":[]}'
-              echo 'smoke-matrix={"include":[]}'
-            } >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Check if base images changed (affects all images)
-          base_changed=$(echo "$all_changed" | grep '_base/' || true)
-          image_changed=$(echo "$all_changed" | grep -v '_base/' || true)
-
-          if [ -n "$base_changed" ]; then
-            echo "Base image files changed — discovering all images"
-            names=""  # empty = all
-          elif [ -n "$image_changed" ]; then
-            names=$(echo "$image_changed" | sed 's|images/||;s|\.yaml||' | paste -sd, || true)
-            echo "Changed images: $names"
-          else
-            echo "No actionable changes"
-            {
-              echo 'has-changes=false'
-              echo 'matrix={"include":[]}'
-              echo 'smoke-matrix={"include":[]}'
-            } >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Discover version+type combos for changed images
-          DISCOVER_FLAGS=""
-          if [ -n "$names" ]; then
-            DISCOVER_FLAGS="--only $names"
-          fi
-
-          # shellcheck disable=SC2086
-          if ! all=$(./verity integer discover $DISCOVER_FLAGS); then
-            echo "::error::verity integer discover failed"
-            exit 1
-          fi
-
-          if [ -z "$all" ] || [ "$all" = "null" ] || [ "$all" = "[]" ]; then
-            echo "No discoverable images"
-            {
-              echo 'has-changes=false'
-              echo 'matrix={"include":[]}'
-              echo 'smoke-matrix={"include":[]}'
-            } >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          smoke_matrix=$(echo "$all" | jq -c 'map({image: .name, version: .version, type: .type}) | {include: .}')
-
-          # Build matrix: pick the latest version per image+type.
-          # sort_by(.version | split(".") | map(tonumber? // .)) handles numeric ordering.
-          matrix=$(echo "$all" | jq -c '
-            [.[] | . + {_key: (.name + "-" + .type)}]
-            | sort_by(._key)
-            | group_by(._key)
-            | map(sort_by(.version | split(".") | map(tonumber? // .)) | last)
-            | map({image: .name, version: .version, type: .type})
-            | {include: .}
-          ')
-
-          count=$(echo "$matrix" | jq '.include | length')
+          matrix=$(jq -c '.matrix' ci-plan.json)
+          smoke_matrix=$(jq -c '.smokeMatrix' ci-plan.json)
+          has_changes=$(jq -r '.hasChanges' ci-plan.json)
+          count=$(jq '.include | length' <<< "$matrix")
           echo "Matrix: ${count} image builds"
           echo "$matrix" | jq .
           {
             echo "matrix=${matrix}"
             echo "smoke-matrix=${smoke_matrix}"
-            echo 'has-changes=true'
+            echo "has-changes=${has_changes}"
           } >> "$GITHUB_OUTPUT"
 
   integer-build-changed:
@@ -572,75 +514,24 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          # Check if copa-config.yaml was modified in this PR
-          if ! git diff --name-only "$BASE_SHA"..."$HEAD_SHA" | grep -q '^copa-config.yaml$'; then
-            echo "copa-config.yaml not changed — skipping"
-            echo 'has-changes=false' >> "$GITHUB_OUTPUT"
-            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
+          git show "${BASE_SHA}":copa-config.yaml > base-copa-config.yaml 2>/dev/null || printf 'images: []\n' > base-copa-config.yaml
 
-          # Extract image names from old and new config
-          OLD_NAMES=$(git show "${BASE_SHA}":copa-config.yaml 2>/dev/null | yq -r '.images[].name' 2>/dev/null | sort || true)
-          NEW_NAMES=$(yq -r '.images[].name' copa-config.yaml | sort)
+          ./verity ci plan \
+            --kind copa-pr \
+            --changed-files changed-files.txt \
+            --base-copa-config base-copa-config.yaml \
+            --copa-config copa-config.yaml \
+            --target-registry "${TARGET_REGISTRY}" \
+            > ci-plan.json
 
-          # Find added image names
-          ADDED=$(comm -13 <(echo "$OLD_NAMES") <(echo "$NEW_NAMES") | paste -sd, || true)
-
-          # Find changed image entries (compare full data blocks).
-          # Use JSON output to ignore comment shifts: yq attributes leading
-          # comments to the next node, so removing an entry can make adjacent
-          # section headers re-attach to a sibling that didn't actually change.
-          CHANGED_NAMES=""
-          while IFS= read -r name; do
-            [ -z "$name" ] && continue
-            old_block=$(git show "${BASE_SHA}":copa-config.yaml 2>/dev/null | yq -o=json ".images[] | select(.name == \"$name\")" 2>/dev/null || true)
-            new_block=$(yq -o=json ".images[] | select(.name == \"$name\")" copa-config.yaml)
-            if [ "$old_block" != "$new_block" ]; then
-              CHANGED_NAMES="${CHANGED_NAMES:+$CHANGED_NAMES,}$name"
-            fi
-          done <<< "$NEW_NAMES"
-
-          FILTER="${ADDED}${ADDED:+${CHANGED_NAMES:+,}}${CHANGED_NAMES}"
-
-          if [ -z "$FILTER" ]; then
-            echo "No image entries changed in copa-config.yaml"
-            echo 'has-changes=false' >> "$GITHUB_OUTPUT"
-            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "Changed Copa images: $FILTER"
-
-          # Discover image+tag combos for changed images only
-          if ! all=$(./verity discover --config copa-config.yaml --only "$FILTER"); then
-            echo "::warning::verity discover failed for changed images"
-            echo 'has-changes=false' >> "$GITHUB_OUTPUT"
-            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          if [ -z "$all" ] || [ "$all" = "null" ] || [ "$all" = "[]" ]; then
-            echo "No discoverable images"
-            echo 'has-changes=false' >> "$GITHUB_OUTPUT"
-            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Build matrix: first tag per image name (one test per changed image)
-          matrix=$(echo "$all" | jq -c '
-            sort_by(.name)
-            | group_by(.name)
-            | map(first)
-            | map({name: .name, tag: (.source | split(":") | last)})
-            | {include: .}
-          ')
-
-          count=$(echo "$matrix" | jq '.include | length')
+          matrix=$(jq -c '.matrix' ci-plan.json)
+          has_changes=$(jq -r '.hasChanges' ci-plan.json)
+          count=$(jq '.include | length' <<< "$matrix")
           echo "Copa change matrix: ${count} images to test"
           echo "$matrix" | jq .
           echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
-          echo 'has-changes=true' >> "$GITHUB_OUTPUT"
+          echo "has-changes=${has_changes}" >> "$GITHUB_OUTPUT"
 
   copa-patching-changed:
     name: "Copa Patch: ${{ matrix.name }}:${{ matrix.tag }}"

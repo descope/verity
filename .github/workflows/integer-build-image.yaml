@@ -416,7 +416,7 @@ jobs:
 
       # ── Build ──────────────────────────────────────────────────────────────
 
-      # ── Zero-CVE publish gate: build locally & scan BEFORE any push ──────────
+      # ── Zero-CVE preflight gate: build locally & scan BEFORE any registry write
       - name: Trivy publish gate (not clean, no go)
         env:
           INPUT_IMAGE: ${{ inputs.image }}
@@ -426,12 +426,11 @@ jobs:
           # The verity binary owns this gate (cmd/integer_build.go
           # integerTrivyGate) — it is unit-tested and cannot silently regress,
           # unlike inline workflow bash. Build the image LOCALLY and Trivy-scan
-          # it here; if any CVEs are found this step FAILS and the publish step
-          # below never runs. Verity never uploads an Integer image with a CVE.
+          # it here; if any CVEs are found this step FAILS before staging or
+          # final promotion. Verity never uploads an Integer image with a CVE.
           # Gate BOTH published arches (publish pushes amd64+arm64). apko build
           # and trivy scan assemble/read packages without executing arch
-          # binaries, so no QEMU is needed. If EITHER arch has any CVEs, this
-          # step fails and the multi-arch publish below never runs.
+          # binaries, so no QEMU is needed.
           for gate_arch in amd64 arm64; do
             echo "::group::Trivy publish gate ($gate_arch)"
             ./verity integer build \
@@ -444,7 +443,7 @@ jobs:
             echo "::endgroup::"
           done
 
-      - name: Build and publish multi-arch image
+      - name: Build, verify, and publish multi-arch image
         id: build
         env:
           INPUT_IMAGE: ${{ inputs.image }}
@@ -473,8 +472,14 @@ jobs:
             .annotations["org.opencontainers.image.created"]     = strenv(BUILD_TIMESTAMP)
           ' "$tmpconfig"
 
-          # Split refs into an array for safe expansion (one arg per ref).
-          read -ra REFSARR <<< "$REFS"
+          # Split final refs into an array for safe expansion (one arg per ref).
+          read -ra FINAL_REFS <<< "$REFS"
+
+          # Stage one run-scoped ref first. This lets Trivy scan the exact
+          # multi-arch image apko produced before any final user-facing tag is
+          # written, closing the rebuild drift gap between local tar scans and
+          # apko publish.
+          STAGING_REF="${INPUT_REGISTRY}/cache/${INPUT_IMAGE}:${PRIMARY_TAG}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
           # Build apko args — conditionally append local melange repo.
           APKO_ARGS=(
@@ -501,63 +506,33 @@ jobs:
             echo "Appending local melange repo to apko publish"
           fi
 
-          APKO_ARGS+=("$tmpconfig" "${REFSARR[@]}")
+          APKO_ARGS+=("$tmpconfig" "$STAGING_REF")
 
           bash .github/scripts/retry-registry-command.sh \
             "apko publish" \
             apko "${APKO_ARGS[@]}"
 
-          # Capture the digest of the published index for signing
-          digest=$(bash .github/scripts/retry-registry-command.sh \
-            "crane digest" \
-            crane digest "${INPUT_REGISTRY}/${INPUT_IMAGE}:${PRIMARY_TAG}")
-          echo "digest=$digest" >> "$GITHUB_OUTPUT"
-
-      # ── Security scan ──────────────────────────────────────────────────────
-
-      - name: Trivy vulnerability scan
-        env:
-          INPUT_IMAGE: ${{ inputs.image }}
-          INPUT_REGISTRY: ${{ inputs.registry }}
-          PRIMARY_TAG: ${{ steps.gen.outputs.primary_tag }}
-        run: |
           trivy image \
             --exit-code 1 \
             --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
             --vuln-type os,library \
             --format json \
             --output trivy-report.json \
-            "${INPUT_REGISTRY}/${INPUT_IMAGE}:${PRIMARY_TAG}"
+            "$STAGING_REF"
 
-      - name: Resolve Trivy gate policy
-        id: trivy-gate-postgres
-        run: |
-          case "${{ inputs.image }}:${{ inputs.version }}:${{ inputs.type }}" in
-            postgres:14:fips)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=postgres 14 fips" >> "$GITHUB_OUTPUT"
-              ;;
-            postgres:15:fips)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=postgres 15 fips" >> "$GITHUB_OUTPUT"
-              ;;
-            istio-install-cni:*:default|istio-pilot:*:default|istio-proxyv2:*:default|telegraf:1.34:default|telegraf:1.35:default|telegraf:1.36:default|telegraf:1.37:default|telegraf:1.38:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=${{ inputs.image }} ${{ inputs.version }} default" >> "$GITHUB_OUTPUT"
-              ;;
-            *)
-              echo "enabled=false" >> "$GITHUB_OUTPUT"
-              ;;
-          esac
+          for final_ref in "${FINAL_REFS[@]}"; do
+            bash .github/scripts/retry-registry-command.sh \
+              "crane copy" \
+              crane copy "$STAGING_REF" "$final_ref"
+          done
 
-      - name: Enforce Trivy gate
-        if: steps.trivy-gate-postgres.outputs.enabled == 'true'
-        run: |
-          findings=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH" or .Severity == "CRITICAL")] | length' trivy-report.json)
-          if [ "$findings" -ne 0 ]; then
-            echo "${{ steps.trivy-gate-postgres.outputs.label }} image must stay zero HIGH/CRITICAL, found ${findings}" >&2
-            exit 1
-          fi
+          # Capture the digest of the clean promoted index for signing.
+          digest=$(bash .github/scripts/retry-registry-command.sh \
+            "crane digest" \
+            crane digest "${INPUT_REGISTRY}/${INPUT_IMAGE}:${PRIMARY_TAG}")
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      # ── Security scan ──────────────────────────────────────────────────────
 
       - name: Upload Trivy report
         if: always()
@@ -566,174 +541,6 @@ jobs:
           name: "trivy-${{ steps.gen.outputs.safe_image }}-${{ inputs.version }}-${{ inputs.type }}"
           path: trivy-report.json
           retention-days: 30
-
-      - name: Resolve Trivy gate policy
-        id: trivy-gate-vault
-        run: |
-          case "${{ inputs.image }}:${{ inputs.type }}" in
-            vault:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=vault default" >> "$GITHUB_OUTPUT"
-              ;;
-            istio-install-cni:default|istio-pilot:default|istio-proxyv2:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=${{ inputs.image }} default" >> "$GITHUB_OUTPUT"
-              ;;
-            *)
-              echo "enabled=false" >> "$GITHUB_OUTPUT"
-              ;;
-          esac
-
-      - name: Enforce Trivy gate
-        if: steps.trivy-gate-vault.outputs.enabled == 'true'
-        run: |
-          findings=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH" or .Severity == "CRITICAL")] | length' trivy-report.json)
-          if [ "$findings" -ne 0 ]; then
-            echo "${{ steps.trivy-gate-vault.outputs.label }} image must stay zero HIGH/CRITICAL, found ${findings}" >&2
-            exit 1
-          fi
-
-      - name: Resolve Trivy gate policy
-        id: trivy-gate-rebuildable-sweep
-        run: |
-          case "${{ inputs.image }}:${{ inputs.version }}:${{ inputs.type }}" in
-            alertmanager:0:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=alertmanager 0 default" >> "$GITHUB_OUTPUT"
-              ;;
-            apisix-ingress-controller:1:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=apisix-ingress-controller 1 default" >> "$GITHUB_OUTPUT"
-              ;;
-            argo-workflow-controller:3:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=argo-workflow-controller 3 default" >> "$GITHUB_OUTPUT"
-              ;;
-            azure-workload-identity-webhook:1:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=azure-workload-identity-webhook 1 default" >> "$GITHUB_OUTPUT"
-              ;;
-            bank-vaults:1:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=bank-vaults 1 default" >> "$GITHUB_OUTPUT"
-              ;;
-            boring-registry:0:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=boring-registry 0 default" >> "$GITHUB_OUTPUT"
-              ;;
-            cert-manager-istio-csr:0:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=cert-manager-istio-csr 0 default" >> "$GITHUB_OUTPUT"
-              ;;
-            cert-manager-cainjector:1.20:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=cert-manager-cainjector 1.20 default" >> "$GITHUB_OUTPUT"
-              ;;
-            cert-manager-controller:1.20:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=cert-manager-controller 1.20 default" >> "$GITHUB_OUTPUT"
-              ;;
-            cilium-cli:0:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=cilium-cli 0 default" >> "$GITHUB_OUTPUT"
-              ;;
-            cloudflared:2025:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=cloudflared 2025 default" >> "$GITHUB_OUTPUT"
-              ;;
-            conftest:0:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=conftest 0 default" >> "$GITHUB_OUTPUT"
-              ;;
-            filebrowser:2:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=filebrowser 2 default" >> "$GITHUB_OUTPUT"
-              ;;
-            harbor-cli:0:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=harbor-cli 0 default" >> "$GITHUB_OUTPUT"
-              ;;
-            cortex:1:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=cortex 1 default" >> "$GITHUB_OUTPUT"
-              ;;
-            loki:3.5:default|loki:3.6:default|loki:3.7:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=${{ inputs.image }} ${{ inputs.version }} default" >> "$GITHUB_OUTPUT"
-              ;;
-            external-secrets:0:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=external-secrets 0 default" >> "$GITHUB_OUTPUT"
-              ;;
-            hydra:2:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=hydra 2 default" >> "$GITHUB_OUTPUT"
-              ;;
-            k9s:0:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=k9s 0 default" >> "$GITHUB_OUTPUT"
-              ;;
-            mailpit:1:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=mailpit 1 default" >> "$GITHUB_OUTPUT"
-              ;;
-            mimir:3.0:default|mimir:3.1:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=${{ inputs.image }} ${{ inputs.version }} default" >> "$GITHUB_OUTPUT"
-              ;;
-            mariadb:10.11:default|mariadb:11.4:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=${{ inputs.image }} ${{ inputs.version }} default" >> "$GITHUB_OUTPUT"
-              ;;
-            openbao:2:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=openbao 2 default" >> "$GITHUB_OUTPUT"
-              ;;
-            opentelemetry-collector:0:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=opentelemetry-collector 0 default" >> "$GITHUB_OUTPUT"
-              ;;
-            rclone:1:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=rclone 1 default" >> "$GITHUB_OUTPUT"
-              ;;
-            spicedb:1:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=spicedb 1 default" >> "$GITHUB_OUTPUT"
-              ;;
-            tempo:2:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=tempo 2 default" >> "$GITHUB_OUTPUT"
-              ;;
-            traefik:3.7:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=traefik 3.7 default" >> "$GITHUB_OUTPUT"
-              ;;
-            thanos:0:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=thanos 0 default" >> "$GITHUB_OUTPUT"
-              ;;
-            trufflehog:3:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=trufflehog 3 default" >> "$GITHUB_OUTPUT"
-              ;;
-            velero:1:default)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              echo "label=velero 1 default" >> "$GITHUB_OUTPUT"
-              ;;
-            *)
-              echo "enabled=false" >> "$GITHUB_OUTPUT"
-              ;;
-          esac
-
-      - name: Enforce Trivy gate
-        if: steps.trivy-gate-rebuildable-sweep.outputs.enabled == 'true'
-        run: |
-          findings=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH" or .Severity == "CRITICAL")] | length' trivy-report.json)
-          if [ "$findings" -ne 0 ]; then
-            echo "${{ steps.trivy-gate-rebuildable-sweep.outputs.label }} image must stay zero HIGH/CRITICAL, found ${findings}" >&2
-            exit 1
-          fi
 
       # ── Sign & attest ──────────────────────────────────────────────────────
 
