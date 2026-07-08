@@ -42,6 +42,21 @@ def main() -> None:
         )
 
     require(
+        "--fail-on-severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL" in workflow,
+        "Integer publish gate must fail on any Trivy vulnerability severity",
+    )
+    require(
+        "--exit-code 1" in workflow
+        and "--severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL" in workflow,
+        "Integer post-publish Trivy scan must fail on any vulnerability severity",
+    )
+    require(
+        "images publish even with CVEs" not in workflow
+        and "continue-on-error: true  # Report only" not in workflow,
+        "Integer Trivy scans must not be report-only",
+    )
+
+    require(
         'digest=$(bash .github/scripts/retry-registry-command.sh \\' in workflow,
         "digest retrieval must capture retry helper stdout",
     )

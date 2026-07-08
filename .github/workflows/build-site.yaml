@@ -17,6 +17,7 @@ permissions:
   packages: read
   pages: write
   id-token: write
+  actions: read
 
 env:
   TARGET_REGISTRY: ghcr.io/verity-org
@@ -41,6 +42,12 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: main
+
+      - name: Wait for nightly producers
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WAIT_BRANCH: main
+        run: bash .github/scripts/wait-for-workflows.sh patch-image.yaml integer-build-image.yaml chart-gen.yaml
 
       - name: Checkout reports branch
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0

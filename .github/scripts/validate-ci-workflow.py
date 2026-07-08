@@ -5,6 +5,7 @@ workflow = Path(".github/workflows/ci.yaml").read_text()
 required = [
     "^site/|^\\.github/workflows/ci\\.yaml$|^mise\\.toml$",
     "python3 .github/scripts/validate-ci-workflow.py",
+    "python3 .github/scripts/validate-nightly-workflows.py",
 ]
 
 missing = [needle for needle in required if needle not in workflow]
