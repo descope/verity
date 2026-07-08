@@ -2,6 +2,7 @@
 """Guard nightly orchestration behavior that actionlint cannot express."""
 
 from pathlib import Path
+import re
 import sys
 
 
@@ -11,20 +12,66 @@ def require(condition: bool, message: str) -> None:
         sys.exit(1)
 
 
+def uncomment_text(text: str) -> str:
+    lines: list[str] = []
+    block_parent_indent: int | None = None
+
+    for line in text.splitlines():
+        stripped = line.lstrip()
+        indent = len(line) - len(stripped)
+
+        if block_parent_indent is not None:
+            if stripped and indent <= block_parent_indent:
+                block_parent_indent = None
+            else:
+                lines.append(line)
+                continue
+
+        if stripped.startswith("#"):
+            continue
+
+        lines.append(line)
+        if re.search(r"(:|-\s*)\s*[|>][+-]?\s*(?:#.*)?$", line):
+            block_parent_indent = indent
+
+    return "\n".join(lines)
+
+
 def uncomment(path: str) -> str:
-    return "\n".join(
-        line
-        for line in Path(path).read_text(encoding="utf-8").splitlines()
-        if not line.lstrip().startswith("#")
+    return uncomment_text(Path(path).read_text(encoding="utf-8"))
+
+
+def self_test() -> None:
+    sample = """
+name: example
+# YAML comment
+jobs:
+  test:
+    steps:
+      - run: |
+          # shell comments inside block scalars must be preserved
+          #!/usr/bin/env bash
+          echo ok
+    # another YAML comment
+permissions: {}
+"""
+    got = uncomment_text(sample)
+    require("# YAML comment" not in got, "YAML comments should be stripped")
+    require(
+        "#!/usr/bin/env bash" in got and "# shell comments inside block scalars" in got,
+        "block-scalar shell comments should be preserved",
     )
+    require("# another YAML comment" not in got, "YAML comments after block scalars should be stripped")
 
 
 def main() -> None:
+    self_test()
     orchestrator = uncomment(".github/workflows/orchestrator.yaml")
     chart_gen = uncomment(".github/workflows/chart-gen.yaml")
     build_site = uncomment(".github/workflows/build-site.yaml")
     chart_integration = uncomment(".github/workflows/chart-integration.yaml")
     ci = uncomment(".github/workflows/ci.yaml")
+    wait_helper = Path(".github/scripts/wait-for-workflows.sh").read_text(encoding="utf-8")
 
     require(
         "for attempt in 1 2 3 4 5; do" in orchestrator
@@ -36,6 +83,12 @@ def main() -> None:
         "bash .github/scripts/wait-for-workflows.sh patch-image.yaml" in chart_gen
         and "actions: read" in chart_gen,
         "chart generation must wait for active patch-image producer runs",
+    )
+    require(
+        "--method GET" in wait_helper
+        and "--paginate" in wait_helper
+        and ".database_id" not in wait_helper,
+        "wait helper must use GET pagination and REST run ids",
     )
     require(
         "bash .github/scripts/wait-for-workflows.sh patch-image.yaml integer-build-image.yaml chart-gen.yaml"

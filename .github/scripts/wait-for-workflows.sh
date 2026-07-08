@@ -37,9 +37,11 @@ while true; do
     for workflow in "$@"; do
       for status in queued in_progress requested waiting; do
         gh api "repos/${repo}/actions/workflows/${workflow}/runs" \
+          --method GET \
+          --paginate \
           -f branch="${BRANCH}" \
           -f status="${status}" \
-          --jq ".workflow_runs[] | select(.created_at >= \"${cutoff}\") | [\"${workflow}\", .database_id, .status, .created_at, .html_url] | @tsv"
+          --jq ".workflow_runs[] | select(.created_at >= \"${cutoff}\") | [\"${workflow}\", .id, .status, .created_at, .html_url] | @tsv"
       done
     done | sort -u
   )"
