@@ -258,7 +258,46 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IMAGES: ${{ needs.discover.outputs.images }}
         run: |
-          echo "$IMAGES" | jq -c '.[]' | while IFS= read -r image; do
+          dispatch_patch() {
+            local name="$1"
+            local source="$2"
+            local registry="$3"
+            local platforms="$4"
+            local go_vcs_url="$5"
+
+            local dispatch_args=(
+              --repo "${{ github.repository }}"
+              --ref "${{ github.ref_name }}"
+              --field "image-name=${name}"
+              --field "source-ref=${source}"
+              --field "target-registry=${registry}"
+              --field "platforms=${platforms}"
+            )
+            if [ -n "${go_vcs_url}" ]; then
+              dispatch_args+=(--field "go-vcs-url=${go_vcs_url}")
+            fi
+
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if gh workflow run patch-image.yaml "${dispatch_args[@]}"; then
+                return 0
+              fi
+              if [ "$attempt" -lt 5 ]; then
+                local sleep_seconds=$((attempt * 10))
+                echo "Dispatch failed for ${name}: ${source} (attempt ${attempt}/5); retrying in ${sleep_seconds}s" >&2
+                sleep "${sleep_seconds}"
+              fi
+            done
+
+            echo "Failed to dispatch ${name}: ${source} after 5 attempts" >&2
+            return 1
+          }
+
+          jq -c '.[]' <<< "$IMAGES" > "$RUNNER_TEMP/patch-images.ndjson"
+          expected_count="${{ needs.discover.outputs.count }}"
+          dispatched=0
+
+          while IFS= read -r image; do
             NAME=$(echo "$image" | jq -r '.name')
             SOURCE=$(echo "$image" | jq -r '.source')
             REGISTRY=$(echo "$image" | jq -r '."target-registry"')
@@ -266,20 +305,15 @@ jobs:
             GO_VCS_URL=$(echo "$image" | jq -r '."go-vcs-url" // ""')
 
             echo "Dispatching patch for ${NAME}: ${SOURCE}..."
-            DISPATCH_ARGS=(
-              --repo "${{ github.repository }}"
-              --ref "${{ github.ref_name }}"
-              --field "image-name=${NAME}"
-              --field "source-ref=${SOURCE}"
-              --field "target-registry=${REGISTRY}"
-              --field "platforms=${PLATFORMS}"
-            )
-            if [ -n "${GO_VCS_URL}" ]; then
-              DISPATCH_ARGS+=(--field "go-vcs-url=${GO_VCS_URL}")
-            fi
-            gh workflow run patch-image.yaml "${DISPATCH_ARGS[@]}"
+            dispatch_patch "$NAME" "$SOURCE" "$REGISTRY" "$PLATFORMS" "$GO_VCS_URL"
+            dispatched=$((dispatched + 1))
 
             # Throttle to avoid GitHub API rate limits
             sleep 2
-          done
-          echo "✓ Dispatched ${{ needs.discover.outputs.count }} patch runs"
+          done < "$RUNNER_TEMP/patch-images.ndjson"
+
+          if [ "$dispatched" -ne "$expected_count" ]; then
+            echo "Dispatched ${dispatched}/${expected_count} patch runs; expected all discovered images to dispatch" >&2
+            exit 1
+          fi
+          echo "✓ Dispatched ${dispatched}/${expected_count} patch runs"

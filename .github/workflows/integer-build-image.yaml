@@ -426,12 +426,12 @@ jobs:
           # The verity binary owns this gate (cmd/integer_build.go
           # integerTrivyGate) — it is unit-tested and cannot silently regress,
           # unlike inline workflow bash. Build the image LOCALLY and Trivy-scan
-          # it here; if HIGH/CRITICAL CVEs are found this step FAILS and the
-          # publish step below never runs. Verity never uploads an image with a CVE.
+          # it here; if any CVEs are found this step FAILS and the publish step
+          # below never runs. Verity never uploads an Integer image with a CVE.
           # Gate BOTH published arches (publish pushes amd64+arm64). apko build
           # and trivy scan assemble/read packages without executing arch
-          # binaries, so no QEMU is needed. If EITHER arch has HIGH/CRITICAL
-          # CVEs, this step fails and the multi-arch publish below never runs.
+          # binaries, so no QEMU is needed. If EITHER arch has any CVEs, this
+          # step fails and the multi-arch publish below never runs.
           for gate_arch in amd64 arm64; do
             echo "::group::Trivy publish gate ($gate_arch)"
             ./verity integer build \
@@ -439,7 +439,7 @@ jobs:
               --version "$INPUT_VERSION" \
               --type "$INPUT_TYPE" \
               --arch "$gate_arch" \
-              --fail-on-severity HIGH,CRITICAL \
+              --fail-on-severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
               --output "gate-$gate_arch.tar"
             echo "::endgroup::"
           done
@@ -522,13 +522,12 @@ jobs:
           PRIMARY_TAG: ${{ steps.gen.outputs.primary_tag }}
         run: |
           trivy image \
-            --exit-code 0 \
-            --severity CRITICAL,HIGH,MEDIUM,LOW \
+            --exit-code 1 \
+            --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
             --vuln-type os,library \
             --format json \
             --output trivy-report.json \
             "${INPUT_REGISTRY}/${INPUT_IMAGE}:${PRIMARY_TAG}"
-        continue-on-error: true  # Report only — images publish even with CVEs
 
       - name: Resolve Trivy gate policy
         id: trivy-gate-postgres

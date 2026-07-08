@@ -48,6 +48,8 @@ lint-workflows:
 	python3 .github/scripts/validate-patch-image-workflow.py
 	python3 .github/scripts/validate-integer-build-image-workflow.py
 	python3 .github/scripts/validate-chart-integration-workflow.py
+	python3 .github/scripts/validate-nightly-workflows.py
+	bash .github/scripts/validate-wait-for-workflows.sh
 	bash .github/scripts/validate-retry-helpers.sh
 
 # Lint YAML files
