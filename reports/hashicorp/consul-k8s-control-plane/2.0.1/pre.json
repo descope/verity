@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.70.0"
   },
-  "ReportID": "019f1505-cb06-7bfe-8064-ba5fad07d2f2",
-  "CreatedAt": "2026-06-29T20:15:29.030787174Z",
+  "ReportID": "019f405b-c0b3-7a8f-ba46-506d933c8cb6",
+  "CreatedAt": "2026-07-08T06:13:02.771694391Z",
   "ArtifactID": "sha256:face4ee4390d855b0a3ef490bc669f9f5474df782f6f2126e2c7cda4508e95cb",
   "ArtifactName": "hashicorp/consul-k8s-control-plane:2.0.1",
   "ArtifactType": "container_image",
@@ -2500,28 +2500,44 @@
             "URL": "https://pkg.go.dev/vuln/"
           },
           "Fingerprint": "sha256:a131c361a305b5c7af0afaf588453047166966c169079ec4af2b855308467e69",
-          "Title": "*x509.Certificate).VerifyHostname previously called matchHostnames in ...",
+          "Title": "crypto/x509: golang: golang crypto/x509: Denial of Service via excessive processing of DNS SAN entries",
           "Description": "(*x509.Certificate).VerifyHostname previously called matchHostnames in a loop over all DNS Subject Alternative Name (SAN) entries. This caused strings.Split(host, \".\") to execute repeatedly on the same input hostname. With a large DNS SAN list, verification costs scaled quadratically based on the number of SAN entries multiplied by the hostname's label count. Because x509.Verify validates hostnames before building the certificate chain, this overhead occurred even for untrusted certificates.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-606"
+          ],
           "VendorSeverity": {
             "amazon": 3,
-            "bitnami": 2
+            "bitnami": 2,
+            "redhat": 3
           },
           "CVSS": {
             "bitnami": {
               "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:H",
               "V3Score": 6.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:33574",
+            "https://access.redhat.com/errata/RHSA-2026:34357",
+            "https://access.redhat.com/errata/RHSA-2026:34359",
+            "https://access.redhat.com/errata/RHSA-2026:35832",
+            "https://access.redhat.com/security/cve/CVE-2026-27145",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2484207",
             "https://go.dev/cl/783621",
             "https://go.dev/issue/79694",
             "https://groups.google.com/g/golang-announce/c/tKs3rmcBcKw",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-27145",
-            "https://pkg.go.dev/vuln/GO-2026-5037"
+            "https://pkg.go.dev/vuln/GO-2026-5037",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-27145.json",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27145"
           ],
           "PublishedDate": "2026-06-02T23:16:35.57Z",
-          "LastModifiedDate": "2026-06-17T10:26:45.23Z"
+          "LastModifiedDate": "2026-07-06T13:16:35.233Z"
         },
         {
           "VulnerabilityID": "CVE-2026-33811",
@@ -2553,7 +2569,8 @@
           "Description": "When using LookupCNAME with the cgo DNS resolver, a very long CNAME response can trigger a double-free of C memory and a crash.",
           "Severity": "HIGH",
           "CweIDs": [
-            "CWE-415"
+            "CWE-415",
+            "CWE-1341"
           ],
           "VendorSeverity": {
             "amazon": 3,
@@ -2578,7 +2595,19 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:23262",
+            "https://access.redhat.com/errata/RHSA-2026:23264",
+            "https://access.redhat.com/errata/RHSA-2026:33120",
+            "https://access.redhat.com/errata/RHSA-2026:33123",
+            "https://access.redhat.com/errata/RHSA-2026:33142",
+            "https://access.redhat.com/errata/RHSA-2026:33150",
+            "https://access.redhat.com/errata/RHSA-2026:33574",
+            "https://access.redhat.com/errata/RHSA-2026:34357",
+            "https://access.redhat.com/errata/RHSA-2026:34359",
+            "https://access.redhat.com/errata/RHSA-2026:34364",
+            "https://access.redhat.com/errata/RHSA-2026:35832",
             "https://access.redhat.com/security/cve/CVE-2026-33811",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2467822",
             "https://go.dev/cl/767860",
             "https://go.dev/issue/78803",
             "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
@@ -2586,10 +2615,11 @@
             "https://linux.oracle.com/errata/ELSA-2026-22121.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-33811",
             "https://pkg.go.dev/vuln/GO-2026-4981",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-33811.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-33811"
           ],
           "PublishedDate": "2026-05-07T20:16:42.77Z",
-          "LastModifiedDate": "2026-06-17T10:38:08.167Z"
+          "LastModifiedDate": "2026-07-06T13:16:39.227Z"
         },
         {
           "VulnerabilityID": "CVE-2026-33814",
@@ -2621,7 +2651,8 @@
           "Description": "When processing HTTP/2 SETTINGS frames, transport will enter an infinite loop of writing CONTINUATION frames if it receives a SETTINGS_MAX_FRAME_SIZE with a value of 0.",
           "Severity": "HIGH",
           "CweIDs": [
-            "CWE-835"
+            "CWE-835",
+            "CWE-606"
           ],
           "VendorSeverity": {
             "amazon": 3,
@@ -2648,7 +2679,15 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:23262",
+            "https://access.redhat.com/errata/RHSA-2026:23264",
+            "https://access.redhat.com/errata/RHSA-2026:33120",
+            "https://access.redhat.com/errata/RHSA-2026:33123",
+            "https://access.redhat.com/errata/RHSA-2026:33142",
+            "https://access.redhat.com/errata/RHSA-2026:33150",
+            "https://access.redhat.com/errata/RHSA-2026:34342",
             "https://access.redhat.com/security/cve/CVE-2026-33814",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2467815",
             "https://github.com/golang/go/issues/78476",
             "https://go-review.googlesource.com/c/go/+/761581",
             "https://go-review.googlesource.com/c/net/+/761640",
@@ -2660,6 +2699,7 @@
             "https://linux.oracle.com/errata/ELSA-2026-22121.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-33814",
             "https://pkg.go.dev/vuln/GO-2026-4918",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-33814.json",
             "https://ubuntu.com/security/notices/USN-8430-1",
             "https://ubuntu.com/security/notices/USN-8471-1",
             "https://ubuntu.com/security/notices/USN-8472-1",
@@ -2667,7 +2707,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-33814"
           ],
           "PublishedDate": "2026-05-07T20:16:42.88Z",
-          "LastModifiedDate": "2026-06-17T10:38:08.657Z"
+          "LastModifiedDate": "2026-07-06T13:16:39.617Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39820",
@@ -2695,18 +2735,20 @@
             "URL": "https://pkg.go.dev/vuln/"
           },
           "Fingerprint": "sha256:9b74dfda09db31b8a26071587f5ac072f9bfb95a26446d73bb5c919a62ba0662",
-          "Title": "Well-crafted inputs reaching ParseAddress, ParseAddressList, and Parse ...",
+          "Title": "net/mail: golang: Go net/mail: Denial of Service via crafted email inputs",
           "Description": "Well-crafted inputs reaching ParseAddress, ParseAddressList, and ParseDate were able to trigger excessive CPU exhaustion and memory allocations.",
           "Severity": "HIGH",
           "CweIDs": [
-            "CWE-770"
+            "CWE-770",
+            "CWE-606"
           ],
           "VendorSeverity": {
             "amazon": 3,
             "bitnami": 3,
             "nvd": 3,
             "oracle-oval": 3,
-            "photon": 3
+            "photon": 3,
+            "redhat": 3
           },
           "CVSS": {
             "bitnami": {
@@ -2716,19 +2758,33 @@
             "nvd": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 7.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:33120",
+            "https://access.redhat.com/errata/RHSA-2026:33123",
+            "https://access.redhat.com/errata/RHSA-2026:33142",
+            "https://access.redhat.com/errata/RHSA-2026:33150",
+            "https://access.redhat.com/errata/RHSA-2026:33574",
+            "https://access.redhat.com/errata/RHSA-2026:34364",
+            "https://access.redhat.com/security/cve/CVE-2026-39820",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2467820",
             "https://go.dev/cl/759940",
             "https://go.dev/issue/78566",
             "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
             "https://linux.oracle.com/cve/CVE-2026-39820.html",
             "https://linux.oracle.com/errata/ELSA-2026-22121.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-39820",
-            "https://pkg.go.dev/vuln/GO-2026-4986"
+            "https://pkg.go.dev/vuln/GO-2026-4986",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-39820.json",
+            "https://www.cve.org/CVERecord?id=CVE-2026-39820"
           ],
           "PublishedDate": "2026-05-07T20:16:43.187Z",
-          "LastModifiedDate": "2026-06-17T10:42:38.193Z"
+          "LastModifiedDate": "2026-07-02T12:17:11.933Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39836",
@@ -2815,32 +2871,50 @@
             "URL": "https://pkg.go.dev/vuln/"
           },
           "Fingerprint": "sha256:59e2e2d6e650a6a680fa15c47da690c016e5c60e8be7d4fb1c8cbaa6a1ec9a27",
-          "Title": "Pathological inputs could cause DoS through consumePhrase when parsing ...",
+          "Title": "net/mail: golang: net/mail: Denial of Service via pathological email address parsing",
           "Description": "Pathological inputs could cause DoS through consumePhrase when parsing an email address according to RFC 5322.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-1046"
+          ],
           "VendorSeverity": {
             "amazon": 3,
             "bitnami": 3,
             "oracle-oval": 3,
-            "photon": 3
+            "photon": 3,
+            "redhat": 3
           },
           "CVSS": {
             "bitnami": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 7.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:33120",
+            "https://access.redhat.com/errata/RHSA-2026:33123",
+            "https://access.redhat.com/errata/RHSA-2026:33142",
+            "https://access.redhat.com/errata/RHSA-2026:33150",
+            "https://access.redhat.com/errata/RHSA-2026:33574",
+            "https://access.redhat.com/errata/RHSA-2026:34364",
+            "https://access.redhat.com/security/cve/CVE-2026-42499",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2467809",
             "https://go.dev/cl/771520",
             "https://go.dev/issue/78987",
             "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
             "https://linux.oracle.com/cve/CVE-2026-42499.html",
             "https://linux.oracle.com/errata/ELSA-2026-22121.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-42499",
-            "https://pkg.go.dev/vuln/GO-2026-4977"
+            "https://pkg.go.dev/vuln/GO-2026-4977",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-42499.json",
+            "https://www.cve.org/CVERecord?id=CVE-2026-42499"
           ],
           "PublishedDate": "2026-05-07T20:16:44.54Z",
-          "LastModifiedDate": "2026-06-17T10:47:56.183Z"
+          "LastModifiedDate": "2026-07-06T13:16:54.937Z"
         },
         {
           "VulnerabilityID": "CVE-2026-42504",
@@ -2875,6 +2949,7 @@
           ],
           "VendorSeverity": {
             "amazon": 3,
+            "azure": 3,
             "bitnami": 3
           },
           "CVSS": {
@@ -3105,6 +3180,7 @@
           "Description": "When returning errors, functions in the net/textproto package would include its input as part of the error. This might allow an attacker to inject misleading content to errors that are printed or logged.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "alma": 2,
             "amazon": 3,
             "bitnami": 2,
             "oracle-oval": 2,
@@ -3122,9 +3198,12 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:29980",
             "https://access.redhat.com/security/cve/CVE-2026-42507",
+            "https://bugzilla.redhat.com/2484205",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2484205",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-42507",
+            "https://errata.almalinux.org/10/ALSA-2026-29980.html",
             "https://errata.rockylinux.org/RLSA-2026:29981",
             "https://go.dev/cl/777060",
             "https://go.dev/issue/79346",
@@ -5975,28 +6054,44 @@
             "URL": "https://pkg.go.dev/vuln/"
           },
           "Fingerprint": "sha256:aa0245dd776e6e16cd01ccdbe141462731ce9219b0023edce7df09e628a2ed21",
-          "Title": "*x509.Certificate).VerifyHostname previously called matchHostnames in ...",
+          "Title": "crypto/x509: golang: golang crypto/x509: Denial of Service via excessive processing of DNS SAN entries",
           "Description": "(*x509.Certificate).VerifyHostname previously called matchHostnames in a loop over all DNS Subject Alternative Name (SAN) entries. This caused strings.Split(host, \".\") to execute repeatedly on the same input hostname. With a large DNS SAN list, verification costs scaled quadratically based on the number of SAN entries multiplied by the hostname's label count. Because x509.Verify validates hostnames before building the certificate chain, this overhead occurred even for untrusted certificates.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-606"
+          ],
           "VendorSeverity": {
             "amazon": 3,
-            "bitnami": 2
+            "bitnami": 2,
+            "redhat": 3
           },
           "CVSS": {
             "bitnami": {
               "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:H",
               "V3Score": 6.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:33574",
+            "https://access.redhat.com/errata/RHSA-2026:34357",
+            "https://access.redhat.com/errata/RHSA-2026:34359",
+            "https://access.redhat.com/errata/RHSA-2026:35832",
+            "https://access.redhat.com/security/cve/CVE-2026-27145",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2484207",
             "https://go.dev/cl/783621",
             "https://go.dev/issue/79694",
             "https://groups.google.com/g/golang-announce/c/tKs3rmcBcKw",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-27145",
-            "https://pkg.go.dev/vuln/GO-2026-5037"
+            "https://pkg.go.dev/vuln/GO-2026-5037",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-27145.json",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27145"
           ],
           "PublishedDate": "2026-06-02T23:16:35.57Z",
-          "LastModifiedDate": "2026-06-17T10:26:45.23Z"
+          "LastModifiedDate": "2026-07-06T13:16:35.233Z"
         },
         {
           "VulnerabilityID": "CVE-2026-33811",
@@ -6028,7 +6123,8 @@
           "Description": "When using LookupCNAME with the cgo DNS resolver, a very long CNAME response can trigger a double-free of C memory and a crash.",
           "Severity": "HIGH",
           "CweIDs": [
-            "CWE-415"
+            "CWE-415",
+            "CWE-1341"
           ],
           "VendorSeverity": {
             "amazon": 3,
@@ -6053,7 +6149,19 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:23262",
+            "https://access.redhat.com/errata/RHSA-2026:23264",
+            "https://access.redhat.com/errata/RHSA-2026:33120",
+            "https://access.redhat.com/errata/RHSA-2026:33123",
+            "https://access.redhat.com/errata/RHSA-2026:33142",
+            "https://access.redhat.com/errata/RHSA-2026:33150",
+            "https://access.redhat.com/errata/RHSA-2026:33574",
+            "https://access.redhat.com/errata/RHSA-2026:34357",
+            "https://access.redhat.com/errata/RHSA-2026:34359",
+            "https://access.redhat.com/errata/RHSA-2026:34364",
+            "https://access.redhat.com/errata/RHSA-2026:35832",
             "https://access.redhat.com/security/cve/CVE-2026-33811",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2467822",
             "https://go.dev/cl/767860",
             "https://go.dev/issue/78803",
             "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
@@ -6061,10 +6169,11 @@
             "https://linux.oracle.com/errata/ELSA-2026-22121.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-33811",
             "https://pkg.go.dev/vuln/GO-2026-4981",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-33811.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-33811"
           ],
           "PublishedDate": "2026-05-07T20:16:42.77Z",
-          "LastModifiedDate": "2026-06-17T10:38:08.167Z"
+          "LastModifiedDate": "2026-07-06T13:16:39.227Z"
         },
         {
           "VulnerabilityID": "CVE-2026-33814",
@@ -6096,7 +6205,8 @@
           "Description": "When processing HTTP/2 SETTINGS frames, transport will enter an infinite loop of writing CONTINUATION frames if it receives a SETTINGS_MAX_FRAME_SIZE with a value of 0.",
           "Severity": "HIGH",
           "CweIDs": [
-            "CWE-835"
+            "CWE-835",
+            "CWE-606"
           ],
           "VendorSeverity": {
             "amazon": 3,
@@ -6123,7 +6233,15 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:23262",
+            "https://access.redhat.com/errata/RHSA-2026:23264",
+            "https://access.redhat.com/errata/RHSA-2026:33120",
+            "https://access.redhat.com/errata/RHSA-2026:33123",
+            "https://access.redhat.com/errata/RHSA-2026:33142",
+            "https://access.redhat.com/errata/RHSA-2026:33150",
+            "https://access.redhat.com/errata/RHSA-2026:34342",
             "https://access.redhat.com/security/cve/CVE-2026-33814",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2467815",
             "https://github.com/golang/go/issues/78476",
             "https://go-review.googlesource.com/c/go/+/761581",
             "https://go-review.googlesource.com/c/net/+/761640",
@@ -6135,6 +6253,7 @@
             "https://linux.oracle.com/errata/ELSA-2026-22121.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-33814",
             "https://pkg.go.dev/vuln/GO-2026-4918",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-33814.json",
             "https://ubuntu.com/security/notices/USN-8430-1",
             "https://ubuntu.com/security/notices/USN-8471-1",
             "https://ubuntu.com/security/notices/USN-8472-1",
@@ -6142,7 +6261,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-33814"
           ],
           "PublishedDate": "2026-05-07T20:16:42.88Z",
-          "LastModifiedDate": "2026-06-17T10:38:08.657Z"
+          "LastModifiedDate": "2026-07-06T13:16:39.617Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39820",
@@ -6170,18 +6289,20 @@
             "URL": "https://pkg.go.dev/vuln/"
           },
           "Fingerprint": "sha256:cd39240c6e7e0e34d0c6333c3983e0fb86f0b9abf54e554fad42120e1144c398",
-          "Title": "Well-crafted inputs reaching ParseAddress, ParseAddressList, and Parse ...",
+          "Title": "net/mail: golang: Go net/mail: Denial of Service via crafted email inputs",
           "Description": "Well-crafted inputs reaching ParseAddress, ParseAddressList, and ParseDate were able to trigger excessive CPU exhaustion and memory allocations.",
           "Severity": "HIGH",
           "CweIDs": [
-            "CWE-770"
+            "CWE-770",
+            "CWE-606"
           ],
           "VendorSeverity": {
             "amazon": 3,
             "bitnami": 3,
             "nvd": 3,
             "oracle-oval": 3,
-            "photon": 3
+            "photon": 3,
+            "redhat": 3
           },
           "CVSS": {
             "bitnami": {
@@ -6191,19 +6312,33 @@
             "nvd": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 7.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:33120",
+            "https://access.redhat.com/errata/RHSA-2026:33123",
+            "https://access.redhat.com/errata/RHSA-2026:33142",
+            "https://access.redhat.com/errata/RHSA-2026:33150",
+            "https://access.redhat.com/errata/RHSA-2026:33574",
+            "https://access.redhat.com/errata/RHSA-2026:34364",
+            "https://access.redhat.com/security/cve/CVE-2026-39820",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2467820",
             "https://go.dev/cl/759940",
             "https://go.dev/issue/78566",
             "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
             "https://linux.oracle.com/cve/CVE-2026-39820.html",
             "https://linux.oracle.com/errata/ELSA-2026-22121.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-39820",
-            "https://pkg.go.dev/vuln/GO-2026-4986"
+            "https://pkg.go.dev/vuln/GO-2026-4986",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-39820.json",
+            "https://www.cve.org/CVERecord?id=CVE-2026-39820"
           ],
           "PublishedDate": "2026-05-07T20:16:43.187Z",
-          "LastModifiedDate": "2026-06-17T10:42:38.193Z"
+          "LastModifiedDate": "2026-07-02T12:17:11.933Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39836",
@@ -6290,32 +6425,50 @@
             "URL": "https://pkg.go.dev/vuln/"
           },
           "Fingerprint": "sha256:6c2eeafe685a0b42307411767c3ca6db523a830982cfb4354f4d8c0ef2a33bad",
-          "Title": "Pathological inputs could cause DoS through consumePhrase when parsing ...",
+          "Title": "net/mail: golang: net/mail: Denial of Service via pathological email address parsing",
           "Description": "Pathological inputs could cause DoS through consumePhrase when parsing an email address according to RFC 5322.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-1046"
+          ],
           "VendorSeverity": {
             "amazon": 3,
             "bitnami": 3,
             "oracle-oval": 3,
-            "photon": 3
+            "photon": 3,
+            "redhat": 3
           },
           "CVSS": {
             "bitnami": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 7.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:33120",
+            "https://access.redhat.com/errata/RHSA-2026:33123",
+            "https://access.redhat.com/errata/RHSA-2026:33142",
+            "https://access.redhat.com/errata/RHSA-2026:33150",
+            "https://access.redhat.com/errata/RHSA-2026:33574",
+            "https://access.redhat.com/errata/RHSA-2026:34364",
+            "https://access.redhat.com/security/cve/CVE-2026-42499",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2467809",
             "https://go.dev/cl/771520",
             "https://go.dev/issue/78987",
             "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
             "https://linux.oracle.com/cve/CVE-2026-42499.html",
             "https://linux.oracle.com/errata/ELSA-2026-22121.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-42499",
-            "https://pkg.go.dev/vuln/GO-2026-4977"
+            "https://pkg.go.dev/vuln/GO-2026-4977",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-42499.json",
+            "https://www.cve.org/CVERecord?id=CVE-2026-42499"
           ],
           "PublishedDate": "2026-05-07T20:16:44.54Z",
-          "LastModifiedDate": "2026-06-17T10:47:56.183Z"
+          "LastModifiedDate": "2026-07-06T13:16:54.937Z"
         },
         {
           "VulnerabilityID": "CVE-2026-42504",
@@ -6350,6 +6503,7 @@
           ],
           "VendorSeverity": {
             "amazon": 3,
+            "azure": 3,
             "bitnami": 3
           },
           "CVSS": {
@@ -6580,6 +6734,7 @@
           "Description": "When returning errors, functions in the net/textproto package would include its input as part of the error. This might allow an attacker to inject misleading content to errors that are printed or logged.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "alma": 2,
             "amazon": 3,
             "bitnami": 2,
             "oracle-oval": 2,
@@ -6597,9 +6752,12 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:29980",
             "https://access.redhat.com/security/cve/CVE-2026-42507",
+            "https://bugzilla.redhat.com/2484205",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2484205",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-42507",
+            "https://errata.almalinux.org/10/ALSA-2026-29980.html",
             "https://errata.rockylinux.org/RLSA-2026:29981",
             "https://go.dev/cl/777060",
             "https://go.dev/issue/79346",
@@ -7850,28 +8008,44 @@
             "URL": "https://pkg.go.dev/vuln/"
           },
           "Fingerprint": "sha256:3b520a03abf4e60945e5e1dc77545bcbf123030db48f76551b85bdb055de5614",
-          "Title": "*x509.Certificate).VerifyHostname previously called matchHostnames in ...",
+          "Title": "crypto/x509: golang: golang crypto/x509: Denial of Service via excessive processing of DNS SAN entries",
           "Description": "(*x509.Certificate).VerifyHostname previously called matchHostnames in a loop over all DNS Subject Alternative Name (SAN) entries. This caused strings.Split(host, \".\") to execute repeatedly on the same input hostname. With a large DNS SAN list, verification costs scaled quadratically based on the number of SAN entries multiplied by the hostname's label count. Because x509.Verify validates hostnames before building the certificate chain, this overhead occurred even for untrusted certificates.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-606"
+          ],
           "VendorSeverity": {
             "amazon": 3,
-            "bitnami": 2
+            "bitnami": 2,
+            "redhat": 3
           },
           "CVSS": {
             "bitnami": {
               "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:H",
               "V3Score": 6.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:33574",
+            "https://access.redhat.com/errata/RHSA-2026:34357",
+            "https://access.redhat.com/errata/RHSA-2026:34359",
+            "https://access.redhat.com/errata/RHSA-2026:35832",
+            "https://access.redhat.com/security/cve/CVE-2026-27145",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2484207",
             "https://go.dev/cl/783621",
             "https://go.dev/issue/79694",
             "https://groups.google.com/g/golang-announce/c/tKs3rmcBcKw",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-27145",
-            "https://pkg.go.dev/vuln/GO-2026-5037"
+            "https://pkg.go.dev/vuln/GO-2026-5037",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-27145.json",
+            "https://www.cve.org/CVERecord?id=CVE-2026-27145"
           ],
           "PublishedDate": "2026-06-02T23:16:35.57Z",
-          "LastModifiedDate": "2026-06-17T10:26:45.23Z"
+          "LastModifiedDate": "2026-07-06T13:16:35.233Z"
         },
         {
           "VulnerabilityID": "CVE-2026-33811",
@@ -7903,7 +8077,8 @@
           "Description": "When using LookupCNAME with the cgo DNS resolver, a very long CNAME response can trigger a double-free of C memory and a crash.",
           "Severity": "HIGH",
           "CweIDs": [
-            "CWE-415"
+            "CWE-415",
+            "CWE-1341"
           ],
           "VendorSeverity": {
             "amazon": 3,
@@ -7928,7 +8103,19 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:23262",
+            "https://access.redhat.com/errata/RHSA-2026:23264",
+            "https://access.redhat.com/errata/RHSA-2026:33120",
+            "https://access.redhat.com/errata/RHSA-2026:33123",
+            "https://access.redhat.com/errata/RHSA-2026:33142",
+            "https://access.redhat.com/errata/RHSA-2026:33150",
+            "https://access.redhat.com/errata/RHSA-2026:33574",
+            "https://access.redhat.com/errata/RHSA-2026:34357",
+            "https://access.redhat.com/errata/RHSA-2026:34359",
+            "https://access.redhat.com/errata/RHSA-2026:34364",
+            "https://access.redhat.com/errata/RHSA-2026:35832",
             "https://access.redhat.com/security/cve/CVE-2026-33811",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2467822",
             "https://go.dev/cl/767860",
             "https://go.dev/issue/78803",
             "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
@@ -7936,10 +8123,11 @@
             "https://linux.oracle.com/errata/ELSA-2026-22121.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-33811",
             "https://pkg.go.dev/vuln/GO-2026-4981",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-33811.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-33811"
           ],
           "PublishedDate": "2026-05-07T20:16:42.77Z",
-          "LastModifiedDate": "2026-06-17T10:38:08.167Z"
+          "LastModifiedDate": "2026-07-06T13:16:39.227Z"
         },
         {
           "VulnerabilityID": "CVE-2026-33814",
@@ -7971,7 +8159,8 @@
           "Description": "When processing HTTP/2 SETTINGS frames, transport will enter an infinite loop of writing CONTINUATION frames if it receives a SETTINGS_MAX_FRAME_SIZE with a value of 0.",
           "Severity": "HIGH",
           "CweIDs": [
-            "CWE-835"
+            "CWE-835",
+            "CWE-606"
           ],
           "VendorSeverity": {
             "amazon": 3,
@@ -7998,7 +8187,15 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:23262",
+            "https://access.redhat.com/errata/RHSA-2026:23264",
+            "https://access.redhat.com/errata/RHSA-2026:33120",
+            "https://access.redhat.com/errata/RHSA-2026:33123",
+            "https://access.redhat.com/errata/RHSA-2026:33142",
+            "https://access.redhat.com/errata/RHSA-2026:33150",
+            "https://access.redhat.com/errata/RHSA-2026:34342",
             "https://access.redhat.com/security/cve/CVE-2026-33814",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2467815",
             "https://github.com/golang/go/issues/78476",
             "https://go-review.googlesource.com/c/go/+/761581",
             "https://go-review.googlesource.com/c/net/+/761640",
@@ -8010,6 +8207,7 @@
             "https://linux.oracle.com/errata/ELSA-2026-22121.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-33814",
             "https://pkg.go.dev/vuln/GO-2026-4918",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-33814.json",
             "https://ubuntu.com/security/notices/USN-8430-1",
             "https://ubuntu.com/security/notices/USN-8471-1",
             "https://ubuntu.com/security/notices/USN-8472-1",
@@ -8017,7 +8215,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-33814"
           ],
           "PublishedDate": "2026-05-07T20:16:42.88Z",
-          "LastModifiedDate": "2026-06-17T10:38:08.657Z"
+          "LastModifiedDate": "2026-07-06T13:16:39.617Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39820",
@@ -8045,18 +8243,20 @@
             "URL": "https://pkg.go.dev/vuln/"
           },
           "Fingerprint": "sha256:b9083a497e65f635192ea5e347886ce68b1f71125d180175c232099762b4b791",
-          "Title": "Well-crafted inputs reaching ParseAddress, ParseAddressList, and Parse ...",
+          "Title": "net/mail: golang: Go net/mail: Denial of Service via crafted email inputs",
           "Description": "Well-crafted inputs reaching ParseAddress, ParseAddressList, and ParseDate were able to trigger excessive CPU exhaustion and memory allocations.",
           "Severity": "HIGH",
           "CweIDs": [
-            "CWE-770"
+            "CWE-770",
+            "CWE-606"
           ],
           "VendorSeverity": {
             "amazon": 3,
             "bitnami": 3,
             "nvd": 3,
             "oracle-oval": 3,
-            "photon": 3
+            "photon": 3,
+            "redhat": 3
           },
           "CVSS": {
             "bitnami": {
@@ -8066,19 +8266,33 @@
             "nvd": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 7.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:33120",
+            "https://access.redhat.com/errata/RHSA-2026:33123",
+            "https://access.redhat.com/errata/RHSA-2026:33142",
+            "https://access.redhat.com/errata/RHSA-2026:33150",
+            "https://access.redhat.com/errata/RHSA-2026:33574",
+            "https://access.redhat.com/errata/RHSA-2026:34364",
+            "https://access.redhat.com/security/cve/CVE-2026-39820",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2467820",
             "https://go.dev/cl/759940",
             "https://go.dev/issue/78566",
             "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
             "https://linux.oracle.com/cve/CVE-2026-39820.html",
             "https://linux.oracle.com/errata/ELSA-2026-22121.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-39820",
-            "https://pkg.go.dev/vuln/GO-2026-4986"
+            "https://pkg.go.dev/vuln/GO-2026-4986",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-39820.json",
+            "https://www.cve.org/CVERecord?id=CVE-2026-39820"
           ],
           "PublishedDate": "2026-05-07T20:16:43.187Z",
-          "LastModifiedDate": "2026-06-17T10:42:38.193Z"
+          "LastModifiedDate": "2026-07-02T12:17:11.933Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39836",
@@ -8165,32 +8379,50 @@
             "URL": "https://pkg.go.dev/vuln/"
           },
           "Fingerprint": "sha256:b081fc2c0811243820860747b219f19fe156a16a08b21871021d7eb58fb5a9a2",
-          "Title": "Pathological inputs could cause DoS through consumePhrase when parsing ...",
+          "Title": "net/mail: golang: net/mail: Denial of Service via pathological email address parsing",
           "Description": "Pathological inputs could cause DoS through consumePhrase when parsing an email address according to RFC 5322.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-1046"
+          ],
           "VendorSeverity": {
             "amazon": 3,
             "bitnami": 3,
             "oracle-oval": 3,
-            "photon": 3
+            "photon": 3,
+            "redhat": 3
           },
           "CVSS": {
             "bitnami": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 7.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:33120",
+            "https://access.redhat.com/errata/RHSA-2026:33123",
+            "https://access.redhat.com/errata/RHSA-2026:33142",
+            "https://access.redhat.com/errata/RHSA-2026:33150",
+            "https://access.redhat.com/errata/RHSA-2026:33574",
+            "https://access.redhat.com/errata/RHSA-2026:34364",
+            "https://access.redhat.com/security/cve/CVE-2026-42499",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2467809",
             "https://go.dev/cl/771520",
             "https://go.dev/issue/78987",
             "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
             "https://linux.oracle.com/cve/CVE-2026-42499.html",
             "https://linux.oracle.com/errata/ELSA-2026-22121.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-42499",
-            "https://pkg.go.dev/vuln/GO-2026-4977"
+            "https://pkg.go.dev/vuln/GO-2026-4977",
+            "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-42499.json",
+            "https://www.cve.org/CVERecord?id=CVE-2026-42499"
           ],
           "PublishedDate": "2026-05-07T20:16:44.54Z",
-          "LastModifiedDate": "2026-06-17T10:47:56.183Z"
+          "LastModifiedDate": "2026-07-06T13:16:54.937Z"
         },
         {
           "VulnerabilityID": "CVE-2026-42504",
@@ -8225,6 +8457,7 @@
           ],
           "VendorSeverity": {
             "amazon": 3,
+            "azure": 3,
             "bitnami": 3
           },
           "CVSS": {
@@ -8455,6 +8688,7 @@
           "Description": "When returning errors, functions in the net/textproto package would include its input as part of the error. This might allow an attacker to inject misleading content to errors that are printed or logged.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
+            "alma": 2,
             "amazon": 3,
             "bitnami": 2,
             "oracle-oval": 2,
@@ -8472,9 +8706,12 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:29980",
             "https://access.redhat.com/security/cve/CVE-2026-42507",
+            "https://bugzilla.redhat.com/2484205",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2484205",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-42507",
+            "https://errata.almalinux.org/10/ALSA-2026-29980.html",
             "https://errata.rockylinux.org/RLSA-2026:29981",
             "https://go.dev/cl/777060",
             "https://go.dev/issue/79346",
