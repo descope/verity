@@ -52,6 +52,9 @@ jobs:
           install: true
           cache: true
 
+      - name: Build verity
+        run: go build -o verity .
+
       - id: build-matrix
         name: Build chart matrix from Chart.yaml
         env:
@@ -61,87 +64,23 @@ jobs:
           INPUT_CHART: ${{ github.event.inputs.chart }}
         run: |
           set -euo pipefail
-          strict=false
-          if [[ -n "$INPUT_CHART" ]]; then
-            charts="$INPUT_CHART"
-          elif [[ "$EVENT_NAME" == "pull_request" ]]; then
+          : > changed-files.txt
+          printf 'dependencies: []\n' > base-Chart.yaml
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
             git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
-            if grep -Eq '^(test/chart-integration/|\.github/workflows/chart-integration\.yaml|mise\.toml|Makefile|verity\.yaml|internal/chartgen/|internal/discovery/)' changed-files.txt; then
-              charts="$(yq -r '.dependencies[].name' Chart.yaml)"
-            elif grep -Eq '^images/_base/' changed-files.txt; then
-              charts="$(yq -r '.dependencies[].name' Chart.yaml)"
-            else
-              mapfile -t chart_deps < <(yq -r '.dependencies[].name' Chart.yaml)
-              mapfile -t chart_value_keys < <(yq -r '(.chartValues // {}) | keys[]' verity.yaml)
-              declare -A chart_set=()
-
-              norm() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]'; }
-              add_chart() {
-                local chart="$1"
-                for dep in "${chart_deps[@]}"; do
-                  if [[ "$dep" == "$chart" ]]; then
-                    chart_set["$chart"]=1
-                  fi
-                done
-                return 0
-              }
-              match_chart_name() {
-                local image_norm="$1"
-                local chart chart_norm
-                for chart in "${chart_deps[@]}" "${chart_value_keys[@]}"; do
-                  chart_norm="$(norm "$chart")"
-                  if [[ "$image_norm" == "$chart_norm" || "$image_norm" == "$chart_norm"* || "$chart_norm" == "$image_norm"* ]]; then
-                    add_chart "$chart"
-                  fi
-                done
-                return 0
-              }
-
-              if grep -q '^Chart\.yaml$' changed-files.txt; then
-                # Chart dependency bump (e.g. a Renovate helm PR): test ONLY
-                # the dependencies whose (name, version, repository) tuple was
-                # added or changed vs the base branch — not all ~53 charts.
-                # These scoped runs are strict: a failing shard must block the
-                # merge (see continue-on-error on chart-test).
-                strict=true
-                git show "$BASE_SHA:Chart.yaml" > base-Chart.yaml 2>/dev/null || : > base-Chart.yaml
-                { yq -r '.dependencies[] | [.name, .version, .repository] | @tsv' base-Chart.yaml 2>/dev/null || true; } | sort > base-deps.tsv
-                yq -r '.dependencies[] | [.name, .version, .repository] | @tsv' Chart.yaml | sort > head-deps.tsv
-                while IFS= read -r dep_name; do
-                  if [[ -n "$dep_name" ]]; then
-                    add_chart "$dep_name"
-                  fi
-                done < <(comm -13 base-deps.tsv head-deps.tsv | cut -f1 | sort -u)
-              fi
-
-              if grep -Eq '^images/.*\.ya?ml$' changed-files.txt; then
-                mapfile -t changed_images < <(sed -n 's|^images/\([^/]*\)\.ya\?ml$|\1|p' changed-files.txt | sort -u)
-
-                for image in "${changed_images[@]}"; do
-                  image_re="$(printf '%s' "$image" | sed 's/[][(){}.^$?+*|\\/]/\\&/g')"
-                  image_norm="$(norm "$image")"
-                  match_chart_name "$image_norm"
-                  for values_file in test/chart-integration/values/*.yaml; do
-                    if grep -Eq "verity-org/(.*/)?${image_re}([:@'\"[:space:]]|$)|\b${image_re}\b" "$values_file"; then
-                      add_chart "$(basename "$values_file" .yaml)"
-                    fi
-                  done
-                  while IFS=$'\t' read -r _ replacement; do
-                    replacement_image="${replacement##*/}"
-                    replacement_norm="$(norm "$replacement_image")"
-                    if [[ "$replacement_norm" == "$image_norm" || "$replacement_norm" == "$image_norm"* || "$image_norm" == "$replacement_norm"* ]]; then
-                      match_chart_name "$replacement_norm"
-                    fi
-                  done < <(yq -r '(.replacements // {}) | to_entries[] | [.key, .value.image] | @tsv' verity.yaml)
-                done
-              fi
-
-              charts="$(printf '%s\n' "${!chart_set[@]}" | sort)"
-            fi
-          else
-            charts="$(yq -r '.dependencies[].name' Chart.yaml)"
+            git show "$BASE_SHA:Chart.yaml" > base-Chart.yaml 2>/dev/null || printf 'dependencies: []\n' > base-Chart.yaml
           fi
-          json="$(printf '%s\n' "$charts" | jq -R -s -c 'split("\n") | map(select(length > 0))')"
+
+          ./verity ci plan \
+            --kind chart \
+            --event-name "$EVENT_NAME" \
+            --input-chart "$INPUT_CHART" \
+            --changed-files changed-files.txt \
+            --base-charts-file base-Chart.yaml \
+            > ci-plan.json
+
+          json="$(jq -c '[.matrix.include[].chart]' ci-plan.json)"
+          strict="$(jq -r '.strict // false' ci-plan.json)"
           echo "matrix=$json" >> "$GITHUB_OUTPUT"
           echo "strict=$strict" >> "$GITHUB_OUTPUT"
           echo "Discovered charts: $json (strict=$strict)"
