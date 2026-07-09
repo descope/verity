@@ -36,13 +36,13 @@ jobs:
         run: |
           git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
 
-          if grep -Eq '^images/|^integer\.yaml$|^internal/integer/|^cmd/(ci|integer|discover|scan).*\.go$|^\.github/scripts/(melange-check|melange-build)\.sh$|^\.github/workflows/(pr-test|integer-.*)\.yaml$' changed-files.txt; then
+          if grep -Eq '^images/|^integer\.yaml$|^internal/integer/|^cmd/(ci|integer|nightly|discover|scan).*\.go$|^\.github/scripts/(melange-check|melange-build)\.sh$|^\.github/workflows/(pr-test|integer-.*)\.yaml$' changed-files.txt; then
             echo 'integer=true' >> "$GITHUB_OUTPUT"
           else
             echo 'integer=false' >> "$GITHUB_OUTPUT"
           fi
 
-          if grep -Eq '^copa-config\.yaml$|^internal/patch/|^cmd/(ci|patch|discover|scan).*\.go$|^\.github/scripts/(patch-image|scan-before|verify-patched|read-catalog-entry)\.sh$|^\.github/workflows/(pr-test|patch-image)\.yaml$|^\.github/actions/setup-binaries/' changed-files.txt; then
+          if grep -Eq '^copa-config\.yaml$|^internal/patch/|^cmd/(ci|nightly|patch|discover|scan).*\.go$|^\.github/scripts/(patch-image|scan-before|verify-patched|read-catalog-entry)\.sh$|^\.github/workflows/(pr-test|patch-image)\.yaml$|^\.github/actions/setup-binaries/' changed-files.txt; then
             echo 'copa=true' >> "$GITHUB_OUTPUT"
           else
             echo 'copa=false' >> "$GITHUB_OUTPUT"

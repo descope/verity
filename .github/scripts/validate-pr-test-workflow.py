@@ -18,12 +18,12 @@ def main() -> None:
     workflow = WORKFLOW.read_text(encoding="utf-8")
 
     require(
-        "^cmd/(ci|integer|discover|scan).*\\.go$" in workflow,
-        "Integer scope must include cmd/ci*.go because verity ci plan feeds Integer PR jobs",
+        "^cmd/(ci|integer|nightly|discover|scan).*\\.go$" in workflow,
+        "Integer scope must include cmd/ci*.go and cmd/nightly*.go because those commands feed Integer PR jobs",
     )
     require(
-        "^cmd/(ci|patch|discover|scan).*\\.go$" in workflow,
-        "Copa scope must include cmd/ci*.go because verity ci plan feeds Copa PR jobs",
+        "^cmd/(ci|nightly|patch|discover|scan).*\\.go$" in workflow,
+        "Copa scope must include cmd/ci*.go and cmd/nightly*.go because those commands feed Copa PR jobs",
     )
     require(
         "pr-test-result:" in workflow and "name: PR Test" in workflow,
