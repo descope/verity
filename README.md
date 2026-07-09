@@ -196,6 +196,7 @@ go build -o verity .
 ./verity catalog     # Generate site catalog JSON from scan reports
 ./verity discover    # Enumerate image+tag combos (Copa + charts)
 ./verity integer     # Build/validate Wolfi-based Integer images (subcommand group)
+./verity nightly     # Scan published images and dispatch dirty nightly remediation
 ./verity preflight   # Manage preflight manifest for build skipping
 ./verity chart-gen   # Generate patched Helm wrapper charts
 

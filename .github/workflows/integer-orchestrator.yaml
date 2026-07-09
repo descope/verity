@@ -111,7 +111,7 @@ jobs:
       - name: Build verity CLI
         run: go build -o verity .
 
-      - name: Discover image×version×type combos
+      - name: Plan dirty image×version×type combos
         id: discover
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -119,29 +119,31 @@ jobs:
           DETECT_FILTER: ${{ needs.detect.outputs.filter }}
           DISPATCH_IMAGE: ${{ github.event.inputs.image }}
         run: |
-          DISCOVER_ARGS=()
+          PLAN_ARGS=(
+            nightly plan
+            --family integer
+            --output images.json
+            --github-output "$GITHUB_OUTPUT"
+          )
 
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            DISCOVER_ARGS+=(--preflight true --github-repo "${{ github.repository }}")
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$DISPATCH_IMAGE" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$DISPATCH_IMAGE" ]; then
             # Validate dispatch input matches safe pattern
             if [[ ! "$DISPATCH_IMAGE" =~ ^[a-z0-9][a-z0-9./_-]*$ ]]; then
               echo "Invalid image name: ${DISPATCH_IMAGE}" >&2
               exit 1
             fi
-            DISCOVER_ARGS+=(--only "$DISPATCH_IMAGE")
-          elif [ "${{ github.event_name }}" = "push" ] && [ "$DETECT_MODE" = "filter" ] && [ -n "$DETECT_FILTER" ]; then
-            DISCOVER_ARGS+=(--only "$DETECT_FILTER")
+            PLAN_ARGS+=(--only "$DISPATCH_IMAGE")
           fi
 
-          all=$(./verity integer discover "${DISCOVER_ARGS[@]}")
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PLAN_ARGS+=(--force)
+          elif [ "${{ github.event_name }}" = "push" ] && [ "$DETECT_MODE" = "filter" ] && [ -n "$DETECT_FILTER" ]; then
+            PLAN_ARGS+=(--only "$DETECT_FILTER" --force)
+          fi
 
-          count=$(echo "$all" | jq 'length')
-          echo "count=${count}" >> "$GITHUB_OUTPUT"
-          echo "images=$(echo "$all" | jq -c .)" >> "$GITHUB_OUTPUT"
-
-          echo "✓ Discovered ${count} image+version+type combos"
-          echo "$all" | jq -r '.[] | "  - \(.name):\(.version)-\(.type) → \(.registry)/\(.name):\(.tags[0])"'
+          ./verity "${PLAN_ARGS[@]}"
+          echo "✓ Planned $(jq 'length' images.json) Integer remediation run(s)"
+          jq -r '.[] | "  - \(.name):\(.version)-\(.type) → \(.registry)/\(.name):\(.tags[0])"' images.json
 
   dispatch:
     name: Dispatch builds
@@ -154,85 +156,38 @@ jobs:
         with:
           egress-policy: audit
 
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Install mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          install: true
+          cache: true
+
+      - name: Cache Go modules
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/dev/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Build verity CLI
+        run: go build -o verity .
+
       - name: Dispatch integer-build-image.yaml for each image
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Write images JSON to a temp file instead of an env var to avoid
-          # E2BIG (argv+env > ~2MB / per-string > 128KB) when the matrix is large.
-          # Heredoc with quoted delimiter disables shell expansion of the body,
-          # tolerating any JSON content (including apostrophes) safely.
+          # Keep the large all-image matrix out of env/argv. GitHub-hosted
+          # Linux runners can reject oversized environment entries before the
+          # shell starts, which breaks forced all-image Integer dispatches.
           cat > "$RUNNER_TEMP/images.json" <<'__IMAGES_JSON_EOF__'
           ${{ needs.discover.outputs.images }}
           __IMAGES_JSON_EOF__
-          dispatch_build() {
-            local name="$1"
-            local version="$2"
-            local type="$3"
-            local tags="$4"
-            local registry="$5"
-
-            local attempt
-            for attempt in 1 2 3 4 5; do
-              if gh workflow run integer-build-image.yaml \
-                --repo "${{ github.repository }}" \
-                --ref "${{ github.ref_name }}" \
-                --field "image=${name}" \
-                --field "version=${version}" \
-                --field "type=${type}" \
-                --field "tags=${tags}" \
-                --field "registry=${registry}"; then
-                return 0
-              fi
-
-              # GitHub can return secondary-rate-limit or transient
-              # 5xx/transport failures when hundreds of workflow_dispatch
-              # calls are made in one job. Retry with bounded backoff so
-              # one transient dispatch does not fail the entire nightly.
-              if [ "$attempt" -lt 5 ]; then
-                local sleep_seconds=$((attempt * 10))
-                echo "Dispatch failed for ${name}:${version}-${type} (attempt ${attempt}/5); retrying in ${sleep_seconds}s" >&2
-                sleep "${sleep_seconds}"
-              fi
-            done
-
-            echo "Failed to dispatch ${name}:${version}-${type} after 5 attempts" >&2
-            return 1
-          }
-
-          jq -c '.[]' "$RUNNER_TEMP/images.json" > "$RUNNER_TEMP/images.ndjson"
-
-          expected_count="${{ needs.discover.outputs.count }}"
-          dispatched=0
-          while IFS= read -r image; do
-            NAME=$(echo "$image" | jq -r '.name')
-            VERSION=$(echo "$image" | jq -r '.version')
-            TYPE=$(echo "$image" | jq -r '.type')
-            TAGS=$(echo "$image" | jq -r '[.tags[]] | join(",")')
-            REGISTRY=$(echo "$image" | jq -r '.registry')
-
-            # Validate field values before shell interpolation
-            for field in "$NAME" "$VERSION" "$TYPE" "$REGISTRY"; do
-              if [[ ! "$field" =~ ^[a-zA-Z0-9][a-zA-Z0-9.:/_-]*$ ]]; then
-                echo "Unsafe field value rejected: ${field}" >&2
-                exit 1
-              fi
-            done
-            if [[ ! "$TAGS" =~ ^[a-zA-Z0-9.,_-]+$ ]]; then
-              echo "Unsafe tags value rejected: ${TAGS}" >&2
-              exit 1
-            fi
-
-            echo "Dispatching build for ${NAME}:${VERSION}-${TYPE}..."
-            dispatch_build "$NAME" "$VERSION" "$TYPE" "$TAGS" "$REGISTRY"
-            dispatched=$((dispatched + 1))
-
-            # Throttle to avoid GitHub API rate limits
-            sleep 2
-          done < "$RUNNER_TEMP/images.ndjson"
-
-          if [ "$dispatched" -ne "$expected_count" ]; then
-            echo "Dispatched ${dispatched}/${expected_count} build runs; expected all discovered images to dispatch" >&2
-            exit 1
-          fi
-          echo "✓ Dispatched ${dispatched}/${expected_count} build runs"
+          ./verity nightly dispatch \
+            --family integer \
+            --input "$RUNNER_TEMP/images.json" \
+            --repo "${{ github.repository }}" \
+            --ref "${{ github.ref_name }}"
