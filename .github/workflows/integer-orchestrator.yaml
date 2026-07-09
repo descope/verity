@@ -179,9 +179,13 @@ jobs:
       - name: Dispatch integer-build-image.yaml for each image
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IMAGES: ${{ needs.discover.outputs.images }}
         run: |
-          printf '%s' "$IMAGES" > "$RUNNER_TEMP/images.json"
+          # Keep the large all-image matrix out of env/argv. GitHub-hosted
+          # Linux runners can reject oversized environment entries before the
+          # shell starts, which breaks forced all-image Integer dispatches.
+          cat > "$RUNNER_TEMP/images.json" <<'__IMAGES_JSON_EOF__'
+          ${{ needs.discover.outputs.images }}
+          __IMAGES_JSON_EOF__
           ./verity nightly dispatch \
             --family integer \
             --input "$RUNNER_TEMP/images.json" \

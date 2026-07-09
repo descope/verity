@@ -91,6 +91,11 @@ def main() -> None:
         "Integer orchestrator must scan published targets and dispatch through verity nightly, not shell gh loops",
     )
     require(
+        'IMAGES: ${{ needs.discover.outputs.images }}' not in integer_orchestrator
+        and "__IMAGES_JSON_EOF__" in integer_orchestrator,
+        "Integer orchestrator must not pass the large dispatch matrix through an environment variable",
+    )
+    require(
         "bash .github/scripts/wait-for-workflows.sh patch-image.yaml" in chart_gen
         and "actions: read" in chart_gen,
         "chart generation must wait for active patch-image producer runs",
