@@ -174,9 +174,10 @@ jobs:
         run: |
           changed_files=$(git diff --name-only "$BASE_SHA"..."$HEAD_SHA" || true)
 
-          # Rare path: core Integer mechanism changed, so keep full representative smoke matrix.
+          # Rare path: core Integer build mechanics changed, so keep full representative smoke matrix.
+          # Orchestrator-only changes still validate config but do not need image smoke builds.
           # Common path: reuse detect-changed-images output so smoke and build share one source of truth.
-          if echo "$changed_files" | grep -Eq '^internal/integer/|^cmd/(integer|discover|scan).*\.go$|^\.github/scripts/(melange-check|melange-build)\.sh$|^\.github/workflows/(pr-test|integer-.*)\.yaml$|^integer\.yaml$'; then
+          if echo "$changed_files" | grep -Eq '^internal/integer/|^cmd/(integer|discover|scan).*\.go$|^\.github/scripts/(melange-check|melange-build)\.sh$|^\.github/workflows/(pr-test|integer-build-image)\.yaml$|^integer\.yaml$'; then
             matrix='{"include":[{"image":"golang","version":"1.24","type":"fips"},{"image":"haproxy","version":"3.0","type":"fips"},{"image":"haproxy","version":"3.1","type":"fips"},{"image":"node","version":"22","type":"dev"}]}'
           else
             matrix="$CHANGED_IMAGE_SMOKE_MATRIX"
