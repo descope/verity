@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -11,6 +12,8 @@ import (
 	"github.com/verity-org/verity/internal/ci"
 	"github.com/verity-org/verity/internal/integer/apkindex"
 )
+
+var errUnknownPlanKind = errors.New("unknown plan kind")
 
 var CICommand = &cli.Command{
 	Name:  "ci",
@@ -53,7 +56,7 @@ func runCIPlan(_ context.Context, cmd *cli.Command) error {
 	var plan ci.Plan
 	switch cmd.String("kind") {
 	case "integer-pr":
-		plan, err = ci.PlanIntegerPR(ci.IntegerPROptions{
+		plan, err = ci.PlanIntegerPR(&ci.IntegerPROptions{
 			ChangedFiles: changed,
 			ConfigPath:   cmd.String("integer-config"),
 			ImagesDir:    cmd.String("images-dir"),
@@ -62,16 +65,14 @@ func runCIPlan(_ context.Context, cmd *cli.Command) error {
 			GenDir:       cmd.String("gen-dir"),
 		})
 	case "copa-pr":
-		plan, err = ci.PlanCopaPR(ci.CopaPROptions{
+		plan, err = ci.PlanCopaPR(&ci.CopaPROptions{
 			ChangedFiles:   changed,
 			BaseConfigPath: cmd.String("base-copa-config"),
 			HeadConfigPath: cmd.String("copa-config"),
 			TargetRegistry: cmd.String("target-registry"),
-			ChartsFile:     cmd.String("charts-file"),
-			VerityConfig:   cmd.String("verity-config"),
 		})
 	case "chart":
-		plan, err = ci.PlanCharts(ci.ChartOptions{
+		plan, err = ci.PlanCharts(&ci.ChartOptions{
 			EventName:      cmd.String("event-name"),
 			InputChart:     cmd.String("input-chart"),
 			ChangedFiles:   changed,
@@ -81,7 +82,7 @@ func runCIPlan(_ context.Context, cmd *cli.Command) error {
 			ValuesDir:      cmd.String("values-dir"),
 		})
 	default:
-		return fmt.Errorf("unknown plan kind %q", cmd.String("kind"))
+		return fmt.Errorf("%w %q", errUnknownPlanKind, cmd.String("kind"))
 	}
 	if err != nil {
 		return err

@@ -34,7 +34,7 @@ def main() -> None:
         "Integer Build Image must use retrying GHCR login helper",
     )
 
-    for label in ("apko publish", "crane digest", "cosign sign"):
+    for label in ("apko publish", "crane copy", "crane digest", "cosign sign"):
         require(
             "bash .github/scripts/retry-registry-command.sh" in workflow
             and f'"{label}"' in workflow,
@@ -46,16 +46,21 @@ def main() -> None:
         "Integer publish gate must fail on any Trivy vulnerability severity",
     )
     require(
-        "--exit-code 1" in workflow
+        "STAGING_REF=" in workflow
+        and "trivy image \\" in workflow
+        and "--exit-code 1 \\" in workflow
         and "--severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL" in workflow,
-        "Integer post-publish Trivy scan must fail on any vulnerability severity",
+        "Integer publish must stage and enforce Trivy on the staged image before final tags",
     )
     require(
         "images publish even with CVEs" not in workflow
         and "continue-on-error: true  # Report only" not in workflow,
         "Integer Trivy scans must not be report-only",
     )
-
+    require(
+        workflow.index("--exit-code 1 \\") < workflow.index('"crane copy"'),
+        "Trivy staged-image gate must run before final crane copy promotion",
+    )
     require(
         'digest=$(bash .github/scripts/retry-registry-command.sh \\' in workflow,
         "digest retrieval must capture retry helper stdout",

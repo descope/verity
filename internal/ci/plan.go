@@ -24,11 +24,11 @@ type Matrix struct {
 }
 
 type Plan struct {
-	Kind        string `json:"kind"`
-	HasChanges  bool   `json:"hasChanges"`
-	Strict      bool   `json:"strict,omitempty"`
-	Matrix      Matrix `json:"matrix"`
-	SmokeMatrix Matrix `json:"smokeMatrix,omitempty"`
+	Kind        string  `json:"kind"`
+	HasChanges  bool    `json:"hasChanges"`
+	Strict      bool    `json:"strict,omitempty"`
+	Matrix      Matrix  `json:"matrix"`
+	SmokeMatrix *Matrix `json:"smokeMatrix,omitempty"`
 }
 
 type IntegerPROptions struct {
@@ -41,13 +41,10 @@ type IntegerPROptions struct {
 }
 
 type CopaPROptions struct {
-	ChangedFiles     []string
-	BaseConfigPath   string
-	HeadConfigPath   string
-	TargetRegistry   string
-	ChartsFile       string
-	VerityConfig     string
-	IntegerImagesDir string
+	ChangedFiles   []string
+	BaseConfigPath string
+	HeadConfigPath string
+	TargetRegistry string
 }
 
 type ChartOptions struct {
@@ -60,12 +57,14 @@ type ChartOptions struct {
 	ValuesDir      string
 }
 
-func PlanIntegerPR(opts IntegerPROptions) (Plan, error) {
+var apkindexFetch = apkindex.Fetch
+
+func PlanIntegerPR(opts *IntegerPROptions) (Plan, error) {
 	plan := Plan{Kind: "integer-pr"}
 	imageNames, allImages := changedIntegerImages(opts.ChangedFiles)
 	if !allImages && len(imageNames) == 0 {
 		plan.Matrix = Matrix{}
-		plan.SmokeMatrix = Matrix{}
+		plan.SmokeMatrix = &Matrix{}
 		return plan, nil
 	}
 
@@ -76,9 +75,10 @@ func PlanIntegerPR(opts IntegerPROptions) (Plan, error) {
 
 	var pkgs []apkindex.Package
 	if opts.APKIndexURL != "" {
-		pkgs, err = apkindex.Fetch(opts.APKIndexURL, defaultString(opts.CacheDir, os.TempDir()), apkindex.DefaultCacheMaxAge)
+		pkgs, err = apkindexFetch(opts.APKIndexURL, defaultString(opts.CacheDir, os.TempDir()), apkindex.DefaultCacheMaxAge)
 		if err != nil {
-			return plan, fmt.Errorf("fetch apkindex: %w", err)
+			fmt.Fprintf(os.Stderr, "warning: APKINDEX unavailable (%v) — using versions map only\n", err)
+			pkgs = nil
 		}
 	}
 
@@ -96,17 +96,18 @@ func PlanIntegerPR(opts IntegerPROptions) (Plan, error) {
 	}
 	if len(imgs) == 0 {
 		plan.Matrix = Matrix{}
-		plan.SmokeMatrix = Matrix{}
+		plan.SmokeMatrix = &Matrix{}
 		return plan, nil
 	}
 
 	plan.HasChanges = true
-	plan.SmokeMatrix = integerMatrix(imgs)
+	smokeMatrix := integerMatrix(imgs)
+	plan.SmokeMatrix = &smokeMatrix
 	plan.Matrix = latestIntegerMatrix(imgs)
 	return plan, nil
 }
 
-func PlanCopaPR(opts CopaPROptions) (Plan, error) {
+func PlanCopaPR(opts *CopaPROptions) (Plan, error) {
 	plan := Plan{Kind: "copa-pr"}
 	if !containsPath(opts.ChangedFiles, "copa-config.yaml") {
 		plan.Matrix = Matrix{}
@@ -141,7 +142,7 @@ func PlanCopaPR(opts CopaPROptions) (Plan, error) {
 	return plan, nil
 }
 
-func PlanCharts(opts ChartOptions) (Plan, error) {
+func PlanCharts(opts *ChartOptions) (Plan, error) {
 	plan := Plan{Kind: "chart"}
 	charts, err := copadiscovery.LoadChartsFile(defaultString(opts.ChartsFile, "Chart.yaml"))
 	if err != nil {
@@ -150,11 +151,12 @@ func PlanCharts(opts ChartOptions) (Plan, error) {
 	chartNames := chartNameSet(charts)
 
 	var selected []string
-	if strings.TrimSpace(opts.InputChart) != "" {
+	switch {
+	case strings.TrimSpace(opts.InputChart) != "":
 		selected = []string{strings.TrimSpace(opts.InputChart)}
-	} else if opts.EventName != "pull_request" {
+	case opts.EventName != "pull_request":
 		selected = sortedChartNames(chartNames)
-	} else {
+	default:
 		selected, plan.Strict, err = affectedCharts(opts, charts, chartNames)
 		if err != nil {
 			return plan, err
@@ -174,9 +176,8 @@ func changedIntegerImages(files []string) (names map[string]struct{}, all bool) 
 		switch {
 		case f == "integer.yaml", strings.HasPrefix(f, "images/_base/"):
 			all = true
-		case strings.HasPrefix(f, "images/") && strings.HasSuffix(f, ".yaml") && !strings.Contains(f, "/_base/"):
-			name := strings.TrimSuffix(strings.TrimPrefix(f, "images/"), ".yaml")
-			if name != "" {
+		default:
+			if name, ok := imageNameFromPath(f); ok {
 				names[name] = struct{}{}
 			}
 		}
@@ -198,7 +199,8 @@ func changedCopaNames(basePath, headPath string) (map[string]struct{}, error) {
 	}
 
 	names := map[string]struct{}{}
-	for name, img := range head {
+	for name := range head {
+		img := head[name]
 		if old, ok := base[name]; !ok || !reflect.DeepEqual(old, img) {
 			names[name] = struct{}{}
 		}
@@ -212,19 +214,19 @@ func loadCopaImages(path string) (map[string]config.ImageSpec, error) {
 		return nil, err
 	}
 	out := make(map[string]config.ImageSpec, len(cfg.Images))
-	for _, img := range cfg.Images {
+	for i := range cfg.Images {
+		img := cfg.Images[i]
 		out[img.Name] = img
 	}
 	return out, nil
 }
 
-func affectedCharts(opts ChartOptions, charts []config.ChartSpec, chartNames map[string]struct{}) ([]string, bool, error) {
+func affectedCharts(opts *ChartOptions, charts []config.ChartSpec, chartNames map[string]struct{}) (affected []string, strict bool, err error) {
 	if matchesAny(opts.ChangedFiles, broadChartPatterns()) || changedUnder(opts.ChangedFiles, "images/_base/") {
 		return sortedChartNames(chartNames), false, nil
 	}
 
 	selected := map[string]struct{}{}
-	strict := false
 	if containsPath(opts.ChangedFiles, "Chart.yaml") {
 		strict = true
 		changed, err := changedChartDependencies(opts.BaseChartsFile, defaultString(opts.ChartsFile, "Chart.yaml"))
@@ -435,15 +437,20 @@ func filterCopaByName(imgs []copadiscovery.DiscoveredImage, names map[string]str
 func changedImageNames(files []string) []string {
 	set := map[string]struct{}{}
 	for _, f := range files {
-		f = filepath.ToSlash(strings.TrimSpace(f))
-		if strings.HasPrefix(f, "images/") && strings.HasSuffix(f, ".yaml") && !strings.Contains(f, "/_base/") {
-			name := strings.TrimSuffix(strings.TrimPrefix(f, "images/"), ".yaml")
-			if name != "" {
-				set[name] = struct{}{}
-			}
+		if name, ok := imageNameFromPath(f); ok {
+			set[name] = struct{}{}
 		}
 	}
 	return sortedChartNames(set)
+}
+
+func imageNameFromPath(path string) (string, bool) {
+	path = filepath.ToSlash(strings.TrimSpace(path))
+	if !strings.HasPrefix(path, "images/") || !strings.HasSuffix(path, ".yaml") || strings.Contains(path, "/_base/") {
+		return "", false
+	}
+	name := strings.TrimSuffix(strings.TrimPrefix(path, "images/"), ".yaml")
+	return name, name != ""
 }
 
 func chartNameSet(charts []config.ChartSpec) map[string]struct{} {
@@ -555,7 +562,10 @@ func Marshal(plan Plan) ([]byte, error) {
 	if plan.Matrix.Include == nil {
 		plan.Matrix.Include = []map[string]string{}
 	}
-	if plan.SmokeMatrix.Include == nil && plan.Kind == "integer-pr" {
+	if plan.SmokeMatrix == nil && plan.Kind == "integer-pr" {
+		plan.SmokeMatrix = &Matrix{}
+	}
+	if plan.SmokeMatrix != nil && plan.SmokeMatrix.Include == nil {
 		plan.SmokeMatrix.Include = []map[string]string{}
 	}
 	return json.MarshalIndent(plan, "", "  ")

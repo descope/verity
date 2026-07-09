@@ -80,7 +80,7 @@ jobs:
             > ci-plan.json
 
           json="$(jq -c '[.matrix.include[].chart]' ci-plan.json)"
-          strict="$(jq -r '.strict' ci-plan.json)"
+          strict="$(jq -r '.strict // false' ci-plan.json)"
           echo "matrix=$json" >> "$GITHUB_OUTPUT"
           echo "strict=$strict" >> "$GITHUB_OUTPUT"
           echo "Discovered charts: $json (strict=$strict)"

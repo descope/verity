@@ -1,13 +1,19 @@
 package ci
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/verity-org/verity/internal/integer/apkindex"
 )
+
+var errTemporaryAPKIndexOutage = errors.New("temporary apkindex outage")
 
 func writeTestFile(t *testing.T, path, body string) {
 	t.Helper()
@@ -60,7 +66,7 @@ versions:
 func TestPlanIntegerPRChangedImageBuildsLatestAndSmokesAllCombos(t *testing.T) {
 	root := setupIntegerPlanRepo(t)
 
-	plan, err := PlanIntegerPR(IntegerPROptions{
+	plan, err := PlanIntegerPR(&IntegerPROptions{
 		ChangedFiles: []string{"images/node.yaml"},
 		ConfigPath:   filepath.Join(root, "integer.yaml"),
 		ImagesDir:    filepath.Join(root, "images"),
@@ -80,7 +86,7 @@ func TestPlanIntegerPRChangedImageBuildsLatestAndSmokesAllCombos(t *testing.T) {
 func TestPlanIntegerPREmptyWhenNoImageFilesChanged(t *testing.T) {
 	root := setupIntegerPlanRepo(t)
 
-	plan, err := PlanIntegerPR(IntegerPROptions{
+	plan, err := PlanIntegerPR(&IntegerPROptions{
 		ChangedFiles: []string{"README.md"},
 		ConfigPath:   filepath.Join(root, "integer.yaml"),
 		ImagesDir:    filepath.Join(root, "images"),
@@ -92,6 +98,30 @@ func TestPlanIntegerPREmptyWhenNoImageFilesChanged(t *testing.T) {
 	assert.False(t, plan.HasChanges)
 	assert.Empty(t, plan.Matrix.Include)
 	assert.Empty(t, plan.SmokeMatrix.Include)
+}
+
+func TestPlanIntegerPRFallsBackWhenAPKIndexFetchFails(t *testing.T) {
+	root := setupIntegerPlanRepo(t)
+	originalFetch := apkindexFetch
+	apkindexFetch = func(string, string, time.Duration) ([]apkindex.Package, error) {
+		return nil, errTemporaryAPKIndexOutage
+	}
+	t.Cleanup(func() { apkindexFetch = originalFetch })
+
+	plan, err := PlanIntegerPR(&IntegerPROptions{
+		ChangedFiles: []string{"images/node.yaml"},
+		ConfigPath:   filepath.Join(root, "integer.yaml"),
+		ImagesDir:    filepath.Join(root, "images"),
+		APKIndexURL:  "https://example.invalid/APKINDEX.tar.gz",
+		GenDir:       filepath.Join(root, "gen"),
+	})
+	require.NoError(t, err)
+
+	assert.True(t, plan.HasChanges)
+	assert.ElementsMatch(t, []map[string]string{
+		{"image": "node", "version": "22", "type": "default"},
+		{"image": "node", "version": "22", "type": "dev"},
+	}, plan.Matrix.Include)
 }
 
 func TestPlanCopaPRDiffsSemanticImageEntries(t *testing.T) {
@@ -129,7 +159,7 @@ images:
       list: ["4.1.0"]
 `)
 
-	plan, err := PlanCopaPR(CopaPROptions{
+	plan, err := PlanCopaPR(&CopaPROptions{
 		ChangedFiles:   []string{"copa-config.yaml"},
 		BaseConfigPath: base,
 		HeadConfigPath: head,
@@ -164,7 +194,7 @@ dependencies:
     repository: "https://grafana.github.io/helm-charts"
 `)
 
-	plan, err := PlanCharts(ChartOptions{
+	plan, err := PlanCharts(&ChartOptions{
 		EventName:      "pull_request",
 		ChangedFiles:   []string{"Chart.yaml"},
 		ChartsFile:     head,
@@ -191,7 +221,7 @@ dependencies:
 `)
 	writeTestFile(t, filepath.Join(valuesDir, "grafana.yaml"), "image: ghcr.io/verity-org/grafana:12\n")
 
-	plan, err := PlanCharts(ChartOptions{
+	plan, err := PlanCharts(&ChartOptions{
 		EventName:    "pull_request",
 		ChangedFiles: []string{"images/grafana.yaml"},
 		ChartsFile:   charts,
