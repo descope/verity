@@ -5,26 +5,6 @@ name: PR Test
 
 on:
   pull_request:
-    paths:
-      - 'copa-config.yaml'
-      - 'images/**'
-      - 'integer.yaml'
-      - '.github/workflows/pr-test.yaml'
-      - '.github/workflows/patch-image.yaml'
-      - '.github/workflows/integer-*.yaml'
-      - 'internal/integer/**'
-      - 'cmd/integer*.go'
-      - 'cmd/patch*.go'
-      - 'cmd/discover*.go'
-      - 'cmd/scan*.go'
-      - 'internal/patch/**'
-      - '.github/scripts/patch-image.sh'
-      - '.github/scripts/scan-before.sh'
-      - '.github/scripts/verify-patched.sh'
-      - '.github/scripts/read-catalog-entry.sh'
-      - '.github/scripts/melange-check.sh'
-      - '.github/scripts/melange-build.sh'
-      - '.github/actions/setup-binaries/**'
 
 permissions:
   contents: read
@@ -756,3 +736,96 @@ jobs:
             before.json
             after.json
           retention-days: 7
+
+  pr-test-result:
+    name: PR Test
+    needs:
+      - changes
+      - discover
+      - validate
+      - detect-changed-images
+      - detect-smoke-scope
+      - integer-smoke-test
+      - integer-build-changed
+      - detect-copa-changes
+      - copa-patching-changed
+      - copa-patching-regression
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aggregate PR test results
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          INTEGER: ${{ needs.changes.outputs.integer }}
+          COPA: ${{ needs.changes.outputs.copa }}
+          DISCOVER_RESULT: ${{ needs.discover.result }}
+          VALIDATE_RESULT: ${{ needs.validate.result }}
+          DETECT_INTEGER_RESULT: ${{ needs.detect-changed-images.result }}
+          DETECT_SMOKE_RESULT: ${{ needs.detect-smoke-scope.result }}
+          INTEGER_SMOKE_RESULT: ${{ needs.integer-smoke-test.result }}
+          INTEGER_BUILD_RESULT: ${{ needs.integer-build-changed.result }}
+          DETECT_COPA_RESULT: ${{ needs.detect-copa-changes.result }}
+          COPA_CHANGED_RESULT: ${{ needs.copa-patching-changed.result }}
+          COPA_REGRESSION_RESULT: ${{ needs.copa-patching-regression.result }}
+        run: |
+          echo "changes: ${CHANGES_RESULT}"
+          echo "integer: ${INTEGER}"
+          echo "copa: ${COPA}"
+          echo "discover: ${DISCOVER_RESULT}"
+          echo "validate: ${VALIDATE_RESULT}"
+          echo "detect-changed-images: ${DETECT_INTEGER_RESULT}"
+          echo "detect-smoke-scope: ${DETECT_SMOKE_RESULT}"
+          echo "integer-smoke-test: ${INTEGER_SMOKE_RESULT}"
+          echo "integer-build-changed: ${INTEGER_BUILD_RESULT}"
+          echo "detect-copa-changes: ${DETECT_COPA_RESULT}"
+          echo "copa-patching-changed: ${COPA_CHANGED_RESULT}"
+          echo "copa-patching-regression: ${COPA_REGRESSION_RESULT}"
+
+          require_success() {
+            local name="$1"
+            local result="$2"
+            if [ "$result" != "success" ]; then
+              echo "::error::${name} did not succeed: ${result}"
+              exit 1
+            fi
+          }
+
+          allow_success_or_skipped() {
+            local name="$1"
+            local result="$2"
+            case "$result" in
+              success|skipped) ;;
+              *)
+                echo "::error::${name} did not succeed or skip cleanly: ${result}"
+                exit 1
+                ;;
+            esac
+          }
+
+          require_success "changes" "$CHANGES_RESULT"
+
+          if [ "$INTEGER" = "true" ]; then
+            require_success "validate" "$VALIDATE_RESULT"
+            require_success "detect-changed-images" "$DETECT_INTEGER_RESULT"
+            require_success "detect-smoke-scope" "$DETECT_SMOKE_RESULT"
+            allow_success_or_skipped "integer-smoke-test" "$INTEGER_SMOKE_RESULT"
+            allow_success_or_skipped "integer-build-changed" "$INTEGER_BUILD_RESULT"
+          else
+            allow_success_or_skipped "validate" "$VALIDATE_RESULT"
+            allow_success_or_skipped "detect-changed-images" "$DETECT_INTEGER_RESULT"
+            allow_success_or_skipped "detect-smoke-scope" "$DETECT_SMOKE_RESULT"
+            allow_success_or_skipped "integer-smoke-test" "$INTEGER_SMOKE_RESULT"
+            allow_success_or_skipped "integer-build-changed" "$INTEGER_BUILD_RESULT"
+          fi
+
+          if [ "$COPA" = "true" ]; then
+            require_success "discover" "$DISCOVER_RESULT"
+            require_success "detect-copa-changes" "$DETECT_COPA_RESULT"
+            allow_success_or_skipped "copa-patching-changed" "$COPA_CHANGED_RESULT"
+            require_success "copa-patching-regression" "$COPA_REGRESSION_RESULT"
+          else
+            allow_success_or_skipped "discover" "$DISCOVER_RESULT"
+            allow_success_or_skipped "detect-copa-changes" "$DETECT_COPA_RESULT"
+            allow_success_or_skipped "copa-patching-changed" "$COPA_CHANGED_RESULT"
+            allow_success_or_skipped "copa-patching-regression" "$COPA_REGRESSION_RESULT"
+          fi
