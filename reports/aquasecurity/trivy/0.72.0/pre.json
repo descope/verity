@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.70.0"
   },
-  "ReportID": "019f4053-6af4-76cf-9a22-ac157e789b6d",
-  "CreatedAt": "2026-07-08T06:03:56.532447409Z",
+  "ReportID": "019f45b1-930a-753f-af52-0b28f905bd21",
+  "CreatedAt": "2026-07-09T07:04:53.258345832Z",
   "ArtifactID": "sha256:099f83843170f2b743288600f62376e006b545df3dad4b08ab0642268f396edc",
   "ArtifactName": "ghcr.io/aquasecurity/trivy:0.72.0",
   "ArtifactType": "container_image",
@@ -1431,6 +1431,9 @@
           "Title": "curl: libcurl: curl/libcurl: Remote denial of service via QUIC UDP receive function vulnerability",
           "Description": "An issue in curl’s QUIC UDP receive function allows a malicious HTTP/3 server\nto trigger a remote denial of service against a curl or libcurl client.\nBecause the helper function discards zero-length UDP datagrams before counting\nthem toward the per-call packet budget, a connected QUIC peer can continuously\nstream empty datagrams to indefinitely stall the client.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-835"
+          ],
           "VendorSeverity": {
             "redhat": 3,
             "ubuntu": 1
@@ -1451,7 +1454,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-11352"
           ],
           "PublishedDate": "2026-07-03T07:16:23.693Z",
-          "LastModifiedDate": "2026-07-06T19:16:54.843Z"
+          "LastModifiedDate": "2026-07-07T18:01:19.013Z"
         },
         {
           "VulnerabilityID": "CVE-2026-11586",
@@ -1478,6 +1481,9 @@
           "Title": "curl: curl: Denial of Service via WebSocket PING flood",
           "Description": "By default, curl automatically responds to WebSocket PING frames. Because curl\nlacks an upper bound on memory allocation for unacknowledged frames, a\nmalicious server can exhaust all available memory by flooding curl with rapid,\nsequential PING messages.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-770"
+          ],
           "VendorSeverity": {
             "redhat": 3,
             "ubuntu": 1
@@ -1498,7 +1504,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-11586"
           ],
           "PublishedDate": "2026-07-03T07:16:23.883Z",
-          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
+          "LastModifiedDate": "2026-07-07T17:59:46.92Z"
         },
         {
           "VulnerabilityID": "CVE-2026-12064",
@@ -1525,6 +1531,9 @@
           "Title": "curl: curl: SSH host verification bypass when using schemeless URLs with SFTP/SCP",
           "Description": "When a user invokes curl using a schemeless URL combined with\n`--proto-default` sftp (or scp), a disconnect occurs between the tool layer\nand libcurl. The tool layer incorrectly infers the URL scheme, which\nerroneously bypasses the initialization of critical SSH security options like\nCURLOPT_SSH_HOST_PUBLIC_KEY_SHA256 and CURLOPT_SSH_KNOWNHOSTS. Conversely, the\nlibcurl runtime successfully honors CURLOPT_DEFAULT_PROTOCOL and establishes\nthe connection via SFTP/SCP as specified. Because the tool layer skipped the\nsecurity configuration, these SSH host verification options are silently\nomitted, causing curl to connect to an unverified SSH remote host without\nthrowing an error.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-295"
+          ],
           "VendorSeverity": {
             "redhat": 3,
             "ubuntu": 1
@@ -1545,7 +1554,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-12064"
           ],
           "PublishedDate": "2026-07-03T07:16:24.217Z",
-          "LastModifiedDate": "2026-07-06T19:16:55.27Z"
+          "LastModifiedDate": "2026-07-07T19:43:11.187Z"
         },
         {
           "VulnerabilityID": "CVE-2026-8286",
@@ -1572,6 +1581,9 @@
           "Title": "curl: curl: Insecure connection establishment due to TLS configuration mismatch",
           "Description": "A vulnerability exists where a new transfer that uses STARTTLS to upgrade the\nconnection might reuse an existing live connection even though the TLS\nconfiguration mismatches so it should not.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-295"
+          ],
           "VendorSeverity": {
             "redhat": 3,
             "ubuntu": 1
@@ -1593,7 +1605,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-8286"
           ],
           "PublishedDate": "2026-07-03T07:16:24.453Z",
-          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
+          "LastModifiedDate": "2026-07-07T19:42:11.24Z"
         },
         {
           "VulnerabilityID": "CVE-2026-8925",
@@ -1620,6 +1632,9 @@
           "Title": "curl: curl: Double-free vulnerability in SASL authentication",
           "Description": "The curl logic that works with SASL authentication could end up cleaning up\nthe GSASL context *twice* without clearing the pointer in between, making it\n`free()` the same pointer twice.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-415"
+          ],
           "VendorSeverity": {
             "redhat": 3,
             "ubuntu": 2
@@ -1641,7 +1656,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-8925"
           ],
           "PublishedDate": "2026-07-03T07:16:24.95Z",
-          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
+          "LastModifiedDate": "2026-07-07T23:04:29.69Z"
         },
         {
           "VulnerabilityID": "CVE-2026-8927",
@@ -1668,6 +1683,9 @@
           "Title": "libcurl: libcurl: Information disclosure due to uncleared proxy authentication state",
           "Description": "When reusing a libcurl handle for sequential transfers driven by\nenvironment-variable proxy configuration, libcurl fails to clear the proxy\nauthentication state between requests. Specifically, if the initial transfer\nauthenticates against `proxyA` using Digest auth, a subsequent transfer routed\nthrough `proxyB` erroneously leaks the `Proxy-Authorization:` header intended\nsolely for `proxyA`.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-294"
+          ],
           "VendorSeverity": {
             "redhat": 3,
             "ubuntu": 2
@@ -1689,7 +1707,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-8927"
           ],
           "PublishedDate": "2026-07-03T07:16:25.123Z",
-          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
+          "LastModifiedDate": "2026-07-07T23:21:03.53Z"
         },
         {
           "VulnerabilityID": "CVE-2026-8932",
@@ -1734,7 +1752,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-8932"
           ],
           "PublishedDate": "2026-07-03T07:16:25.363Z",
-          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
+          "LastModifiedDate": "2026-07-07T23:18:32.137Z"
         },
         {
           "VulnerabilityID": "CVE-2026-9079",
@@ -1761,6 +1779,9 @@
           "Title": "libcurl: libcurl: Information disclosure due to failure to clear proxy authentication credentials",
           "Description": "libcurl had a flaw that when instructed to clear proxy authentication\ncredentials which made it not do so, leaving the old credentials around to get\nused for subsequent transfers that should not know nor use them.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-522"
+          ],
           "VendorSeverity": {
             "redhat": 3,
             "ubuntu": 2
@@ -1782,7 +1803,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-9079"
           ],
           "PublishedDate": "2026-07-03T07:16:25.62Z",
-          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
+          "LastModifiedDate": "2026-07-07T15:05:55.933Z"
         },
         {
           "VulnerabilityID": "CVE-2026-9080",
@@ -1809,6 +1830,9 @@
           "Title": "libcurl: libcurl: Use-after-free via curl_easy_pause() in CURLMOPT_SOCKETFUNCTION callback",
           "Description": "Calling `curl_easy_pause()` within the event-based `CURLMOPT_SOCKETFUNCTION`\ncallback triggers a use-after-free vulnerability, where libcurl attempts to\nstore a flag using a dangling struct pointer immediately after that pointer's\nmemory has been freed.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-416"
+          ],
           "VendorSeverity": {
             "redhat": 3,
             "ubuntu": 1
@@ -1830,7 +1854,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-9080"
           ],
           "PublishedDate": "2026-07-03T07:16:25.713Z",
-          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
+          "LastModifiedDate": "2026-07-07T15:05:26.53Z"
         },
         {
           "VulnerabilityID": "CVE-2026-9545",
@@ -1878,7 +1902,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-9545"
           ],
           "PublishedDate": "2026-07-03T07:16:25.807Z",
-          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
+          "LastModifiedDate": "2026-07-07T15:03:56.92Z"
         },
         {
           "VulnerabilityID": "CVE-2026-9546",
@@ -1923,7 +1947,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-9546"
           ],
           "PublishedDate": "2026-07-03T07:16:25.893Z",
-          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
+          "LastModifiedDate": "2026-07-07T14:53:26.517Z"
         },
         {
           "VulnerabilityID": "CVE-2026-9547",
@@ -1971,10 +1995,10 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-9547"
           ],
           "PublishedDate": "2026-07-03T07:16:25.99Z",
-          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
+          "LastModifiedDate": "2026-07-07T14:52:29.503Z"
         },
         {
-          "VulnerabilityID": "CVE-2026-11856",
+          "VulnerabilityID": "CVE-2026-8924",
           "PkgID": "libcurl@8.20.0-r1",
           "PkgName": "libcurl",
           "PkgIdentifier": {
@@ -1988,28 +2012,38 @@
             "Digest": "sha256:47f2314812cda08291640c57ce9dc204573d4aee0500726ba12670b74c49b91e",
             "DiffID": "sha256:2901ffecd6da3fe37e4c1fc2bd2f2fae88b598ca7eece8398ba592e7b919fc79"
           },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-11856",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-8924",
           "DataSource": {
             "ID": "alpine",
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:38ac79d716172a8727a2c32e44a980930ac47e001612f52e631f05efe9a0a8fc",
-          "Title": "Successfully using libcurl to do a transfer to a specific HTTP origin  ...",
-          "Description": "Successfully using libcurl to do a transfer to a specific HTTP origin\n(`hostA`) with **Digest** authentication and then changing the origin to a\ndifferent one (`hostB`) for a second transfer, reusing the same handle, makes\nlibcurl wrongly pass on the  `Authorization:` header field meant for `hostA`,\nto `hostB`.",
+          "Fingerprint": "sha256:6139163583e4d2f157a012d0fd0393db18d531557ca13f9bfe9c3faa5df56e07",
+          "Title": "curl: curl: Cookie injection via malicious HTTP server using super cookies",
+          "Description": "A flaw in curl’s cookie parsing logic allows a malicious HTTP server to set\n'super cookies' that bypass the Public Suffix List check. This enables an\nattacker-controlled origin to inject cookies that curl subsequently scopes and\ntransmits to unrelated third-party domains.",
           "Severity": "MEDIUM",
           "VendorSeverity": {
-            "ubuntu": 2
+            "redhat": 2,
+            "ubuntu": 1
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N",
+              "V3Score": 6.5
+            }
           },
           "References": [
-            "https://curl.se/L7HzKXisfJ/CVE-2026-11856.md",
-            "https://curl.se/docs/CVE-2026-11856.html",
-            "https://curl.se/docs/CVE-2026-11856.json",
-            "https://hackerone.com/reports/3793260",
-            "https://www.cve.org/CVERecord?id=CVE-2026-11856"
+            "https://access.redhat.com/security/cve/CVE-2026-8924",
+            "https://curl.se/L7HzKXisfJ/CVE-2026-8924.md",
+            "https://curl.se/docs/CVE-2026-8924.html",
+            "https://curl.se/docs/CVE-2026-8924.json",
+            "https://hackerone.com/reports/3733905",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-8924",
+            "https://ubuntu.com/security/notices/USN-8487-1",
+            "https://www.cve.org/CVERecord?id=CVE-2026-8924"
           ],
-          "PublishedDate": "2026-07-03T07:16:23.973Z",
-          "LastModifiedDate": "2026-07-06T19:16:54.983Z"
+          "PublishedDate": "2026-07-03T07:16:24.793Z",
+          "LastModifiedDate": "2026-07-07T23:06:00.797Z"
         },
         {
           "VulnerabilityID": "CVE-2026-8926",
@@ -2036,6 +2070,9 @@
           "Title": "curl: curl: Information disclosure via incorrect .netrc password lookup",
           "Description": "When asking curl to use a `.netrc` file to find credentials and at the same\ntime specifying a URL with a username(without a password), like\n`https://user@example.com/`, curl could wrongly get and use the password for\n*another* user set in the `.netrc` file for that host if such a one exists and\nthere is no match for the specified user.",
           "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-522"
+          ],
           "VendorSeverity": {
             "redhat": 2,
             "ubuntu": 1
@@ -2057,7 +2094,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-8926"
           ],
           "PublishedDate": "2026-07-03T07:16:25.037Z",
-          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
+          "LastModifiedDate": "2026-07-07T23:02:54.49Z"
         },
         {
           "VulnerabilityID": "CVE-2026-10536",
@@ -2084,6 +2121,9 @@
           "Title": "A use-after-free vulnerability exists in libcurl when an application c ...",
           "Description": "A use-after-free vulnerability exists in libcurl when an application\nconfigures an HTTP/2 stream-dependency tree via `CURLOPT_STREAM_DEPENDS` or\n`CURLOPT_STREAM_DEPENDS_E`, subsequently invokes `curl_easy_reset()`, and\nfinally terminates the handle with `curl_easy_cleanup()`. During this final\ncleanup phase, libcurl attempts to access and modify an internal structure\nthat was already freed during the reset operation.",
           "Severity": "LOW",
+          "CweIDs": [
+            "CWE-416"
+          ],
           "VendorSeverity": {
             "ubuntu": 1
           },
@@ -2095,7 +2135,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-10536"
           ],
           "PublishedDate": "2026-07-03T07:16:23.563Z",
-          "LastModifiedDate": "2026-07-06T19:16:54.473Z"
+          "LastModifiedDate": "2026-07-07T18:02:03.89Z"
         },
         {
           "VulnerabilityID": "CVE-2026-11564",
@@ -2122,6 +2162,9 @@
           "Title": "libcurl keeps previously used connections in a connection pool for sub ...",
           "Description": "libcurl keeps previously used connections in a connection pool for subsequent\ntransfers to reuse if one of them matches the setup.\n\nAn easy handle that first uses default native CA trust can continue trusting\nthe native platform store after the application switches that same handle to\ncustom CA material for a later transfer.",
           "Severity": "LOW",
+          "CweIDs": [
+            "CWE-295"
+          ],
           "VendorSeverity": {
             "ubuntu": 1
           },
@@ -2133,7 +2176,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-11564"
           ],
           "PublishedDate": "2026-07-03T07:16:23.79Z",
-          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
+          "LastModifiedDate": "2026-07-07T18:00:35.84Z"
         },
         {
           "VulnerabilityID": "CVE-2026-8458",
@@ -2172,10 +2215,10 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-8458"
           ],
           "PublishedDate": "2026-07-03T07:16:24.63Z",
-          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
+          "LastModifiedDate": "2026-07-07T23:12:17.003Z"
         },
         {
-          "VulnerabilityID": "CVE-2026-8924",
+          "VulnerabilityID": "CVE-2026-11856",
           "PkgID": "libcurl@8.20.0-r1",
           "PkgName": "libcurl",
           "PkgIdentifier": {
@@ -2189,29 +2232,26 @@
             "Digest": "sha256:47f2314812cda08291640c57ce9dc204573d4aee0500726ba12670b74c49b91e",
             "DiffID": "sha256:2901ffecd6da3fe37e4c1fc2bd2f2fae88b598ca7eece8398ba592e7b919fc79"
           },
-          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-8924",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-11856",
           "DataSource": {
             "ID": "alpine",
             "Name": "Alpine Secdb",
             "URL": "https://secdb.alpinelinux.org/"
           },
-          "Fingerprint": "sha256:6139163583e4d2f157a012d0fd0393db18d531557ca13f9bfe9c3faa5df56e07",
-          "Title": "A flaw in curl\\u2019s cookie parsing logic allows a malicious HTTP ser ...",
-          "Description": "A flaw in curl’s cookie parsing logic allows a malicious HTTP server to set\n'super cookies' that bypass the Public Suffix List check. This enables an\nattacker-controlled origin to inject cookies that curl subsequently scopes and\ntransmits to unrelated third-party domains.",
-          "Severity": "LOW",
-          "VendorSeverity": {
-            "ubuntu": 1
-          },
-          "References": [
-            "https://curl.se/L7HzKXisfJ/CVE-2026-8924.md",
-            "https://curl.se/docs/CVE-2026-8924.html",
-            "https://curl.se/docs/CVE-2026-8924.json",
-            "https://hackerone.com/reports/3733905",
-            "https://ubuntu.com/security/notices/USN-8487-1",
-            "https://www.cve.org/CVERecord?id=CVE-2026-8924"
+          "Fingerprint": "sha256:38ac79d716172a8727a2c32e44a980930ac47e001612f52e631f05efe9a0a8fc",
+          "Title": "Successfully using libcurl to do a transfer to a specific HTTP origin  ...",
+          "Description": "Successfully using libcurl to do a transfer to a specific HTTP origin\n(`hostA`) with **Digest** authentication and then changing the origin to a\ndifferent one (`hostB`) for a second transfer, reusing the same handle, makes\nlibcurl wrongly pass on the  `Authorization:` header field meant for `hostA`,\nto `hostB`.",
+          "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-294"
           ],
-          "PublishedDate": "2026-07-03T07:16:24.793Z",
-          "LastModifiedDate": "2026-07-06T18:20:47.007Z"
+          "References": [
+            "https://curl.se/docs/CVE-2026-11856.html",
+            "https://curl.se/docs/CVE-2026-11856.json",
+            "https://hackerone.com/reports/3793260"
+          ],
+          "PublishedDate": "2026-07-03T07:16:23.973Z",
+          "LastModifiedDate": "2026-07-07T19:43:55.6Z"
         }
       ]
     },
@@ -8254,6 +8294,34 @@
           ]
         },
         {
+          "VulnerabilityID": "GO-2026-5932",
+          "PkgID": "golang.org/x/crypto@v0.53.0",
+          "PkgName": "golang.org/x/crypto",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/golang.org/x/crypto@v0.53.0",
+            "UID": "3e9f18d0b4c41149"
+          },
+          "InstalledVersion": "v0.53.0",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:f47b905a4150028770509b374cf8ae11d45599679ed6d5e4a5c7b00f981878ac",
+            "DiffID": "sha256:881c537197a7e99d4d02dfb59eea209513f0c7b0b432e8f33ebb5b55f6e0d3af"
+          },
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:fc956da1483f8191fc3802795230f4eb4d12eb4ad3ea31707ac02d8881dcd30d",
+          "Title": "The golang.org/x/crypto/openpgp package is unmaintained, unsafe by design, and has known security issues",
+          "Description": "The golang.org/x/crypto/openpgp package is unsafe by design, has numerous known security issues, is not maintained, and should not be used.\n\nIf you are required to interoperate with OpenPGP systems and need a maintained package, consider github.com/ProtonMail/go-crypto/openpgp which is a maintained fork that aims to be a drop-in replacement for this package.",
+          "Severity": "UNKNOWN",
+          "References": [
+            "https://go.dev/issue/44226",
+            "https://pkg.go.dev/vuln/GO-2026-5932"
+          ]
+        },
+        {
           "VulnerabilityID": "CVE-2026-50151",
           "VendorIDs": [
             "GHSA-jxpm-75mh-9fp7"
@@ -8473,6 +8541,76 @@
             "https://github.com/oras-project/oras-go/commit/7a9f4b0b9558821b0422152ebe21ae56930fe764",
             "https://github.com/oras-project/oras-go/releases/tag/v2.6.1",
             "https://github.com/oras-project/oras-go/security/advisories/GHSA-xf85-363p-868w"
+          ]
+        },
+        {
+          "VulnerabilityID": "CVE-2026-39822",
+          "VendorIDs": [
+            "GO-2026-4970"
+          ],
+          "PkgID": "stdlib@v1.26.4",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.26.4",
+            "UID": "ffb593eaa2455743"
+          },
+          "InstalledVersion": "v1.26.4",
+          "FixedVersion": "1.25.12, 1.26.5, 1.27.0-rc.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:f47b905a4150028770509b374cf8ae11d45599679ed6d5e4a5c7b00f981878ac",
+            "DiffID": "sha256:881c537197a7e99d4d02dfb59eea209513f0c7b0b432e8f33ebb5b55f6e0d3af"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-39822",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:81b9d9d69ecb43e44f2b6b735194a5c82e6e3cb63b1b239adfa0b138485b4ef7",
+          "Title": "Root escape via symlink plus trailing slash in os",
+          "Description": "On Unix systems, opening a file in an os.Root improperly follows symlinks to locations outside of the Root when the final path component of the a path is a symbolic link and the path ends in /.\n\nFor example, 'root.Open(\"symlink/\")' will open \"symlink\" even when \"symlink\" is a symbolic link pointing outside of the root.",
+          "Severity": "UNKNOWN",
+          "References": [
+            "https://go.dev/cl/797880",
+            "https://go.dev/issue/79005",
+            "https://groups.google.com/g/golang-announce/c/OrmQE_Yp5Sc",
+            "https://pkg.go.dev/vuln/GO-2026-4970"
+          ]
+        },
+        {
+          "VulnerabilityID": "CVE-2026-42505",
+          "VendorIDs": [
+            "GO-2026-5856"
+          ],
+          "PkgID": "stdlib@v1.26.4",
+          "PkgName": "stdlib",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/stdlib@v1.26.4",
+            "UID": "ffb593eaa2455743"
+          },
+          "InstalledVersion": "v1.26.4",
+          "FixedVersion": "1.25.12, 1.26.5, 1.27.0-rc.2",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:f47b905a4150028770509b374cf8ae11d45599679ed6d5e4a5c7b00f981878ac",
+            "DiffID": "sha256:881c537197a7e99d4d02dfb59eea209513f0c7b0b432e8f33ebb5b55f6e0d3af"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-42505",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:1d605532ec10ad14ef6b3590ebf3a9880ed98086ddd9d8ce9df3bc89a60a5943",
+          "Title": "Invoking Encrypted Client Hello privacy leak in crypto/tls",
+          "Description": "Handshakes which used Encrypted Client Hello could be de-anonymized by a passive network observer due to a disclosure of pre-shared key identities in the unencrypted client hello.",
+          "Severity": "UNKNOWN",
+          "References": [
+            "https://go.dev/cl/775960",
+            "https://go.dev/issue/79282",
+            "https://groups.google.com/g/golang-announce/c/OrmQE_Yp5Sc",
+            "https://pkg.go.dev/vuln/GO-2026-5856"
           ]
         }
       ]
