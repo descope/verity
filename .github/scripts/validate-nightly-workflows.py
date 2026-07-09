@@ -67,6 +67,7 @@ permissions: {}
 def main() -> None:
     self_test()
     orchestrator = uncomment(".github/workflows/orchestrator.yaml")
+    integer_orchestrator = uncomment(".github/workflows/integer-orchestrator.yaml")
     chart_gen = uncomment(".github/workflows/chart-gen.yaml")
     build_site = uncomment(".github/workflows/build-site.yaml")
     chart_integration = uncomment(".github/workflows/chart-integration.yaml")
@@ -74,10 +75,20 @@ def main() -> None:
     wait_helper = Path(".github/scripts/wait-for-workflows.sh").read_text(encoding="utf-8")
 
     require(
-        "for attempt in 1 2 3 4 5; do" in orchestrator
-        and "gh workflow run patch-image.yaml" in orchestrator
-        and 'if [ "$dispatched" -ne "$expected_count" ]; then' in orchestrator,
-        "Copa orchestrator dispatch must retry and verify all patch runs dispatched",
+        "nightly plan" in orchestrator
+        and "--family copa" in orchestrator
+        and "nightly dispatch" in orchestrator
+        and "--family copa" in orchestrator
+        and "gh workflow run patch-image.yaml" not in orchestrator,
+        "Copa orchestrator must plan dirty targets and dispatch through verity nightly, not shell gh loops",
+    )
+    require(
+        "nightly plan" in integer_orchestrator
+        and "--family integer" in integer_orchestrator
+        and "nightly dispatch" in integer_orchestrator
+        and "--family integer" in integer_orchestrator
+        and "gh workflow run integer-build-image.yaml" not in integer_orchestrator,
+        "Integer orchestrator must scan published targets and dispatch through verity nightly, not shell gh loops",
     )
     require(
         "bash .github/scripts/wait-for-workflows.sh patch-image.yaml" in chart_gen

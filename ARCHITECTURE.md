@@ -102,6 +102,7 @@ Commands:
   catalog     Generate site catalog JSON from patch reports
   discover    Enumerate image+tag combos from copa-config.yaml, Chart.yaml, and verity.yaml
   integer     Build and manage Wolfi-based OCI images from source (subcommand group)
+  nightly     Plan and dispatch scan-first nightly remediation
   preflight   Manage preflight manifest for build skipping
   chart-gen   Generate and push patched wrapper Helm charts from Chart.yaml
   patch       Patch a single image via Copa (imported as a library)
@@ -172,6 +173,26 @@ produce identical output. Requires `GH_TOKEN` or
 | `--tag` | *(required)* | Image tag |
 | `--upstream-digest` | | Upstream image digest (`sha256:…`) |
 | `--patched-vulns` | `0` | Count of vulnerabilities remaining after patching. The CLI flag's help text calls these "fixable". This CLI is not currently invoked by the workflows — today `patch-image.yaml` updates `preflight-manifest.json` inline via `gh api` + `jq`, writing the raw Trivy post-patch count from `post.json` (no `--ignore-unfixed`, so the value includes unfixable CVEs) — but the CLI exists as a programmatic alternative |
+
+### `verity nightly`
+
+Go-owned scheduled orchestration. `nightly plan` discovers the intended
+published image set, scans the already-published Verity tag with the current
+Trivy database, and emits a dispatch matrix containing only dirty targets.
+Dirty means the published target is missing, cannot be scanned, or currently
+has one or more vulnerabilities. `nightly dispatch` sends that matrix to the
+appropriate GitHub Actions workflow through the Actions REST API.
+
+| Subcommand | Purpose |
+| --- | --- |
+| `nightly plan --family copa` | Discover Copa/chart targets, scan `target-registry/name:tag`, emit dirty `patch-image.yaml` inputs |
+| `nightly plan --family integer` | Discover Integer image/version/type targets, scan each published `registry/name:tag`, emit dirty `integer-build-image.yaml` inputs |
+| `nightly dispatch --family copa` | Dispatch dirty Copa targets to `patch-image.yaml` |
+| `nightly dispatch --family integer` | Dispatch dirty Integer targets to `integer-build-image.yaml` |
+
+Manual dispatches and push-triggered image-definition changes may pass
+`--force` to rebuild the selected target set without scan skipping. Scheduled
+runs do not force; they scan first.
 
 ### `verity integer`
 
@@ -334,19 +355,22 @@ Ten GitHub Actions workflows cover patching, Wolfi rebuilds, chart generation,
 site deployment, and PR validation. Nightly runs are scheduled in sequence:
 
 ```text
-02:00 UTC — orchestrator.yaml            (Copa patching dispatcher)
-03:00 UTC — integer-orchestrator.yaml    (Wolfi rebuild dispatcher)
+02:00 UTC — orchestrator.yaml            (Copa scan planner + patch dispatcher)
+03:00 UTC — integer-orchestrator.yaml    (Integer scan planner + rebuild dispatcher)
 04:00 UTC — chart-gen.yaml               (Helm wrapper generation)
 05:00 UTC — build-site.yaml              (catalog assembly + site deploy)
 ```
 
 ### `orchestrator.yaml` — Copa dispatcher
 
-Runs `verity discover` against `copa-config.yaml`, `Chart.yaml`, and
-`verity.yaml`, then dispatches one `patch-image.yaml` run per image+tag.
-Fire-and-forget — does NOT wait for per-image runs to complete. This keeps the
-dispatcher fast and lets each image patch in its own isolated workflow with its
-own logs and artifacts.
+Runs `verity nightly plan --family copa` against `copa-config.yaml`,
+`Chart.yaml`, and `verity.yaml`. The planner scans each already-published
+patched target with the current Trivy database and emits only images that are
+missing, scan-failing, or vulnerable. The workflow then runs
+`verity nightly dispatch --family copa`, which dispatches one `patch-image.yaml`
+run per dirty image+tag. Fire-and-forget — does NOT wait for per-image runs to
+complete. This keeps remediation isolated while avoiding nightly rebuilds for
+clean images.
 
 Triggers: nightly cron `0 2 * * *`, push to `main` touching
 `copa-config.yaml`/`Chart.yaml`/`verity.yaml`, and `workflow_dispatch` with an
@@ -355,7 +379,7 @@ optional `image` input to patch a single image on demand.
 ### `patch-image.yaml` — reusable per-image lifecycle
 
 ```text
-┌──────────┐   scan-before.sh: Pre-patch Trivy (or skip on preflight hit)
+┌──────────┐   Pre-patch Trivy plus existing-target scan
 │   scan   │
 └────┬─────┘
      ▼
@@ -375,11 +399,15 @@ patching path inline — see `pr-test.yaml` below.
 
 ### `integer-orchestrator.yaml` + `integer-build-image.yaml`
 
-The Integer dispatcher offsets itself one hour after Copa (03:00 UTC) to avoid
-resource contention. It runs `verity integer discover` to build a matrix of
-(image × version × variant) combinations, then dispatches
-`integer-build-image.yaml` per entry. Each per-image build runs apko + melange,
-pushes to the target registry, and captures a post-build Trivy scan.
+The Integer dispatcher offsets itself one hour after Copa (03:00 UTC). It runs
+`verity nightly plan --family integer`, which discovers all
+image × version × variant combinations but scans the already-published tags
+before dispatching. Clean published Integer images are skipped. Missing,
+scan-failing, or vulnerable tags dispatch that image/version/type to
+`integer-build-image.yaml`.
+Each dispatched build runs apko + melange/bespoke package builds when required,
+gates both arches with Trivy before publish, pushes to the target registry, and
+captures a post-build Trivy scan.
 
 ### `chart-gen.yaml`
 
@@ -450,7 +478,7 @@ documented in full in
   bare-name chart args (dex), and charts whose Helm template hardcodes
   `args:` (opensearch-dashboards).
 
-### Skip Detection (Preflight)
+### Skip Detection And Nightly Scan Planning
 
 `verity preflight` maintains a manifest on the `reports` branch that records
 each published image's upstream digest and post-patch vulnerability count
@@ -459,6 +487,12 @@ does not pass `--ignore-unfixed`). When `verity discover --preflight` runs,
 images whose upstream digest hasn't changed AND whose recorded vulnerability
 count is zero are skipped — avoiding unnecessary rebuilds, registry churn,
 and signing traffic.
+
+Scheduled workflows now default to `verity nightly plan` instead of preflight
+manifest-only skipping. The planner scans published Copa and Integer targets
+with the current Trivy database every night. That catches fresh CVEs discovered
+after yesterday's report even when the upstream tag digest has not changed.
+Only dirty targets are dispatched for patching/rebuild.
 
 ## Site Architecture
 
@@ -484,14 +518,16 @@ Cron triggers cascade across the night: Copa at 02:00 UTC, Integer at 03:00,
 chart-gen at 04:00, site build at 05:00.
 
 For **Copa-patched images**, whether an image actually re-publishes on a given
-run depends on the skip checks (see Skip Detection above) plus whether the
-post-patch Trivy vulnerability-ID set has changed since the previous
-published report on the `reports` branch — a change, including the appearance
-of a previously-unseen unfixable CVE, triggers a new push.
+run depends on the nightly scan planner plus `patch-image.yaml`'s own scan and
+post-patch comparison. A clean published image is skipped. A missing,
+scan-failing, or vulnerable published image is dispatched to the patch flow.
 
 For **Integer (Wolfi) images**, the build runs on a schedule or when
-`images/<name>.yaml` changes; there is no vuln-ID-set delta comparison, so
-rebuilt images are published whenever the build succeeds.
+`images/<name>.yaml` changes. Scheduled runs scan the currently-published
+Integer tags and rebuild only missing, scan-failing, or vulnerable targets.
+Push-triggered changes to `images/` or `integer.yaml` force the
+selected image definitions through the rebuild path so config/source changes
+are published even when the previous image was clean.
 
 ### Dependency Updates (Renovate)
 

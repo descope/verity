@@ -22,7 +22,7 @@ on:
         required: false
         default: ""
       preflight:
-        description: "Skip images that don't need work per the preflight manifest (unchanged upstream digest AND zero remaining vulnerabilities in the previously-patched image); may still rebuild when digests change or any vulns are present"
+        description: "Scan published targets first and dispatch only missing, scan-failing, or vulnerable images instead of forcing the selected image set"
         required: false
         type: boolean
         default: false
@@ -189,7 +189,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Discover images
+      - name: Plan dirty images
         id: discover
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -197,19 +197,14 @@ jobs:
           DETECT_FILTER: ${{ needs.detect.outputs.filter }}
           DISPATCH_IMAGE: ${{ github.event.inputs.image }}
         run: |
-          DISCOVER_ARGS=(
+          PLAN_ARGS=(
+            nightly plan
+            --family copa
             --config copa-config.yaml
             --target-registry "${TARGET_REGISTRY}"
+            --output images.json
+            --github-output "$GITHUB_OUTPUT"
           )
-
-          # --preflight and --only are orthogonal: --preflight uses the
-          # manifest to skip images that don't need work (unchanged upstream
-          # digest AND zero remaining vulns in the previously-patched
-          # image); --only controls which images are considered. They
-          # compose, so split them into independent blocks.
-          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.preflight }}" = "true" ]; then
-            DISCOVER_ARGS+=(--preflight --github-repo "${{ github.repository }}")
-          fi
 
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$DISPATCH_IMAGE" ]; then
             # Validate dispatch input matches safe pattern
@@ -217,26 +212,20 @@ jobs:
               echo "Invalid image name: ${DISPATCH_IMAGE}" >&2
               exit 1
             fi
-            DISCOVER_ARGS+=(--only "$DISPATCH_IMAGE")
-          elif [ "${{ github.event_name }}" = "push" ] && [ "$DETECT_MODE" = "filter" ] && [ -n "$DETECT_FILTER" ]; then
-            DISCOVER_ARGS+=(--only "$DETECT_FILTER")
+            PLAN_ARGS+=(--only "$DISPATCH_IMAGE")
           fi
 
-          # Derive Integer/Wolfi image names to exclude from chart discovery.
-          # Chart-discovered images that share a name with an Integer image are
-          # skipped because the Wolfi rebuild is the preferred zero-CVE variant.
-          EXCLUDE_NAMES=$(find images -name '*.yaml' -not -path 'images/_base/*' -printf '%P\n' 2>/dev/null | sed 's/\.yaml$//' | paste -sd, || true)
-          DISCOVER_ARGS+=(--exclude-names "${EXCLUDE_NAMES}")
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.preflight }}" != "true" ]; then
+            PLAN_ARGS+=(--force)
+          elif [ "${{ github.event_name }}" = "push" ] && [ "$DETECT_MODE" = "filter" ] && [ -n "$DETECT_FILTER" ]; then
+            PLAN_ARGS+=(--only "$DETECT_FILTER" --force)
+          fi
 
-          ./verity discover "${DISCOVER_ARGS[@]}" > images.json
-
-          COUNT=$(jq 'length' images.json)
-          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
-          echo "images=$(jq -c . images.json)" >> "$GITHUB_OUTPUT"
-          echo "✓ Discovered ${COUNT} image+tag combos"
+          ./verity "${PLAN_ARGS[@]}"
+          echo "✓ Planned $(jq 'length' images.json) Copa remediation run(s)"
           jq -r '.[] | "  - \(.name): \(.source)"' images.json
 
-  # ── Job 3: Dispatch one patch-image.yaml run per image+tag ─────────
+  # ── Job 4: Dispatch one patch-image.yaml run per dirty image+tag ───
   dispatch:
     name: Dispatch Patches
     needs: discover
@@ -253,67 +242,34 @@ jobs:
         with:
           egress-policy: audit
 
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Install mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          install: true
+          cache: true
+
+      - name: Cache Go modules
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/dev/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Build verity
+        run: go build -o verity .
+
       - name: Dispatch patch-image.yaml for each image
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IMAGES: ${{ needs.discover.outputs.images }}
         run: |
-          dispatch_patch() {
-            local name="$1"
-            local source="$2"
-            local registry="$3"
-            local platforms="$4"
-            local go_vcs_url="$5"
-
-            local dispatch_args=(
-              --repo "${{ github.repository }}"
-              --ref "${{ github.ref_name }}"
-              --field "image-name=${name}"
-              --field "source-ref=${source}"
-              --field "target-registry=${registry}"
-              --field "platforms=${platforms}"
-            )
-            if [ -n "${go_vcs_url}" ]; then
-              dispatch_args+=(--field "go-vcs-url=${go_vcs_url}")
-            fi
-
-            local attempt
-            for attempt in 1 2 3 4 5; do
-              if gh workflow run patch-image.yaml "${dispatch_args[@]}"; then
-                return 0
-              fi
-              if [ "$attempt" -lt 5 ]; then
-                local sleep_seconds=$((attempt * 10))
-                echo "Dispatch failed for ${name}: ${source} (attempt ${attempt}/5); retrying in ${sleep_seconds}s" >&2
-                sleep "${sleep_seconds}"
-              fi
-            done
-
-            echo "Failed to dispatch ${name}: ${source} after 5 attempts" >&2
-            return 1
-          }
-
-          jq -c '.[]' <<< "$IMAGES" > "$RUNNER_TEMP/patch-images.ndjson"
-          expected_count="${{ needs.discover.outputs.count }}"
-          dispatched=0
-
-          while IFS= read -r image; do
-            NAME=$(echo "$image" | jq -r '.name')
-            SOURCE=$(echo "$image" | jq -r '.source')
-            REGISTRY=$(echo "$image" | jq -r '."target-registry"')
-            PLATFORMS=$(echo "$image" | jq -r '.platforms')
-            GO_VCS_URL=$(echo "$image" | jq -r '."go-vcs-url" // ""')
-
-            echo "Dispatching patch for ${NAME}: ${SOURCE}..."
-            dispatch_patch "$NAME" "$SOURCE" "$REGISTRY" "$PLATFORMS" "$GO_VCS_URL"
-            dispatched=$((dispatched + 1))
-
-            # Throttle to avoid GitHub API rate limits
-            sleep 2
-          done < "$RUNNER_TEMP/patch-images.ndjson"
-
-          if [ "$dispatched" -ne "$expected_count" ]; then
-            echo "Dispatched ${dispatched}/${expected_count} patch runs; expected all discovered images to dispatch" >&2
-            exit 1
-          fi
-          echo "✓ Dispatched ${dispatched}/${expected_count} patch runs"
+          printf '%s' "$IMAGES" > "$RUNNER_TEMP/patch-images.json"
+          ./verity nightly dispatch \
+            --family copa \
+            --input "$RUNNER_TEMP/patch-images.json" \
+            --repo "${{ github.repository }}" \
+            --ref "${{ github.ref_name }}"
