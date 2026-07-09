@@ -9,7 +9,7 @@ import (
 	"io"
 	"maps"
 	"net/http"
-	"net/url"
+	neturl "net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,6 +29,23 @@ import (
 const (
 	nightlyFamilyCopa    = "copa"
 	nightlyFamilyInteger = "integer"
+)
+
+var (
+	errUnsupportedNightlyFamily = errors.New("unsupported nightly family")
+	errMissingGitHubToken       = errors.New("GH_TOKEN or GITHUB_TOKEN is required for workflow dispatch")
+	errSourceTagUnavailable     = errors.New("source ref is digest-pinned or tagless")
+	errMissingTargetRegistry    = errors.New("target registry missing")
+	errMissingIntegerTags       = errors.New("integer image has no tags")
+	errNoNonEmptyIntegerTags    = errors.New("integer image has no non-empty tags")
+	errMissingIntegerRegistry   = errors.New("registry missing for integer image")
+	errGitHubDispatchStatus     = errors.New("github dispatch returned non-success status")
+
+	craneDigest        = crane.Digest
+	dispatchRetrySleep = time.Sleep
+	githubAPIBaseURL   = "https://api.github.com"
+	githubHTTPClient   = http.DefaultClient
+	trivyVulnCountFor  = nightlyTrivyVulnCount
 )
 
 // NightlyCommand owns scheduled scan/dispatch decisions. It deliberately keeps
@@ -65,10 +82,7 @@ var nightlyPlanCmd = &cli.Command{
 	Action: func(ctx context.Context, cmd *cli.Command) error {
 		family := cmd.String("family")
 		force := cmd.Bool("force")
-		parallel := cmd.Int("parallel")
-		if parallel < 1 {
-			parallel = 1
-		}
+		parallel := max(cmd.Int("parallel"), 1)
 
 		var data []byte
 		var count int
@@ -77,6 +91,9 @@ var nightlyPlanCmd = &cli.Command{
 		case nightlyFamilyCopa:
 			var items []discovery.DiscoveredImage
 			items, err = nightlyPlanCopa(ctx, cmd, force, parallel)
+			if err != nil {
+				return err
+			}
 			if items == nil {
 				items = []discovery.DiscoveredImage{}
 			}
@@ -85,13 +102,16 @@ var nightlyPlanCmd = &cli.Command{
 		case nightlyFamilyInteger:
 			var items []intdiscovery.DiscoveredImage
 			items, err = nightlyPlanInteger(ctx, cmd, force, parallel)
+			if err != nil {
+				return err
+			}
 			if items == nil {
 				items = []intdiscovery.DiscoveredImage{}
 			}
 			count = len(items)
 			data, err = json.Marshal(items)
 		default:
-			return fmt.Errorf("unsupported --family %q; want %q or %q", family, nightlyFamilyCopa, nightlyFamilyInteger)
+			return fmt.Errorf("%w: %q; want %q or %q", errUnsupportedNightlyFamily, family, nightlyFamilyCopa, nightlyFamilyInteger)
 		}
 		if err != nil {
 			return err
@@ -133,7 +153,7 @@ var nightlyDispatchCmd = &cli.Command{
 			case nightlyFamilyInteger:
 				workflow = "integer-build-image.yaml"
 			default:
-				return fmt.Errorf("unsupported --family %q", cmd.String("family"))
+				return fmt.Errorf("%w: %q", errUnsupportedNightlyFamily, cmd.String("family"))
 			}
 		}
 		token := os.Getenv("GH_TOKEN")
@@ -141,7 +161,7 @@ var nightlyDispatchCmd = &cli.Command{
 			token = os.Getenv("GITHUB_TOKEN")
 		}
 		if token == "" {
-			return errors.New("GH_TOKEN or GITHUB_TOKEN is required for workflow dispatch")
+			return errMissingGitHubToken
 		}
 
 		inputs, err := nightlyDispatchInputs(cmd.String("family"), cmd.String("input"))
@@ -200,7 +220,7 @@ func nightlyPlanCopa(ctx context.Context, cmd *cli.Command, force bool, parallel
 	images = filterCopaImagesByName(images, cmd.String("only"))
 
 	return filterDirty(ctx, images, parallel, func(img discovery.DiscoveredImage) ([]nightlyScanTarget, string, error) {
-		targetRef, err := copaTargetRef(img)
+		targetRef, err := copaTargetRef(&img)
 		if err != nil {
 			return nil, "", err
 		}
@@ -219,8 +239,8 @@ func nightlyPlanInteger(ctx context.Context, cmd *cli.Command, force bool, paral
 	}
 
 	var pkgs []apkindex.Package
-	if url := cmd.String("apkindex-url"); url != "" {
-		pkgs, err = apkindex.Fetch(url, cmd.String("cache-dir"), apkindex.DefaultCacheMaxAge)
+	if apkIndexURL := cmd.String("apkindex-url"); apkIndexURL != "" {
+		pkgs, err = apkindex.Fetch(apkIndexURL, cmd.String("cache-dir"), apkindex.DefaultCacheMaxAge)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "warning: APKINDEX unavailable (%v) — using versions map only\n", err)
 		}
@@ -241,7 +261,7 @@ func nightlyPlanInteger(ctx context.Context, cmd *cli.Command, force bool, paral
 	images = filterIntegerImagesByName(images, cmd.String("only"))
 
 	return filterDirty(ctx, images, parallel, func(img intdiscovery.DiscoveredImage) ([]nightlyScanTarget, string, error) {
-		targetRefs, err := integerTargetRefs(img)
+		targetRefs, err := integerTargetRefs(&img)
 		if err != nil {
 			return nil, "", err
 		}
@@ -317,7 +337,7 @@ func scanPublishedTargets(ctx context.Context, targets []nightlyScanTarget) scan
 		if target.label == "" {
 			target.label = target.ref
 		}
-		digest, err := crane.Digest(target.ref)
+		digest, err := craneDigest(target.ref)
 		if err != nil {
 			return scanDecision{dirty: true, reason: target.label + " missing or digest lookup failed: " + err.Error()}
 		}
@@ -326,7 +346,7 @@ func scanPublishedTargets(ctx context.Context, targets []nightlyScanTarget) scan
 		}
 		seenDigests[digest] = struct{}{}
 
-		count, err := nightlyTrivyVulnCount(ctx, target.ref)
+		count, err := trivyVulnCountFor(ctx, target.ref)
 		if err != nil {
 			return scanDecision{dirty: true, reason: target.label + " scan failed: " + err.Error()}
 		}
@@ -362,33 +382,33 @@ func nightlyTrivyVulnCount(ctx context.Context, ref string) (int, error) {
 	return count, nil
 }
 
-func copaTargetRef(img discovery.DiscoveredImage) (string, error) {
+func copaTargetRef(img *discovery.DiscoveredImage) (string, error) {
 	tag := sourceTag(img.Source)
 	if tag == "" {
-		return "", fmt.Errorf("source ref %q is digest-pinned or tagless; cannot derive target tag", img.Source)
+		return "", fmt.Errorf("%w: %q; cannot derive target tag", errSourceTagUnavailable, img.Source)
 	}
 	if img.TargetRegistry == "" {
-		return "", fmt.Errorf("target registry missing for %q", img.Name)
+		return "", fmt.Errorf("%w for %q", errMissingTargetRegistry, img.Name)
 	}
 	return strings.TrimRight(img.TargetRegistry, "/") + "/" + img.Name + ":" + tag, nil
 }
 
-func integerTargetRef(img intdiscovery.DiscoveredImage) (string, error) {
+func integerTargetRef(img *intdiscovery.DiscoveredImage) (string, error) {
 	if len(img.Tags) == 0 {
-		return "", fmt.Errorf("integer image %s:%s-%s has no tags", img.Name, img.Version, img.Type)
+		return "", fmt.Errorf("%w: %s:%s-%s", errMissingIntegerTags, img.Name, img.Version, img.Type)
 	}
 	if img.Registry == "" {
-		return "", fmt.Errorf("registry missing for integer image %s:%s-%s", img.Name, img.Version, img.Type)
+		return "", fmt.Errorf("%w: %s:%s-%s", errMissingIntegerRegistry, img.Name, img.Version, img.Type)
 	}
 	return strings.TrimRight(img.Registry, "/") + "/" + img.Name + ":" + img.Tags[0], nil
 }
 
-func integerTargetRefs(img intdiscovery.DiscoveredImage) ([]nightlyScanTarget, error) {
+func integerTargetRefs(img *intdiscovery.DiscoveredImage) ([]nightlyScanTarget, error) {
 	if len(img.Tags) == 0 {
-		return nil, fmt.Errorf("integer image %s:%s-%s has no tags", img.Name, img.Version, img.Type)
+		return nil, fmt.Errorf("%w: %s:%s-%s", errMissingIntegerTags, img.Name, img.Version, img.Type)
 	}
 	if img.Registry == "" {
-		return nil, fmt.Errorf("registry missing for integer image %s:%s-%s", img.Name, img.Version, img.Type)
+		return nil, fmt.Errorf("%w: %s:%s-%s", errMissingIntegerRegistry, img.Name, img.Version, img.Type)
 	}
 	base := strings.TrimRight(img.Registry, "/") + "/" + img.Name
 	targets := make([]nightlyScanTarget, 0, len(img.Tags))
@@ -399,7 +419,7 @@ func integerTargetRefs(img intdiscovery.DiscoveredImage) ([]nightlyScanTarget, e
 		}
 	}
 	if len(targets) == 0 {
-		return nil, fmt.Errorf("integer image %s:%s-%s has no non-empty tags", img.Name, img.Version, img.Type)
+		return nil, fmt.Errorf("%w: %s:%s-%s", errNoNonEmptyIntegerTags, img.Name, img.Version, img.Type)
 	}
 	return targets, nil
 }
@@ -437,8 +457,16 @@ func appendGitHubMatrixOutput(path string, count int, data []byte) error {
 	if err != nil {
 		return fmt.Errorf("opening GitHub output %s: %w", path, err)
 	}
-	defer f.Close()
-	if _, err := fmt.Fprintf(f, "count=%d\nimages<<__VERITY_NIGHTLY_JSON__\n%s\n__VERITY_NIGHTLY_JSON__\n", count, data); err != nil {
+	return appendGitHubMatrixOutputTo(f, path, count, data)
+}
+
+func appendGitHubMatrixOutputTo(w io.WriteCloser, path string, count int, data []byte) (retErr error) {
+	defer func() {
+		if cerr := w.Close(); cerr != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("closing GitHub output %s: %w", path, cerr))
+		}
+	}()
+	if _, err := fmt.Fprintf(w, "count=%d\nimages<<__VERITY_NIGHTLY_JSON__\n%s\n__VERITY_NIGHTLY_JSON__\n", count, data); err != nil {
 		return fmt.Errorf("writing GitHub output %s: %w", path, err)
 	}
 	return nil
@@ -486,7 +514,7 @@ func nightlyDispatchInputs(family, inputPath string) ([]map[string]string, error
 		}
 		return out, nil
 	default:
-		return nil, fmt.Errorf("unsupported --family %q", family)
+		return nil, fmt.Errorf("%w: %q", errUnsupportedNightlyFamily, family)
 	}
 }
 
@@ -501,7 +529,7 @@ func dispatchWorkflow(ctx context.Context, token, repo, workflow, ref string, in
 	if err != nil {
 		return fmt.Errorf("marshalling dispatch body: %w", err)
 	}
-	endpoint := fmt.Sprintf("https://api.github.com/repos/%s/actions/workflows/%s/dispatches", repo, url.PathEscape(workflow))
+	endpoint := fmt.Sprintf("%s/repos/%s/actions/workflows/%s/dispatches", strings.TrimRight(githubAPIBaseURL, "/"), repo, neturl.PathEscape(workflow))
 	var lastErr error
 	for attempt := 1; attempt <= retries; attempt++ {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
@@ -513,22 +541,39 @@ func dispatchWorkflow(ctx context.Context, token, repo, workflow, ref string, in
 		req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 		req.Header.Set("Content-Type", "application/json")
 
-		resp, err := http.DefaultClient.Do(req)
-		if err == nil && resp != nil && resp.Body != nil {
-			defer resp.Body.Close()
-		}
-		if err == nil && resp.StatusCode == http.StatusNoContent {
-			return nil
-		}
-		if err != nil {
+		resp, err := githubHTTPClient.Do(req)
+		switch {
+		case err != nil:
 			lastErr = err
-		} else {
-			body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-			lastErr = fmt.Errorf("github dispatch returned %s: %s", resp.Status, strings.TrimSpace(string(body)))
+		case resp.StatusCode == http.StatusNoContent:
+			if resp.Body != nil {
+				if cerr := resp.Body.Close(); cerr != nil {
+					return fmt.Errorf("closing github dispatch response: %w", cerr)
+				}
+			}
+			return nil
+		default:
+			lastErr = githubDispatchResponseError(resp)
 		}
 		if attempt < retries {
-			time.Sleep(time.Duration(attempt*10) * time.Second)
+			dispatchRetrySleep(time.Duration(attempt*10) * time.Second)
 		}
 	}
 	return fmt.Errorf("dispatching %s after %d attempt(s): %w", workflow, retries, lastErr)
+}
+
+func githubDispatchResponseError(resp *http.Response) error {
+	if resp.Body == nil {
+		return fmt.Errorf("%w: %s", errGitHubDispatchStatus, resp.Status)
+	}
+	responseBody, readErr := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	closeErr := resp.Body.Close()
+	switch {
+	case readErr != nil:
+		return fmt.Errorf("reading github dispatch error response: %w", readErr)
+	case closeErr != nil:
+		return fmt.Errorf("closing github dispatch error response: %w", closeErr)
+	default:
+		return fmt.Errorf("%w: %s: %s", errGitHubDispatchStatus, resp.Status, strings.TrimSpace(string(responseBody)))
+	}
 }
