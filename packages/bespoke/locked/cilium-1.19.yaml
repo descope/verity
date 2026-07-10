@@ -1,0 +1,292 @@
+package:
+  name: cilium-1.19
+  version: "1.19.5"
+  epoch: 5
+  description: Cilium is a networking, observability, and security solution with an eBPF-based dataplane
+  copyright:
+    - license: Apache-2.0
+  resources:
+    cpu: 20
+    memory: 64Gi
+  dependencies:
+    runtime:
+      - bpftool
+      - cni-plugins-loopback
+      - iproute2
+      - ipset
+      - iptables-nft
+      - kmod
+      # cilium does compilations at runtime on the node.
+      - llvm-19-bpf
+      - merged-sbin
+      - wolfi-baselayout
+    provides:
+      - cilium=${{package.full-version}}
+
+environment:
+  contents:
+    packages:
+      - bash
+      - bazel-6
+      - binutils
+      - build-base
+      - busybox
+      - ca-certificates-bundle
+      - clang-19
+      - cmake
+      - coreutils # for GNU install
+      - git
+      - go
+      - grep
+      - isl-dev
+      - libcxx1-19-dev
+      - libtool
+      - lld-19
+      - lld-19-dev
+      - llvm-19-dev
+      - mpc-dev
+      - openjdk-11
+      - patch
+      - python3-dev
+      - samurai
+      - wolfi-baselayout
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/cilium/cilium
+      tag: v${{package.version}}
+      expected-commit: 20eaccfef029cb046d70219717fb6dbbdf27a59f
+
+  - uses: patch
+    with:
+      patches: loopback-location.patch
+
+  - runs: |
+      # Bazel errors out on toolchain stanza
+      sed -i '/$toolchain /d' go.mod
+      # Bazel errors out on go point release
+      sed -i 's|^\(go 1\.[0-9]*\)\.[0-9]*|\1|' go.mod
+
+  - runs: |
+      # CVE remediation beyond upstream v1.19.5 updates bundled Go dependencies.
+      # Keep
+      # package.version at 1.19.5 and use epoch 4 for the real patched build.
+      go get \
+        go.opentelemetry.io/otel@v1.44.0 \
+        go.opentelemetry.io/otel/trace@v1.44.0 \
+        go.opentelemetry.io/otel/metric@v1.44.0 \
+        go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp@v1.43.0 \
+        go.mongodb.org/mongo-driver@v1.17.7
+      go mod tidy
+      go mod vendor
+
+  - runs: |
+      # Remove groupadd from Makefile: it's not doing anything useful in
+      # a package build anyway, and it's not available in busybox.
+      find . -name Makefile -exec sed -i '/groupadd/d' {} \;
+
+      DESTDIR=${{targets.destdir}} DISABLE_ENVOY_INSTALLATION=1 make build-container
+      DESTDIR=${{targets.destdir}} DISABLE_ENVOY_INSTALLATION=1 make install-container
+      # Cilium's install creates /var/lib paths too restrictively for melange's
+      # workspace xattr/SBOM handling on aarch64. Runtime image config also
+      # declares /var/lib/cilium as 0755.
+      mkdir -p "${{targets.destdir}}/var/lib/db/sbom"
+      chmod 0755 "${{targets.destdir}}/var" \
+                 "${{targets.destdir}}/var/lib" \
+                 "${{targets.destdir}}/var/lib/db" \
+                 "${{targets.destdir}}/var/lib/cilium"
+      chmod 0777 "${{targets.destdir}}/var/lib/db/sbom"
+
+  - uses: strip
+
+subpackages:
+  - name: ${{package.name}}-container-init
+    description: init scripts for cilium
+    dependencies:
+      provides:
+        - cilium-container-init=${{package.full-version}}
+      runtime:
+        - bash
+        - merged-sbin
+        - wolfi-baselayout
+    pipeline:
+      - runs: |
+          mkdir -p ${{targets.subpkgdir}}/usr/bin
+          cp images/cilium/init-container.sh \
+             plugins/cilium-cni/install-plugin.sh \
+             plugins/cilium-cni/cni-uninstall.sh \
+            ${{targets.subpkgdir}}/usr/bin
+    test:
+      pipeline:
+        - runs: |
+            test -x /usr/bin/init-container.sh
+            test -x /usr/bin/install-plugin.sh
+            test -x /usr/bin/cni-uninstall.sh
+
+  - name: ${{package.name}}-container-init-compat
+    description: init scripts for cilium
+    dependencies:
+      runtime:
+        - ${{package.name}}-container-init
+        - merged-sbin
+        - wolfi-baselayout
+      provides:
+        - cilium-container-init-compat=${{package.full-version}}
+    pipeline:
+      - runs: |
+          mkdir -p ${{targets.subpkgdir}}
+          ln -sf /usr/bin/init-container.sh ${{targets.subpkgdir}}/init-container.sh
+          ln -sf /usr/bin/install-plugin.sh ${{targets.subpkgdir}}/install-plugin.sh
+          ln -sf /usr/bin/cni-uninstall.sh ${{targets.subpkgdir}}/cni-uninstall.sh
+    test:
+      pipeline:
+        - runs: |
+            test -x $(readlink -f /init-container.sh)
+            test -x $(readlink -f /install-plugin.sh)
+            test -x $(readlink -f /cni-uninstall.sh)
+
+  - name: ${{package.name}}-compat
+    description: Compat to make our image compatible with upstream
+    dependencies:
+      runtime:
+        - merged-varrun
+        - wolfi-baselayout
+      provides:
+        - cilium-compat=${{package.full-version}}
+    test:
+      pipeline:
+        - uses: test/virtualpackage
+          with:
+            virtual-pkg-name: cilium-compat
+            real-pkg-name: ${{subpkg.name}}
+
+  - name: ${{package.name}}-iptables
+    description: iptables compatibility package for cilium
+    dependencies:
+      runtime:
+        - iptables-nft
+        - merged-sbin
+        - wolfi-baselayout
+      provides:
+        - cilium-iptables=${{package.full-version}}
+    test:
+      pipeline:
+        - uses: test/emptypackage
+
+  - name: ${{package.name}}-operator-generic
+    description: Generic operator for cilium
+    dependencies:
+      runtime:
+        - gops
+        - merged-sbin
+        - wolfi-baselayout
+      provides:
+        - cilium-operator-generic=${{package.full-version}}
+    pipeline:
+      - runs: |
+          cd /home/build/operator
+          make cilium-operator-generic
+          DESTDIR=${{targets.subpkgdir}} make install-generic
+      - uses: strip
+    test:
+      pipeline:
+        - runs: |
+            # Test version output
+            cilium-operator-generic --version | grep -q "${{package.version}}"
+
+  - name: ${{package.name}}-operator-aws
+    description: AWS operator for cilium
+    dependencies:
+      runtime:
+        - gops
+        - merged-sbin
+        - wolfi-baselayout
+      provides:
+        - cilium-operator-aws=${{package.full-version}}
+    pipeline:
+      - runs: |
+          cd /home/build/operator
+          make cilium-operator-aws
+          DESTDIR=${{targets.subpkgdir}} make install-aws
+      - uses: strip
+    test:
+      pipeline:
+        - runs: |
+            # Test version output
+            cilium-operator-aws --version | grep -q "${{package.version}}"
+
+  - name: ${{package.name}}-hubble-relay
+    description: Hubble relay
+    dependencies:
+      provides:
+        - cilium-hubble-relay=${{package.full-version}}
+      runtime:
+        - merged-sbin
+        - wolfi-baselayout
+    pipeline:
+      - runs: |
+          cd /home/build/hubble-relay
+          make hubble-relay
+          DESTDIR=${{targets.subpkgdir}} make install
+      - uses: strip
+    test:
+      pipeline:
+        - runs: |
+            # Test version output
+            hubble-relay --version | grep -q "${{package.version}}"
+
+  - name: ${{package.name}}-clustermesh-apiserver
+    description: Clustermesh apiserver
+    dependencies:
+      runtime:
+        - etcd
+        - gops
+      provides:
+        - cilium-clustermesh-apiserver=${{package.full-version}}
+    pipeline:
+      - working-directory: /home/build/clustermesh-apiserver
+        pipeline:
+          - runs: make clustermesh-apiserver
+          - uses: autoconf/make-install
+          - runs: |
+              install -Dm755 etcd-config.yaml ${{targets.contextdir}}/var/lib/cilium/etcd-config.yaml
+              mkdir -p ${{targets.contextdir}}/var/lib/db/sbom
+              chmod 0755 ${{targets.contextdir}}/var \
+                         ${{targets.contextdir}}/var/lib \
+                         ${{targets.contextdir}}/var/lib/db \
+                         ${{targets.contextdir}}/var/lib/cilium
+              chmod 0777 ${{targets.contextdir}}/var/lib/db/sbom
+      - uses: strip
+    test:
+      pipeline:
+        - runs: |
+            # check these files exist
+            stat /usr/bin/clustermesh-apiserver
+            stat /var/lib/cilium/etcd-config.yaml
+            clustermesh-apiserver version | grep "${{package.version}}"
+            clustermesh-apiserver --help 2>&1 | grep "Run the ClusterMesh apiserver"
+
+test:
+  pipeline:
+    - uses: test/tw/ver-check
+      with:
+        bins: cilium cilium-dbg cilium-agent
+    # Ensure that structured version info is available
+    - runs: cilium version -ojsonpath={.Client.Version} | grep ${{package.version}}
+    - name: Test help commands
+      runs: |
+        cilium --help
+        cilium-agent --help
+        cilium-bugtool --help
+        cilium-dbg --help
+        cilium-health --help
+        cilium-mount --help
+        cilium-sysctlfix --help
+
+update:
+  enabled: true
+  github:
+    identifier: cilium/cilium
+    strip-prefix: v
+    tag-filter-prefix: v1.19.

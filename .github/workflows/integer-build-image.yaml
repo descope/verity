@@ -81,83 +81,15 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: .github/scripts/melange-check.sh
 
-      - name: Resolve melange YAML source
+      - name: Stage locked bespoke inputs
         if: steps.check.outputs.needed == 'true'
         env:
           UPSTREAM: ${{ steps.check.outputs.upstream }}
           BESPOKE_JSON: ${{ steps.check.outputs.bespoke_json }}
-        run: |
-          mkdir -p melange-work/specs
-
-          commit=$(jq -r '.wolfi_commit' packages/upstream.lock.json)
-          if [ "$commit" = "null" ] || [ -z "$commit" ]; then
-            echo "wolfi_commit missing or null in packages/upstream.lock.json" >&2
-            exit 1
-          fi
-
-          if [ "$BESPOKE_JSON" != '[]' ]; then
-            while IFS= read -r bespoke; do
-              spec_dir="melange-work/specs/${bespoke}"
-              rm -rf "$spec_dir"
-              mkdir -p "$spec_dir"
-              cp "packages/bespoke/${bespoke}" "$spec_dir/build.yaml"
-            done < <(printf '%s' "$BESPOKE_JSON" | jq -r '.[]')
-          elif [ -n "$UPSTREAM" ]; then
-            file=$(jq -r --arg pkg "$UPSTREAM" '.packages[$pkg].file' packages/upstream.lock.json)
-            expected_sha=$(jq -r --arg pkg "$UPSTREAM" '.packages[$pkg].sha256' packages/upstream.lock.json)
-            if [ "$file" = "null" ] || [ -z "$file" ]; then
-              echo "Package '${UPSTREAM}' not found in upstream.lock.json" >&2
-              exit 1
-            fi
-            if [ "$expected_sha" = "null" ] || [ -z "$expected_sha" ]; then
-              echo "No sha256 for '${UPSTREAM}' in upstream.lock.json" >&2
-              exit 1
-            fi
-            url="https://raw.githubusercontent.com/wolfi-dev/os/${commit}/${file}"
-            echo "Fetching upstream melange YAML: ${url}"
-            spec_dir="melange-work/specs/${UPSTREAM}"
-            rm -rf "$spec_dir"
-            mkdir -p "$spec_dir"
-            curl -fsSL "$url" -o "$spec_dir/build.yaml.tmp"
-            actual_sha=$(sha256sum "$spec_dir/build.yaml.tmp" | awk '{print $1}')
-            if [ "$actual_sha" != "$expected_sha" ]; then
-              echo "sha256 mismatch for ${UPSTREAM}: expected ${expected_sha}, got ${actual_sha}" >&2
-              rm -f "$spec_dir/build.yaml.tmp"
-              exit 1
-            fi
-            mv "$spec_dir/build.yaml.tmp" "$spec_dir/build.yaml"
-          fi
-
-          echo "Fetching wolfi pipelines/ at commit ${commit}"
-          tmp_wolfi=$(mktemp -d)
-          trap 'rm -rf "$tmp_wolfi"' EXIT
-          git -C "$tmp_wolfi" init --quiet
-          git -C "$tmp_wolfi" remote add origin "https://github.com/wolfi-dev/os.git"
-
-          sparse_paths=(pipelines)
-          if [ -n "$UPSTREAM" ]; then
-            if [[ ! "$UPSTREAM" =~ ^[A-Za-z0-9._-]+$ ]]; then
-              echo "upstream value contains unsafe characters: '${UPSTREAM}'" >&2
-              exit 1
-            fi
-            sparse_paths+=("${UPSTREAM}")
-          fi
-
-          git -C "$tmp_wolfi" sparse-checkout set --no-cone "${sparse_paths[@]}"
-          git -C "$tmp_wolfi" fetch --quiet --depth 1 --filter=blob:none origin "$commit"
-          if [ -n "$UPSTREAM" ]; then
-            git -C "$tmp_wolfi" checkout --quiet FETCH_HEAD -- pipelines "${UPSTREAM}" 2>/dev/null || \
-              git -C "$tmp_wolfi" checkout --quiet FETCH_HEAD -- pipelines
-          else
-            git -C "$tmp_wolfi" checkout --quiet FETCH_HEAD -- pipelines
-          fi
-          rm -rf melange-work/pipelines
-          cp -r "$tmp_wolfi/pipelines" melange-work/pipelines
-          if [ -n "$UPSTREAM" ]; then
-            if [ -d "$tmp_wolfi/${UPSTREAM}" ]; then
-              cp -r "$tmp_wolfi/${UPSTREAM}/." "$spec_dir/"
-            fi
-          fi
+          ENV_FILE: ${{ steps.check.outputs.env_file }}
+          BUILD_OPTION: ${{ steps.check.outputs.build_option }}
+          STAGE_ONLY: "true"
+        run: .github/scripts/melange-build.sh
 
       - name: Generate ephemeral melange signing key
         if: steps.check.outputs.needed == 'true'
@@ -494,11 +426,11 @@ jobs:
             # package is explicitly pinned with the same tag (e.g. "popeye@local").
             # Our apko configs reference packages by bare name (e.g. "popeye"),
             # so a tagged @local repo would be silently ignored — which broke
-            # bespoke-only packages that don't exist in upstream Wolfi
+            # bespoke-only packages that do not exist in the remote repository
             # (popeye, kubectx, kubeconform, kube-score, kube-linter; see #297
             # follow-up). Untagged here means apk-tools picks the highest
             # version across all repos, which naturally prefers our bespoke
-            # build (epoch-bumped) over any upstream Wolfi copy.
+            # build (epoch-bumped) over any remote package copy.
             APKO_ARGS+=(
               --repository-append "${GITHUB_WORKSPACE}/packages/repo"
               --keyring-append "${GITHUB_WORKSPACE}/melange-work/melange.rsa.pub"

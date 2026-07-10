@@ -1,0 +1,64 @@
+package:
+  name: cosign
+  version: "3.0.5"
+  epoch: 1 # GHSA-9h8m-3fm2-qjrq
+  description: Container Signing
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      expected-commit: 479147a4df05f31be48aeb2b3a9d32dfc35ba877
+      repository: https://github.com/sigstore/cosign
+      tag: v${{package.version}}
+
+  - uses: go/bump
+    with:
+      deps: |-
+        go.opentelemetry.io/otel/sdk@v1.40.0
+
+  - uses: go/build
+    with:
+      output: cosign
+      packages: ./cmd/cosign
+      ldflags: |
+        -X sigs.k8s.io/release-utils/version.gitVersion=v${{package.version}}
+        -X sigs.k8s.io/release-utils/version.gitCommit=$(git rev-parse HEAD)
+        -X sigs.k8s.io/release-utils/version.gitTreeState=$(git diff --quiet && echo clean || echo dirty)
+        -X sigs.k8s.io/release-utils/version.buildDate=$(date -u -d "@$SOURCE_DATE_EPOCH" "+%Y-%m-%dT%H:%M:%SZ")
+
+test:
+  environment:
+    contents:
+      packages:
+        - jq
+  pipeline:
+    - name: Verify Cosign installation
+      runs: |
+        cosign version | grep ${{package.version}} || exit 1
+        cosign --help
+    - name: Get an attestation and test
+      runs: |
+        arch=$(uname -m | sed -e "s/x86_64/amd64/" -e "s/aarch64/arm64/")
+        cosign download attestation --platform=linux/$arch \
+        --predicate-type=https://spdx.dev/Document \
+        chainguard/curl | jq -r .payload | base64 -d | jq .predicate
+
+update:
+  enabled: true
+  github:
+    identifier: sigstore/cosign
+    strip-prefix: v

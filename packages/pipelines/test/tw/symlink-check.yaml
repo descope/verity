@@ -1,0 +1,44 @@
+name: Symlink Integrity Validator
+
+description: |
+  Verifies all symlinks in a package point to valid targets and meet policy requirements.
+  This test checks for broken (dangling) symlinks and absolute symlinks, which may violate
+  packaging policies. By default, dangling and absolute symlinks are considered errors,
+  but this can be customized based on package requirements.
+
+needs:
+  packages:
+    - symlink-check
+
+inputs:
+  packages:
+    description: |
+      Space-separated list of package names whose symlinks should be checked.
+      All symlinks in these packages will be validated for integrity.
+      Use "none" to disable the default package check.
+    required: false
+    default: "${{context.name}}"
+  allow-absolute:
+    description: |
+      Allow absolute symlinks (e.g., /usr/bin/foo -> /usr/lib/bar).
+      Set to "true" for packages that require absolute paths in symlinks.
+      Default is false (absolute symlinks cause test failure as they may not be relocatable).
+    default: false
+    required: false
+
+# USAGE EXAMPLES:
+#
+# Basic check (all symlinks in current package):
+#   - uses: test/tw/symlink-check
+#
+# Allow absolute symlinks:
+#   - uses: test/tw/symlink-check
+#     with:
+#       allow-absolute: true
+#
+pipeline:
+  - name: "check for broken/dangling symlinks"
+    runs: |
+      symlink-check \
+          --allow-absolute="${{inputs.allow-absolute}}" \
+          --packages="${{inputs.packages}}"

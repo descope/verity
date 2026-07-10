@@ -166,7 +166,7 @@ jobs:
           echo "$matrix" | jq .
           echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
 
-  # ── Integer (Wolfi-based) smoke test ─────────────────────────────────
+  # ── Integer smoke test ────────────────────────────────────────────────
   integer-smoke-test:
     name: "Integer ${{ matrix.image }}:${{ matrix.version }}-${{ matrix.type }}"
     needs: [changes, detect-smoke-scope]
@@ -368,6 +368,7 @@ jobs:
         env:
           IMAGE: ${{ matrix.image }}
           TYPE: ${{ matrix.type }}
+          VERSION: ${{ matrix.version }}
         run: .github/scripts/melange-check.sh
 
       - name: Build melange package

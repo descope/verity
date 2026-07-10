@@ -1,0 +1,57 @@
+package:
+  name: helm-4
+  version: "4.1.1"
+  epoch: 1 # GHSA-q9hv-hpm4-hj6x
+  description: The Kubernetes Package Manager
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    provides:
+      - helm=${{package.full-version}}
+    runtime:
+      - ca-certificates-bundle
+  resources:
+    cpu: "2"
+    memory: 3Gi
+
+environment:
+  contents:
+    packages:
+      - build-base
+      - busybox
+      - ca-certificates-bundle
+      - git
+      - go
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/helm/helm
+      tag: v${{package.version}}
+      expected-commit: 5caf0044d4ef3d62a955440272999e139aafbbed
+
+  - uses: go/bump
+    with:
+      deps: |-
+        github.com/cloudflare/circl@v1.6.3
+
+  - runs: |
+      make build
+      install -Dm755 ./bin/helm "${{targets.contextdir}}/usr/bin/helm"
+
+  - uses: strip
+
+test:
+  pipeline:
+    - runs: |
+        helm version || exit 1
+        helm --help
+    - runs: |
+        helm create test
+
+update:
+  enabled: true
+  github:
+    identifier: helm/helm
+    tag-filter-prefix: v4
+    strip-prefix: v
