@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.72.0"
   },
-  "ReportID": "019f4ac8-811a-7cb3-be3c-994a107be3ab",
-  "CreatedAt": "2026-07-10T06:48:02.074833388Z",
+  "ReportID": "019f4fbc-07eb-705c-b284-75ac47ffcce2",
+  "CreatedAt": "2026-07-11T05:52:30.699024653Z",
   "ArtifactID": "sha256:119115e8994fa068a7a3f13ed9c2640c634295903f4dd88c5f40af46d32773c6",
   "ArtifactName": "ghcr.io/kube-vip/kube-vip:v1.2.1",
   "ArtifactType": "container_image",
@@ -1627,6 +1627,49 @@
       ],
       "Vulnerabilities": [
         {
+          "VulnerabilityID": "CVE-2026-49838",
+          "VendorIDs": [
+            "GHSA-frrj-87jh-2772"
+          ],
+          "PkgID": "github.com/osrg/gobgp/v4@v4.6.0",
+          "PkgName": "github.com/osrg/gobgp/v4",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/github.com/osrg/gobgp/v4@v4.6.0",
+            "UID": "c1445f634d153727"
+          },
+          "InstalledVersion": "v4.6.0",
+          "FixedVersion": "4.7.0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:aa92b5b8d9bafd3bcabcdd1c0fc97c65e6e916e3aecf58512db104db01dc808c",
+            "DiffID": "sha256:8abcff47e086bc97ec4f81f1b700648860814e4dec6265b2b30fe983f27f7a51"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-49838",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Go",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
+          },
+          "Fingerprint": "sha256:eb79bc918d7227d5819488327a0d3dfe4ccc7c80d63811525f685de70363d2c2",
+          "Title": "GoBGP confederation validation panics on empty AS_PATH attribute",
+          "Description": "Found through variant analysis based on `CVE-2026-41643`\n\n## Summary\nGoBGP accepts a zero-length AS_PATH during UPDATE decoding and later panics while validating that attribute for a confederation eBGP peer. The vulnerable path is in the BGP UPDATE validator: a malformed UPDATE that should be rejected as a malformed AS_PATH instead reaches an unchecked `p.Value[0]` access, allowing a configured confederation eBGP peer to trigger a denial of service.\n\n## Affected\n- Project: gobgp\n- Repo: https://github.com/osrg/gobgp\n- Pinned ref: c24629411ba49f160d9dc09126f418218127e016\n\n## Root cause\nAn established peer's receive path reads BGP bytes from the network connection in `pkg/server/fsm.go:1267`, parses UPDATE bodies through the BGP message decoder, and validates decoded UPDATEs with peer state at `pkg/server/fsm.go:1849`. The UPDATE decoder walks the path-attribute list in `pkg/packet/bgp/bgp.go:15773` and selects the concrete attribute parser from the attacker-controlled attribute type at `pkg/packet/bgp/bgp.go:15855`. For AS_PATH, `PathAttributeAsPath.DecodeFromBytes` returns nil when the decoded attribute length is zero (`pkg/packet/bgp/bgp.go:11533`, `pkg/packet/bgp/bgp.go:11538`), leaving `p.Value` empty rather than reporting a malformed attribute. Validation then dispatches each decoded attribute through `ValidateAttribute` (`pkg/packet/bgp/validate.go:34`); in the confederation eBGP branch, `pkg/packet/bgp/validate.go:162` indexes `p.Value[0]` before checking that any AS_PATH segment was decoded. The eBGP and confederation guards are normal peer-state gates: `pkg/config/oc/util.go:127` defines eBGP as peer AS differing from local AS, `pkg/config/oc/util.go:116` checks confederation membership, and `pkg/server/fsm.go:740` and `pkg/server/fsm.go:741` copy those results into the FSM state used by the validator.\n\n## Reproduction\n\n[INT-bgp-gobgp-confed-empty-aspath-panic.zip](https://github.com/user-attachments/files/28203698/INT-bgp-gobgp-confed-empty-aspath-panic.zip)\n\n```bash\nbash ./poc/run.sh\n```\n\n```text\nTRIGGERED: confed empty AS_PATH validation panic: runtime error: index out of range\n```\n\nThe `TRIGGERED` line is the recovered panic fingerprint from the confederation eBGP validation path after a zero-length AS_PATH has decoded successfully. A build failure or any output without that fingerprint would not demonstrate this bug, because the signal is tied to the unchecked AS_PATH segment access.\n\n## Impact\nA remote unauthenticated peer that is configured as a confederation eBGP neighbor can establish a BGP session and send a single malformed UPDATE containing a syntactically valid AS_PATH attribute header with zero value length. Because the decode path does not turn that empty AS_PATH into a `MessageError`, normal malformed-attribute handling is bypassed and validation panics before GoBGP can return a BGP NOTIFICATION. The demonstrated effect is denial of service for the receive goroutine and peer session, with potential process termination if the panic is not recovered by the runtime path; no memory corruption, data disclosure, authentication bypass, or code execution is claimed.\n\n## Suggested fix\n```001-fix.diff\ndiff --git a/pkg/packet/bgp/validate.go b/pkg/packet/bgp/validate.go\nindex 2237afb..f07f4fa 100644\n--- a/pkg/packet/bgp/validate.go\n+++ b/pkg/packet/bgp/validate.go\n@@ -159,6 +159,9 @@ func ValidateAttribute(a PathAttributeInterface, rfs map[Family]BGPAddPathMode,\n \tcase *PathAttributeAsPath:\n \t\tif isEBGP {\n \t\t\tif isConfed {\n+\t\t\t\tif len(p.Value) == 0 {\n+\t\t\t\t\treturn false, NewMessageError(eCode, eSubCodeMalformedAspath, nil, \"empty AS_PATH for confederation eBGP\")\n+\t\t\t\t}\n \t\t\t\tif segType := p.Value[0].GetType(); segType != BGP_ASPATH_ATTR_TYPE_CONFED_SEQ {\n \t\t\t\t\treturn false, NewMessageError(eCode, eSubCodeMalformedAspath, nil, fmt.Sprintf(\"segment type is not confederation seq (%d)\", segType))\n \t\t\t\t}\n```\n\n## Resources\n- https://github.com/osrg/gobgp/blob/c24629411ba49f160d9dc09126f418218127e016/pkg/packet/bgp/bgp.go#L11533-L11540\n- https://github.com/osrg/gobgp/blob/c24629411ba49f160d9dc09126f418218127e016/pkg/packet/bgp/validate.go#L159-L164",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 5.9
+            }
+          },
+          "References": [
+            "https://github.com/osrg/gobgp",
+            "https://github.com/osrg/gobgp/security/advisories/GHSA-frrj-87jh-2772"
+          ]
+        },
+        {
           "VulnerabilityID": "GO-2026-5932",
           "PkgID": "golang.org/x/crypto@v0.53.0",
           "PkgName": "golang.org/x/crypto",
@@ -1679,20 +1722,32 @@
             "URL": "https://pkg.go.dev/vuln/"
           },
           "Fingerprint": "sha256:827b837be188229e94af2c9ba423e02a9610ffcc96d4d97fe84f2b04ccc3775a",
-          "Title": "On Unix systems, opening a file in an os.Root improperly follows symli ...",
+          "Title": "os: golang: Go os.Root: Symlink following vulnerability allows directory traversal",
           "Description": "On Unix systems, opening a file in an os.Root improperly follows symlinks to locations outside of the Root when the final path component of the a path is a symbolic link and the path ends in /. For example, 'root.Open(\"symlink/\")' will open \"symlink\" even when \"symlink\" is a symbolic link pointing outside of the root.",
-          "Severity": "UNKNOWN",
+          "Severity": "HIGH",
           "CweIDs": [
             "CWE-61"
           ],
+          "VendorSeverity": {
+            "redhat": 3
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 7.8
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-39822",
             "https://go.dev/cl/797880",
             "https://go.dev/issue/79005",
             "https://groups.google.com/g/golang-announce/c/OrmQE_Yp5Sc",
-            "https://pkg.go.dev/vuln/GO-2026-4970"
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-39822",
+            "https://pkg.go.dev/vuln/GO-2026-4970",
+            "https://www.cve.org/CVERecord?id=CVE-2026-39822"
           ],
           "PublishedDate": "2026-07-08T17:17:21.31Z",
-          "LastModifiedDate": "2026-07-08T20:16:49.06Z"
+          "LastModifiedDate": "2026-07-10T18:57:32.923Z"
         },
         {
           "VulnerabilityID": "CVE-2026-42505",
@@ -1719,20 +1774,32 @@
             "URL": "https://pkg.go.dev/vuln/"
           },
           "Fingerprint": "sha256:17f8851f26b5e469456110a0c757b45ced55e68cf225699781cb6e5acd1ffc4e",
-          "Title": "Handshakes which used Encrypted Client Hello could be de-anonymized by ...",
+          "Title": "crypto/tls: golang: Go crypto/tls: Information disclosure in Encrypted Client Hello",
           "Description": "Handshakes which used Encrypted Client Hello could be de-anonymized by a passive network observer due to a disclosure of pre-shared key identities in the unencrypted client hello.",
-          "Severity": "UNKNOWN",
+          "Severity": "MEDIUM",
           "CweIDs": [
             "CWE-201"
           ],
+          "VendorSeverity": {
+            "redhat": 2
+          },
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+              "V3Score": 5.3
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-42505",
             "https://go.dev/cl/775960",
             "https://go.dev/issue/79282",
             "https://groups.google.com/g/golang-announce/c/OrmQE_Yp5Sc",
-            "https://pkg.go.dev/vuln/GO-2026-5856"
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-42505",
+            "https://pkg.go.dev/vuln/GO-2026-5856",
+            "https://www.cve.org/CVERecord?id=CVE-2026-42505"
           ],
           "PublishedDate": "2026-07-08T17:17:21.497Z",
-          "LastModifiedDate": "2026-07-08T20:16:49.52Z"
+          "LastModifiedDate": "2026-07-10T18:57:32.923Z"
         }
       ]
     }
