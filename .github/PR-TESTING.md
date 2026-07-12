@@ -21,10 +21,10 @@ standalone workflow — it does NOT invoke `patch-image.yaml` via
 
 - `verity discover` — validates the merged discovery output from
   `copa-config.yaml`, `Chart.yaml`, and `verity.yaml`
-- Integer config validation (`verity integer validate`), latest-variant builds,
-  and all-variant smoke tests only for images selected by changed image or
-  recipe-specific inputs; internal tooling changes rely on unit and workflow
-  validation without image fan-out
+- Integer config validation (`verity integer validate`); image-definition
+  changes build latest variants and smoke the whole image, while recipe inputs
+  build and smoke only exact consuming version/type variants; internal tooling
+  changes rely on unit and workflow validation without image fan-out
 - For images changed in the PR, an inline Copa patch pass using
   `.github/scripts/patch-image.sh` against a local/cache registry (single-arch,
   typically `linux/amd64`)
@@ -36,7 +36,7 @@ standalone workflow — it does NOT invoke `patch-image.yaml` via
 ✅ Config validation via `verity discover` (merges `copa-config.yaml` + `Chart.yaml` + `verity.yaml`)
 ✅ Per-image Copa patching for changed images (single-arch, validates config + patching logic)
 ✅ Trivy pre/post scanning on patched images
-✅ Integer config validation plus build and smoke coverage for dependency-selected bespoke consumers
+✅ Integer config validation plus build and smoke coverage for exact dependency-selected variants
 ✅ Zero-vulnerability gate on every selected Integer build and smoke variant
 
 ❌ Image signing (production credentials only)
@@ -54,7 +54,7 @@ Each PR run includes a summary showing:
 
 - Number of images discovered by `verity discover` (merged from `copa-config.yaml`, `Chart.yaml`, and `verity.yaml`)
 - Integer image config validation status
-- Build and smoke-test results for each dependency-selected bespoke consumer
+- Build and smoke-test results for each dependency-selected version/type variant
 - Copa patching validation (when config changes)
 
 ### Downloadable Artifacts

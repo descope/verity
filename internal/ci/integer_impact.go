@@ -6,10 +6,10 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	intconfig "github.com/verity-org/verity/internal/integer/config"
+	intdiscovery "github.com/verity-org/verity/internal/integer/discovery"
 	"github.com/verity-org/verity/internal/integer/melange"
 )
 
@@ -17,7 +17,12 @@ type integerImpactOptions struct {
 	ChangedFiles []string
 	RepoRoot     string
 	BaseLockPath string
-	ImagesDir    string
+}
+
+type integerVariant struct {
+	image     string
+	version   string
+	imageType string
 }
 
 type integerBuildLock struct {
@@ -38,22 +43,19 @@ type integerInputImpact struct {
 	pipelines map[string]struct{}
 }
 
-func changedIntegerInputConsumers(opts integerImpactOptions) (map[string]struct{}, error) {
+func changedIntegerInputImpact(opts integerImpactOptions) (integerInputImpact, error) {
 	impact := newIntegerInputImpact()
 	paths := melange.DefaultPaths(opts.RepoRoot)
 	head, err := collectIntegerInputImpact(&impact, &paths, opts)
 	if err != nil {
-		return nil, err
+		return impact, err
 	}
 	if len(impact.pipelines) > 0 {
 		if err := addPipelineRecipeImpact(&impact, &paths, head); err != nil {
-			return nil, err
+			return impact, err
 		}
 	}
-	if len(impact.upstream)+len(impact.bespoke)+len(impact.overrides) == 0 {
-		return map[string]struct{}{}, nil
-	}
-	return integerConsumers(opts.ImagesDir, impact)
+	return impact, nil
 }
 
 func addLockDiffImpact(impact *integerInputImpact, base, head integerBuildLock) {
@@ -90,58 +92,47 @@ func addLockedPathImpact(keys map[string]struct{}, changed string, lock integerB
 	return matched
 }
 
-func integerConsumers(imagesDir string, impact integerInputImpact) (map[string]struct{}, error) {
-	files, err := intconfig.ImageFilePaths(imagesDir)
-	if err != nil {
-		return nil, err
-	}
-	consumers := map[string]struct{}{}
-	for _, file := range files {
-		def, err := intconfig.LoadImage(file)
-		if err != nil {
-			return nil, fmt.Errorf("load %s: %w", file, err)
+func integerImpactVariants(imagesDir string, imgs []intdiscovery.DiscoveredImage, impact integerInputImpact) (map[integerVariant]struct{}, error) {
+	definitions := map[string]*intconfig.ImageDef{}
+	variants := map[integerVariant]struct{}{}
+	for _, img := range imgs {
+		def, ok := definitions[img.Name]
+		if !ok {
+			var err error
+			def, err = intconfig.LoadImage(filepath.Join(imagesDir, filepath.FromSlash(img.Name)+".yaml"))
+			if err != nil {
+				return nil, fmt.Errorf("load %s: %w", img.Name, err)
+			}
+			definitions[img.Name] = def
 		}
-		versions := mapKeys(def.Versions)
-		sort.Strings(versions)
-		if len(versions) == 0 {
-			versions = []string{"latest"}
-		}
-		matches, err := imageConsumesImpact(def, versions, impact)
-		if err != nil {
-			return nil, fmt.Errorf("resolve bespoke consumer %s: %w", def.Name, err)
-		}
-		if matches {
-			consumers[def.Name] = struct{}{}
-		}
-	}
-	return consumers, nil
-}
-
-func imageConsumesImpact(def *intconfig.ImageDef, versions []string, impact integerInputImpact) (bool, error) {
-	for typeName := range def.Types {
-		configSpec := def.Types[typeName].Melange
+		configSpec := def.Types[img.Type].Melange
 		if configSpec == nil {
 			continue
 		}
-		for _, version := range versions {
-			spec, err := melange.ResolveConfigSpec(configSpec, version)
-			if err != nil {
-				return false, fmt.Errorf("type %s version %s: %w", typeName, version, err)
-			}
-			if _, ok := impact.upstream[spec.Upstream]; ok {
-				return true, nil
-			}
-			if _, ok := impact.overrides[spec.EnvFile]; ok {
-				return true, nil
-			}
-			for _, file := range spec.Bespoke {
-				if _, ok := impact.bespoke[file]; ok {
-					return true, nil
-				}
-			}
+		spec, err := melange.ResolveConfigSpec(configSpec, img.Version)
+		if err != nil {
+			return nil, fmt.Errorf("resolve %s:%s-%s: %w", img.Name, img.Version, img.Type, err)
+		}
+		if specConsumesImpact(spec, impact) {
+			variants[variantForImage(&img)] = struct{}{}
 		}
 	}
-	return false, nil
+	return variants, nil
+}
+
+func specConsumesImpact(spec melange.Spec, impact integerInputImpact) bool {
+	if _, ok := impact.upstream[spec.Upstream]; ok {
+		return true
+	}
+	if _, ok := impact.overrides[spec.EnvFile]; ok {
+		return true
+	}
+	for _, file := range spec.Bespoke {
+		if _, ok := impact.bespoke[file]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 func loadIntegerBuildLock(path string) (integerBuildLock, error) {
@@ -169,6 +160,14 @@ func newIntegerInputImpact() integerInputImpact {
 		overrides: map[string]struct{}{},
 		pipelines: map[string]struct{}{},
 	}
+}
+
+func (i integerInputImpact) empty() bool {
+	return len(i.upstream)+len(i.bespoke)+len(i.overrides) == 0
+}
+
+func variantForImage(img *intdiscovery.DiscoveredImage) integerVariant {
+	return integerVariant{image: img.Name, version: img.Version, imageType: img.Type}
 }
 
 func unionKeys[V any](left, right map[string]V) map[string]struct{} {

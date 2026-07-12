@@ -34,16 +34,17 @@ func TestPlanIntegerPRRecipeInputsSelectOnlyTheirConsumers(t *testing.T) {
 	root := setupIntegerPlanRepo(t)
 
 	tests := map[string]struct {
-		changed string
-		image   string
-		builds  int
-		smokes  int
+		changed   string
+		image     string
+		imageType string
+		builds    int
+		smokes    int
 	}{
-		"locked recipe":  {"packages/bespoke/locked/caddy.yaml", "caddy", 2, 4},
-		"locked sidecar": {"packages/bespoke/locked/caddy/Caddyfile", "caddy", 2, 4},
-		"override":       {"packages/overrides/fips.env", "caddy", 2, 4},
-		"pipeline":       {"packages/pipelines/go/bump.yaml", "caddy", 2, 4},
-		"other pipeline": {"packages/pipelines/test/ver-check.yaml", "cilium", 1, 1},
+		"locked recipe":  {"packages/bespoke/locked/caddy.yaml", "caddy", "fips", 2, 2},
+		"locked sidecar": {"packages/bespoke/locked/caddy/Caddyfile", "caddy", "fips", 2, 2},
+		"override":       {"packages/overrides/fips.env", "caddy", "fips", 2, 2},
+		"pipeline":       {"packages/pipelines/go/bump.yaml", "caddy", "fips", 2, 2},
+		"other pipeline": {"packages/pipelines/test/ver-check.yaml", "cilium", "default", 1, 1},
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -54,6 +55,7 @@ func TestPlanIntegerPRRecipeInputsSelectOnlyTheirConsumers(t *testing.T) {
 			assert.Len(t, plan.SmokeMatrix.Include, test.smokes)
 			for _, entry := range append(plan.Matrix.Include, plan.SmokeMatrix.Include...) {
 				assert.Equal(t, test.image, entry["image"])
+				assert.Equal(t, test.imageType, entry["type"])
 			}
 		})
 	}

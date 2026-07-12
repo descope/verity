@@ -436,9 +436,10 @@ Pull requests do NOT run the full nightly orchestration or `patch-image.yaml`.
 Instead, `pr-test.yaml` is standalone and runs:
 
 - `verity discover` — validates config syntax end-to-end
-- Integer config validation plus latest-variant builds and all-variant smoke
-  tests for dependency-selected image and recipe consumers via the Verity CLI;
-  internal tooling changes do not fan out image jobs
+- Integer config validation; image-definition changes build latest variants and
+  smoke the whole image, while recipe inputs build and smoke exact consuming
+  version/type variants via the Verity CLI; internal tooling changes do not fan
+  out image jobs
 - For images changed in the PR, an inline Copa patch pass using
   `.github/scripts/patch-image.sh` (single-arch, typically `linux/amd64`)
   against a local/cache registry — signing, SBOM attestation, multi-arch

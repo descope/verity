@@ -64,21 +64,19 @@ var apkindexFetch = apkindex.Fetch
 func PlanIntegerPR(opts *IntegerPROptions) (Plan, error) {
 	plan := Plan{Kind: "integer-pr"}
 	imageNames, allImages := changedIntegerImages(opts.ChangedFiles)
+	impact := newIntegerInputImpact()
 	if !allImages {
-		consumers, err := changedIntegerInputConsumers(integerImpactOptions{
+		var err error
+		impact, err = changedIntegerInputImpact(integerImpactOptions{
 			ChangedFiles: opts.ChangedFiles,
 			RepoRoot:     defaultString(opts.RepoRoot, "."),
 			BaseLockPath: opts.BaseLockPath,
-			ImagesDir:    defaultString(opts.ImagesDir, "images"),
 		})
 		if err != nil {
-			return plan, fmt.Errorf("find affected bespoke consumers: %w", err)
-		}
-		for name := range consumers {
-			imageNames[name] = struct{}{}
+			return plan, fmt.Errorf("find changed bespoke inputs: %w", err)
 		}
 	}
-	if !allImages && len(imageNames) == 0 {
+	if !allImages && len(imageNames) == 0 && impact.empty() {
 		plan.Matrix = Matrix{}
 		plan.SmokeMatrix = &Matrix{}
 		return plan, nil
@@ -106,19 +104,24 @@ func PlanIntegerPR(opts *IntegerPROptions) (Plan, error) {
 	if err != nil {
 		return plan, fmt.Errorf("discover integer images: %w", err)
 	}
-	if !allImages {
-		imgs = filterIntegerByName(imgs, imageNames)
+	inputVariants := map[integerVariant]struct{}{}
+	if !allImages && !impact.empty() {
+		inputVariants, err = integerImpactVariants(defaultString(opts.ImagesDir, "images"), imgs, impact)
+		if err != nil {
+			return plan, fmt.Errorf("resolve affected bespoke variants: %w", err)
+		}
 	}
-	if len(imgs) == 0 {
+	builds, smokes := selectIntegerPRImages(imgs, imageNames, inputVariants, allImages)
+	if len(smokes) == 0 {
 		plan.Matrix = Matrix{}
 		plan.SmokeMatrix = &Matrix{}
 		return plan, nil
 	}
 
 	plan.HasChanges = true
-	smokeMatrix := integerMatrix(imgs)
+	smokeMatrix := integerMatrix(smokes)
 	plan.SmokeMatrix = &smokeMatrix
-	plan.Matrix = latestIntegerMatrix(imgs)
+	plan.Matrix = integerMatrix(builds)
 	return plan, nil
 }
 
@@ -374,31 +377,6 @@ func integerMatrix(imgs []intdiscovery.DiscoveredImage) Matrix {
 	return Matrix{Include: include}
 }
 
-func latestIntegerMatrix(imgs []intdiscovery.DiscoveredImage) Matrix {
-	latest := map[string]intdiscovery.DiscoveredImage{}
-	for _, img := range imgs {
-		key := img.Name + "\x00" + img.Type
-		prev, ok := latest[key]
-		if !ok || apkindex.VersionLess(prev.Version, img.Version) {
-			latest[key] = img
-		}
-	}
-	out := make([]intdiscovery.DiscoveredImage, 0, len(latest))
-	for _, img := range latest {
-		out = append(out, img)
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Name != out[j].Name {
-			return out[i].Name < out[j].Name
-		}
-		if out[i].Type != out[j].Type {
-			return out[i].Type < out[j].Type
-		}
-		return apkindex.VersionLess(out[i].Version, out[j].Version)
-	})
-	return integerMatrix(out)
-}
-
 func firstCopaTagMatrix(imgs []copadiscovery.DiscoveredImage) Matrix {
 	sort.Slice(imgs, func(i, j int) bool {
 		if imgs[i].Name != imgs[j].Name {
@@ -427,16 +405,6 @@ func chartMatrix(charts []string) Matrix {
 		include = append(include, map[string]string{"chart": chart})
 	}
 	return Matrix{Include: include}
-}
-
-func filterIntegerByName(imgs []intdiscovery.DiscoveredImage, names map[string]struct{}) []intdiscovery.DiscoveredImage {
-	out := imgs[:0]
-	for _, img := range imgs {
-		if _, ok := names[img.Name]; ok {
-			out = append(out, img)
-		}
-	}
-	return out
 }
 
 func filterCopaByName(imgs []copadiscovery.DiscoveredImage, names map[string]struct{}) []copadiscovery.DiscoveredImage {
