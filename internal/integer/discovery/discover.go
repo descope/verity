@@ -23,12 +23,13 @@ const latestSentinel = "latest"
 
 // DiscoveredImage represents one buildable image: a name × version × type.
 type DiscoveredImage struct {
-	Name     string   `json:"name"`
-	Version  string   `json:"version"`
-	Type     string   `json:"type"`
-	File     string   `json:"file"` // absolute path to the generated apko YAML
-	Tags     []string `json:"tags"`
-	Registry string   `json:"registry"`
+	Name           string   `json:"name"`
+	Version        string   `json:"version"`
+	Type           string   `json:"type"`
+	File           string   `json:"file"` // absolute path to the generated apko YAML
+	DefinitionFile string   `json:"-"`
+	Tags           []string `json:"tags"`
+	Registry       string   `json:"registry"`
 }
 
 // Options configures the Discover call.
@@ -81,6 +82,9 @@ func DiscoverFromFiles(opts Options) ([]DiscoveredImage, error) {
 		imgs, err := expandImage(def, opts.ImagesDir, opts.Registry, opts.Packages, genDir)
 		if err != nil {
 			return nil, fmt.Errorf("expanding image %q: %w", def.Name, err)
+		}
+		for i := range imgs {
+			imgs[i].DefinitionFile = defPath
 		}
 		results = append(results, imgs...)
 	}

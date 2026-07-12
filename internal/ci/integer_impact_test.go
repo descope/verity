@@ -30,7 +30,7 @@ func TestPlanIntegerPRInternalChangesDoNotFanOut(t *testing.T) {
 	}
 }
 
-func TestPlanIntegerPRRecipeInputsSelectOnlyTheirConsumers(t *testing.T) {
+func TestPlanIntegerPRMelangeChangesBuildAndSmokeEveryConsumer(t *testing.T) {
 	root := setupIntegerPlanRepo(t)
 
 	tests := map[string]struct {
@@ -59,6 +59,35 @@ func TestPlanIntegerPRRecipeInputsSelectOnlyTheirConsumers(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPlanIntegerPRRecipeImpactUsesDiscoveredDefinitionPath(t *testing.T) {
+	// Given: an image definition whose nested file path does not match its name.
+	root := setupIntegerPlanRepo(t)
+	writeTestFile(t, filepath.Join(root, "images", "platform", "custom-file.yaml"), `
+name: renamed-image
+description: renamed image
+upstream:
+  package: renamed-image
+types:
+  default:
+    base: wolfi-base
+    packages: ["renamed-image"]
+    melange:
+      bespoke: renamed-image.yaml
+versions:
+  latest: {}
+`)
+	writeTestFile(t, filepath.Join(root, "packages", "bespoke", "renamed-image.yaml"), "pipeline: []\n")
+
+	// When: the bespoke recipe changes.
+	plan, err := PlanIntegerPR(integerPlanOptions(root, "packages/bespoke/renamed-image.yaml"))
+
+	// Then: planning uses the path discovered from the filesystem rather than reconstructing it from the image name.
+	require.NoError(t, err)
+	require.True(t, plan.HasChanges)
+	assert.Equal(t, []map[string]string{{"image": "renamed-image", "version": "latest", "type": "default"}}, plan.Matrix.Include)
+	assert.Equal(t, plan.Matrix.Include, plan.SmokeMatrix.Include)
 }
 
 func TestPlanIntegerPRUnusedPipelineDoesNotSelectImages(t *testing.T) {

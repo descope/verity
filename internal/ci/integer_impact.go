@@ -96,14 +96,18 @@ func integerImpactVariants(imagesDir string, imgs []intdiscovery.DiscoveredImage
 	definitions := map[string]*intconfig.ImageDef{}
 	variants := map[integerVariant]struct{}{}
 	for _, img := range imgs {
-		def, ok := definitions[img.Name]
+		definitionFile := img.DefinitionFile
+		if definitionFile == "" {
+			definitionFile = filepath.Join(imagesDir, filepath.FromSlash(img.Name)+".yaml")
+		}
+		def, ok := definitions[definitionFile]
 		if !ok {
 			var err error
-			def, err = intconfig.LoadImage(filepath.Join(imagesDir, filepath.FromSlash(img.Name)+".yaml"))
+			def, err = intconfig.LoadImage(definitionFile)
 			if err != nil {
-				return nil, fmt.Errorf("load %s: %w", img.Name, err)
+				return nil, fmt.Errorf("load %s: %w", definitionFile, err)
 			}
-			definitions[img.Name] = def
+			definitions[definitionFile] = def
 		}
 		configSpec := def.Types[img.Type].Melange
 		if configSpec == nil {

@@ -91,6 +91,26 @@ func TestArtifactsExistInvalidatesChangedBuildInputs(t *testing.T) {
 	assert.False(t, ArtifactsExist(&paths, spec, arch))
 }
 
+func TestArtifactsExistInvalidatesChangedBespokeRecipe(t *testing.T) {
+	// Given: a signed package repository built from a direct bespoke recipe.
+	root := t.TempDir()
+	paths := testPaths(root)
+	arch := ArchitectureX8664
+	spec := Spec{Bespoke: []string{"custom.yaml"}}
+	writeTestFile(t, testPath(root, "packages/bespoke/custom.yaml"), "package:\n  name: custom\n")
+	writeTestFile(t, testPath(root, "packages/upstream.lock.json"), `{"packages":{},"pipeline_files":{}}`)
+	writeTestFile(t, filepath.Join(paths.RepoDir, string(arch), "APKINDEX.tar.gz"), "index")
+	writeTestFile(t, filepath.Join(paths.WorkDir, "melange.rsa.pub"), "public")
+	require.NoError(t, writeArtifactMarker(&paths, spec, arch))
+	require.True(t, ArtifactsExist(&paths, spec, arch))
+
+	// When: the bespoke recipe content changes without rebuilding.
+	writeTestFile(t, testPath(root, "packages/bespoke/custom.yaml"), "package:\n  name: custom\n  epoch: 1\n")
+
+	// Then: the cached artifact fingerprint is rejected.
+	assert.False(t, ArtifactsExist(&paths, spec, arch))
+}
+
 func TestArtifactsExistRejectsSymlinkedRootsAndChangedOutputs(t *testing.T) {
 	setup := func(t *testing.T) (string, Paths, Spec, Architecture) {
 		t.Helper()
