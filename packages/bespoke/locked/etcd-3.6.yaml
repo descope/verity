@@ -81,8 +81,13 @@ pipeline:
       extra-args: "-buildvcs=false"
 
   - runs: |
-      mkdir -p "${{targets.contextdir}}"/var/lib/${{package.name}}
-      chmod 700 "${{targets.contextdir}}"/var/lib/${{package.name}}
+      mkdir -p "${{targets.contextdir}}"/var/lib/${{package.name}} \
+               "${{targets.contextdir}}"/var/lib/db/sbom
+      chmod 755 "${{targets.contextdir}}"/var \
+                "${{targets.contextdir}}"/var/lib \
+                "${{targets.contextdir}}"/var/lib/db \
+                "${{targets.contextdir}}"/var/lib/${{package.name}}
+      chmod 777 "${{targets.contextdir}}"/var/lib/db/sbom
 
   - uses: strip
 

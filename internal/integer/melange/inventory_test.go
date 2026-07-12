@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	intconfig "github.com/verity-org/verity/internal/integer/config"
 )
@@ -64,6 +65,74 @@ func TestEveryMelangeUpstreamConsumerHasLockedRecipe(t *testing.T) {
 		return nil
 	})
 	require.NoError(t, err)
+}
+
+func TestCustomPipelineInventoryComplete(t *testing.T) {
+	paths := repositoryTestPaths(t)
+	lock, err := loadLock(paths.LockFile)
+	require.NoError(t, err)
+
+	for file, digest := range lock.PipelineFiles {
+		_, verifyErr := readVerifiedFile(paths.PipelinesDir, file, digest)
+		require.NoError(t, verifyErr, file)
+	}
+
+	for _, root := range []string{paths.BespokeDir, paths.PipelinesDir} {
+		err = filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if entry.IsDir() || filepath.Ext(path) != ".yaml" {
+				return nil
+			}
+			uses, usesErr := pipelineUses(path)
+			if usesErr != nil {
+				return usesErr
+			}
+			for name := range uses {
+				if !isCustomPipeline(name) {
+					continue
+				}
+				require.Contains(t, lock.PipelineFiles, name+".yaml", "%s references %s", path, name)
+			}
+			return nil
+		})
+		require.NoError(t, err)
+	}
+}
+
+func pipelineUses(path string) (map[string]struct{}, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var root yaml.Node
+	if err := yaml.Unmarshal(data, &root); err != nil {
+		return nil, err
+	}
+	uses := map[string]struct{}{}
+	collectPipelineUses(&root, uses)
+	return uses, nil
+}
+
+func collectPipelineUses(node *yaml.Node, uses map[string]struct{}) {
+	if node.Kind == yaml.MappingNode {
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			key, value := node.Content[i], node.Content[i+1]
+			if key.Value == "uses" && value.Kind == yaml.ScalarNode {
+				uses[value.Value] = struct{}{}
+			}
+			collectPipelineUses(value, uses)
+		}
+		return
+	}
+	for _, child := range node.Content {
+		collectPipelineUses(child, uses)
+	}
+}
+
+func isCustomPipeline(name string) bool {
+	return name == "go/bump" || strings.HasPrefix(name, "auth/") || strings.HasPrefix(name, "iamguarded/") || strings.HasPrefix(name, "test/")
 }
 
 func requireLockedConsumer(t *testing.T, lock lockFile, image, typeName, version string, configSpec *intconfig.MelangeSpec) {
