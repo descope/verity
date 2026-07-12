@@ -843,22 +843,11 @@ images:
 
   # ============================================================================
   #  Copa-first coverage (batch 9) — final fixable CVE tail.
-  #  kubectl: canonical registry.k8s.io image, Go-source patched.
   #  linkerd/proxy moved off Copa: upstream now declares Wolfi and Copa rejects
   #  that osType outright (`unsupported osType wolfi specified`). Keep catalog
   #  coverage on the Integer side instead of burning patch jobs.
   #  eks-pod-identity-agent + crossplane(crank): Go-source patched.
   # ============================================================================
-  - name: "kubectl"
-    image: "registry.k8s.io/kubectl"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v1\.\d+\.\d+$'
-      maxTags: 3
-    goVcsUrl: "https://github.com/kubernetes/kubernetes"
-    goVcsTagPrefix: ""
-
   - name: "eks/eks-pod-identity-agent"
     image: "public.ecr.aws/eks/eks-pod-identity-agent"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -888,16 +877,6 @@ images:
   #  fluentd-kubernetes-daemonset, kyverno-readiness-checker, checkov.
   # ============================================================================
   # --- Go tools (goVcsUrl) ---
-  - name: "etcd"
-    image: "registry.k8s.io/etcd"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^v\d+\.\d+\.\d+$'
-      maxTags: 3
-    goVcsUrl: "https://github.com/etcd-io/etcd"
-    goVcsTagPrefix: ""
-
   - name: "projectcontour/contour"
     image: "ghcr.io/projectcontour/contour"
     platforms: ["linux/amd64", "linux/arm64"]
@@ -941,16 +920,6 @@ images:
   # earthly moved off Copa: current patch runs explode with repeated apt-layer
   # solver failures on both arches, while the bespoke Integer build already
   # produces a clean receipt for v0.8.16.
-
-  - name: "caddy"
-    image: "docker.io/library/caddy"
-    platforms: ["linux/amd64", "linux/arm64"]
-    tags:
-      strategy: "pattern"
-      pattern: '^\d+\.\d+\.\d+$'
-      maxTags: 3
-    goVcsUrl: "https://github.com/caddyserver/caddy"
-    goVcsTagPrefix: "v"
 
   - name: "prometheus/blackbox-exporter"
     image: "quay.io/prometheus/blackbox-exporter"
