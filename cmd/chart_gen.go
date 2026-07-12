@@ -38,6 +38,14 @@ var ChartGenCommand = &cli.Command{
 			Required: true,
 		},
 		&cli.StringFlag{
+			Name:  "package-dir",
+			Usage: "Write packaged wrapper charts to this directory instead of pushing to chart-registry",
+		},
+		&cli.StringFlag{
+			Name:  "chart",
+			Usage: "Only generate the named chart from charts-file",
+		},
+		&cli.StringFlag{
 			Name:  "exclude-names",
 			Usage: "Comma-separated image names to exclude (e.g., Integer/Wolfi image names)",
 		},
@@ -56,6 +64,8 @@ var ChartGenCommand = &cli.Command{
 			VerityConfig:   cmd.String("verity-config"),
 			TargetRegistry: cmd.String("target-registry"),
 			ChartRegistry:  cmd.String("chart-registry"),
+			PackageDir:     cmd.String("package-dir"),
+			ChartName:      cmd.String("chart"),
 			ExcludeNames:   parseNameSet(cmd.String("exclude-names")),
 			DryRun:         cmd.Bool("dry-run"),
 			Strict:         cmd.Bool("strict"),

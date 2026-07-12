@@ -27,6 +27,7 @@ const (
 	airflowHelmInstallTimeout     = 20 * time.Minute
 	certManagerHelmInstallTimeout = 15 * time.Minute
 	chartRegistry                 = "oci://ghcr.io/verity-org/charts"
+	chartPackageDirEnv            = "VERITY_CHART_PACKAGE_DIR"
 )
 
 type chartPrerequisite struct {
@@ -319,15 +320,21 @@ func preserveNamespaceOnRetry(chartName string) bool {
 
 func helmInstall(ctx context.Context, h *Harness, cc *ChartContext) error {
 	timeout := chartHelmInstallTimeout(cc.Spec.Name)
+	chartRef, localPackage, err := chartInstallRef(cc.Spec)
+	if err != nil {
+		return err
+	}
 	args := []string{
 		"--kubeconfig", h.KubeconfigPath,
 		"install", cc.Spec.Name,
-		chartRegistry + "/" + cc.Spec.Name,
-		"--version", cc.Spec.Version,
+		chartRef,
 		"--namespace", cc.Namespace,
 		"--create-namespace",
 		"--wait",
 		"--timeout", timeout.String(),
+	}
+	if !localPackage {
+		args = append(args, "--version", cc.Spec.Version)
 	}
 	if vals := valuesFile(cc); vals != "" {
 		args = append(args, "--values", vals)
@@ -339,6 +346,19 @@ func helmInstall(ctx context.Context, h *Harness, cc *ChartContext) error {
 	ictx, cancel := context.WithTimeout(ctx, timeout+2*time.Minute)
 	defer cancel()
 	return runCmd(ictx, h.t, "", []string{"HELM_EXPERIMENTAL_OCI=1"}, "helm", args...)
+}
+
+func chartInstallRef(spec config.ChartSpec) (string, bool, error) {
+	packageDir := strings.TrimSpace(os.Getenv(chartPackageDirEnv))
+	if packageDir == "" {
+		return chartRegistry + "/" + spec.Name, false, nil
+	}
+
+	packagePath := filepath.Join(packageDir, spec.Name+"-"+spec.Version+".tgz")
+	if _, err := os.Stat(packagePath); err != nil {
+		return "", true, fmt.Errorf("%s package for %s@%s not found at %s: %w", chartPackageDirEnv, spec.Name, spec.Version, packagePath, err)
+	}
+	return packagePath, true, nil
 }
 
 func chartHelmInstallTimeout(chartName string) time.Duration {
