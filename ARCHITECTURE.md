@@ -437,7 +437,8 @@ Instead, `pr-test.yaml` is standalone and runs:
 
 - `verity discover` — validates config syntax end-to-end
 - Integer config validation plus latest-variant builds and all-variant smoke
-  tests for every affected bespoke recipe consumer via the Verity CLI
+  tests for dependency-selected image and recipe consumers via the Verity CLI;
+  internal tooling changes do not fan out image jobs
 - For images changed in the PR, an inline Copa patch pass using
   `.github/scripts/patch-image.sh` (single-arch, typically `linux/amd64`)
   against a local/cache registry — signing, SBOM attestation, multi-arch

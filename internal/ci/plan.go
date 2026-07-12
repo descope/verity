@@ -33,6 +33,8 @@ type Plan struct {
 
 type IntegerPROptions struct {
 	ChangedFiles []string
+	RepoRoot     string
+	BaseLockPath string
 	ConfigPath   string
 	ImagesDir    string
 	APKIndexURL  string
@@ -62,11 +64,15 @@ var apkindexFetch = apkindex.Fetch
 func PlanIntegerPR(opts *IntegerPROptions) (Plan, error) {
 	plan := Plan{Kind: "integer-pr"}
 	imageNames, allImages := changedIntegerImages(opts.ChangedFiles)
-	melangeChanged := changedMelangeInfrastructure(opts.ChangedFiles)
-	if !allImages && melangeChanged {
-		consumers, err := melangeConsumerNames(defaultString(opts.ImagesDir, "images"))
+	if !allImages {
+		consumers, err := changedIntegerInputConsumers(integerImpactOptions{
+			ChangedFiles: opts.ChangedFiles,
+			RepoRoot:     defaultString(opts.RepoRoot, "."),
+			BaseLockPath: opts.BaseLockPath,
+			ImagesDir:    defaultString(opts.ImagesDir, "images"),
+		})
 		if err != nil {
-			return plan, fmt.Errorf("find melange consumers: %w", err)
+			return plan, fmt.Errorf("find affected bespoke consumers: %w", err)
 		}
 		for name := range consumers {
 			imageNames[name] = struct{}{}
@@ -192,49 +198,6 @@ func changedIntegerImages(files []string) (names map[string]struct{}, all bool) 
 		}
 	}
 	return names, all
-}
-
-func changedMelangeInfrastructure(files []string) bool {
-	for _, file := range files {
-		file = filepath.ToSlash(strings.TrimSpace(file))
-		switch {
-		case file == "packages/upstream.lock.json",
-			strings.HasPrefix(file, "packages/bespoke/"),
-			strings.HasPrefix(file, "packages/pipelines/"),
-			strings.HasPrefix(file, "packages/overrides/"),
-			strings.HasPrefix(file, "internal/integer/config/"),
-			strings.HasPrefix(file, "internal/integer/melange/"),
-			file == "cmd/integer.go",
-			file == "cmd/integer_build.go",
-			strings.HasPrefix(file, "cmd/integer_melange"),
-			file == "cmd/integer_build_melange.go",
-			file == ".github/workflows/integer-build-image.yaml",
-			file == ".github/workflows/pr-test.yaml":
-			return true
-		}
-	}
-	return false
-}
-
-func melangeConsumerNames(imagesDir string) (map[string]struct{}, error) {
-	files, err := intconfig.ImageFilePaths(imagesDir)
-	if err != nil {
-		return nil, err
-	}
-	names := map[string]struct{}{}
-	for _, file := range files {
-		def, err := intconfig.LoadImage(file)
-		if err != nil {
-			return nil, fmt.Errorf("load %s: %w", file, err)
-		}
-		for typeName := range def.Types {
-			if def.Types[typeName].Melange != nil {
-				names[def.Name] = struct{}{}
-				break
-			}
-		}
-	}
-	return names, nil
 }
 
 func changedCopaNames(basePath, headPath string) (map[string]struct{}, error) {

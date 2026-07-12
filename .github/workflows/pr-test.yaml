@@ -182,18 +182,19 @@ jobs:
             --version "$INTEGER_VERSION" \
             --type "$INTEGER_TYPE" \
             --output image.tar \
-            --arch amd64
+            --arch amd64 \
+            --fail-on-severity "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
 
-      - name: Trivy vulnerability scan
+      - name: Full vulnerability report
+        if: always()
         run: |
           trivy image \
             --exit-code 0 \
-            --severity CRITICAL,HIGH,MEDIUM,LOW \
+            --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
             --vuln-type os,library \
             --format json \
             --output trivy-report.json \
             --input image.tar
-        continue-on-error: true
 
       - name: Upload Trivy report
         if: always()
@@ -248,9 +249,11 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
+          git show "${BASE_SHA}":packages/upstream.lock.json > "$RUNNER_TEMP/base-upstream.lock.json" 2>/dev/null || printf '{"packages":{},"pipeline_files":{}}\n' > "$RUNNER_TEMP/base-upstream.lock.json"
           ./verity ci plan \
             --kind integer-pr \
             --changed-files changed-files.txt \
+            --base-upstream-lock "$RUNNER_TEMP/base-upstream.lock.json" \
             --gen-dir "$RUNNER_TEMP/integer-gen" \
             > ci-plan.json
 
@@ -320,27 +323,17 @@ jobs:
             --version "$INTEGER_VERSION" \
             --type "$INTEGER_TYPE" \
             --output image.tar \
-            --arch amd64
+            --arch amd64 \
+            --fail-on-severity "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
 
           echo "Built ${INTEGER_IMAGE}:${INTEGER_VERSION}-${INTEGER_TYPE}"
           ls -lh image.tar
-
-      - name: Trivy vulnerability scan
-        run: |
-          trivy image \
-            --exit-code 1 \
-            --severity CRITICAL,HIGH \
-            --vuln-type os,library \
-            --format table \
-            --input image.tar
-
-          echo "\u2713 Zero CRITICAL/HIGH CVEs"
 
       - name: Full vulnerability report
         if: always()
         run: |
           trivy image \
-            --severity CRITICAL,HIGH,MEDIUM,LOW \
+            --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
             --vuln-type os,library \
             --format json \
             --output trivy-report.json \

@@ -25,7 +25,7 @@ being added without their recipe. The pilot-specific files are:
 
 `internal/integer/melange` owns local recipe resolution, SHA-256 verification, staging, ephemeral key generation, package builds, and index signing. `verity integer melange prepare` stages work for the native architecture matrix, while `verity integer melange build` handles both fresh local builds and downloaded staged artifacts. Missing, unlisted, modified, symlinked, or otherwise non-regular recipes, sidecars, and shared pipelines are rejected before staging. Reusable artifacts are bound to the image spec, target architecture, lock manifest, recipe inputs, shared pipelines, build overrides, public key, package index, and package contents so any input or output change forces a rebuild.
 
-PR planning also treats recipe, pipeline, override, lock, workflow, and Go tooling changes as shared infrastructure changes. Every image that consumes a local recipe enters the build matrix at its latest configured version, and every discovered version/type variant enters the smoke matrix. Online package-index discovery fails closed; an unavailable index cannot silently reduce the smoke matrix to the smaller declared-version fallback.
+PR planning is dependency-scoped. A changed image definition selects that image. A changed recipe, sidecar, or override selects only images that resolve to that input. A changed local pipeline follows the transitive `uses:` graph and selects only recipes that consume it. Lock changes are compared with the base branch and select only entries whose build-relevant recipe, sidecar, or pipeline digest changed. Internal Go and workflow changes still run unit, workflow, and config validation, but do not fan out image builds. Only global image configuration such as `integer.yaml` or `images/_base/**` selects every image. Online package-index discovery fails closed; an unavailable index cannot silently reduce a selected image's smoke matrix.
 
 Images opt into local rebuild by declaring `types.<type>.melange.upstream`. `images/cilium.yaml` now uses `upstream: "cilium-{{version}}"` and declares an explicit `1.19` version key, so `cilium:1.19-default` builds `packages/bespoke/locked/cilium-1.19.yaml` before image assembly.
 
@@ -166,7 +166,7 @@ Recommended batching:
 2. Prioritize old-only recipes before no-public recipes. Old-only work starts from a known melange shape but still requires version/dependency maintenance.
 3. Split no-public recipes by ecosystem and owner: Kubernetes controllers, Grafana/observability, databases, Java, Ruby, and infrastructure CLIs.
 4. Require each package PR to include recipe, sidecars, lock metadata, local melange build evidence when feasible, and CI Trivy gate URL.
-5. Shard the all-variant smoke matrix before the next large batch: the current live plan is already 254 jobs, two below the GitHub matrix limit. Sharding must preserve complete coverage rather than cap or sample the matrix.
+5. Keep PR CI dependency-scoped: build the latest configured variants and smoke every version/type only for images selected by changed image or recipe inputs. Use batch size, not global fan-out or sampling, to keep each migration reviewable.
 
 Estimated cost:
 

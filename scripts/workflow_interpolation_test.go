@@ -75,3 +75,20 @@ func TestPRWorkflowUsesDistinctIntegerReportArtifactNames(t *testing.T) {
 	require.Contains(t, owners, "trivy-smoke-${{ matrix.image }}-${{ matrix.version }}-${{ matrix.type }}")
 	require.Contains(t, owners, "trivy-build-${{ matrix.image }}-${{ matrix.version }}-${{ matrix.type }}")
 }
+
+func TestPRWorkflowDiffsBespokeLockForSelectiveImagePlanning(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "pr-test.yaml"))
+	require.NoError(t, err)
+	workflow := string(data)
+
+	assert.Contains(t, workflow, `git show "${BASE_SHA}":packages/upstream.lock.json`)
+	assert.Contains(t, workflow, `--base-upstream-lock "$RUNNER_TEMP/base-upstream.lock.json"`)
+}
+
+func TestPRWorkflowKeepsZeroVulnerabilityGateOnBuildAndSmoke(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "pr-test.yaml"))
+	require.NoError(t, err)
+	workflow := string(data)
+
+	assert.Equal(t, 2, strings.Count(workflow, `--fail-on-severity "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"`))
+}

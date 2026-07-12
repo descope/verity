@@ -110,6 +110,48 @@ types:
 versions:
   "1.2": {}
 `)
+	writeTestFile(t, filepath.Join(root, "packages", "upstream.lock.json"), `
+{
+  "packages": {
+    "caddy": {
+      "file": "caddy.yaml",
+      "sha256": "caddy-recipe",
+      "assets": {"caddy/Caddyfile": "caddyfile"}
+    },
+    "cilium-1.19": {
+      "file": "cilium-1.19.yaml",
+      "sha256": "cilium-recipe",
+      "assets": {}
+    },
+    "envoy-1.2": {
+      "file": "envoy-1.2.yaml",
+      "sha256": "envoy-recipe",
+      "assets": {}
+    }
+  },
+  "pipeline_files": {
+    "build/wrapper.yaml": "wrapper",
+    "go/bump.yaml": "go-bump",
+    "test/ver-check.yaml": "ver-check",
+    "test/unused.yaml": "unused"
+  }
+}
+`)
+	writeTestFile(t, filepath.Join(root, "packages", "bespoke", "locked", "caddy.yaml"), `
+pipeline:
+  - uses: build/wrapper
+`)
+	writeTestFile(t, filepath.Join(root, "packages", "bespoke", "locked", "caddy", "Caddyfile"), "test\n")
+	writeTestFile(t, filepath.Join(root, "packages", "bespoke", "locked", "cilium-1.19.yaml"), `
+pipeline:
+  - uses: test/ver-check
+`)
+	writeTestFile(t, filepath.Join(root, "packages", "bespoke", "locked", "envoy-1.2.yaml"), "pipeline: []\n")
+	writeTestFile(t, filepath.Join(root, "packages", "pipelines", "go", "bump.yaml"), "pipeline: []\n")
+	writeTestFile(t, filepath.Join(root, "packages", "pipelines", "build", "wrapper.yaml"), "pipeline:\n  - uses: go/bump\n")
+	writeTestFile(t, filepath.Join(root, "packages", "pipelines", "test", "ver-check.yaml"), "pipeline: []\n")
+	writeTestFile(t, filepath.Join(root, "packages", "pipelines", "test", "unused.yaml"), "pipeline: []\n")
+	writeTestFile(t, filepath.Join(root, "packages", "overrides", "fips.env"), "GOFIPS140=latest\n")
 	return root
 }
 
@@ -148,86 +190,6 @@ func TestPlanIntegerPREmptyWhenNoImageFilesChanged(t *testing.T) {
 	assert.False(t, plan.HasChanges)
 	assert.Empty(t, plan.Matrix.Include)
 	assert.Empty(t, plan.SmokeMatrix.Include)
-}
-
-func TestPlanIntegerPRMelangeChangesBuildAndSmokeEveryConsumer(t *testing.T) {
-	root := setupIntegerPlanRepo(t)
-
-	for _, changed := range []string{
-		"packages/bespoke/locked/caddy.yaml",
-		"packages/pipelines/test/daemon-check-output.yaml",
-		"packages/upstream.lock.json",
-		"packages/overrides/fips.env",
-		"internal/integer/melange/build.go",
-		"internal/integer/config/loader.go",
-		"cmd/integer_melange.go",
-		"cmd/integer_build.go",
-		"cmd/integer.go",
-		".github/workflows/integer-build-image.yaml",
-		".github/workflows/pr-test.yaml",
-	} {
-		t.Run(changed, func(t *testing.T) {
-			plan, err := PlanIntegerPR(&IntegerPROptions{
-				ChangedFiles: []string{changed},
-				ConfigPath:   filepath.Join(root, "integer.yaml"),
-				ImagesDir:    filepath.Join(root, "images"),
-				APKIndexURL:  "",
-				GenDir:       filepath.Join(root, "gen"),
-			})
-			require.NoError(t, err)
-
-			assert.True(t, plan.HasChanges)
-			assert.ElementsMatch(t, []map[string]string{
-				{"image": "caddy", "version": "2", "type": "default"},
-				{"image": "caddy", "version": "2", "type": "fips"},
-				{"image": "cilium", "version": "1.19", "type": "default"},
-				{"image": "platform/envoy", "version": "1.2", "type": "default"},
-			}, plan.Matrix.Include)
-			assert.ElementsMatch(t, []map[string]string{
-				{"image": "caddy", "version": "1", "type": "default"},
-				{"image": "caddy", "version": "1", "type": "fips"},
-				{"image": "caddy", "version": "2", "type": "default"},
-				{"image": "caddy", "version": "2", "type": "fips"},
-				{"image": "cilium", "version": "1.19", "type": "default"},
-				{"image": "platform/envoy", "version": "1.2", "type": "default"},
-			}, plan.SmokeMatrix.Include)
-		})
-	}
-}
-
-func TestPlanIntegerPRMelangeChangesIncludeEveryConsumerAlongsideChangedImages(t *testing.T) {
-	root := setupIntegerPlanRepo(t)
-
-	plan, err := PlanIntegerPR(&IntegerPROptions{
-		ChangedFiles: []string{"images/node.yaml", "internal/integer/melange/build.go"},
-		ConfigPath:   filepath.Join(root, "integer.yaml"),
-		ImagesDir:    filepath.Join(root, "images"),
-		APKIndexURL:  "",
-		GenDir:       filepath.Join(root, "gen"),
-	})
-	require.NoError(t, err)
-
-	assert.True(t, plan.HasChanges)
-	assert.ElementsMatch(t, []map[string]string{
-		{"image": "node", "version": "22", "type": "default"},
-		{"image": "node", "version": "22", "type": "dev"},
-		{"image": "caddy", "version": "2", "type": "default"},
-		{"image": "caddy", "version": "2", "type": "fips"},
-		{"image": "cilium", "version": "1.19", "type": "default"},
-		{"image": "platform/envoy", "version": "1.2", "type": "default"},
-	}, plan.Matrix.Include)
-	assert.ElementsMatch(t, []map[string]string{
-		{"image": "node", "version": "20", "type": "default"},
-		{"image": "node", "version": "20", "type": "dev"},
-		{"image": "node", "version": "22", "type": "default"},
-		{"image": "node", "version": "22", "type": "dev"},
-		{"image": "caddy", "version": "1", "type": "default"},
-		{"image": "caddy", "version": "1", "type": "fips"},
-		{"image": "caddy", "version": "2", "type": "default"},
-		{"image": "caddy", "version": "2", "type": "fips"},
-		{"image": "cilium", "version": "1.19", "type": "default"},
-		{"image": "platform/envoy", "version": "1.2", "type": "default"},
-	}, plan.SmokeMatrix.Include)
 }
 
 func TestPlanIntegerPRFailsClosedWhenAPKIndexFetchFails(t *testing.T) {
