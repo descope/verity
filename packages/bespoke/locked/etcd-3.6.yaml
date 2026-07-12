@@ -17,12 +17,6 @@ package:
     cpu: "3"
     memory: 7Gi
 
-var-transforms:
-  - from: ${{package.version}}
-    match: ^(\d+\.\d+)\.\d+$
-    replace: "$1"
-    to: major-minor-version
-
 environment:
   contents:
     packages:
@@ -110,49 +104,6 @@ subpackages:
     test:
       pipeline:
         - uses: test/tw/symlink-check
-
-  - name: ${{package.name}}-iamguarded-compat
-    description: Compatibility package for iamguarded variant of Etcd
-    dependencies:
-      runtime:
-        - bash
-        - coreutils
-        - findutils
-        - gawk
-        - grep
-        - posix-libc-utils
-        - procps
-        - sed
-        - wolfi-baselayout
-    pipeline:
-      - uses: iamguarded/build-compat
-        with:
-          package: etcd
-          version: ${{vars.major-minor-version}}
-      - runs: |
-          mkdir -p /opt/iamguarded/etcd/bin/
-          chmod g+rwX /opt/iamguarded
-          ln -sf /usr/bin/etcd /opt/iamguarded/etcd/bin/etcd
-          ln -sf /usr/bin/etcdctl /opt/iamguarded/etcd/bin/etcdctl
-          ln -sf /usr/bin/etcdutl /opt/iamguarded/etcd/bin/etcdutl
-          cp LICENSE /opt/iamguarded/licenses/LICENSE
-      - uses: iamguarded/finalize-compat
-        with:
-          package: etcd
-          version: ${{vars.major-minor-version}}
-    test:
-      environment:
-        contents:
-          packages:
-            - ${{package.name}}
-      pipeline:
-        - uses: iamguarded/test-compat
-          with:
-            package: etcd
-            version: ${{vars.major-minor-version}}
-        - runs: |
-            run-script --version
-            run-script --help
 
 update:
   enabled: true
