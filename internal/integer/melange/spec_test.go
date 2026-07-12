@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	intconfig "github.com/verity-org/verity/internal/integer/config"
 )
 
 func TestResolveSpecSubstitutesVersion(t *testing.T) {
@@ -62,4 +64,27 @@ func TestWriteGitHubOutput(t *testing.T) {
 	err := WriteGitHubOutput(&out, Spec{Upstream: "caddy", EnvFile: "fips.env", BuildOption: "fips"})
 	require.NoError(t, err)
 	assert.Equal(t, "needed=true\nenv_file=fips.env\nbuild_option=fips\n", out.String())
+}
+
+func TestResolveConfigSpecRejectsTraversalBasenames(t *testing.T) {
+	for _, file := range []string{".", ".."} {
+		t.Run(file, func(t *testing.T) {
+			_, err := ResolveConfigSpec(&intconfig.MelangeSpec{Bespoke: []string{file}}, "1.0.0")
+			require.ErrorIs(t, err, errInvalidBespokeFilename)
+		})
+	}
+}
+
+func TestResolveConfigSpecSupportsVersionBuildMetadata(t *testing.T) {
+	spec, err := ResolveConfigSpec(&intconfig.MelangeSpec{
+		Upstream:    "package-{{version}}",
+		EnvFile:     "env-{{version}}.env",
+		BuildOption: "build-{{version}}",
+	}, "1.2.3+fips")
+	require.NoError(t, err)
+	assert.Equal(t, Spec{
+		Upstream:    "package-1.2.3+fips",
+		EnvFile:     "env-1.2.3+fips.env",
+		BuildOption: "build-1.2.3+fips",
+	}, spec)
 }

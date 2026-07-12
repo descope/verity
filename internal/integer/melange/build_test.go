@@ -91,6 +91,39 @@ func TestBuildStagesRunsAndSigns(t *testing.T) {
 	assert.NoFileExists(t, stalePackage)
 }
 
+func TestBuildSignsOnlyRequestedArchitectureIndex(t *testing.T) {
+	root := t.TempDir()
+	paths := testPaths(root)
+	recipe := "package:\n  name: caddy\n"
+	writeTestFile(t, testPath(root, "packages/bespoke/locked/caddy.yaml"), recipe)
+	writeTestFile(t, testPath(root, "packages/upstream.lock.json"), fmt.Sprintf(`{
+  "packages":{"caddy":{"file":"caddy.yaml","sha256":"%s","assets":{}}},
+  "pipeline_files":{}
+}`, testSHA(recipe)))
+	writeTestFile(t, testPath(paths.WorkDir, "specs/caddy/build.yaml"), recipe)
+	writeTestFile(t, filepath.Join(paths.WorkDir, "melange.rsa"), "private")
+	writeTestFile(t, filepath.Join(paths.WorkDir, "melange.rsa.pub"), "public")
+	writeTestFile(t, testPath(root, "packages/repo/aarch64/APKINDEX.tar.gz"), "arm-index")
+	runner := &fakeRunner{}
+
+	err := Build(context.Background(), &BuildOptions{
+		Paths:  paths,
+		Spec:   Spec{Upstream: "caddy"},
+		Arch:   ArchitectureX8664,
+		Staged: true,
+		Runner: runner,
+	})
+	require.NoError(t, err)
+
+	var signedIndexes []string
+	for _, command := range runner.commands {
+		if len(command.args) > 4 && command.args[0] == "sign-index" {
+			signedIndexes = append(signedIndexes, command.args[3])
+		}
+	}
+	assert.Equal(t, []string{"packages/repo/x86_64/APKINDEX.tar.gz"}, signedIndexes)
+}
+
 func TestPrepareRestrictsGeneratedPrivateKeyPermissions(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, testPath(root, "packages/bespoke/custom.yaml"), "package:\n  name: custom\n")

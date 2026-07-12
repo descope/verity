@@ -122,7 +122,7 @@ func signPackageIndexes(ctx context.Context, options *BuildOptions) error {
 	if err := copyFile(publicKey, filepath.Join(options.Paths.RepoDir, "melange.rsa.pub")); err != nil {
 		return fmt.Errorf("copy public key: %w", err)
 	}
-	indexes, err := filepath.Glob(filepath.Join(options.Paths.RepoDir, "*", "APKINDEX.tar.gz"))
+	indexes, err := filepath.Glob(filepath.Join(options.Paths.RepoDir, string(options.Arch), "APKINDEX.tar.gz"))
 	if err != nil {
 		return fmt.Errorf("find package indexes: %w", err)
 	}
