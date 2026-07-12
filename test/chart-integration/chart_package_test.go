@@ -31,12 +31,18 @@ func TestChartInstallRefUsesLocalPackageDir(t *testing.T) {
 	}
 }
 
-func TestChartInstallRefReportsMissingLocalPackage(t *testing.T) {
+func TestChartInstallRefFallsBackWhenLocalPackageMissing(t *testing.T) {
 	packageDir := t.TempDir()
 	t.Setenv(chartPackageDirEnv, packageDir)
 
-	_, _, err := chartInstallRef(config.ChartSpec{Name: "cert-manager", Version: "v1.21.0"})
-	if err == nil {
-		t.Fatal("chartInstallRef() error = nil, want missing package error")
+	got, local, err := chartInstallRef(config.ChartSpec{Name: "cert-manager", Version: "v1.21.0"})
+	if err != nil {
+		t.Fatalf("chartInstallRef() error = %v, want nil", err)
+	}
+	if local {
+		t.Fatal("chartInstallRef() local = true, want false")
+	}
+	if want := chartRegistry + "/cert-manager"; got != want {
+		t.Fatalf("chartInstallRef() = %q, want %q", got, want)
 	}
 }

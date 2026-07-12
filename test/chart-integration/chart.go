@@ -356,7 +356,7 @@ func chartInstallRef(spec config.ChartSpec) (string, bool, error) {
 
 	packagePath := filepath.Join(packageDir, spec.Name+"-"+spec.Version+".tgz")
 	if _, err := os.Stat(packagePath); err != nil {
-		return "", true, fmt.Errorf("%s package for %s@%s not found at %s: %w", chartPackageDirEnv, spec.Name, spec.Version, packagePath, err)
+		return chartRegistry + "/" + spec.Name, false, nil
 	}
 	return packagePath, true, nil
 }

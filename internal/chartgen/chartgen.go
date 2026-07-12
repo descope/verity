@@ -3,6 +3,7 @@ package chartgen
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -22,6 +23,7 @@ var (
 	ErrStrictModeUnmappedCharts          = errors.New("strict mode: charts produced no patched image mappings")
 	ErrChartImageOverrideVersion         = errors.New("chartImageOverrides: derive version")
 	ErrUnsupportedChartImageOverrideType = errors.New("chartImageOverrides: unsupported type")
+	ErrChartNotFound                     = errors.New("chart not found in charts file")
 )
 
 var chartImageOverrideVersionPattern = regexp.MustCompile(`v?\d+\.\d+\.\d+`)
@@ -156,7 +158,7 @@ func selectCharts(charts []config.ChartSpec, chartName string) ([]config.ChartSp
 			return []config.ChartSpec{chart}, nil
 		}
 	}
-	return nil, fmt.Errorf("chart %q not found in charts file", chartName)
+	return nil, fmt.Errorf("%w: %s", ErrChartNotFound, chartName)
 }
 
 // emptyMappingsAction enumerates the four ways processChart resolves a chart
@@ -342,10 +344,32 @@ func movePackagedChart(tgzPath, packageDir string) (string, error) {
 		return "", fmt.Errorf("create package dir %s: %w", packageDir, err)
 	}
 	dest := filepath.Join(packageDir, filepath.Base(tgzPath))
-	if err := os.Rename(tgzPath, dest); err != nil {
-		return "", fmt.Errorf("move %s to %s: %w", tgzPath, dest, err)
+	if err := copyFile(tgzPath, dest); err != nil {
+		return "", fmt.Errorf("copy %s to %s: %w", tgzPath, dest, err)
+	}
+	if err := os.Remove(tgzPath); err != nil {
+		return "", fmt.Errorf("remove source package %s: %w", tgzPath, err)
 	}
 	return dest, nil
+}
+
+func copyFile(src, dest string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, in); err != nil {
+		return err
+	}
+	return out.Sync()
 }
 
 // applyReplacements partitions the chart-discovered image references into:

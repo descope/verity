@@ -206,6 +206,48 @@ dependencies:
 	assert.Equal(t, []map[string]string{{"chart": "grafana"}}, plan.Matrix.Include)
 }
 
+func TestPlanChartsKeepsChangedDependencyStrictWithSupportingFiles(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base-Chart.yaml")
+	head := filepath.Join(root, "Chart.yaml")
+	writeTestFile(t, base, `
+dependencies:
+  - name: cert-manager
+    version: "v1.20.3"
+    repository: "https://charts.jetstack.io"
+  - name: loki
+    version: "7.0.0"
+    repository: "https://grafana.github.io/helm-charts"
+`)
+	writeTestFile(t, head, `
+dependencies:
+  - name: cert-manager
+    version: "v1.21.0"
+    repository: "https://charts.jetstack.io"
+  - name: loki
+    version: "7.0.0"
+    repository: "https://grafana.github.io/helm-charts"
+`)
+
+	plan, err := PlanCharts(&ChartOptions{
+		EventName: "pull_request",
+		ChangedFiles: []string{
+			"Chart.yaml",
+			".github/workflows/chart-integration.yaml",
+			"cmd/chart_gen.go",
+			"internal/chartgen/chartgen.go",
+			"test/chart-integration/chart.go",
+			"verity.yaml",
+		},
+		ChartsFile:     head,
+		BaseChartsFile: base,
+	})
+	require.NoError(t, err)
+
+	assert.True(t, plan.Strict)
+	assert.Equal(t, []map[string]string{{"chart": "cert-manager"}}, plan.Matrix.Include)
+}
+
 func TestPlanChartsMapsChangedImageThroughValuesFile(t *testing.T) {
 	root := t.TempDir()
 	charts := filepath.Join(root, "Chart.yaml")
