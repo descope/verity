@@ -147,6 +147,9 @@ jobs:
             -run 'TestLoadAllowlist|TestLoadAllowlistMissing|TestLoadAllowlistPresentRegression|TestIsAccepted|TestClassifyMissingAllowlist|TestClassifyMissingAllowlistDoesNotConsultAllowlist|TestHarnessClusterCreatedFieldDefault|TestKindConfigPath|TestKindCreateWait|TestChartInstallRef|TestInstallChartRejectsArgumentInjection|TestClassifyHelmFailure|TestClassifyHelmFailureStringer|TestClassifyHelmFailureParsesPodJSON|TestClassifyHelmFailureMalformedJSON|TestLoadSkips|TestIsSkipped|TestShouldSkipChart|TestProductionSKIPSYAMLIsValid' \
             -v ./test/chart-integration/...
 
+      - name: Build verity CLI
+        run: go build -o verity .
+
       - name: Generate local wrapper chart package
         if: ${{ github.event_name == 'pull_request' && needs.discover-charts.outputs.strict == 'true' }}
         run: |
