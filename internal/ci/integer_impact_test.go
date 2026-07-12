@@ -34,17 +34,18 @@ func TestPlanIntegerPRMelangeChangesBuildAndSmokeEveryConsumer(t *testing.T) {
 	root := setupIntegerPlanRepo(t)
 
 	tests := map[string]struct {
-		changed   string
-		image     string
-		imageType string
-		builds    int
-		smokes    int
+		changed      string
+		image        string
+		imageType    string
+		buildVersion string
+		builds       int
+		smokes       int
 	}{
-		"locked recipe":  {"packages/bespoke/locked/caddy.yaml", "caddy", "fips", 2, 2},
-		"locked sidecar": {"packages/bespoke/locked/caddy/Caddyfile", "caddy", "fips", 2, 2},
-		"override":       {"packages/overrides/fips.env", "caddy", "fips", 2, 2},
-		"pipeline":       {"packages/pipelines/go/bump.yaml", "caddy", "fips", 2, 2},
-		"other pipeline": {"packages/pipelines/test/ver-check.yaml", "cilium", "default", 1, 1},
+		"locked recipe":  {"packages/bespoke/locked/caddy.yaml", "caddy", "fips", "2", 1, 2},
+		"locked sidecar": {"packages/bespoke/locked/caddy/Caddyfile", "caddy", "fips", "2", 1, 2},
+		"override":       {"packages/overrides/fips.env", "caddy", "fips", "2", 1, 2},
+		"pipeline":       {"packages/pipelines/go/bump.yaml", "caddy", "fips", "2", 1, 2},
+		"other pipeline": {"packages/pipelines/test/ver-check.yaml", "cilium", "default", "1.19", 1, 1},
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -53,7 +54,12 @@ func TestPlanIntegerPRMelangeChangesBuildAndSmokeEveryConsumer(t *testing.T) {
 			require.True(t, plan.HasChanges)
 			assert.Len(t, plan.Matrix.Include, test.builds)
 			assert.Len(t, plan.SmokeMatrix.Include, test.smokes)
-			for _, entry := range append(plan.Matrix.Include, plan.SmokeMatrix.Include...) {
+			for _, entry := range plan.Matrix.Include {
+				assert.Equal(t, test.image, entry["image"])
+				assert.Equal(t, test.imageType, entry["type"])
+				assert.Equal(t, test.buildVersion, entry["version"])
+			}
+			for _, entry := range plan.SmokeMatrix.Include {
 				assert.Equal(t, test.image, entry["image"])
 				assert.Equal(t, test.imageType, entry["type"])
 			}

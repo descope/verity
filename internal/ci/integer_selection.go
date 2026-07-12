@@ -17,11 +17,6 @@ func selectIntegerPRImages(imgs []intdiscovery.DiscoveredImage, changedImages ma
 		_, variantImpacted := impactedVariants[variant]
 		if all || imageChanged || variantImpacted {
 			smokeSet[variant] = img
-		}
-		if variantImpacted {
-			buildSet[variant] = img
-		}
-		if all || imageChanged {
 			key := img.Name + "\x00" + img.Type
 			previous, ok := latest[key]
 			if !ok || apkindex.VersionLess(previous.Version, img.Version) {
