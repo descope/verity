@@ -28,7 +28,7 @@ import (
 
 const (
 	nightlyFamilyCopa    = "copa"
-	nightlyFamilyInteger = "integer"
+	nightlyFamilyInteger = integerCommandName
 )
 
 var (
