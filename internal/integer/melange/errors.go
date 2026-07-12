@@ -1,0 +1,31 @@
+package melange
+
+import "errors"
+
+var (
+	errArchitectureRequired    = errors.New("melange architecture is required")
+	errUnsupportedArchitecture = errors.New("unsupported melange architecture")
+	errStagedKeyNotRegular     = errors.New("staged signing key is not a regular file")
+	errNoStagedRecipes         = errors.New("no staged melange recipes")
+	errNoPackageIndex          = errors.New("melange produced no package index")
+	errInvalidImage            = errors.New("invalid image")
+	errInvalidImageType        = errors.New("invalid image type")
+	errInvalidVersion          = errors.New("invalid version")
+	errImageTypeNotFound       = errors.New("image type not found")
+	errImageVersionNotFound    = errors.New("image version not found")
+	errImageTypeSkipped        = errors.New("image version skips type")
+	errInvalidSpecSource       = errors.New("melange spec must set exactly one of upstream or bespoke")
+	errInvalidUpstreamKey      = errors.New("invalid upstream key")
+	errInvalidBespokeFilename  = errors.New("invalid bespoke filename")
+	errInvalidOptionalField    = errors.New("invalid melange option")
+	errEmptySpec               = errors.New("melange spec is empty")
+	errMissingLockMetadata     = errors.New("package is missing file or sha256 lock metadata")
+	errChecksumMismatch        = errors.New("sha256 mismatch")
+	errNotRegularFile          = errors.New("is not a regular file")
+	errNotRealDirectory        = errors.New("is not a real directory")
+	errUnsafeRelativePath      = errors.New("unsafe relative path")
+	errInvalidRoot             = errors.New("root is a symlink or non-directory")
+	errPathContainsSymlink     = errors.New("contains a symlink")
+	errInvalidTreeEntry        = errors.New("is not a regular file or directory")
+	errFileSetMismatch         = errors.New("file set does not match lock manifest")
+)

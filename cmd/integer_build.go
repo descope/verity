@@ -126,7 +126,7 @@ var integerBuildCmd = &cli.Command{
 		}
 
 		arch := cmd.String("arch")
-		extraRepos, extraKeyrings, err := integerPrepareMelangeBuild(ctx, tmpl.Melange, arch)
+		extraRepos, extraKeyrings, err := integerPrepareMelangeBuild(ctx, tmpl.Melange, version, arch)
 		if err != nil {
 			return fmt.Errorf("preparing melange build: %w", err)
 		}

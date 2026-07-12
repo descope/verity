@@ -436,8 +436,8 @@ Pull requests do NOT run the full nightly orchestration or `patch-image.yaml`.
 Instead, `pr-test.yaml` is standalone and runs:
 
 - `verity discover` — validates config syntax end-to-end
-- Integer config validation (`verity integer validate`) and smoke builds via
-  `melange-check.sh` + `melange-build.sh`
+- Integer config validation plus latest-variant builds and all-variant smoke
+  tests for every affected bespoke recipe consumer via the Verity CLI
 - For images changed in the PR, an inline Copa patch pass using
   `.github/scripts/patch-image.sh` (single-arch, typically `linux/amd64`)
   against a local/cache registry — signing, SBOM attestation, multi-arch

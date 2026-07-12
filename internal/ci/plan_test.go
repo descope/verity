@@ -60,6 +60,56 @@ versions:
   latest:
     latest: true
 `)
+	writeTestFile(t, filepath.Join(root, "images", "caddy.yaml"), `
+name: caddy
+description: caddy
+upstream:
+  package: caddy
+types:
+  default:
+    base: wolfi-base
+    packages: ["caddy"]
+  fips:
+    base: wolfi-base
+    fips-profile: go
+    packages: ["caddy"]
+    environment:
+      GODEBUG: "fips140=on"
+    melange:
+      upstream: caddy
+      env-file: fips.env
+versions:
+  "1": {}
+  "2": {}
+`)
+	writeTestFile(t, filepath.Join(root, "images", "cilium.yaml"), `
+name: cilium
+description: cilium
+upstream:
+  package: cilium-{{version}}
+types:
+  default:
+    base: wolfi-base
+    packages: ["cilium-{{version}}"]
+    melange:
+      upstream: cilium-{{version}}
+versions:
+  "1.19": {}
+`)
+	writeTestFile(t, filepath.Join(root, "images", "platform", "envoy.yaml"), `
+name: platform/envoy
+description: envoy
+upstream:
+  package: envoy-{{version}}
+types:
+  default:
+    base: wolfi-base
+    packages: ["envoy-{{version}}"]
+    melange:
+      upstream: envoy-{{version}}
+versions:
+  "1.2": {}
+`)
 	return root
 }
 
@@ -100,19 +150,59 @@ func TestPlanIntegerPREmptyWhenNoImageFilesChanged(t *testing.T) {
 	assert.Empty(t, plan.SmokeMatrix.Include)
 }
 
-func TestPlanIntegerPRFallsBackWhenAPKIndexFetchFails(t *testing.T) {
+func TestPlanIntegerPRMelangeChangesBuildAndSmokeEveryConsumer(t *testing.T) {
 	root := setupIntegerPlanRepo(t)
-	originalFetch := apkindexFetch
-	apkindexFetch = func(string, string, time.Duration) ([]apkindex.Package, error) {
-		return nil, errTemporaryAPKIndexOutage
+
+	for _, changed := range []string{
+		"packages/bespoke/locked/caddy.yaml",
+		"packages/pipelines/test/daemon-check-output.yaml",
+		"packages/upstream.lock.json",
+		"packages/overrides/fips.env",
+		"internal/integer/melange/build.go",
+		"internal/integer/config/loader.go",
+		"cmd/integer_melange.go",
+		"cmd/integer_build.go",
+		"cmd/integer.go",
+		".github/workflows/integer-build-image.yaml",
+		".github/workflows/pr-test.yaml",
+	} {
+		t.Run(changed, func(t *testing.T) {
+			plan, err := PlanIntegerPR(&IntegerPROptions{
+				ChangedFiles: []string{changed},
+				ConfigPath:   filepath.Join(root, "integer.yaml"),
+				ImagesDir:    filepath.Join(root, "images"),
+				APKIndexURL:  "",
+				GenDir:       filepath.Join(root, "gen"),
+			})
+			require.NoError(t, err)
+
+			assert.True(t, plan.HasChanges)
+			assert.ElementsMatch(t, []map[string]string{
+				{"image": "caddy", "version": "2", "type": "default"},
+				{"image": "caddy", "version": "2", "type": "fips"},
+				{"image": "cilium", "version": "1.19", "type": "default"},
+				{"image": "platform/envoy", "version": "1.2", "type": "default"},
+			}, plan.Matrix.Include)
+			assert.ElementsMatch(t, []map[string]string{
+				{"image": "caddy", "version": "1", "type": "default"},
+				{"image": "caddy", "version": "1", "type": "fips"},
+				{"image": "caddy", "version": "2", "type": "default"},
+				{"image": "caddy", "version": "2", "type": "fips"},
+				{"image": "cilium", "version": "1.19", "type": "default"},
+				{"image": "platform/envoy", "version": "1.2", "type": "default"},
+			}, plan.SmokeMatrix.Include)
+		})
 	}
-	t.Cleanup(func() { apkindexFetch = originalFetch })
+}
+
+func TestPlanIntegerPRMelangeChangesIncludeEveryConsumerAlongsideChangedImages(t *testing.T) {
+	root := setupIntegerPlanRepo(t)
 
 	plan, err := PlanIntegerPR(&IntegerPROptions{
-		ChangedFiles: []string{"images/node.yaml"},
+		ChangedFiles: []string{"images/node.yaml", "internal/integer/melange/build.go"},
 		ConfigPath:   filepath.Join(root, "integer.yaml"),
 		ImagesDir:    filepath.Join(root, "images"),
-		APKIndexURL:  "https://example.invalid/APKINDEX.tar.gz",
+		APKIndexURL:  "",
 		GenDir:       filepath.Join(root, "gen"),
 	})
 	require.NoError(t, err)
@@ -121,7 +211,41 @@ func TestPlanIntegerPRFallsBackWhenAPKIndexFetchFails(t *testing.T) {
 	assert.ElementsMatch(t, []map[string]string{
 		{"image": "node", "version": "22", "type": "default"},
 		{"image": "node", "version": "22", "type": "dev"},
+		{"image": "caddy", "version": "2", "type": "default"},
+		{"image": "caddy", "version": "2", "type": "fips"},
+		{"image": "cilium", "version": "1.19", "type": "default"},
+		{"image": "platform/envoy", "version": "1.2", "type": "default"},
 	}, plan.Matrix.Include)
+	assert.ElementsMatch(t, []map[string]string{
+		{"image": "node", "version": "20", "type": "default"},
+		{"image": "node", "version": "20", "type": "dev"},
+		{"image": "node", "version": "22", "type": "default"},
+		{"image": "node", "version": "22", "type": "dev"},
+		{"image": "caddy", "version": "1", "type": "default"},
+		{"image": "caddy", "version": "1", "type": "fips"},
+		{"image": "caddy", "version": "2", "type": "default"},
+		{"image": "caddy", "version": "2", "type": "fips"},
+		{"image": "cilium", "version": "1.19", "type": "default"},
+		{"image": "platform/envoy", "version": "1.2", "type": "default"},
+	}, plan.SmokeMatrix.Include)
+}
+
+func TestPlanIntegerPRFailsClosedWhenAPKIndexFetchFails(t *testing.T) {
+	root := setupIntegerPlanRepo(t)
+	originalFetch := apkindexFetch
+	apkindexFetch = func(string, string, time.Duration) ([]apkindex.Package, error) {
+		return nil, errTemporaryAPKIndexOutage
+	}
+	t.Cleanup(func() { apkindexFetch = originalFetch })
+
+	_, err := PlanIntegerPR(&IntegerPROptions{
+		ChangedFiles: []string{"images/node.yaml"},
+		ConfigPath:   filepath.Join(root, "integer.yaml"),
+		ImagesDir:    filepath.Join(root, "images"),
+		APKIndexURL:  "https://example.invalid/APKINDEX.tar.gz",
+		GenDir:       filepath.Join(root, "gen"),
+	})
+	require.ErrorIs(t, err, errTemporaryAPKIndexOutage)
 }
 
 func TestPlanCopaPRDiffsSemanticImageEntries(t *testing.T) {

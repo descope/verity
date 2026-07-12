@@ -12,13 +12,6 @@ and are shellcheck validated.
 | `verify-patched.sh` | `pr-test.yaml`                                 | Verify patched image vs. pre-patch CVE state                                                                                                   |
 | `push-reports.sh`   | `patch-image.yaml`, `integer-build-image.yaml` | Push JSON files (pre/post Copa scan reports, Integer build reports) to the `reports` branch via the Contents API (with retry)                  |
 
-## Integer (Wolfi) build
-
-| Script             | Used by        | Purpose                                                      |
-| ------------------ | -------------- | ------------------------------------------------------------ |
-| `melange-check.sh` | `pr-test.yaml` | Check whether an image type needs melange; emit build config |
-| `melange-build.sh` | `pr-test.yaml` | Resolve melange source and build a single-arch APK           |
-
 ## Copa input lookup
 
 | Script                  | Used by        | Purpose                                                                                                           |

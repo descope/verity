@@ -62,6 +62,16 @@ var apkindexFetch = apkindex.Fetch
 func PlanIntegerPR(opts *IntegerPROptions) (Plan, error) {
 	plan := Plan{Kind: "integer-pr"}
 	imageNames, allImages := changedIntegerImages(opts.ChangedFiles)
+	melangeChanged := changedMelangeInfrastructure(opts.ChangedFiles)
+	if !allImages && melangeChanged {
+		consumers, err := melangeConsumerNames(defaultString(opts.ImagesDir, "images"))
+		if err != nil {
+			return plan, fmt.Errorf("find melange consumers: %w", err)
+		}
+		for name := range consumers {
+			imageNames[name] = struct{}{}
+		}
+	}
 	if !allImages && len(imageNames) == 0 {
 		plan.Matrix = Matrix{}
 		plan.SmokeMatrix = &Matrix{}
@@ -77,8 +87,7 @@ func PlanIntegerPR(opts *IntegerPROptions) (Plan, error) {
 	if opts.APKIndexURL != "" {
 		pkgs, err = apkindexFetch(opts.APKIndexURL, defaultString(opts.CacheDir, os.TempDir()), apkindex.DefaultCacheMaxAge)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: APKINDEX unavailable (%v) — using versions map only\n", err)
-			pkgs = nil
+			return plan, fmt.Errorf("fetch APKINDEX: %w", err)
 		}
 	}
 
@@ -183,6 +192,49 @@ func changedIntegerImages(files []string) (names map[string]struct{}, all bool) 
 		}
 	}
 	return names, all
+}
+
+func changedMelangeInfrastructure(files []string) bool {
+	for _, file := range files {
+		file = filepath.ToSlash(strings.TrimSpace(file))
+		switch {
+		case file == "packages/upstream.lock.json",
+			strings.HasPrefix(file, "packages/bespoke/"),
+			strings.HasPrefix(file, "packages/pipelines/"),
+			strings.HasPrefix(file, "packages/overrides/"),
+			strings.HasPrefix(file, "internal/integer/config/"),
+			strings.HasPrefix(file, "internal/integer/melange/"),
+			file == "cmd/integer.go",
+			file == "cmd/integer_build.go",
+			strings.HasPrefix(file, "cmd/integer_melange"),
+			file == "cmd/integer_build_melange.go",
+			file == ".github/workflows/integer-build-image.yaml",
+			file == ".github/workflows/pr-test.yaml":
+			return true
+		}
+	}
+	return false
+}
+
+func melangeConsumerNames(imagesDir string) (map[string]struct{}, error) {
+	files, err := intconfig.ImageFilePaths(imagesDir)
+	if err != nil {
+		return nil, err
+	}
+	names := map[string]struct{}{}
+	for _, file := range files {
+		def, err := intconfig.LoadImage(file)
+		if err != nil {
+			return nil, fmt.Errorf("load %s: %w", file, err)
+		}
+		for typeName := range def.Types {
+			if def.Types[typeName].Melange != nil {
+				names[def.Name] = struct{}{}
+				break
+			}
+		}
+	}
+	return names, nil
 }
 
 func changedCopaNames(basePath, headPath string) (map[string]struct{}, error) {

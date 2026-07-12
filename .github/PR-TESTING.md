@@ -21,8 +21,8 @@ standalone workflow — it does NOT invoke `patch-image.yaml` via
 
 - `verity discover` — validates the merged discovery output from
   `copa-config.yaml`, `Chart.yaml`, and `verity.yaml`
-- Integer config validation (`verity integer validate`) and smoke builds via
-  `melange-check.sh` + `melange-build.sh`
+- Integer config validation (`verity integer validate`), latest-variant builds,
+  and all-variant smoke tests for every affected bespoke recipe consumer
 - For images changed in the PR, an inline Copa patch pass using
   `.github/scripts/patch-image.sh` against a local/cache registry (single-arch,
   typically `linux/amd64`)
@@ -34,7 +34,7 @@ standalone workflow — it does NOT invoke `patch-image.yaml` via
 ✅ Config validation via `verity discover` (merges `copa-config.yaml` + `Chart.yaml` + `verity.yaml`)
 ✅ Per-image Copa patching for changed images (single-arch, validates config + patching logic)
 ✅ Trivy pre/post scanning on patched images
-✅ Integer/Wolfi config validation and single-image smoke builds
+✅ Integer config validation plus build and smoke coverage for every affected bespoke consumer
 
 ❌ Image signing (production credentials only)
 ❌ SBOM attestation (`actions/attest` runs only in production)
@@ -51,7 +51,7 @@ Each PR run includes a summary showing:
 
 - Number of images discovered by `verity discover` (merged from `copa-config.yaml`, `Chart.yaml`, and `verity.yaml`)
 - Integer image config validation status
-- Smoke test results for sample images
+- Build and smoke-test results for every affected bespoke consumer
 - Copa patching validation (when config changes)
 
 ### Downloadable Artifacts

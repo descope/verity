@@ -23,7 +23,9 @@ being added without their recipe. The pilot-specific files are:
 
 `packages/upstream.lock.json` now treats `packages.<name>.file` as a path relative to `packages/bespoke/locked/`, verifies recipes, sidecars, and shared pipelines by SHA-256, and stores provenance under `provenance.recipe_baseline_commit` instead of using it for live fetches.
 
-Local prep (`scripts/integer-melange-prep.sh`), CI build (`.github/scripts/melange-build.sh`), and workflow prep (`integer-build-image.yaml`) all stage recipes from `packages/bespoke/locked/`. They reject missing, unlisted, modified, symlinked, or otherwise non-regular recipes, sidecars, and shared pipelines before staging them. Grep validation must stay clean for legacy live recipe URLs and remotes, the old pipeline-fetch helper, and shell network fetches in these paths.
+`internal/integer/melange` owns local recipe resolution, SHA-256 verification, staging, ephemeral key generation, package builds, and index signing. `verity integer melange prepare` stages work for the native architecture matrix, while `verity integer melange build` handles both fresh local builds and downloaded staged artifacts. Missing, unlisted, modified, symlinked, or otherwise non-regular recipes, sidecars, and shared pipelines are rejected before staging. Reusable artifacts are bound to the image spec, target architecture, lock manifest, recipe inputs, shared pipelines, build overrides, public key, package index, and package contents so any input or output change forces a rebuild.
+
+PR planning also treats recipe, pipeline, override, lock, workflow, and Go tooling changes as shared infrastructure changes. Every image that consumes a local recipe enters the build matrix at its latest configured version, and every discovered version/type variant enters the smoke matrix. Online package-index discovery fails closed; an unavailable index cannot silently reduce the smoke matrix to the smaller declared-version fallback.
 
 Images opt into local rebuild by declaring `types.<type>.melange.upstream`. `images/cilium.yaml` now uses `upstream: "cilium-{{version}}"` and declares an explicit `1.19` version key, so `cilium:1.19-default` builds `packages/bespoke/locked/cilium-1.19.yaml` before image assembly.
 
@@ -44,16 +46,16 @@ Local validation completed on the rebased branch before pilot dispatch:
 
 - `go test ./...` passed.
 - `python3 .github/scripts/validate-integer-build-image-workflow.py` passed.
-- `bash -n scripts/integer-melange-prep.sh .github/scripts/melange-build.sh .github/scripts/melange-check.sh` passed.
+- `actionlint` and the PR workflow validator passed.
 - Grep validation stayed clean for legacy live recipe-fetch markers.
 
 Earlier CI proof runs established the package-level remediations before the
 mechanism-hardening changes:
 
-- `caddy:2-fips`: https://github.com/verity-org/verity/actions/runs/29141068098
+- `caddy:2-fips`: https://github.com/verity-org/verity/actions/runs/29194926158
   - `gate-amd64.tar` reported `Vulnerabilities 0`.
   - `gate-arm64.tar` reported `Vulnerabilities 0`.
-- `cilium:1.19-default`: https://github.com/verity-org/verity/actions/runs/29141068643
+- `cilium:1.19-default`: https://github.com/verity-org/verity/actions/runs/29194926709
   - `gate-amd64.tar` reported `Vulnerabilities 0`.
   - `gate-arm64.tar` reported `Vulnerabilities 0`.
 
@@ -65,24 +67,36 @@ Reproduced on 2026-07-10 from current GitHub Actions data since 2026-07-09 and l
 
 Old-only sample: apisix-ingress-controller, argo-cd-3.3, argo-rollouts, argo-workflows-4.0, argocd-image-updater, authservice, aws-eks-pod-identity-agent, aws-load-balancer-controller, aws-node-termination-handler, aws-otel-collector, aws-s3-controller, azure-workload-identity-webhook, bank-vaults, boring-registry, buildah, caddy, cadvisor, calico-3.31, cassandra-5.0, cert-manager-csi-driver
 
-Current no-public-recipe list:
+The authoritative July 9 baseline retains each failing package name after using its APK origin only for recipe lookup. It reproduces the owner-verified split exactly: 166 packages, 0 recipes at current HEAD, 78 historical-only recipes, and these 88 write-from-scratch packages:
 
 - `argo-cd-3.0`
 - `argo-cd-3.1`
 - `argo-cd-3.2`
 - `argo-cd-3.4`
-- `argo-workflows`
-- `calico-3.30`
-- `calico-3.32`
-- `cert-manager-1.20`
+- `argo-workflow-controller`
+- `calico-apiserver-3.30`
+- `calico-apiserver-3.32`
+- `calico-cni-3.30`
+- `calico-cni-3.32`
+- `calico-key-cert-provisioner-3.30`
+- `calico-key-cert-provisioner-3.32`
+- `calico-kube-controllers-3.30`
+- `calico-kube-controllers-3.32`
+- `calico-pod2daemon-3.30`
+- `calico-pod2daemon-3.32`
+- `calico-typhad-3.30`
+- `calico-typhad-3.32`
+- `cert-manager-acmesolver-1.20`
+- `cert-manager-cainjector-1.20`
+- `cert-manager-controller-1.20`
+- `cert-manager-webhook-1.20`
 - `checkov`
 - `cilium-1`
 - `cilium-1.17`
 - `cilium-1.18`
-- `crossplane`
 - `crossplane-2`
 - `crossplane-2.1`
-- `etcd`
+- `crossplane-crank`
 - `external-dns`
 - `external-secrets-operator`
 - `gradle-8`
@@ -99,22 +113,22 @@ Current no-public-recipe list:
 - `haproxy-ingress-0.16`
 - `helm-3`
 - `influxd-2.7`
-- `jaeger`
+- `jaeger-all-in-one`
 - `kafka-4.0`
 - `kafka-4.1`
 - `karpenter-1.11`
 - `keycloak-26.3`
 - `keycloak-26.6`
-- `kubernetes-1.26`
-- `kubernetes-1.27`
-- `kubernetes-1.28`
-- `kubernetes-1.29`
-- `kubernetes-1.30`
-- `kubernetes-1.31`
-- `kubernetes-1.32`
-- `kubernetes-1.33`
+- `kubectl-1.26`
+- `kubectl-1.27`
+- `kubectl-1.28`
+- `kubectl-1.29`
+- `kubectl-1.30`
+- `kubectl-1.31`
+- `kubectl-1.32`
+- `kubectl-1.33`
 - `kubernetes-csi-node-driver-registrar`
-- `kyverno-1.18`
+- `kyverno-readiness-checker-1.18`
 - `logstash-9-with-output-opensearch`
 - `loki-3.7`
 - `mariadb-10.11`
@@ -137,7 +151,7 @@ Current no-public-recipe list:
 - `prometheus-3.6`
 - `prometheus-3.7`
 - `ruby3.2-fluentd-kubernetes-daemonset-1-kinesis`
-- `ruby3.2-fluentd-kubernetes-daemonset-1.18`
+- `ruby3.2-fluentd-kubernetes-daemonset-1.18-kinesis`
 - `tempo`
 - `traefik-3.3`
 - `traefik-3.4`
@@ -152,6 +166,7 @@ Recommended batching:
 2. Prioritize old-only recipes before no-public recipes. Old-only work starts from a known melange shape but still requires version/dependency maintenance.
 3. Split no-public recipes by ecosystem and owner: Kubernetes controllers, Grafana/observability, databases, Java, Ruby, and infrastructure CLIs.
 4. Require each package PR to include recipe, sidecars, lock metadata, local melange build evidence when feasible, and CI Trivy gate URL.
+5. Shard the all-variant smoke matrix before the next large batch: the current live plan is already 254 jobs, two below the GitHub matrix limit. Sharding must preserve complete coverage rather than cap or sample the matrix.
 
 Estimated cost:
 

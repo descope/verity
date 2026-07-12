@@ -41,9 +41,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       needed: ${{ steps.check.outputs.needed }}
-      bespoke_json: ${{ steps.check.outputs.bespoke_json }}
-      env_file: ${{ steps.check.outputs.env_file }}
-      build_option: ${{ steps.check.outputs.build_option }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -58,43 +55,21 @@ jobs:
           install: true
           cache: true
 
-      - name: Validate inputs
-        env:
-          INPUT_IMAGE: ${{ inputs.image }}
-          INPUT_TYPE: ${{ inputs.type }}
-        run: |
-          check() {
-            local label="$1" value="$2" pattern="$3"
-            if [[ ! "$value" =~ $pattern ]]; then
-              echo "Invalid ${label}: ${value}" >&2
-              exit 1
-            fi
-          }
-          check image "$INPUT_IMAGE" '^[a-z][a-z0-9-]*(/[a-z][a-z0-9-]*)*$'
-          check type  "$INPUT_TYPE"  '^[a-z][a-z0-9-]*$'
+      - name: Build verity CLI
+        run: go build -o verity .
 
-      - name: Check if melange build needed
+      - name: Prepare bespoke package
         id: check
         env:
-          IMAGE: ${{ inputs.image }}
-          TYPE: ${{ inputs.type }}
-          VERSION: ${{ inputs.version }}
-        run: .github/scripts/melange-check.sh
-
-      - name: Stage locked bespoke inputs
-        if: steps.check.outputs.needed == 'true'
-        env:
-          UPSTREAM: ${{ steps.check.outputs.upstream }}
-          BESPOKE_JSON: ${{ steps.check.outputs.bespoke_json }}
-          ENV_FILE: ${{ steps.check.outputs.env_file }}
-          BUILD_OPTION: ${{ steps.check.outputs.build_option }}
-          STAGE_ONLY: "true"
-        run: .github/scripts/melange-build.sh
-
-      - name: Generate ephemeral melange signing key
-        if: steps.check.outputs.needed == 'true'
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TYPE: ${{ inputs.type }}
         run: |
-          melange keygen melange-work/melange.rsa
+          ./verity integer melange prepare \
+            --image "$INPUT_IMAGE" \
+            --version "$INPUT_VERSION" \
+            --type "$INPUT_TYPE" \
+            --github-output "$GITHUB_OUTPUT"
 
       - name: Upload melange work artifacts
         if: steps.check.outputs.needed == 'true'
@@ -138,6 +113,9 @@ jobs:
           install: true
           cache: true
 
+      - name: Build verity CLI
+        run: go build -o verity .
+
       - name: Download melange work artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -146,46 +124,17 @@ jobs:
 
       - name: Build melange package (${{ matrix.arch }})
         env:
-          ENV_FILE: ${{ needs.melange-prep.outputs.env_file }}
-          BUILD_OPTION: ${{ needs.melange-prep.outputs.build_option }}
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TYPE: ${{ inputs.type }}
+          BUILD_ARCH: ${{ matrix.arch }}
         run: |
-          chmod 600 melange-work/melange.rsa
-
-          shopt -s nullglob
-          builds=(melange-work/specs/*/build.yaml)
-          if [ ${#builds[@]} -eq 0 ]; then
-            echo "No melange build YAMLs staged in melange-work/specs" >&2
-            exit 1
-          fi
-
-          for build_yaml in "${builds[@]}"; do
-            MELANGE_ARGS=(
-              build "$build_yaml"
-              --arch "${{ matrix.arch }}"
-              --signing-key melange-work/melange.rsa
-              --out-dir packages/repo
-              --repository-append https://packages.wolfi.dev/os
-              --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-              --runner docker
-            )
-
-            if [ -d melange-work/pipelines ]; then
-              MELANGE_ARGS+=(--pipeline-dirs melange-work/pipelines)
-            fi
-
-            if [ -n "$ENV_FILE" ]; then
-              MELANGE_ARGS+=(--env-file "packages/overrides/${ENV_FILE}")
-            fi
-            if [ -n "$BUILD_OPTION" ]; then
-              MELANGE_ARGS+=(--build-option "$BUILD_OPTION")
-            fi
-
-            echo "Running: melange ${MELANGE_ARGS[*]}"
-            melange "${MELANGE_ARGS[@]}"
-          done
-
-          echo "Built packages:"
-          find packages/repo -type f -name '*.apk'
+          ./verity integer melange build \
+            --image "$INPUT_IMAGE" \
+            --version "$INPUT_VERSION" \
+            --type "$INPUT_TYPE" \
+            --arch "$BUILD_ARCH" \
+            --staged
 
       - name: Upload arch packages
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
