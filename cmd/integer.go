@@ -22,6 +22,7 @@ var IntegerCommand = &cli.Command{
 		integerDiscoverCmd,
 		integerValidateCmd,
 		integerBuildCmd,
+		integerMetadataCmd,
 		integerMelangeCmd,
 		integerSyncCmd,
 		integerCatalogCmd,

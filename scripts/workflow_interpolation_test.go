@@ -92,3 +92,14 @@ func TestPRWorkflowKeepsZeroVulnerabilityGateOnBuildAndSmoke(t *testing.T) {
 
 	assert.Equal(t, 2, strings.Count(workflow, `--fail-on-severity "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"`))
 }
+
+func TestIntegerBuildWorkflowReadsMetadataThroughVerity(t *testing.T) {
+	// Given: the production Integer build workflow.
+	data, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "integer-build-image.yaml"))
+	require.NoError(t, err)
+	workflow := string(data)
+
+	// Then: metadata resolution uses declared-name lookup in the Go CLI.
+	assert.Contains(t, workflow, `./verity integer metadata`)
+	assert.NotContains(t, workflow, `image_yaml="images/${INPUT_IMAGE}.yaml"`)
+}

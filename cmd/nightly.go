@@ -443,11 +443,14 @@ func integerImageNames(imagesDir string) (map[string]struct{}, error) {
 	}
 	names := make(map[string]struct{}, len(files))
 	for _, f := range files {
-		rel, err := filepath.Rel(imagesDir, f)
+		def, err := intconfig.LoadImage(f)
 		if err != nil {
-			return nil, fmt.Errorf("relativizing integer image path %s: %w", f, err)
+			return nil, fmt.Errorf("loading integer image %s: %w", f, err)
 		}
-		names[strings.TrimSuffix(filepath.ToSlash(rel), yamlExt)] = struct{}{}
+		if _, exists := names[def.Name]; exists {
+			return nil, fmt.Errorf("%w %q", intconfig.ErrDuplicateImageName, def.Name)
+		}
+		names[def.Name] = struct{}{}
 	}
 	return names, nil
 }

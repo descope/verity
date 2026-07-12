@@ -20,6 +20,7 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/verity-org/verity/internal/discovery"
+	intconfig "github.com/verity-org/verity/internal/integer/config"
 	intdiscovery "github.com/verity-org/verity/internal/integer/discovery"
 )
 
@@ -522,7 +523,7 @@ func TestNightlyDispatchRejectsMissingToken(t *testing.T) {
 	require.ErrorIs(t, err, errMissingGitHubToken)
 }
 
-func TestIntegerImageNamesSkipsBaseDirectory(t *testing.T) {
+func TestIntegerImageNamesUsesDeclaredNamesAndSkipsBaseDirectory(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "_base"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "nested"), 0o755))
@@ -533,7 +534,17 @@ func TestIntegerImageNamesSkipsBaseDirectory(t *testing.T) {
 	names, err := integerImageNames(dir)
 	require.NoError(t, err)
 	assert.Equal(t, map[string]struct{}{
-		"node":        {},
-		"nested/tool": {},
+		"node": {},
+		"tool": {},
 	}, names)
+}
+
+func TestIntegerImageNamesRejectsDuplicateDeclaredNames(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "nested"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "node.yaml"), []byte("name: node"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "nested", "duplicate.yaml"), []byte("name: node"), 0o644))
+
+	_, err := integerImageNames(dir)
+	require.ErrorIs(t, err, intconfig.ErrDuplicateImageName)
 }

@@ -251,11 +251,9 @@ jobs:
         env:
           INPUT_IMAGE: ${{ inputs.image }}
         run: |
-          image_yaml="images/${INPUT_IMAGE}.yaml"
-          title=$(yq '.name' "$image_yaml")
-          description=$(yq '.description' "$image_yaml")
-          echo "title=${title}" >> "$GITHUB_OUTPUT"
-          echo "description=${description}" >> "$GITHUB_OUTPUT"
+          ./verity integer metadata \
+            --image "$INPUT_IMAGE" \
+            --github-output "$GITHUB_OUTPUT"
 
       # ── Melange artifact merge ──────────────────────────────────────────
 

@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"path/filepath"
 	"sort"
-	"strings"
 )
 
 var (
@@ -15,6 +14,9 @@ var (
 
 	// ErrDuplicateImageName is returned when multiple definitions declare the same name.
 	ErrDuplicateImageName = errors.New("duplicate image definition name")
+
+	// ErrInvalidImageFile is returned when an image definition is not a regular file.
+	ErrInvalidImageFile = errors.New("image definition must be a regular file")
 )
 
 // ImageFilePaths returns every image definition below imagesDir, excluding
@@ -32,6 +34,13 @@ func ImageFilePaths(imagesDir string) ([]string, error) {
 			return nil
 		}
 		if filepath.Ext(path) == ".yaml" {
+			info, err := entry.Info()
+			if err != nil {
+				return fmt.Errorf("stat image definition %q: %w", path, err)
+			}
+			if !info.Mode().IsRegular() {
+				return fmt.Errorf("%w %q", ErrInvalidImageFile, path)
+			}
 			paths = append(paths, path)
 		}
 		return nil
@@ -43,25 +52,8 @@ func ImageFilePaths(imagesDir string) ([]string, error) {
 	return paths, nil
 }
 
-// LoadImageByName finds an image definition by its declared name. The direct
-// images/<name>.yaml path remains the fast path; nested or renamed definitions
-// fall back to the recursive image inventory.
+// LoadImageByName finds the single regular image definition with the requested declared name.
 func LoadImageByName(imagesDir, name string) (*ImageDef, error) {
-	relative := filepath.Clean(filepath.FromSlash(name) + ".yaml")
-	directOK := !filepath.IsAbs(relative) && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
-	if directOK {
-		direct, err := LoadImage(filepath.Join(imagesDir, relative))
-		if err == nil && direct.Name == name {
-			return direct, nil
-		}
-		if err != nil && !errors.Is(err, fs.ErrNotExist) {
-			return nil, err
-		}
-	}
-	return findImageByDeclaredName(imagesDir, name)
-}
-
-func findImageByDeclaredName(imagesDir, name string) (*ImageDef, error) {
 	paths, err := ImageFilePaths(imagesDir)
 	if err != nil {
 		return nil, fmt.Errorf("list image definitions: %w", err)
