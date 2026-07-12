@@ -77,7 +77,7 @@ var integerBuildCmd = &cli.Command{
 		imagesDir := cmd.String("images-dir")
 		apkindexURL := cmd.String("apkindex-url")
 
-		def, err := intconfig.LoadImage(fmt.Sprintf("%s/%s.yaml", imagesDir, imageName))
+		def, err := intconfig.LoadImageByName(imagesDir, imageName)
 		if err != nil {
 			return fmt.Errorf("loading image %q: %w", imageName, err)
 		}

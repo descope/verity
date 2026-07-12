@@ -96,6 +96,32 @@ versions:
 	assert.Equal(t, plan.Matrix.Include, plan.SmokeMatrix.Include)
 }
 
+func TestPlanIntegerPRChangedDefinitionUsesDiscoveredName(t *testing.T) {
+	// Given: a nested definition whose file path and declared name differ.
+	root := setupIntegerPlanRepo(t)
+	writeTestFile(t, filepath.Join(root, "images", "platform", "custom-file.yaml"), `
+name: renamed-image
+description: renamed image
+upstream:
+  package: renamed-image
+types:
+  default:
+    base: wolfi-base
+    packages: ["renamed-image"]
+versions:
+  latest: {}
+`)
+
+	// When: the definition file changes directly.
+	plan, err := PlanIntegerPR(integerPlanOptions(root, "images/platform/custom-file.yaml"))
+
+	// Then: the planner selects the declared image name.
+	require.NoError(t, err)
+	require.True(t, plan.HasChanges)
+	assert.Equal(t, []map[string]string{{"image": "renamed-image", "version": "latest", "type": "default"}}, plan.Matrix.Include)
+	assert.Equal(t, plan.Matrix.Include, plan.SmokeMatrix.Include)
+}
+
 func TestPlanIntegerPRUnusedPipelineDoesNotSelectImages(t *testing.T) {
 	root := setupIntegerPlanRepo(t)
 	plan, err := PlanIntegerPR(integerPlanOptions(root, "packages/pipelines/test/unused.yaml"))

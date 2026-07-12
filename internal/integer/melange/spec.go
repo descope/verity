@@ -3,7 +3,6 @@ package melange
 import (
 	"fmt"
 	"io"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -29,7 +28,7 @@ func ResolveSpec(imagesDir, image, version, imageType string) (Spec, error) {
 		return Spec{}, fmt.Errorf("%w %q", errInvalidVersion, version)
 	}
 
-	def, err := intconfig.LoadImage(filepath.Join(imagesDir, filepath.FromSlash(image)+".yaml"))
+	def, err := intconfig.LoadImageByName(imagesDir, image)
 	if err != nil {
 		return Spec{}, fmt.Errorf("load image %q: %w", image, err)
 	}

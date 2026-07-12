@@ -63,7 +63,7 @@ var apkindexFetch = apkindex.Fetch
 
 func PlanIntegerPR(opts *IntegerPROptions) (Plan, error) {
 	plan := Plan{Kind: "integer-pr"}
-	imageNames, allImages := changedIntegerImages(opts.ChangedFiles)
+	changedDefinitions, allImages := changedIntegerDefinitions(opts.ChangedFiles)
 	impact := newIntegerInputImpact()
 	if !allImages {
 		var err error
@@ -76,7 +76,7 @@ func PlanIntegerPR(opts *IntegerPROptions) (Plan, error) {
 			return plan, fmt.Errorf("find changed bespoke inputs: %w", err)
 		}
 	}
-	if !allImages && len(imageNames) == 0 && impact.empty() {
+	if !allImages && len(changedDefinitions) == 0 && impact.empty() {
 		plan.Matrix = Matrix{}
 		plan.SmokeMatrix = &Matrix{}
 		return plan, nil
@@ -103,6 +103,10 @@ func PlanIntegerPR(opts *IntegerPROptions) (Plan, error) {
 	})
 	if err != nil {
 		return plan, fmt.Errorf("discover integer images: %w", err)
+	}
+	imageNames, err := changedIntegerImageNames(defaultString(opts.ImagesDir, "images"), imgs, changedDefinitions)
+	if err != nil {
+		return plan, fmt.Errorf("resolve changed image definitions: %w", err)
 	}
 	inputVariants := map[integerVariant]struct{}{}
 	if !allImages && !impact.empty() {
@@ -185,22 +189,6 @@ func PlanCharts(opts *ChartOptions) (Plan, error) {
 	plan.HasChanges = len(selected) > 0
 	plan.Matrix = chartMatrix(selected)
 	return plan, nil
-}
-
-func changedIntegerImages(files []string) (names map[string]struct{}, all bool) {
-	names = map[string]struct{}{}
-	for _, f := range files {
-		f = filepath.ToSlash(strings.TrimSpace(f))
-		switch {
-		case f == "integer.yaml", strings.HasPrefix(f, "images/_base/"):
-			all = true
-		default:
-			if name, ok := imageNameFromPath(f); ok {
-				names[name] = struct{}{}
-			}
-		}
-	}
-	return names, all
 }
 
 func changedCopaNames(basePath, headPath string) (map[string]struct{}, error) {

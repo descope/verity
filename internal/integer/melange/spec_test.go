@@ -59,6 +59,32 @@ versions:
 	assert.False(t, spec.Needed())
 }
 
+func TestResolveSpecFindsNestedDefinitionByDeclaredName(t *testing.T) {
+	// Given: a nested definition whose file path and declared name differ.
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "images", "platform", "custom-file.yaml"), `
+name: renamed-image
+description: renamed image
+upstream:
+  package: renamed-image
+types:
+  default:
+    base: wolfi-base
+    packages: ["renamed-image"]
+    melange:
+      bespoke: renamed-image.yaml
+versions:
+  latest: {}
+`)
+
+	// When: the build spec is resolved by declared image name.
+	spec, err := ResolveSpec(filepath.Join(root, "images"), "renamed-image", "latest", "default")
+
+	// Then: the nested definition supplies the bespoke recipe.
+	require.NoError(t, err)
+	assert.Equal(t, Spec{Bespoke: []string{"renamed-image.yaml"}}, spec)
+}
+
 func TestWriteGitHubOutput(t *testing.T) {
 	var out bytes.Buffer
 	err := WriteGitHubOutput(&out, Spec{Upstream: "caddy", EnvFile: "fips.env", BuildOption: "fips"})
