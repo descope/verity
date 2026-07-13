@@ -92,3 +92,14 @@ func TestParse_NoTrailingNewline(t *testing.T) {
 	assert.Equal(t, "bash", pkgs[0].Name)
 	assert.Equal(t, "5.2.0-r0", pkgs[0].Version)
 }
+
+func TestParse_DiscardsMalformedStanzaState(t *testing.T) {
+	input := "D:stale>=2.0-r0\n\nP:valid\nV:1.0-r0\n"
+
+	pkgs, err := apkindex.Parse(strings.NewReader(input))
+
+	require.NoError(t, err)
+	require.Len(t, pkgs, 1)
+	assert.Equal(t, "valid", pkgs[0].Name)
+	assert.Empty(t, pkgs[0].Dependencies)
+}

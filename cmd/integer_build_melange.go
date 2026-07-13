@@ -21,9 +21,10 @@ const (
 )
 
 var (
-	errIntegerMelangeArtifactsMissing = errors.New("bespoke package build did not produce repository index and public key")
-	errIntegerMelangePackageConflict  = errors.New("bespoke package repository contains conflicting versions")
-	errIntegerMelangePackageNoVersion = errors.New("bespoke package repository entry has no version")
+	errIntegerMelangeArtifactsMissing     = errors.New("bespoke package build did not produce repository index and public key")
+	errIntegerMelangeDependencyConstraint = errors.New("bespoke package dependency constraint is not satisfied")
+	errIntegerMelangePackageConflict      = errors.New("bespoke package repository contains conflicting versions")
+	errIntegerMelangePackageNoVersion     = errors.New("bespoke package repository entry has no version")
 )
 
 type integerMelangeArtifacts struct {
@@ -115,6 +116,13 @@ func pinLocalPackageVersions(tmpl *intconfig.TypeTemplate, renderVersion string,
 			pkg, local := packagesByName[name]
 			if !local {
 				continue
+			}
+			satisfied, err := apkindex.PackageSatisfiesConstraint(dependency, pkg.Version)
+			if err != nil {
+				return fmt.Errorf("%w: %s dependency %q: %w", errIntegerMelangeDependencyConstraint, queue[cursor], dependency, err)
+			}
+			if !satisfied {
+				return fmt.Errorf("%w: %s requires %s, local %s is %s", errIntegerMelangeDependencyConstraint, queue[cursor], dependency, name, pkg.Version)
 			}
 			if _, exists := pinned[name]; exists {
 				continue

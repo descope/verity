@@ -18,6 +18,7 @@ var (
 	errPinnedConfigNotRegular        = errors.New("apko config is not a regular file")
 	errPinnedConfigPackageNotScalar  = errors.New("apko config package entry is not a scalar")
 	errPinnedConfigPackagesMissing   = errors.New("apko config contents.packages is missing")
+	errPinnedDependencyConstraint    = errors.New("local package dependency constraint is not satisfied")
 	errPinnedIndexNotRegular         = errors.New("local package index is not a regular file")
 	errPinnedPackageMissingArch      = errors.New("local package is missing for an architecture")
 	errPinnedPackageNotUsed          = errors.New("apko config does not use a local package")
@@ -198,7 +199,11 @@ func (resolver pinnedPackageResolver) pinConfiguredPackages(configPath string, p
 
 func (resolver pinnedPackageResolver) appendPinnedDependencies(packages *yaml.Node, queue []string, pinned map[string]struct{}) error {
 	for cursor := 0; cursor < len(queue); cursor++ {
-		for _, name := range resolver.localDependencies(queue[cursor]) {
+		dependencies, err := resolver.localDependencies(queue[cursor])
+		if err != nil {
+			return err
+		}
+		for _, name := range dependencies {
 			if _, exists := pinned[name]; exists {
 				continue
 			}
@@ -221,7 +226,7 @@ func (resolver pinnedPackageResolver) appendPinnedDependencies(packages *yaml.No
 	return nil
 }
 
-func (resolver pinnedPackageResolver) localDependencies(name string) []string {
+func (resolver pinnedPackageResolver) localDependencies(name string) ([]string, error) {
 	dependencies := []string{}
 	seen := map[string]struct{}{}
 	for _, architecture := range resolver.architectures {
@@ -231,8 +236,16 @@ func (resolver pinnedPackageResolver) localDependencies(name string) []string {
 		}
 		for _, dependency := range pkg.Dependencies {
 			dependencyName := apkindex.PackageName(dependency)
-			if _, local := resolver.packageSets[architecture][dependencyName]; !local {
+			localPackage, local := resolver.packageSets[architecture][dependencyName]
+			if !local {
 				continue
+			}
+			satisfied, err := apkindex.PackageSatisfiesConstraint(dependency, localPackage.Version)
+			if err != nil {
+				return nil, fmt.Errorf("%w: %s dependency %q for %s: %w", errPinnedDependencyConstraint, name, dependency, architecture, err)
+			}
+			if !satisfied {
+				return nil, fmt.Errorf("%w: %s requires %s, local %s is %s for %s", errPinnedDependencyConstraint, name, dependency, dependencyName, localPackage.Version, architecture)
 			}
 			if _, exists := seen[dependencyName]; exists {
 				continue
@@ -241,7 +254,7 @@ func (resolver pinnedPackageResolver) localDependencies(name string) []string {
 			dependencies = append(dependencies, dependencyName)
 		}
 	}
-	return dependencies
+	return dependencies, nil
 }
 
 func configPackagesNode(document *yaml.Node) (*yaml.Node, error) {

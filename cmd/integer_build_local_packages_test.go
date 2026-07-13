@@ -74,6 +74,21 @@ func TestPinLocalPackageVersionsRejectsConflictingVersions(t *testing.T) {
 	require.ErrorIs(t, err, errIntegerMelangePackageConflict)
 }
 
+func TestPinLocalPackageVersionsRejectsUnsatisfiedLocalDependency(t *testing.T) {
+	// Given: a local dependency is older than the version required by its parent package.
+	tmpl := intconfig.TypeTemplate{Packages: []string{"application"}}
+	packages := []apkindex.Package{
+		{Name: "application", Version: "1.0-r0", Dependencies: []string{"library>=2.0-r0"}},
+		{Name: "library", Version: "1.0-r0"},
+	}
+
+	// When: local package versions are pinned.
+	err := pinLocalPackageVersions(&tmpl, "1", packages)
+
+	// Then: the build fails closed instead of silently selecting a remote dependency.
+	require.ErrorIs(t, err, errIntegerMelangeDependencyConstraint)
+}
+
 func TestIntegerBuildCommandPinsLocalArtifactVersion(t *testing.T) {
 	// Given: the local repository contains an older bespoke cosign build than
 	// the remote repository may offer.

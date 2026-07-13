@@ -98,6 +98,28 @@ func TestPinConfigPackagesRejectsArchitectureVersionMismatch(t *testing.T) {
 	require.ErrorIs(t, err, errPinnedPackageVersionConflict)
 }
 
+func TestPinConfigPackagesRejectsUnsatisfiedLocalDependency(t *testing.T) {
+	// Given: both repositories contain a local dependency older than its parent's constraint.
+	root := t.TempDir()
+	configPath := filepath.Join(root, "config.apko.yaml")
+	repositoryDir := filepath.Join(root, "repo")
+	writeTestFile(t, configPath, "contents:\n  packages: [application]\n")
+	index := "P:application\nV:1.0-r0\nD:library>=2.0-r0\n\nP:library\nV:1.0-r0\n\n"
+	writeAPKIndexArchive(t, filepath.Join(repositoryDir, "x86_64", "APKINDEX.tar.gz"), index)
+	writeAPKIndexArchive(t, filepath.Join(repositoryDir, "aarch64", "APKINDEX.tar.gz"), index)
+
+	// When: the publish config is pinned against both local indexes.
+	err := PinConfigPackages(PinConfigOptions{
+		RootDir:       root,
+		ConfigPath:    configPath,
+		RepositoryDir: repositoryDir,
+		Architectures: []Architecture{ArchitectureX8664, ArchitectureAArch64},
+	})
+
+	// Then: publishing fails closed instead of silently selecting a remote dependency.
+	require.ErrorIs(t, err, errPinnedDependencyConstraint)
+}
+
 func TestPinConfigPackagesRejectsConfigWithoutLocalPackage(t *testing.T) {
 	// Given: the downloaded repository does not provide any configured package.
 	root := t.TempDir()

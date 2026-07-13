@@ -30,8 +30,8 @@ func Parse(r io.Reader) ([]Package, error) {
 			// Blank line ends the current stanza.
 			if current.Name != "" {
 				packages = append(packages, current)
-				current = Package{}
 			}
+			current = Package{}
 			continue
 		}
 		key, value, ok := strings.Cut(line, ":")
