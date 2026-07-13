@@ -101,9 +101,11 @@ func TestPRWorkflowExercisesProductionPinningOnLinkerdCanary(t *testing.T) {
 	var workflow struct {
 		Jobs map[string]struct {
 			Steps []struct {
-				Name string `yaml:"name"`
-				If   string `yaml:"if"`
-				Run  string `yaml:"run"`
+				Name string            `yaml:"name"`
+				If   string            `yaml:"if"`
+				Run  string            `yaml:"run"`
+				Uses string            `yaml:"uses"`
+				With map[string]string `yaml:"with"`
 			} `yaml:"steps"`
 		} `yaml:"jobs"`
 	}
@@ -111,18 +113,32 @@ func TestPRWorkflowExercisesProductionPinningOnLinkerdCanary(t *testing.T) {
 
 	// When: the changed-image build steps are inspected.
 	var canary struct {
-		Name string `yaml:"name"`
-		If   string `yaml:"if"`
-		Run  string `yaml:"run"`
+		Name string            `yaml:"name"`
+		If   string            `yaml:"if"`
+		Run  string            `yaml:"run"`
+		Uses string            `yaml:"uses"`
+		With map[string]string `yaml:"with"`
 	}
-	for _, step := range workflow.Jobs["integer-build-changed"].Steps {
-		if step.Name == "Exercise production package pinning" {
+	qemu := canary
+	qemuIndex, canaryIndex := -1, -1
+	for index, step := range workflow.Jobs["integer-build-changed"].Steps {
+		switch step.Name {
+		case "Set up QEMU for Linkerd pinning canary":
+			qemu = step
+			qemuIndex = index
+		case "Exercise production package pinning":
 			canary = step
-			break
+			canaryIndex = index
 		}
 	}
 
 	// Then: only Linkerd runs the real dual-architecture publish pinning path.
+	require.Equal(t, "Set up QEMU for Linkerd pinning canary", qemu.Name)
+	assert.Contains(t, qemu.If, "matrix.image == 'linkerd'")
+	assert.Equal(t, "docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8", qemu.Uses)
+	assert.Equal(t, "docker.io/tonistiigi/binfmt:latest@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0", qemu.With["image"])
+	assert.Equal(t, "arm64", qemu.With["platforms"])
+	assert.Less(t, qemuIndex, canaryIndex)
 	require.Equal(t, "Exercise production package pinning", canary.Name)
 	assert.Contains(t, canary.If, "matrix.image == 'linkerd'")
 	assert.Contains(t, canary.Run, `--arch aarch64`)
