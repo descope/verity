@@ -3,7 +3,6 @@ package chartgen
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -351,25 +350,6 @@ func movePackagedChart(tgzPath, packageDir string) (string, error) {
 		return "", fmt.Errorf("remove source package %s: %w", tgzPath, err)
 	}
 	return dest, nil
-}
-
-func copyFile(src, dest string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-
-	out, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	if _, err := io.Copy(out, in); err != nil {
-		return err
-	}
-	return out.Sync()
 }
 
 // applyReplacements partitions the chart-discovered image references into:

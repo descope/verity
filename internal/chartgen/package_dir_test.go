@@ -5,10 +5,13 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/verity-org/verity/internal/config"
 )
+
+var errTestCloseFailed = errors.New("close failed")
 
 func TestMovePackagedChartWritesIntoPackageDir(t *testing.T) {
 	srcDir := t.TempDir()
@@ -98,6 +101,18 @@ func TestCopyFileOverwritesDestination(t *testing.T) {
 	}
 }
 
+func TestCopyToSyncWriteCloserReportsCloseError(t *testing.T) {
+	out := &failingCloseWriter{closeErr: errTestCloseFailed}
+
+	err := copyToSyncWriteCloser(out, strings.NewReader("chart"))
+	if !errors.Is(err, errTestCloseFailed) {
+		t.Fatalf("copyToSyncWriteCloser() error = %v, want close error", err)
+	}
+	if got := out.String(); got != "chart" {
+		t.Fatalf("written content = %q, want chart", got)
+	}
+}
+
 func TestMovePackagedChartReportsCreateDirError(t *testing.T) {
 	srcDir := t.TempDir()
 	src := filepath.Join(srcDir, "cert-manager-v1.21.0.tgz")
@@ -153,4 +168,17 @@ func TestSelectChartsRejectsUnknownChart(t *testing.T) {
 	if !errors.Is(err, ErrChartNotFound) {
 		t.Fatalf("selectCharts() error = %v, want ErrChartNotFound", err)
 	}
+}
+
+type failingCloseWriter struct {
+	bytes.Buffer
+	closeErr error
+}
+
+func (w *failingCloseWriter) Sync() error {
+	return nil
+}
+
+func (w *failingCloseWriter) Close() error {
+	return w.closeErr
 }
