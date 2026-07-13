@@ -196,6 +196,9 @@ jobs:
             --output trivy-report.json \
             --input image.tar
 
+          TOTAL=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' trivy-report.json)
+          echo "Total vulnerabilities: ${TOTAL}"
+
       - name: Upload Trivy report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -315,6 +318,26 @@ jobs:
             --version "$INTEGER_VERSION" \
             --type "$INTEGER_TYPE" \
             --arch x86_64
+
+      - name: Exercise production package pinning
+        if: matrix.image == 'linkerd' && matrix.version == '25' && matrix.type == 'default'
+        run: |
+          ./verity integer melange build \
+            --image "$INTEGER_IMAGE" \
+            --version "$INTEGER_VERSION" \
+            --type "$INTEGER_TYPE" \
+            --arch aarch64
+
+          ./verity integer discover \
+            --apkindex-url "" \
+            --gen-dir ./pin-config-gen
+          config="pin-config-gen/${INTEGER_IMAGE}/${INTEGER_VERSION}/${INTEGER_TYPE}.apko.yaml"
+          ./verity integer melange pin-config \
+            --config "$config" \
+            --repository packages/repo \
+            --arch x86_64 \
+            --arch aarch64
+          grep -Eq 'linkerd2-cli=[^ ,]+@local' "$config"
 
       - name: Build image (local, no push)
         run: |

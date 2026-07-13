@@ -91,6 +91,44 @@ func TestPRWorkflowKeepsZeroVulnerabilityGateOnBuildAndSmoke(t *testing.T) {
 	workflow := string(data)
 
 	assert.Equal(t, 2, strings.Count(workflow, `--fail-on-severity "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"`))
+	assert.Equal(t, 2, strings.Count(workflow, `echo "Total vulnerabilities: ${TOTAL}"`))
+}
+
+func TestPRWorkflowExercisesProductionPinningOnLinkerdCanary(t *testing.T) {
+	// Given: the affected-image PR workflow.
+	data, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "pr-test.yaml"))
+	require.NoError(t, err)
+	var workflow struct {
+		Jobs map[string]struct {
+			Steps []struct {
+				Name string `yaml:"name"`
+				If   string `yaml:"if"`
+				Run  string `yaml:"run"`
+			} `yaml:"steps"`
+		} `yaml:"jobs"`
+	}
+	require.NoError(t, yaml.Unmarshal(data, &workflow))
+
+	// When: the changed-image build steps are inspected.
+	var canary struct {
+		Name string `yaml:"name"`
+		If   string `yaml:"if"`
+		Run  string `yaml:"run"`
+	}
+	for _, step := range workflow.Jobs["integer-build-changed"].Steps {
+		if step.Name == "Exercise production package pinning" {
+			canary = step
+			break
+		}
+	}
+
+	// Then: only Linkerd runs the real dual-architecture publish pinning path.
+	require.Equal(t, "Exercise production package pinning", canary.Name)
+	assert.Contains(t, canary.If, "matrix.image == 'linkerd'")
+	assert.Contains(t, canary.Run, `--arch aarch64`)
+	assert.Contains(t, canary.Run, `./verity integer melange pin-config`)
+	assert.Contains(t, canary.Run, `--repository packages/repo`)
+	assert.Contains(t, canary.Run, `--arch x86_64`)
 }
 
 func TestIntegerBuildWorkflowReadsMetadataThroughVerity(t *testing.T) {
