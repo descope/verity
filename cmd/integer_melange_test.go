@@ -122,6 +122,7 @@ func TestIntegerMelangePinConfigCommandPinsBothPublishArchitectures(t *testing.T
 	// When: the production publish config is pinned through the public CLI.
 	err := root.Run(context.Background(), []string{
 		"verity", "integer", "melange", "pin-config",
+		"--root", "/tmp",
 		"--config", "/tmp/config.apko.yaml",
 		"--repository", "/tmp/repo",
 		"--arch", "x86_64",
@@ -131,6 +132,7 @@ func TestIntegerMelangePinConfigCommandPinsBothPublishArchitectures(t *testing.T
 	// Then: both architecture indexes reach the Go implementation.
 	require.NoError(t, err)
 	assert.Equal(t, melange.PinConfigOptions{
+		RootDir:       "/tmp",
 		ConfigPath:    "/tmp/config.apko.yaml",
 		RepositoryDir: "/tmp/repo",
 		Architectures: []melange.Architecture{melange.ArchitectureX8664, melange.ArchitectureAArch64},

@@ -26,13 +26,18 @@ var (
 )
 
 type PinConfigOptions struct {
+	RootDir       string
 	ConfigPath    string
 	RepositoryDir string
 	Architectures []Architecture
 }
 
 func PinConfigPackages(options PinConfigOptions) error {
-	versions, err := loadPinnedPackageVersions(options.RepositoryDir, options.Architectures)
+	rootDir, repositoryRelative, configRelative, err := pinConfigPaths(options)
+	if err != nil {
+		return err
+	}
+	versions, err := loadPinnedPackageVersions(rootDir, repositoryRelative, options.Architectures)
 	if err != nil {
 		return err
 	}
@@ -43,7 +48,7 @@ func PinConfigPackages(options PinConfigOptions) error {
 	if !configInfo.Mode().IsRegular() {
 		return fmt.Errorf("%w: %s", errPinnedConfigNotRegular, options.ConfigPath)
 	}
-	data, err := readRegularFile(filepath.Dir(options.ConfigPath), filepath.Base(options.ConfigPath))
+	data, err := readRegularFile(rootDir, configRelative)
 	if err != nil {
 		return fmt.Errorf("read apko config %q: %w", options.ConfigPath, pinnedRegularFileError(err, errPinnedConfigNotRegular))
 	}
@@ -80,21 +85,37 @@ func PinConfigPackages(options PinConfigOptions) error {
 	if err != nil {
 		return fmt.Errorf("encode apko config %q: %w", options.ConfigPath, err)
 	}
-	if err := replaceRegularFile(options.ConfigPath, output, configInfo.Mode().Perm(), errPinnedConfigNotRegular); err != nil {
+	if err := replaceRegularFile(rootDir, options.ConfigPath, output, configInfo.Mode().Perm(), errPinnedConfigNotRegular); err != nil {
 		return err
 	}
 	return nil
 }
 
-func loadPinnedPackageVersions(repositoryDir string, architectures []Architecture) (map[Architecture]map[string]string, error) {
+func pinConfigPaths(options PinConfigOptions) (rootDir, repositoryRelative, configRelative string, err error) {
+	rootDir = options.RootDir
+	if rootDir == "" {
+		rootDir = "."
+	}
+	repositoryRelative, err = relativeToRoot(rootDir, options.RepositoryDir)
+	if err != nil {
+		return "", "", "", fmt.Errorf("locate local package repository %q: %w", options.RepositoryDir, err)
+	}
+	configRelative, err = relativeToRoot(rootDir, options.ConfigPath)
+	if err != nil {
+		return "", "", "", fmt.Errorf("locate apko config %q: %w", options.ConfigPath, err)
+	}
+	return rootDir, repositoryRelative, configRelative, nil
+}
+
+func loadPinnedPackageVersions(rootDir, repositoryRelative string, architectures []Architecture) (map[Architecture]map[string]string, error) {
 	versions := make(map[Architecture]map[string]string, len(architectures))
 	for _, architecture := range architectures {
 		if !architecture.valid() {
 			return nil, fmt.Errorf("%w %q", errUnsupportedArchitecture, architecture)
 		}
-		indexRelative := filepath.Join(string(architecture), "APKINDEX.tar.gz")
-		indexPath := filepath.Join(repositoryDir, indexRelative)
-		index, err := readRegularFile(repositoryDir, indexRelative)
+		indexRelative := filepath.Join(repositoryRelative, string(architecture), "APKINDEX.tar.gz")
+		indexPath := filepath.Join(rootDir, indexRelative)
+		index, err := readRegularFile(rootDir, indexRelative)
 		if err != nil {
 			return nil, fmt.Errorf("read local package index %q: %w", indexPath, pinnedRegularFileError(err, errPinnedIndexNotRegular))
 		}

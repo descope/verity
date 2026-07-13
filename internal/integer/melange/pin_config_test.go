@@ -32,6 +32,7 @@ func TestPinConfigPackagesPinsLocalVersionsAcrossArchitectures(t *testing.T) {
 
 	// When: the publish config is pinned against both local indexes.
 	err := PinConfigPackages(PinConfigOptions{
+		RootDir:       root,
 		ConfigPath:    configPath,
 		RepositoryDir: repositoryDir,
 		Architectures: []Architecture{ArchitectureX8664, ArchitectureAArch64},
@@ -57,6 +58,7 @@ func TestPinConfigPackagesRejectsArchitectureVersionMismatch(t *testing.T) {
 
 	// When: the multi-architecture config is pinned.
 	err := PinConfigPackages(PinConfigOptions{
+		RootDir:       root,
 		ConfigPath:    configPath,
 		RepositoryDir: repositoryDir,
 		Architectures: []Architecture{ArchitectureX8664, ArchitectureAArch64},
@@ -78,6 +80,7 @@ func TestPinConfigPackagesRejectsConfigWithoutLocalPackage(t *testing.T) {
 
 	// When: the publish config is pinned.
 	err := PinConfigPackages(PinConfigOptions{
+		RootDir:       root,
 		ConfigPath:    configPath,
 		RepositoryDir: repositoryDir,
 		Architectures: []Architecture{ArchitectureX8664, ArchitectureAArch64},
@@ -99,6 +102,7 @@ func TestPinConfigPackagesRejectsNonScalarPackageEntry(t *testing.T) {
 
 	// When: the malformed publish config is pinned.
 	err := PinConfigPackages(PinConfigOptions{
+		RootDir:       root,
 		ConfigPath:    configPath,
 		RepositoryDir: repositoryDir,
 		Architectures: []Architecture{ArchitectureX8664, ArchitectureAArch64},
@@ -122,6 +126,7 @@ func TestPinConfigPackagesRejectsSymlinkConfig(t *testing.T) {
 
 	// When: the publish config is pinned.
 	err := PinConfigPackages(PinConfigOptions{
+		RootDir:       root,
 		ConfigPath:    configPath,
 		RepositoryDir: repositoryDir,
 		Architectures: []Architecture{ArchitectureX8664, ArchitectureAArch64},

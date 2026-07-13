@@ -51,6 +51,11 @@ var integerMelangeCmd = &cli.Command{
 			Usage: "Pin an apko config to exact packages from the tagged local repository",
 			Flags: []cli.Flag{
 				&cli.StringFlag{
+					Name:  "root",
+					Usage: "Repository root",
+					Value: ".",
+				},
+				&cli.StringFlag{
 					Name:      "config",
 					Usage:     "Generated apko config to update",
 					Required:  true,
@@ -145,6 +150,7 @@ func integerMelangePinConfigAction(_ context.Context, cmd *cli.Command) error {
 		architectures = append(architectures, architecture)
 	}
 	if err := integerMelangePinConfig(melange.PinConfigOptions{
+		RootDir:       cmd.String("root"),
 		ConfigPath:    cmd.String("config"),
 		RepositoryDir: cmd.String("repository"),
 		Architectures: architectures,

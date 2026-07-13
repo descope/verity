@@ -119,7 +119,7 @@ func buildStagedRecipes(ctx context.Context, options *BuildOptions, builds []str
 
 func signPackageIndexes(ctx context.Context, options *BuildOptions) error {
 	publicKey := filepath.Join(options.Paths.WorkDir, "melange.rsa.pub")
-	if err := copyFile(publicKey, filepath.Join(options.Paths.RepoDir, "melange.rsa.pub")); err != nil {
+	if err := copyFile(options.Paths.Root, publicKey, filepath.Join(options.Paths.RepoDir, "melange.rsa.pub")); err != nil {
 		return fmt.Errorf("copy public key: %w", err)
 	}
 	indexes, err := filepath.Glob(filepath.Join(options.Paths.RepoDir, string(options.Arch), "APKINDEX.tar.gz"))
