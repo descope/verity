@@ -144,8 +144,24 @@ jobs:
           VERITY_IT_SKIP_CLUSTER: "1"
         run: |
           go test -tags=integration \
-            -run 'TestLoadAllowlist|TestLoadAllowlistMissing|TestLoadAllowlistPresentRegression|TestIsAccepted|TestClassifyMissingAllowlist|TestClassifyMissingAllowlistDoesNotConsultAllowlist|TestHarnessClusterCreatedFieldDefault|TestKindConfigPath|TestKindCreateWait|TestInstallChartRejectsArgumentInjection|TestClassifyHelmFailure|TestClassifyHelmFailureStringer|TestClassifyHelmFailureParsesPodJSON|TestClassifyHelmFailureMalformedJSON|TestLoadSkips|TestIsSkipped|TestShouldSkipChart|TestProductionSKIPSYAMLIsValid' \
+            -run 'TestLoadAllowlist|TestLoadAllowlistMissing|TestLoadAllowlistPresentRegression|TestIsAccepted|TestClassifyMissingAllowlist|TestClassifyMissingAllowlistDoesNotConsultAllowlist|TestHarnessClusterCreatedFieldDefault|TestKindConfigPath|TestKindCreateWait|TestChartInstallRef|TestInstallChartRejectsArgumentInjection|TestClassifyHelmFailure|TestClassifyHelmFailureStringer|TestClassifyHelmFailureParsesPodJSON|TestClassifyHelmFailureMalformedJSON|TestLoadSkips|TestIsSkipped|TestShouldSkipChart|TestProductionSKIPSYAMLIsValid' \
             -v ./test/chart-integration/...
+
+      - name: Build verity CLI
+        run: go build -o verity .
+
+      - name: Generate local wrapper chart package
+        if: ${{ github.event_name == 'pull_request' && needs.discover-charts.outputs.strict == 'true' }}
+        run: |
+          set -euo pipefail
+          ./verity chart-gen \
+            --charts-file Chart.yaml \
+            --verity-config verity.yaml \
+            --target-registry ghcr.io/verity-org \
+            --chart-registry oci://ghcr.io/verity-org/charts \
+            --chart "${VERITY_CHART}" \
+            --package-dir "${GITHUB_WORKSPACE}/_chart-packages" \
+            --strict
 
       - name: Run chart smoke test
         id: smoke
@@ -166,6 +182,8 @@ jobs:
         #   chart-wrapper backlog clears.
         # Tracking issue: TBD (chart-wrapper backlog).
         continue-on-error: ${{ github.event_name == 'pull_request' && needs.discover-charts.outputs.strict != 'true' }}
+        env:
+          VERITY_CHART_PACKAGE_DIR: ${{ github.workspace }}/_chart-packages
         run: make chart-integration
 
       - name: Record shard outcome

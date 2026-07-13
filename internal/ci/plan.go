@@ -222,24 +222,16 @@ func loadCopaImages(path string) (map[string]config.ImageSpec, error) {
 }
 
 func affectedCharts(opts *ChartOptions, charts []config.ChartSpec, chartNames map[string]struct{}) (affected []string, strict bool, err error) {
+	changedCharts, strict, err := changedChartSelection(opts, chartNames)
+	if err != nil || strict {
+		return changedCharts, strict, err
+	}
+
 	if matchesAny(opts.ChangedFiles, broadChartPatterns()) || changedUnder(opts.ChangedFiles, "images/_base/") {
 		return sortedChartNames(chartNames), false, nil
 	}
 
 	selected := map[string]struct{}{}
-	if containsPath(opts.ChangedFiles, "Chart.yaml") {
-		strict = true
-		changed, err := changedChartDependencies(opts.BaseChartsFile, defaultString(opts.ChartsFile, "Chart.yaml"))
-		if err != nil {
-			return nil, false, err
-		}
-		for _, name := range changed {
-			if _, ok := chartNames[name]; ok {
-				selected[name] = struct{}{}
-			}
-		}
-	}
-
 	changedImages := changedImageNames(opts.ChangedFiles)
 	if len(changedImages) > 0 {
 		vc, err := copadiscovery.LoadVerityConfig(defaultString(opts.VerityConfig, "verity.yaml"))
@@ -255,6 +247,26 @@ func affectedCharts(opts *ChartOptions, charts []config.ChartSpec, chartNames ma
 	}
 
 	return sortedChartNames(selected), strict, nil
+}
+
+func changedChartSelection(opts *ChartOptions, chartNames map[string]struct{}) (charts []string, strict bool, err error) {
+	if !containsPath(opts.ChangedFiles, "Chart.yaml") {
+		return nil, false, nil
+	}
+	changed, err := changedChartDependencies(opts.BaseChartsFile, defaultString(opts.ChartsFile, "Chart.yaml"))
+	if err != nil {
+		return nil, false, err
+	}
+	if len(changed) == 0 {
+		return nil, false, nil
+	}
+	selected := map[string]struct{}{}
+	for _, name := range changed {
+		if _, ok := chartNames[name]; ok {
+			selected[name] = struct{}{}
+		}
+	}
+	return sortedChartNames(selected), true, nil
 }
 
 func changedChartDependencies(basePath, headPath string) ([]string, error) {

@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -10,6 +11,8 @@ import (
 
 	"github.com/verity-org/verity/internal/chartgen"
 )
+
+var errChartGenMissingChartRegistry = errors.New("--chart-registry is required unless --package-dir is set")
 
 // ChartGenCommand generates patched wrapper Helm charts for each chart in
 // Chart.yaml, pointing image values at patched images in the target registry.
@@ -33,9 +36,16 @@ var ChartGenCommand = &cli.Command{
 			Required: true,
 		},
 		&cli.StringFlag{
-			Name:     "chart-registry",
-			Usage:    "OCI registry to push wrapper charts (e.g., oci://ghcr.io/verity-org/charts)",
-			Required: true,
+			Name:  "chart-registry",
+			Usage: "OCI registry to push wrapper charts (e.g., oci://ghcr.io/verity-org/charts); required unless --package-dir is set",
+		},
+		&cli.StringFlag{
+			Name:  "package-dir",
+			Usage: "Write packaged wrapper charts to this directory instead of pushing to chart-registry",
+		},
+		&cli.StringFlag{
+			Name:  "chart",
+			Usage: "Only generate the named chart from charts-file",
 		},
 		&cli.StringFlag{
 			Name:  "exclude-names",
@@ -56,9 +66,14 @@ var ChartGenCommand = &cli.Command{
 			VerityConfig:   cmd.String("verity-config"),
 			TargetRegistry: cmd.String("target-registry"),
 			ChartRegistry:  cmd.String("chart-registry"),
+			PackageDir:     cmd.String("package-dir"),
+			ChartName:      cmd.String("chart"),
 			ExcludeNames:   parseNameSet(cmd.String("exclude-names")),
 			DryRun:         cmd.Bool("dry-run"),
 			Strict:         cmd.Bool("strict"),
+		}
+		if err := validateChartGenConfig(cfg); err != nil {
+			return err
 		}
 
 		result, err := chartgen.Run(cfg)
@@ -76,4 +91,11 @@ var ChartGenCommand = &cli.Command{
 
 		return nil
 	},
+}
+
+func validateChartGenConfig(cfg *chartgen.Config) error {
+	if cfg.ChartRegistry == "" && cfg.PackageDir == "" {
+		return errChartGenMissingChartRegistry
+	}
+	return nil
 }

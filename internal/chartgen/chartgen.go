@@ -22,6 +22,7 @@ var (
 	ErrStrictModeUnmappedCharts          = errors.New("strict mode: charts produced no patched image mappings")
 	ErrChartImageOverrideVersion         = errors.New("chartImageOverrides: derive version")
 	ErrUnsupportedChartImageOverrideType = errors.New("chartImageOverrides: unsupported type")
+	ErrChartNotFound                     = errors.New("chart not found in charts file")
 )
 
 var chartImageOverrideVersionPattern = regexp.MustCompile(`v?\d+\.\d+\.\d+`)
@@ -31,6 +32,8 @@ type Config struct {
 	VerityConfig   string
 	TargetRegistry string
 	ChartRegistry  string
+	PackageDir     string
+	ChartName      string
 	ExcludeNames   map[string]struct{}
 	DryRun         bool
 	// Strict treats "no patched image mappings" skips as a fatal error.
@@ -61,6 +64,10 @@ func Run(cfg *Config) (*DryRunResult, error) {
 	charts, err := discovery.LoadChartsFile(cfg.ChartsFile)
 	if err != nil {
 		return nil, fmt.Errorf("load charts file: %w", err)
+	}
+	charts, err = selectCharts(charts, cfg.ChartName)
+	if err != nil {
+		return nil, err
 	}
 
 	vc, err := discovery.LoadVerityConfig(cfg.VerityConfig)
@@ -138,6 +145,19 @@ func enforceStrict(strict bool, total, skipped int, chartsFile string) error {
 	}
 	return fmt.Errorf("%w: %d of %d charts skipped (likely a chart added to %s without a matching replacements: entry in verity.yaml, or whose Integer rebuild lacks the wiring); re-run without --strict to allow, or fix the underlying config gap",
 		ErrStrictModeUnmappedCharts, skipped, total, filepath.Base(chartsFile))
+}
+
+func selectCharts(charts []config.ChartSpec, chartName string) ([]config.ChartSpec, error) {
+	chartName = strings.TrimSpace(chartName)
+	if chartName == "" {
+		return charts, nil
+	}
+	for _, chart := range charts {
+		if chart.Name == chartName {
+			return []config.ChartSpec{chart}, nil
+		}
+	}
+	return nil, fmt.Errorf("%w: %s", ErrChartNotFound, chartName)
 }
 
 // emptyMappingsAction enumerates the four ways processChart resolves a chart
@@ -296,6 +316,16 @@ func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) 
 		return ChartResult{}, false, fmt.Errorf("package wrapper chart %s: %w", wrapper.Name, err)
 	}
 
+	if cfg.PackageDir != "" {
+		dest, err := movePackagedChart(tgzPath, cfg.PackageDir)
+		if err != nil {
+			_ = os.Remove(tgzPath)
+			return ChartResult{}, false, fmt.Errorf("write packaged chart %s: %w", wrapper.Name, err)
+		}
+		fmt.Fprintf(os.Stderr, "info: wrote packaged chart %s\n", dest)
+		return chartResult, true, nil
+	}
+
 	if err := PushChart(tgzPath, cfg.ChartRegistry); err != nil {
 		_ = os.Remove(tgzPath)
 		return ChartResult{}, false, fmt.Errorf("push wrapper chart %s: %w", wrapper.Name, err)
@@ -306,6 +336,20 @@ func processChart(cfg *Config, chart config.ChartSpec, vc *config.VerityConfig) 
 	}
 
 	return chartResult, true, nil
+}
+
+func movePackagedChart(tgzPath, packageDir string) (string, error) {
+	if err := os.MkdirAll(packageDir, 0o755); err != nil {
+		return "", fmt.Errorf("create package dir %s: %w", packageDir, err)
+	}
+	dest := filepath.Join(packageDir, filepath.Base(tgzPath))
+	if err := copyFile(tgzPath, dest); err != nil {
+		return "", fmt.Errorf("copy %s to %s: %w", tgzPath, dest, err)
+	}
+	if err := os.Remove(tgzPath); err != nil {
+		return "", fmt.Errorf("remove source package %s: %w", tgzPath, err)
+	}
+	return dest, nil
 }
 
 // applyReplacements partitions the chart-discovered image references into:
