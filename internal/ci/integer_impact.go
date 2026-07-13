@@ -132,7 +132,10 @@ func integerPinningToolingChanged(files []string) bool {
 		case file == "cmd/integer_build.go",
 			strings.HasPrefix(file, "cmd/integer_build_melange"),
 			strings.HasPrefix(file, "cmd/integer_melange"),
-			strings.HasPrefix(file, "internal/integer/apkindex/package_spec"),
+			file == "internal/integer/apkindex/fetch.go",
+			file == "internal/integer/apkindex/package_spec.go",
+			file == "internal/integer/apkindex/parser.go",
+			file == "internal/integer/apkindex/versions.go",
 			strings.HasPrefix(file, "internal/integer/melange/"),
 			file == ".github/workflows/integer-build-image.yaml",
 			file == ".github/workflows/pr-test.yaml":
