@@ -392,7 +392,7 @@ versions:
 	assert.Equal(t, "kyverno-1.17", captured.Spec.Upstream)
 	rendered, err := os.ReadFile(capturePath)
 	require.NoError(t, err)
-	assert.Contains(t, string(rendered), "kyverno-1.17@local=1.0-r0")
+	assert.Contains(t, string(rendered), "kyverno-1.17=1.0-r0@local")
 }
 
 // TestIntegerBuildCommand_OfflineLeavesVersionUnchanged locks in the

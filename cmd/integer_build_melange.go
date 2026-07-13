@@ -100,7 +100,7 @@ func pinLocalPackageVersions(tmpl *intconfig.TypeTemplate, renderVersion string,
 	for index, packageSpec := range tmpl.Packages {
 		name := apkPackageName(strings.ReplaceAll(packageSpec, "{{version}}", renderVersion))
 		if version, exists := versions[name]; exists {
-			tmpl.Packages[index] = name + integerMelangePackageTag + "=" + version
+			tmpl.Packages[index] = name + "=" + version + integerMelangePackageTag
 		}
 	}
 	return nil

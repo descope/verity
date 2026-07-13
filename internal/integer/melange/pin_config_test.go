@@ -40,8 +40,8 @@ func TestPinConfigPackagesPinsLocalVersionsAcrossArchitectures(t *testing.T) {
 	// Then: local packages select the tagged repository and exact revision.
 	require.NoError(t, err)
 	assert.Equal(t, []string{
-		"crane@local=0.21.7-r1",
-		"linkerd2-cli@local=25.12.3-r100",
+		"crane=0.21.7-r1@local",
+		"linkerd2-cli=25.12.3-r100@local",
 		"bash",
 	}, readConfigPackages(t, configPath))
 }

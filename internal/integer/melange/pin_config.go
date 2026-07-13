@@ -69,7 +69,7 @@ func PinConfigPackages(options PinConfigOptions) error {
 		if !local {
 			continue
 		}
-		packageNode.Value = name + "@" + localRepositoryTag + "=" + version
+		packageNode.Value = name + "=" + version + "@" + localRepositoryTag
 		pinned++
 	}
 	if pinned == 0 {
