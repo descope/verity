@@ -95,11 +95,17 @@ func runIntegerValidate(_ context.Context, cmd *cli.Command) error {
 		fmt.Fprintf(os.Stdout, "OK   %s\n", cfgPath)
 	}
 
-	images, err := intconfig.LoadImageDefinitions(imagesDir)
+	images, loadFailures, err := intconfig.LoadImageDefinitionsBestEffort(imagesDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", imagesDir, err)
 		failures++
 		return fmt.Errorf("%d error(s): %w", failures, errors.Join(errIntegerValidationFailed, err))
+	}
+	validationErrors := []error{errIntegerValidationFailed}
+	for _, failure := range loadFailures {
+		fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", failure.Path, failure.Err)
+		failures++
+		validationErrors = append(validationErrors, failure)
 	}
 
 	// Track which bespoke files are referenced so we can flag orphans below.
@@ -145,7 +151,7 @@ func runIntegerValidate(_ context.Context, cmd *cli.Command) error {
 	}
 
 	if failures > 0 {
-		return fmt.Errorf("%d error(s): %w", failures, errIntegerValidationFailed)
+		return fmt.Errorf("%d error(s): %w", failures, errors.Join(validationErrors...))
 	}
 
 	fmt.Fprintf(os.Stdout, "\nAll configs valid (%d images checked)\n", checked)

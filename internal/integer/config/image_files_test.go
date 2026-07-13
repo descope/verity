@@ -26,6 +26,37 @@ func TestImageFilePaths_includesNestedImagesAndSkipsBases(t *testing.T) {
 	}
 }
 
+func TestLoadImageDefinitionsBestEffort_keepsValidDefinitionsAndReportsFailures(t *testing.T) {
+	// Given: one valid definition, one malformed definition, a symlinked
+	// definition, and two definitions that declare the same name.
+	dir := t.TempDir()
+	validPath := writeFile(t, dir, "valid.yaml", "name: valid\n")
+	brokenPath := writeFile(t, dir, "broken.yaml", "name: [\n")
+	duplicatePath := writeFile(t, dir, "duplicate.yaml", "name: duplicate\n")
+	duplicateNestedPath := writeFile(t, dir, "nested/duplicate.yaml", "name: duplicate\n")
+	outsidePath := writeFile(t, t.TempDir(), "outside.yaml", "name: escaped\n")
+	symlinkPath := filepath.Join(dir, "symlink.yaml")
+	require.NoError(t, os.Symlink(outsidePath, symlinkPath))
+
+	// When: definitions are loaded for a best-effort command.
+	images, failures, err := config.LoadImageDefinitionsBestEffort(dir)
+
+	// Then: the unrelated valid definition remains available while every bad
+	// definition is reported and ambiguous duplicates are excluded.
+	require.NoError(t, err)
+	require.Len(t, images, 1)
+	assert.Equal(t, validPath, images[0].Path)
+	assert.Equal(t, "valid", images[0].Definition.Name)
+	require.Len(t, failures, 3)
+	assert.Equal(t, brokenPath, failures[0].Path)
+	assert.Contains(t, failures[0].Error(), "parsing image")
+	assert.Equal(t, duplicatePath, failures[1].Path)
+	assert.ErrorIs(t, failures[1], config.ErrDuplicateImageName)
+	assert.Contains(t, failures[1].Error(), duplicateNestedPath)
+	assert.Equal(t, symlinkPath, failures[2].Path)
+	assert.ErrorIs(t, failures[2], config.ErrInvalidImageFile)
+}
+
 func TestLoadImageByName_findsDirectDefinition(t *testing.T) {
 	// Given: a definition at the conventional name-based path.
 	dir := t.TempDir()

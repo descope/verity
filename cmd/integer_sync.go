@@ -56,9 +56,12 @@ func runIntegerSync(_ context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	images, err := intconfig.LoadImageDefinitions(imagesDir)
+	images, loadFailures, err := intconfig.LoadImageDefinitionsBestEffort(imagesDir)
 	if err != nil {
 		return fmt.Errorf("reading images directory: %w", err)
+	}
+	for _, failure := range loadFailures {
+		fmt.Fprintf(os.Stderr, "WARN %s: %v\n", failure.Path, failure.Err)
 	}
 
 	totalNew, totalStale := 0, 0

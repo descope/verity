@@ -125,12 +125,6 @@ var integerBuildCmd = &cli.Command{
 			return fmt.Errorf("image %q version %q not defined for build: %w", imageName, version, errIntegerVariantNotFound)
 		}
 
-		arch := cmd.String("arch")
-		melangeArtifacts, err := integerPrepareMelangeBuild(ctx, tmpl.Melange, version, arch)
-		if err != nil {
-			return fmt.Errorf("preparing melange build: %w", err)
-		}
-
 		// Resolve the declared stream to the actual stem render.Config will
 		// substitute. For "22"-style streams that map 1:1 to a Wolfi APK
 		// (`nodejs-22`) renderVersion == version. For floating-major
@@ -140,6 +134,11 @@ var integerBuildCmd = &cli.Command{
 		// `internal/integer/discovery/discover.go::expandImage` exactly
 		// — see ResolveStreamRenderVersion's doc for the design.
 		renderVersion := discovery.ResolveStreamRenderVersion(def, pkgs, version)
+		arch := cmd.String("arch")
+		melangeArtifacts, err := integerPrepareMelangeBuild(ctx, tmpl.Melange, renderVersion, arch)
+		if err != nil {
+			return fmt.Errorf("preparing melange build: %w", err)
+		}
 		if err := pinLocalPackageVersions(&tmpl, renderVersion, melangeArtifacts.Packages); err != nil {
 			return fmt.Errorf("pinning bespoke package versions: %w", err)
 		}

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 var (
@@ -25,6 +26,20 @@ var (
 type LoadedImage struct {
 	Path       string
 	Definition *ImageDef
+}
+
+// ImageDefinitionLoadError records one definition that could not be loaded.
+type ImageDefinitionLoadError struct {
+	Path string
+	Err  error
+}
+
+func (e ImageDefinitionLoadError) Error() string {
+	return e.Err.Error()
+}
+
+func (e ImageDefinitionLoadError) Unwrap() error {
+	return e.Err
 }
 
 type imageFileEntry struct {
@@ -55,37 +70,94 @@ func ImageFilePaths(imagesDir string) ([]string, error) {
 
 // LoadImageDefinitions returns every parsed image definition with unique declared names.
 func LoadImageDefinitions(imagesDir string) ([]LoadedImage, error) {
-	root, err := os.OpenRoot(imagesDir)
+	loaded, failures, err := LoadImageDefinitionsBestEffort(imagesDir)
 	if err != nil {
 		return nil, err
 	}
-	defer root.Close()
-
-	entries, err := imageFileEntries(root, imagesDir)
-	if err != nil {
+	if err := joinImageDefinitionLoadErrors(failures); err != nil {
 		return nil, err
-	}
-	loaded := make([]LoadedImage, 0, len(entries))
-	pathsByName := make(map[string]string, len(entries))
-	for _, entry := range entries {
-		definition, err := loadImageEntry(root, entry)
-		if err != nil {
-			return nil, err
-		}
-		if previous, exists := pathsByName[definition.Name]; definition.Name != "" && exists {
-			return nil, fmt.Errorf("%w %q: %q and %q", ErrDuplicateImageName, definition.Name, previous, entry.path)
-		}
-		pathsByName[definition.Name] = entry.path
-		loaded = append(loaded, LoadedImage{Path: entry.path, Definition: definition})
 	}
 	return loaded, nil
 }
 
+// LoadImageDefinitionsBestEffort returns every unambiguous parsed definition
+// and reports per-definition failures without discarding unrelated images.
+func LoadImageDefinitionsBestEffort(imagesDir string) ([]LoadedImage, []ImageDefinitionLoadError, error) {
+	root, err := os.OpenRoot(imagesDir)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer root.Close()
+
+	entries, failures, err := imageFileEntriesBestEffort(root, imagesDir)
+	if err != nil {
+		return nil, nil, err
+	}
+	candidates := make([]LoadedImage, 0, len(entries))
+	pathsByName := make(map[string][]string, len(entries))
+	for _, entry := range entries {
+		definition, err := loadImageEntry(root, entry)
+		if err != nil {
+			failures = append(failures, ImageDefinitionLoadError{Path: entry.path, Err: err})
+			continue
+		}
+		candidates = append(candidates, LoadedImage{Path: entry.path, Definition: definition})
+		if definition.Name != "" {
+			pathsByName[definition.Name] = append(pathsByName[definition.Name], entry.path)
+		}
+	}
+
+	loaded := make([]LoadedImage, 0, len(candidates))
+	reportedDuplicates := make(map[string]struct{})
+	for _, candidate := range candidates {
+		paths := pathsByName[candidate.Definition.Name]
+		if candidate.Definition.Name == "" || len(paths) == 1 {
+			loaded = append(loaded, candidate)
+			continue
+		}
+		if _, reported := reportedDuplicates[candidate.Definition.Name]; reported {
+			continue
+		}
+		reportedDuplicates[candidate.Definition.Name] = struct{}{}
+		quotedPaths := make([]string, len(paths))
+		for index, path := range paths {
+			quotedPaths[index] = fmt.Sprintf("%q", path)
+		}
+		failures = append(failures, ImageDefinitionLoadError{
+			Path: paths[0],
+			Err:  fmt.Errorf("%w %q: %s", ErrDuplicateImageName, candidate.Definition.Name, strings.Join(quotedPaths, " and ")),
+		})
+	}
+	sort.SliceStable(failures, func(i, j int) bool {
+		return failures[i].Path < failures[j].Path
+	})
+	return loaded, failures, nil
+}
+
 func imageFileEntries(root *os.Root, imagesDir string) ([]imageFileEntry, error) {
+	entries, failures, err := imageFileEntriesBestEffort(root, imagesDir)
+	if err != nil {
+		return nil, err
+	}
+	if err := joinImageDefinitionLoadErrors(failures); err != nil {
+		return nil, err
+	}
+	return entries, nil
+}
+
+func imageFileEntriesBestEffort(root *os.Root, imagesDir string) ([]imageFileEntry, []ImageDefinitionLoadError, error) {
 	entries := []imageFileEntry{}
+	failures := []ImageDefinitionLoadError{}
 	err := fs.WalkDir(root.FS(), ".", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
-			return err
+			if path == "." {
+				return err
+			}
+			failures = append(failures, ImageDefinitionLoadError{
+				Path: filepath.Join(imagesDir, filepath.FromSlash(path)),
+				Err:  err,
+			})
+			return nil
 		}
 		if entry.IsDir() {
 			if entry.Name() == "_base" {
@@ -96,10 +168,20 @@ func imageFileEntries(root *os.Root, imagesDir string) ([]imageFileEntry, error)
 		if filepath.Ext(path) == ".yaml" {
 			info, err := entry.Info()
 			if err != nil {
-				return fmt.Errorf("stat image definition %q: %w", filepath.Join(imagesDir, filepath.FromSlash(path)), err)
+				fullPath := filepath.Join(imagesDir, filepath.FromSlash(path))
+				failures = append(failures, ImageDefinitionLoadError{
+					Path: fullPath,
+					Err:  fmt.Errorf("stat image definition %q: %w", fullPath, err),
+				})
+				return nil
 			}
 			if !info.Mode().IsRegular() {
-				return fmt.Errorf("%w %q", ErrInvalidImageFile, filepath.Join(imagesDir, filepath.FromSlash(path)))
+				fullPath := filepath.Join(imagesDir, filepath.FromSlash(path))
+				failures = append(failures, ImageDefinitionLoadError{
+					Path: fullPath,
+					Err:  fmt.Errorf("%w %q", ErrInvalidImageFile, fullPath),
+				})
+				return nil
 			}
 			entries = append(entries, imageFileEntry{
 				path:     filepath.Join(imagesDir, filepath.FromSlash(path)),
@@ -110,12 +192,23 @@ func imageFileEntries(root *os.Root, imagesDir string) ([]imageFileEntry, error)
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].path < entries[j].path
 	})
-	return entries, nil
+	sort.SliceStable(failures, func(i, j int) bool {
+		return failures[i].Path < failures[j].Path
+	})
+	return entries, failures, nil
+}
+
+func joinImageDefinitionLoadErrors(failures []ImageDefinitionLoadError) error {
+	errs := make([]error, 0, len(failures))
+	for _, failure := range failures {
+		errs = append(errs, failure)
+	}
+	return errors.Join(errs...)
 }
 
 func loadImageEntry(root *os.Root, entry imageFileEntry) (*ImageDef, error) {
