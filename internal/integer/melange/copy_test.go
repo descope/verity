@@ -3,11 +3,31 @@ package melange
 import (
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestCopyFilePreservesDestinationModeUnderRestrictiveUmask(t *testing.T) {
+	// Given: the process umask is stricter than the public key's requested mode.
+	root := t.TempDir()
+	source := filepath.Join(root, "melange.rsa.pub")
+	destination := filepath.Join(root, "repo", "melange.rsa.pub")
+	writeTestFile(t, source, "public")
+	oldUmask := syscall.Umask(0o077)
+	defer syscall.Umask(oldUmask)
+
+	// When: the package repository copies its public key.
+	err := copyFile(root, source, destination)
+
+	// Then: the destination retains the requested public-readable mode.
+	require.NoError(t, err)
+	info, statErr := os.Stat(destination)
+	require.NoError(t, statErr)
+	assert.Equal(t, os.FileMode(0o644), info.Mode().Perm())
+}
 
 func TestCopyFileRejectsSymlinkDestination(t *testing.T) {
 	// Given: the public-key destination is a symlink to another writable file.
