@@ -96,6 +96,20 @@ types:
 versions:
   "1.19": {}
 `)
+	writeTestFile(t, filepath.Join(root, "images", "linkerd.yaml"), `
+name: linkerd
+description: linkerd
+upstream:
+  package: linkerd2-cli
+types:
+  default:
+    base: wolfi-base
+    packages: ["linkerd2-cli=25.12.3-r99"]
+    melange:
+      bespoke: linkerd2-cli-25.yaml
+versions:
+  "25": {}
+`)
 	writeTestFile(t, filepath.Join(root, "images", "platform", "envoy.yaml"), `
 name: platform/envoy
 description: envoy
@@ -147,6 +161,7 @@ pipeline:
   - uses: test/ver-check
 `)
 	writeTestFile(t, filepath.Join(root, "packages", "bespoke", "locked", "envoy-1.2.yaml"), "pipeline: []\n")
+	writeTestFile(t, filepath.Join(root, "packages", "bespoke", "linkerd2-cli-25.yaml"), "pipeline: []\n")
 	writeTestFile(t, filepath.Join(root, "packages", "pipelines", "go", "bump.yaml"), "pipeline: []\n")
 	writeTestFile(t, filepath.Join(root, "packages", "pipelines", "build", "wrapper.yaml"), "pipeline:\n  - uses: go/bump\n")
 	writeTestFile(t, filepath.Join(root, "packages", "pipelines", "test", "ver-check.yaml"), "pipeline: []\n")

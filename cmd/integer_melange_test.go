@@ -108,6 +108,35 @@ versions:
 	assert.True(t, captured.Staged)
 }
 
+func TestIntegerMelangePinConfigCommandPinsBothPublishArchitectures(t *testing.T) {
+	// Given: an injectable config-pinning boundary.
+	var captured melange.PinConfigOptions
+	originalPinConfig := integerMelangePinConfig
+	integerMelangePinConfig = func(options melange.PinConfigOptions) error {
+		captured = options
+		return nil
+	}
+	t.Cleanup(func() { integerMelangePinConfig = originalPinConfig })
+	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
+
+	// When: the production publish config is pinned through the public CLI.
+	err := root.Run(context.Background(), []string{
+		"verity", "integer", "melange", "pin-config",
+		"--config", "/tmp/config.apko.yaml",
+		"--repository", "/tmp/repo",
+		"--arch", "x86_64",
+		"--arch", "aarch64",
+	})
+
+	// Then: both architecture indexes reach the Go implementation.
+	require.NoError(t, err)
+	assert.Equal(t, melange.PinConfigOptions{
+		ConfigPath:    "/tmp/config.apko.yaml",
+		RepositoryDir: "/tmp/repo",
+		Architectures: []melange.Architecture{melange.ArchitectureX8664, melange.ArchitectureAArch64},
+	}, captured)
+}
+
 func writeIntegerMelangeImage(t *testing.T, rootDir, image, body string) {
 	t.Helper()
 	path := filepath.Join(rootDir, "images", image+".yaml")

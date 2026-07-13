@@ -8,17 +8,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPlanIntegerPRInternalChangesDoNotFanOut(t *testing.T) {
+func TestPlanIntegerPRUnrelatedInternalChangesDoNotFanOut(t *testing.T) {
 	root := setupIntegerPlanRepo(t)
 
 	for _, changed := range []string{
-		"internal/integer/melange/build.go",
 		"internal/integer/config/loader.go",
-		"cmd/integer_melange.go",
 		"cmd/integer_build.go",
 		"cmd/integer.go",
-		".github/workflows/integer-build-image.yaml",
-		".github/workflows/pr-test.yaml",
 	} {
 		t.Run(changed, func(t *testing.T) {
 			plan, err := PlanIntegerPR(integerPlanOptions(root, changed))
@@ -26,6 +22,29 @@ func TestPlanIntegerPRInternalChangesDoNotFanOut(t *testing.T) {
 			assert.False(t, plan.HasChanges)
 			assert.Empty(t, plan.Matrix.Include)
 			assert.Empty(t, plan.SmokeMatrix.Include)
+		})
+	}
+}
+
+func TestPlanIntegerPRPinningToolingSelectsConstrainedMelangeCanary(t *testing.T) {
+	root := setupIntegerPlanRepo(t)
+
+	for _, changed := range []string{
+		"cmd/integer_build_melange.go",
+		"cmd/integer_melange.go",
+		"internal/integer/apkindex/package_spec.go",
+		"internal/integer/melange/pin_config.go",
+		"internal/ci/plan.go",
+		".github/workflows/integer-build-image.yaml",
+		".github/workflows/pr-test.yaml",
+	} {
+		t.Run(changed, func(t *testing.T) {
+			plan, err := PlanIntegerPR(integerPlanOptions(root, changed))
+			require.NoError(t, err)
+			require.True(t, plan.HasChanges)
+			expected := []map[string]string{{"image": "linkerd", "version": "25", "type": "default"}}
+			assert.Equal(t, expected, plan.Matrix.Include)
+			assert.Equal(t, expected, plan.SmokeMatrix.Include)
 		})
 	}
 }
@@ -163,16 +182,17 @@ func TestPlanIntegerPRLockChangeRequiresBaseForImpactDiff(t *testing.T) {
 	require.ErrorIs(t, err, errBaseIntegerLockRequired)
 }
 
-func TestPlanIntegerPRChangedImageAndInternalToolingSelectsOnlyImage(t *testing.T) {
+func TestPlanIntegerPRChangedImageAndPinningToolingIncludesCanary(t *testing.T) {
 	root := setupIntegerPlanRepo(t)
 	plan, err := PlanIntegerPR(integerPlanOptions(root, "images/node.yaml", "internal/integer/melange/build.go"))
 	require.NoError(t, err)
 	require.True(t, plan.HasChanges)
 	assert.ElementsMatch(t, []map[string]string{
+		{"image": "linkerd", "version": "25", "type": "default"},
 		{"image": "node", "version": "22", "type": "default"},
 		{"image": "node", "version": "22", "type": "dev"},
 	}, plan.Matrix.Include)
-	assert.Len(t, plan.SmokeMatrix.Include, 4)
+	assert.Len(t, plan.SmokeMatrix.Include, 5)
 }
 
 func TestPlanIntegerPRDirectBespokeRecipeSelectsConsumer(t *testing.T) {

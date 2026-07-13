@@ -293,6 +293,17 @@ jobs:
             exit 1
           fi
 
+      - name: Pin publish config to local package revisions
+        if: needs.melange-prep.outputs.needed == 'true'
+        env:
+          CONFIG_PATH: ${{ steps.gen.outputs.path }}
+        run: |
+          ./verity integer melange pin-config \
+            --config "$CONFIG_PATH" \
+            --repository packages/repo \
+            --arch x86_64 \
+            --arch aarch64
+
       # ── Build ──────────────────────────────────────────────────────────────
 
       # ── Zero-CVE preflight gate: build locally & scan BEFORE any registry write
@@ -368,21 +379,14 @@ jobs:
           )
 
           if [ "$MELANGE_NEEDED" = "true" ]; then
-            # NOTE: the local melange repo is appended UNTAGGED (no "@local "
-            # prefix). apko/apk-tools only consult tagged repositories when a
-            # package is explicitly pinned with the same tag (e.g. "popeye@local").
-            # Our apko configs reference packages by bare name (e.g. "popeye"),
-            # so a tagged @local repo would be silently ignored — which broke
-            # bespoke-only packages that do not exist in the remote repository
-            # (popeye, kubectx, kubeconform, kube-score, kube-linter; see #297
-            # follow-up). Untagged here means apk-tools picks the highest
-            # version across all repos, which naturally prefers our bespoke
-            # build (epoch-bumped) over any remote package copy.
+            # pin-config rewrites every locally built package to
+            # name@local=version after confirming both architecture indexes
+            # agree, so apk-tools cannot substitute a remote package.
             APKO_ARGS+=(
-              --repository-append "${GITHUB_WORKSPACE}/packages/repo"
+              --repository-append "@local ${GITHUB_WORKSPACE}/packages/repo"
               --keyring-append "${GITHUB_WORKSPACE}/melange-work/melange.rsa.pub"
             )
-            echo "Appending local melange repo to apko publish"
+            echo "Appending tagged local melange repo to apko publish"
           fi
 
           APKO_ARGS+=("$tmpconfig" "$STAGING_REF")

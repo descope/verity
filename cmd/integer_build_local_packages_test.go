@@ -24,7 +24,7 @@ func TestPinLocalPackageVersionsPinsMatchingRenderedNames(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, []string{"cilium-1.19=1.19.5-r5", "bash"}, tmpl.Packages)
+	assert.Equal(t, []string{"cilium-1.19@local=1.19.5-r5", "bash"}, tmpl.Packages)
 }
 
 func TestPinLocalPackageVersionsReplacesExistingConstraint(t *testing.T) {
@@ -38,7 +38,7 @@ func TestPinLocalPackageVersionsReplacesExistingConstraint(t *testing.T) {
 
 	// Then: the local revision replaces the stale constraint.
 	require.NoError(t, err)
-	assert.Equal(t, []string{"linkerd2-cli=25.12.3-r100", "bash"}, tmpl.Packages)
+	assert.Equal(t, []string{"linkerd2-cli@local=25.12.3-r100", "bash"}, tmpl.Packages)
 }
 
 func TestPinLocalPackageVersionsRejectsConflictingVersions(t *testing.T) {
@@ -96,5 +96,5 @@ versions:
 	require.NoError(t, err)
 	rendered, err := os.ReadFile(capture)
 	require.NoError(t, err)
-	assert.Contains(t, string(rendered), "cosign=3.0.5-r1")
+	assert.Contains(t, string(rendered), "cosign@local=3.0.5-r1")
 }

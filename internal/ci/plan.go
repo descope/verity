@@ -14,8 +14,6 @@ import (
 
 	"github.com/verity-org/verity/internal/config"
 	copadiscovery "github.com/verity-org/verity/internal/discovery"
-	"github.com/verity-org/verity/internal/integer/apkindex"
-	intconfig "github.com/verity-org/verity/internal/integer/config"
 	intdiscovery "github.com/verity-org/verity/internal/integer/discovery"
 )
 
@@ -57,76 +55,6 @@ type ChartOptions struct {
 	BaseChartsFile string
 	VerityConfig   string
 	ValuesDir      string
-}
-
-var apkindexFetch = apkindex.Fetch
-
-func PlanIntegerPR(opts *IntegerPROptions) (Plan, error) {
-	plan := Plan{Kind: "integer-pr"}
-	changedDefinitions, allImages := changedIntegerDefinitions(opts.ChangedFiles)
-	impact := newIntegerInputImpact()
-	if !allImages {
-		var err error
-		impact, err = changedIntegerInputImpact(integerImpactOptions{
-			ChangedFiles: opts.ChangedFiles,
-			RepoRoot:     defaultString(opts.RepoRoot, "."),
-			BaseLockPath: opts.BaseLockPath,
-		})
-		if err != nil {
-			return plan, fmt.Errorf("find changed bespoke inputs: %w", err)
-		}
-	}
-	if !allImages && len(changedDefinitions) == 0 && impact.empty() {
-		plan.Matrix = Matrix{}
-		plan.SmokeMatrix = &Matrix{}
-		return plan, nil
-	}
-
-	cfg, err := intconfig.LoadConfig(defaultString(opts.ConfigPath, "integer.yaml"))
-	if err != nil {
-		return plan, fmt.Errorf("load integer config: %w", err)
-	}
-
-	var pkgs []apkindex.Package
-	if opts.APKIndexURL != "" {
-		pkgs, err = apkindexFetch(opts.APKIndexURL, defaultString(opts.CacheDir, os.TempDir()), apkindex.DefaultCacheMaxAge)
-		if err != nil {
-			return plan, fmt.Errorf("fetch APKINDEX: %w", err)
-		}
-	}
-
-	imgs, err := intdiscovery.DiscoverFromFiles(intdiscovery.Options{
-		ImagesDir: defaultString(opts.ImagesDir, "images"),
-		Registry:  cfg.Target.Registry,
-		Packages:  pkgs,
-		GenDir:    opts.GenDir,
-	})
-	if err != nil {
-		return plan, fmt.Errorf("discover integer images: %w", err)
-	}
-	imageNames, err := changedIntegerImageNames(defaultString(opts.ImagesDir, "images"), imgs, changedDefinitions)
-	if err != nil {
-		return plan, fmt.Errorf("resolve changed image definitions: %w", err)
-	}
-	inputVariants := map[integerVariant]struct{}{}
-	if !allImages && !impact.empty() {
-		inputVariants, err = integerImpactVariants(defaultString(opts.ImagesDir, "images"), imgs, impact)
-		if err != nil {
-			return plan, fmt.Errorf("resolve affected bespoke variants: %w", err)
-		}
-	}
-	builds, smokes := selectIntegerPRImages(imgs, imageNames, inputVariants, allImages)
-	if len(smokes) == 0 {
-		plan.Matrix = Matrix{}
-		plan.SmokeMatrix = &Matrix{}
-		return plan, nil
-	}
-
-	plan.HasChanges = true
-	smokeMatrix := integerMatrix(smokes)
-	plan.SmokeMatrix = &smokeMatrix
-	plan.Matrix = integerMatrix(builds)
-	return plan, nil
 }
 
 func PlanCopaPR(opts *CopaPROptions) (Plan, error) {

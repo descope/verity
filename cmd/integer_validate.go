@@ -282,11 +282,7 @@ func tmplPackageMatchesBespoke(def *intconfig.ImageDef, typeName string, package
 }
 
 func apkPackageName(pkg string) string {
-	idx := strings.IndexAny(pkg, "<>=~!")
-	if idx < 0 {
-		return pkg
-	}
-	return pkg[:idx]
+	return apkindex.PackageName(pkg)
 }
 
 // isExistingDir returns true iff path is a non-empty string and refers to

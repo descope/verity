@@ -14,8 +14,10 @@ import (
 )
 
 const (
-	integerMelangeRepoDir = "packages/repo"
-	integerMelangeKeyPath = "melange-work/melange.rsa.pub"
+	integerMelangeRepoDir    = "packages/repo"
+	integerMelangeRepository = "@local " + integerMelangeRepoDir
+	integerMelangeKeyPath    = "melange-work/melange.rsa.pub"
+	integerMelangePackageTag = "@local"
 )
 
 var (
@@ -62,7 +64,7 @@ func integerPrepareMelangeBuild(ctx context.Context, configSpec *intconfig.Melan
 		return integerMelangeArtifacts{}, err
 	}
 	return integerMelangeArtifacts{
-		Repositories: []string{integerMelangeRepoDir},
+		Repositories: []string{integerMelangeRepository},
 		Keyrings:     []string{integerMelangeKeyPath},
 		Packages:     packages,
 	}, nil
@@ -98,7 +100,7 @@ func pinLocalPackageVersions(tmpl *intconfig.TypeTemplate, renderVersion string,
 	for index, packageSpec := range tmpl.Packages {
 		name := apkPackageName(strings.ReplaceAll(packageSpec, "{{version}}", renderVersion))
 		if version, exists := versions[name]; exists {
-			tmpl.Packages[index] = name + "=" + version
+			tmpl.Packages[index] = name + integerMelangePackageTag + "=" + version
 		}
 	}
 	return nil

@@ -1,28 +1,23 @@
 package melange
 
 import (
+	"errors"
 	"fmt"
-	"io"
-	"os"
 	"path/filepath"
 )
 
+var (
+	errCopySourceNotRegular      = errors.New("copy source is not a regular file")
+	errCopyDestinationNotRegular = errors.New("copy destination is not a regular file")
+)
+
 func copyFile(source, dest string) error {
-	input, err := os.Open(source)
+	data, err := readRegularFile(filepath.Dir(source), filepath.Base(source))
 	if err != nil {
-		return fmt.Errorf("open %s: %w", source, err)
+		if errors.Is(err, errNotRegularFile) || errors.Is(err, errPathContainsSymlink) || errors.Is(err, errNotRealDirectory) {
+			return fmt.Errorf("%w: %s", errCopySourceNotRegular, source)
+		}
+		return fmt.Errorf("read %s: %w", source, err)
 	}
-	defer input.Close()
-	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
-		return fmt.Errorf("create %s: %w", filepath.Dir(dest), err)
-	}
-	output, err := os.OpenFile(dest, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
-	if err != nil {
-		return fmt.Errorf("create %s: %w", dest, err)
-	}
-	if _, err := io.Copy(output, input); err != nil {
-		_ = output.Close()
-		return fmt.Errorf("copy %s: %w", source, err)
-	}
-	return output.Close()
+	return replaceRegularFile(dest, data, 0o644, errCopyDestinationNotRegular)
 }

@@ -11,8 +11,9 @@ import (
 )
 
 var (
-	integerMelangePrepare = melange.Prepare
-	integerMelangeBuild   = melange.Build
+	integerMelangePrepare   = melange.Prepare
+	integerMelangeBuild     = melange.Build
+	integerMelangePinConfig = melange.PinConfigPackages
 )
 
 var integerMelangeCmd = &cli.Command{
@@ -31,7 +32,8 @@ var integerMelangeCmd = &cli.Command{
 		{
 			Name:  "build",
 			Usage: "Build and sign a staged bespoke package repository",
-			Flags: append(integerMelangeSpecFlags(),
+			Flags: append(
+				integerMelangeSpecFlags(),
 				&cli.StringFlag{
 					Name:     "arch",
 					Usage:    "Target package architecture",
@@ -43,6 +45,29 @@ var integerMelangeCmd = &cli.Command{
 				},
 			),
 			Action: integerMelangeBuildAction,
+		},
+		{
+			Name:  "pin-config",
+			Usage: "Pin an apko config to exact packages from the tagged local repository",
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:      "config",
+					Usage:     "Generated apko config to update",
+					Required:  true,
+					TakesFile: true,
+				},
+				&cli.StringFlag{
+					Name:  "repository",
+					Usage: "Local package repository directory",
+					Value: integerMelangeRepoDir,
+				},
+				&cli.StringSliceFlag{
+					Name:     "arch",
+					Usage:    "Package repository architecture",
+					Required: true,
+				},
+			},
+			Action: integerMelangePinConfigAction,
 		},
 	},
 }
@@ -105,6 +130,26 @@ func integerMelangeBuildAction(ctx context.Context, cmd *cli.Command) error {
 	}
 	if err := integerMelangeBuild(ctx, &options); err != nil {
 		return fmt.Errorf("build bespoke package: %w", err)
+	}
+	return nil
+}
+
+func integerMelangePinConfigAction(_ context.Context, cmd *cli.Command) error {
+	architectureValues := cmd.StringSlice("arch")
+	architectures := make([]melange.Architecture, 0, len(architectureValues))
+	for _, value := range architectureValues {
+		architecture, err := melange.ParseArchitecture(value)
+		if err != nil {
+			return err
+		}
+		architectures = append(architectures, architecture)
+	}
+	if err := integerMelangePinConfig(melange.PinConfigOptions{
+		ConfigPath:    cmd.String("config"),
+		RepositoryDir: cmd.String("repository"),
+		Architectures: architectures,
+	}); err != nil {
+		return fmt.Errorf("pin apko config: %w", err)
 	}
 	return nil
 }

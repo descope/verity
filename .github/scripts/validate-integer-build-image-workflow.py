@@ -46,6 +46,19 @@ def main() -> None:
         "Integer publish gate must fail on any Trivy vulnerability severity",
     )
     require(
+        "./verity integer melange pin-config" in workflow,
+        "Integer publish must exact-pin generated configs through the Verity CLI",
+    )
+    require(
+        '"@local ${GITHUB_WORKSPACE}/packages/repo"' in workflow,
+        "Integer publish must use a tagged local repository",
+    )
+    require(
+        workflow.index("./verity integer melange pin-config")
+        < workflow.index('apko "${APKO_ARGS[@]}"'),
+        "Integer publish config must be pinned before apko publish",
+    )
+    require(
         "STAGING_REF=" in workflow
         and "trivy image \\" in workflow
         and "--exit-code 1 \\" in workflow

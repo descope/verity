@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/verity-org/verity/internal/integer/apkindex"
 	intconfig "github.com/verity-org/verity/internal/integer/config"
 	intdiscovery "github.com/verity-org/verity/internal/integer/discovery"
 	"github.com/verity-org/verity/internal/integer/melange"
@@ -119,6 +120,54 @@ func integerImpactVariants(imagesDir string, imgs []intdiscovery.DiscoveredImage
 		}
 		if specConsumesImpact(spec, impact) {
 			variants[variantForImage(&img)] = struct{}{}
+		}
+	}
+	return variants, nil
+}
+
+func integerPinningToolingChanged(files []string) bool {
+	for _, file := range files {
+		file = filepath.ToSlash(strings.TrimSpace(file))
+		switch {
+		case strings.HasPrefix(file, "cmd/integer_build_melange"),
+			strings.HasPrefix(file, "cmd/integer_melange"),
+			strings.HasPrefix(file, "internal/ci/"),
+			strings.HasPrefix(file, "internal/integer/apkindex/package_spec"),
+			strings.HasPrefix(file, "internal/integer/melange/"),
+			file == ".github/workflows/integer-build-image.yaml",
+			file == ".github/workflows/pr-test.yaml":
+			return true
+		}
+	}
+	return false
+}
+
+func integerConstrainedMelangeVariants(imagesDir string, imgs []intdiscovery.DiscoveredImage) (map[integerVariant]struct{}, error) {
+	definitions := map[string]*intconfig.ImageDef{}
+	variants := map[integerVariant]struct{}{}
+	for _, img := range imgs {
+		definitionFile := img.DefinitionFile
+		if definitionFile == "" {
+			definitionFile = filepath.Join(imagesDir, filepath.FromSlash(img.Name)+".yaml")
+		}
+		def, ok := definitions[definitionFile]
+		if !ok {
+			var err error
+			def, err = intconfig.LoadImage(definitionFile)
+			if err != nil {
+				return nil, fmt.Errorf("load %s: %w", definitionFile, err)
+			}
+			definitions[definitionFile] = def
+		}
+		template := def.Types[img.Type]
+		if template.Melange == nil {
+			continue
+		}
+		for _, packageSpec := range template.Packages {
+			if apkindex.PackageName(packageSpec) != packageSpec {
+				variants[variantForImage(&img)] = struct{}{}
+				break
+			}
 		}
 	}
 	return variants, nil
