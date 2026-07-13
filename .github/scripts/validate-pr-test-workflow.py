@@ -22,6 +22,10 @@ def main() -> None:
         "Integer scope must include cmd/ci*.go and cmd/nightly*.go because those commands feed Integer PR jobs",
     )
     require(
+        "^internal/(ci|integer)/" in workflow,
+        "Integer scope must include internal/ci because it selects affected build and smoke variants",
+    )
+    require(
         "^cmd/(ci|nightly|patch|discover|scan).*\\.go$" in workflow,
         "Copa scope must include cmd/ci*.go and cmd/nightly*.go because those commands feed Copa PR jobs",
     )

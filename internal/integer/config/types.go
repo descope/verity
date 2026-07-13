@@ -215,12 +215,12 @@ type TypeTemplate struct {
 // MelangeSpec describes a custom melange package build that runs before apko
 // publish. The built package is injected into the apko config as a local repo.
 //
-// Use Upstream to rebuild an existing Wolfi package with overrides (e.g. adding
-// GOFIPS140 via EnvFile). Use Bespoke for fully custom melange YAMLs that don't
-// exist upstream. Exactly one of Upstream or Bespoke must be set.
+// Use Upstream to rebuild an existing package with overrides such as GOFIPS140
+// via EnvFile. Use Bespoke for independent custom recipes. Exactly one of
+// Upstream or Bespoke must be set.
 type MelangeSpec struct {
-	// Upstream is the package key in packages/upstream.lock.json. The melange
-	// YAML is fetched from wolfi-dev/os at the pinned commit.
+	// Upstream is the package key in packages/upstream.lock.json. The recipe
+	// is read from the locally locked bespoke recipe directory.
 	Upstream string `yaml:"upstream,omitempty"`
 
 	Bespoke StringList `yaml:"bespoke,omitempty"`

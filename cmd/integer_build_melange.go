@@ -2,78 +2,139 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"strings"
 
+	"github.com/verity-org/verity/internal/integer/apkindex"
 	intconfig "github.com/verity-org/verity/internal/integer/config"
+	"github.com/verity-org/verity/internal/integer/melange"
 )
-
-var integerMelangeBuildScriptPath = filepath.Join(".github", "scripts", "melange-build.sh")
 
 const (
-	integerMelangeRepoDir = "packages/repo"
-	integerMelangeKeyPath = "melange-work/melange.rsa.pub"
+	integerMelangeRepoDir    = "packages/repo"
+	integerMelangeRepository = "@local " + integerMelangeRepoDir
+	integerMelangeKeyPath    = "melange-work/melange.rsa.pub"
+	integerMelangePackageTag = "@local"
 )
 
-func integerPrepareMelangeBuild(ctx context.Context, melange *intconfig.MelangeSpec, arch string) (repos, keyrings []string, err error) {
-	if melange == nil {
-		return nil, nil, nil
+var (
+	errIntegerMelangeArtifactsMissing     = errors.New("bespoke package build did not produce repository index and public key")
+	errIntegerMelangeDependencyConstraint = errors.New("bespoke package dependency constraint is not satisfied")
+	errIntegerMelangePackageConflict      = errors.New("bespoke package repository contains conflicting versions")
+	errIntegerMelangePackageNoVersion     = errors.New("bespoke package repository entry has no version")
+	errIntegerMelangePackageNotUsed       = errors.New("image config does not use a bespoke package")
+)
+
+type integerMelangeArtifacts struct {
+	Repositories []string
+	Keyrings     []string
+	Packages     []apkindex.Package
+}
+
+func integerPrepareMelangeBuild(ctx context.Context, configSpec *intconfig.MelangeSpec, version, arch string) (integerMelangeArtifacts, error) {
+	if configSpec == nil {
+		return integerMelangeArtifacts{}, nil
 	}
 
-	melangeArch := integerMelangeArch(arch)
-	if integerMelangeArtifactsExist(melangeArch) {
-		return []string{integerMelangeRepoDir}, []string{integerMelangeKeyPath}, nil
-	}
-
-	bespokeJSON, err := json.Marshal([]string(melange.Bespoke))
+	spec, err := melange.ResolveConfigSpec(configSpec, version)
 	if err != nil {
-		return nil, nil, fmt.Errorf("marshal bespoke list: %w", err)
+		return integerMelangeArtifacts{}, fmt.Errorf("resolve bespoke package: %w", err)
+	}
+	architecture, err := melange.ParseArchitecture(arch)
+	if err != nil {
+		return integerMelangeArtifacts{}, fmt.Errorf("resolve bespoke package architecture: %w", err)
+	}
+	paths := melange.DefaultPaths(".")
+	if !melange.ArtifactsExist(&paths, spec, architecture) {
+		if err := integerMelangeBuild(ctx, &melange.BuildOptions{
+			Paths: paths,
+			Spec:  spec,
+			Arch:  architecture,
+		}); err != nil {
+			return integerMelangeArtifacts{}, err
+		}
+	}
+	if !melange.ArtifactsExist(&paths, spec, architecture) {
+		return integerMelangeArtifacts{}, errIntegerMelangeArtifactsMissing
 	}
 
-	cmd := exec.CommandContext(ctx, "bash", integerMelangeBuildScriptPath)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Env = append(
-		os.Environ(),
-		"BESPOKE_JSON="+string(bespokeJSON),
-		"UPSTREAM="+melange.Upstream,
-		"ENV_FILE="+melange.EnvFile,
-		"BUILD_OPTION="+melange.BuildOption,
-		"BUILD_ARCH="+melangeArch,
-	)
-	if err := cmd.Run(); err != nil {
-		return nil, nil, fmt.Errorf("run %s: %w", integerMelangeBuildScriptPath, err)
+	packages, err := readIntegerMelangePackages(&paths, architecture)
+	if err != nil {
+		return integerMelangeArtifacts{}, err
 	}
-	if _, err := os.Stat(integerMelangeRepoDir); err != nil {
-		return nil, nil, fmt.Errorf("stat %s: %w", integerMelangeRepoDir, err)
-	}
-	if _, err := os.Stat(integerMelangeKeyPath); err != nil {
-		return nil, nil, fmt.Errorf("stat %s: %w", integerMelangeKeyPath, err)
-	}
-
-	return []string{integerMelangeRepoDir}, []string{integerMelangeKeyPath}, nil
+	return integerMelangeArtifacts{
+		Repositories: []string{integerMelangeRepository},
+		Keyrings:     []string{integerMelangeKeyPath},
+		Packages:     packages,
+	}, nil
 }
 
-func integerMelangeArtifactsExist(arch string) bool {
-	if _, err := os.Stat(filepath.Join(integerMelangeRepoDir, arch, "APKINDEX.tar.gz")); err != nil {
-		return false
+func readIntegerMelangePackages(paths *melange.Paths, arch melange.Architecture) ([]apkindex.Package, error) {
+	indexPath := filepath.Join(paths.RepoDir, string(arch), "APKINDEX.tar.gz")
+	index, err := os.Open(indexPath)
+	if err != nil {
+		return nil, fmt.Errorf("open bespoke package index %q: %w", indexPath, err)
 	}
-	if _, err := os.Stat(integerMelangeKeyPath); err != nil {
-		return false
+	defer index.Close()
+
+	packages, err := apkindex.ParseArchive(index)
+	if err != nil {
+		return nil, fmt.Errorf("parse bespoke package index %q: %w", indexPath, err)
 	}
-	return true
+	return packages, nil
 }
 
-func integerMelangeArch(arch string) string {
-	switch arch {
-	case "amd64":
-		return "x86_64"
-	case "arm64":
-		return "aarch64"
-	default:
-		return arch
+func pinLocalPackageVersions(tmpl *intconfig.TypeTemplate, renderVersion string, packages []apkindex.Package) error {
+	if len(packages) == 0 {
+		return nil
 	}
+	packagesByName := make(map[string]apkindex.Package, len(packages))
+	for _, pkg := range packages {
+		if pkg.Version == "" {
+			return fmt.Errorf("%w: %s", errIntegerMelangePackageNoVersion, pkg.Name)
+		}
+		if previous, exists := packagesByName[pkg.Name]; exists && previous.Version != pkg.Version {
+			return fmt.Errorf("%w for %s: %s and %s", errIntegerMelangePackageConflict, pkg.Name, previous.Version, pkg.Version)
+		}
+		packagesByName[pkg.Name] = pkg
+	}
+
+	pinned := make(map[string]struct{}, len(packages))
+	queue := make([]string, 0, len(packages))
+	for index, packageSpec := range tmpl.Packages {
+		name := apkPackageName(strings.ReplaceAll(packageSpec, "{{version}}", renderVersion))
+		if pkg, exists := packagesByName[name]; exists {
+			tmpl.Packages[index] = name + "=" + pkg.Version + integerMelangePackageTag
+			if _, exists := pinned[name]; !exists {
+				pinned[name] = struct{}{}
+				queue = append(queue, name)
+			}
+		}
+	}
+	if len(queue) == 0 {
+		return errIntegerMelangePackageNotUsed
+	}
+	for cursor := 0; cursor < len(queue); cursor++ {
+		dependent := packagesByName[queue[cursor]]
+		for _, dependency := range dependent.Dependencies {
+			pkg, local, err := apkindex.ResolveDependencyForPackage(packagesByName, &dependent, dependency)
+			if err != nil {
+				return fmt.Errorf("%w: %s dependency %q: %w", errIntegerMelangeDependencyConstraint, queue[cursor], dependency, err)
+			}
+			if !local {
+				continue
+			}
+			name := pkg.Name
+			if _, exists := pinned[name]; exists {
+				continue
+			}
+			pinned[name] = struct{}{}
+			queue = append(queue, name)
+			tmpl.Packages = append(tmpl.Packages, name+"="+pkg.Version+integerMelangePackageTag)
+		}
+	}
+	return nil
 }

@@ -102,7 +102,7 @@ func TestFetch_BadURL(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestParseTarGz_MissingAPKINDEX(t *testing.T) {
+func TestParseArchive_MissingAPKINDEX(t *testing.T) {
 	// Build a tar.gz that contains a different file, not APKINDEX.
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
@@ -112,13 +112,13 @@ func TestParseTarGz_MissingAPKINDEX(t *testing.T) {
 	tw.Close()
 	gz.Close()
 
-	_, err := parseTarGz(&buf)
+	_, err := ParseArchive(&buf)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "APKINDEX file not found")
 }
 
-func TestParseTarGz_InvalidGzip(t *testing.T) {
+func TestParseArchive_InvalidGzip(t *testing.T) {
 	buf := bytes.NewBufferString("not gzip data")
-	_, err := parseTarGz(buf)
+	_, err := ParseArchive(buf)
 	require.Error(t, err)
 }

@@ -41,9 +41,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       needed: ${{ steps.check.outputs.needed }}
-      bespoke_json: ${{ steps.check.outputs.bespoke_json }}
-      env_file: ${{ steps.check.outputs.env_file }}
-      build_option: ${{ steps.check.outputs.build_option }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -58,111 +55,21 @@ jobs:
           install: true
           cache: true
 
-      - name: Validate inputs
-        env:
-          INPUT_IMAGE: ${{ inputs.image }}
-          INPUT_TYPE: ${{ inputs.type }}
-        run: |
-          check() {
-            local label="$1" value="$2" pattern="$3"
-            if [[ ! "$value" =~ $pattern ]]; then
-              echo "Invalid ${label}: ${value}" >&2
-              exit 1
-            fi
-          }
-          check image "$INPUT_IMAGE" '^[a-z][a-z0-9-]*(/[a-z][a-z0-9-]*)*$'
-          check type  "$INPUT_TYPE"  '^[a-z][a-z0-9-]*$'
+      - name: Build verity CLI
+        run: go build -o verity .
 
-      - name: Check if melange build needed
+      - name: Prepare bespoke package
         id: check
         env:
-          IMAGE: ${{ inputs.image }}
-          TYPE: ${{ inputs.type }}
-          VERSION: ${{ inputs.version }}
-        run: .github/scripts/melange-check.sh
-
-      - name: Resolve melange YAML source
-        if: steps.check.outputs.needed == 'true'
-        env:
-          UPSTREAM: ${{ steps.check.outputs.upstream }}
-          BESPOKE_JSON: ${{ steps.check.outputs.bespoke_json }}
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TYPE: ${{ inputs.type }}
         run: |
-          mkdir -p melange-work/specs
-
-          commit=$(jq -r '.wolfi_commit' packages/upstream.lock.json)
-          if [ "$commit" = "null" ] || [ -z "$commit" ]; then
-            echo "wolfi_commit missing or null in packages/upstream.lock.json" >&2
-            exit 1
-          fi
-
-          if [ "$BESPOKE_JSON" != '[]' ]; then
-            while IFS= read -r bespoke; do
-              spec_dir="melange-work/specs/${bespoke}"
-              rm -rf "$spec_dir"
-              mkdir -p "$spec_dir"
-              cp "packages/bespoke/${bespoke}" "$spec_dir/build.yaml"
-            done < <(printf '%s' "$BESPOKE_JSON" | jq -r '.[]')
-          elif [ -n "$UPSTREAM" ]; then
-            file=$(jq -r --arg pkg "$UPSTREAM" '.packages[$pkg].file' packages/upstream.lock.json)
-            expected_sha=$(jq -r --arg pkg "$UPSTREAM" '.packages[$pkg].sha256' packages/upstream.lock.json)
-            if [ "$file" = "null" ] || [ -z "$file" ]; then
-              echo "Package '${UPSTREAM}' not found in upstream.lock.json" >&2
-              exit 1
-            fi
-            if [ "$expected_sha" = "null" ] || [ -z "$expected_sha" ]; then
-              echo "No sha256 for '${UPSTREAM}' in upstream.lock.json" >&2
-              exit 1
-            fi
-            url="https://raw.githubusercontent.com/wolfi-dev/os/${commit}/${file}"
-            echo "Fetching upstream melange YAML: ${url}"
-            spec_dir="melange-work/specs/${UPSTREAM}"
-            rm -rf "$spec_dir"
-            mkdir -p "$spec_dir"
-            curl -fsSL "$url" -o "$spec_dir/build.yaml.tmp"
-            actual_sha=$(sha256sum "$spec_dir/build.yaml.tmp" | awk '{print $1}')
-            if [ "$actual_sha" != "$expected_sha" ]; then
-              echo "sha256 mismatch for ${UPSTREAM}: expected ${expected_sha}, got ${actual_sha}" >&2
-              rm -f "$spec_dir/build.yaml.tmp"
-              exit 1
-            fi
-            mv "$spec_dir/build.yaml.tmp" "$spec_dir/build.yaml"
-          fi
-
-          echo "Fetching wolfi pipelines/ at commit ${commit}"
-          tmp_wolfi=$(mktemp -d)
-          trap 'rm -rf "$tmp_wolfi"' EXIT
-          git -C "$tmp_wolfi" init --quiet
-          git -C "$tmp_wolfi" remote add origin "https://github.com/wolfi-dev/os.git"
-
-          sparse_paths=(pipelines)
-          if [ -n "$UPSTREAM" ]; then
-            if [[ ! "$UPSTREAM" =~ ^[A-Za-z0-9._-]+$ ]]; then
-              echo "upstream value contains unsafe characters: '${UPSTREAM}'" >&2
-              exit 1
-            fi
-            sparse_paths+=("${UPSTREAM}")
-          fi
-
-          git -C "$tmp_wolfi" sparse-checkout set --no-cone "${sparse_paths[@]}"
-          git -C "$tmp_wolfi" fetch --quiet --depth 1 --filter=blob:none origin "$commit"
-          if [ -n "$UPSTREAM" ]; then
-            git -C "$tmp_wolfi" checkout --quiet FETCH_HEAD -- pipelines "${UPSTREAM}" 2>/dev/null || \
-              git -C "$tmp_wolfi" checkout --quiet FETCH_HEAD -- pipelines
-          else
-            git -C "$tmp_wolfi" checkout --quiet FETCH_HEAD -- pipelines
-          fi
-          rm -rf melange-work/pipelines
-          cp -r "$tmp_wolfi/pipelines" melange-work/pipelines
-          if [ -n "$UPSTREAM" ]; then
-            if [ -d "$tmp_wolfi/${UPSTREAM}" ]; then
-              cp -r "$tmp_wolfi/${UPSTREAM}/." "$spec_dir/"
-            fi
-          fi
-
-      - name: Generate ephemeral melange signing key
-        if: steps.check.outputs.needed == 'true'
-        run: |
-          melange keygen melange-work/melange.rsa
+          ./verity integer melange prepare \
+            --image "$INPUT_IMAGE" \
+            --version "$INPUT_VERSION" \
+            --type "$INPUT_TYPE" \
+            --github-output "$GITHUB_OUTPUT"
 
       - name: Upload melange work artifacts
         if: steps.check.outputs.needed == 'true'
@@ -206,6 +113,9 @@ jobs:
           install: true
           cache: true
 
+      - name: Build verity CLI
+        run: go build -o verity .
+
       - name: Download melange work artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -214,46 +124,17 @@ jobs:
 
       - name: Build melange package (${{ matrix.arch }})
         env:
-          ENV_FILE: ${{ needs.melange-prep.outputs.env_file }}
-          BUILD_OPTION: ${{ needs.melange-prep.outputs.build_option }}
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TYPE: ${{ inputs.type }}
+          BUILD_ARCH: ${{ matrix.arch }}
         run: |
-          chmod 600 melange-work/melange.rsa
-
-          shopt -s nullglob
-          builds=(melange-work/specs/*/build.yaml)
-          if [ ${#builds[@]} -eq 0 ]; then
-            echo "No melange build YAMLs staged in melange-work/specs" >&2
-            exit 1
-          fi
-
-          for build_yaml in "${builds[@]}"; do
-            MELANGE_ARGS=(
-              build "$build_yaml"
-              --arch "${{ matrix.arch }}"
-              --signing-key melange-work/melange.rsa
-              --out-dir packages/repo
-              --repository-append https://packages.wolfi.dev/os
-              --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-              --runner docker
-            )
-
-            if [ -d melange-work/pipelines ]; then
-              MELANGE_ARGS+=(--pipeline-dirs melange-work/pipelines)
-            fi
-
-            if [ -n "$ENV_FILE" ]; then
-              MELANGE_ARGS+=(--env-file "packages/overrides/${ENV_FILE}")
-            fi
-            if [ -n "$BUILD_OPTION" ]; then
-              MELANGE_ARGS+=(--build-option "$BUILD_OPTION")
-            fi
-
-            echo "Running: melange ${MELANGE_ARGS[*]}"
-            melange "${MELANGE_ARGS[@]}"
-          done
-
-          echo "Built packages:"
-          find packages/repo -type f -name '*.apk'
+          ./verity integer melange build \
+            --image "$INPUT_IMAGE" \
+            --version "$INPUT_VERSION" \
+            --type "$INPUT_TYPE" \
+            --arch "$BUILD_ARCH" \
+            --staged
 
       - name: Upload arch packages
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -370,11 +251,9 @@ jobs:
         env:
           INPUT_IMAGE: ${{ inputs.image }}
         run: |
-          image_yaml="images/${INPUT_IMAGE}.yaml"
-          title=$(yq '.name' "$image_yaml")
-          description=$(yq '.description' "$image_yaml")
-          echo "title=${title}" >> "$GITHUB_OUTPUT"
-          echo "description=${description}" >> "$GITHUB_OUTPUT"
+          ./verity integer metadata \
+            --image "$INPUT_IMAGE" \
+            --github-output "$GITHUB_OUTPUT"
 
       # ── Melange artifact merge ──────────────────────────────────────────
 
@@ -413,6 +292,17 @@ jobs:
             echo "ERROR: aarch64 packages not found" >&2
             exit 1
           fi
+
+      - name: Pin publish config to local package revisions
+        if: needs.melange-prep.outputs.needed == 'true'
+        env:
+          CONFIG_PATH: ${{ steps.gen.outputs.path }}
+        run: |
+          ./verity integer melange pin-config \
+            --config "$CONFIG_PATH" \
+            --repository packages/repo \
+            --arch x86_64 \
+            --arch aarch64
 
       # ── Build ──────────────────────────────────────────────────────────────
 
@@ -489,21 +379,14 @@ jobs:
           )
 
           if [ "$MELANGE_NEEDED" = "true" ]; then
-            # NOTE: the local melange repo is appended UNTAGGED (no "@local "
-            # prefix). apko/apk-tools only consult tagged repositories when a
-            # package is explicitly pinned with the same tag (e.g. "popeye@local").
-            # Our apko configs reference packages by bare name (e.g. "popeye"),
-            # so a tagged @local repo would be silently ignored — which broke
-            # bespoke-only packages that don't exist in upstream Wolfi
-            # (popeye, kubectx, kubeconform, kube-score, kube-linter; see #297
-            # follow-up). Untagged here means apk-tools picks the highest
-            # version across all repos, which naturally prefers our bespoke
-            # build (epoch-bumped) over any upstream Wolfi copy.
+            # pin-config rewrites every locally built package to
+            # name=version@local after confirming both architecture indexes
+            # agree, so apk-tools cannot substitute a remote package.
             APKO_ARGS+=(
-              --repository-append "${GITHUB_WORKSPACE}/packages/repo"
+              --repository-append "@local ${GITHUB_WORKSPACE}/packages/repo"
               --keyring-append "${GITHUB_WORKSPACE}/melange-work/melange.rsa.pub"
             )
-            echo "Appending local melange repo to apko publish"
+            echo "Appending tagged local melange repo to apko publish"
           fi
 
           APKO_ARGS+=("$tmpconfig" "$STAGING_REF")

@@ -28,7 +28,7 @@ import (
 
 const (
 	nightlyFamilyCopa    = "copa"
-	nightlyFamilyInteger = "integer"
+	nightlyFamilyInteger = integerCommandName
 )
 
 var (
@@ -437,17 +437,13 @@ func sourceTag(ref string) string {
 }
 
 func integerImageNames(imagesDir string) (map[string]struct{}, error) {
-	files, err := intconfig.ImageFilePaths(imagesDir)
+	images, err := intconfig.LoadImageDefinitions(imagesDir)
 	if err != nil {
 		return nil, fmt.Errorf("reading integer image names: %w", err)
 	}
-	names := make(map[string]struct{}, len(files))
-	for _, f := range files {
-		rel, err := filepath.Rel(imagesDir, f)
-		if err != nil {
-			return nil, fmt.Errorf("relativizing integer image path %s: %w", f, err)
-		}
-		names[strings.TrimSuffix(filepath.ToSlash(rel), yamlExt)] = struct{}{}
+	names := make(map[string]struct{}, len(images))
+	for _, image := range images {
+		names[image.Definition.Name] = struct{}{}
 	}
 	return names, nil
 }

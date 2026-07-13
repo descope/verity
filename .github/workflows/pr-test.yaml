@@ -36,7 +36,7 @@ jobs:
         run: |
           git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
 
-          if grep -Eq '^images/|^integer\.yaml$|^internal/integer/|^cmd/(ci|integer|nightly|discover|scan).*\.go$|^\.github/scripts/(melange-check|melange-build)\.sh$|^\.github/workflows/(pr-test|integer-.*)\.yaml$' changed-files.txt; then
+          if grep -Eq '^images/|^integer\.yaml$|^packages/(bespoke|pipelines|overrides)/|^packages/upstream\.lock\.json$|^internal/(ci|integer)/|^cmd/(ci|integer|nightly|discover|scan).*\.go$|^\.github/workflows/(pr-test|integer-.*)\.yaml$' changed-files.txt; then
             echo 'integer=true' >> "$GITHUB_OUTPUT"
           else
             echo 'integer=false' >> "$GITHUB_OUTPUT"
@@ -127,54 +127,19 @@ jobs:
       - name: Validate all image configs
         run: ./verity integer validate
 
-  # ── Detect Integer smoke scope ───────────────────────────────────────
-  detect-smoke-scope:
-    name: Detect smoke scope
-    needs: [changes, detect-changed-images]
-    if: needs.changes.outputs.integer == 'true'
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.scope.outputs.matrix }}
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          fetch-depth: 0
-
-      - name: Build smoke matrix
-        id: scope
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          CHANGED_IMAGE_SMOKE_MATRIX: ${{ needs.detect-changed-images.outputs.smoke-matrix }}
-        run: |
-          changed_files=$(git diff --name-only "$BASE_SHA"..."$HEAD_SHA" || true)
-
-          # Rare path: core Integer build mechanics changed, so keep full representative smoke matrix.
-          # Orchestrator-only changes still validate config but do not need image smoke builds.
-          # Common path: reuse detect-changed-images output so smoke and build share one source of truth.
-          if echo "$changed_files" | grep -Eq '^internal/integer/|^cmd/(integer|discover|scan).*\.go$|^\.github/scripts/(melange-check|melange-build)\.sh$|^\.github/workflows/(pr-test|integer-build-image)\.yaml$|^integer\.yaml$'; then
-            matrix='{"include":[{"image":"golang","version":"1.24","type":"fips"},{"image":"haproxy","version":"3.0","type":"fips"},{"image":"haproxy","version":"3.1","type":"fips"},{"image":"node","version":"22","type":"dev"}]}'
-          else
-            matrix="$CHANGED_IMAGE_SMOKE_MATRIX"
-          fi
-
-          echo "$matrix" | jq .
-          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
-
-  # ── Integer (Wolfi-based) smoke test ─────────────────────────────────
+  # ── Integer smoke test ────────────────────────────────────────────────
   integer-smoke-test:
     name: "Integer ${{ matrix.image }}:${{ matrix.version }}-${{ matrix.type }}"
-    needs: [changes, detect-smoke-scope]
-    if: needs.changes.outputs.integer == 'true'
+    needs: [changes, detect-changed-images]
+    if: needs.changes.outputs.integer == 'true' && needs.detect-changed-images.outputs.has-changes == 'true'
     runs-on: ubuntu-latest
+    env:
+      INTEGER_IMAGE: ${{ matrix.image }}
+      INTEGER_VERSION: ${{ matrix.version }}
+      INTEGER_TYPE: ${{ matrix.type }}
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.detect-smoke-scope.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.detect-changed-images.outputs.smoke-matrix) }}
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -202,66 +167,43 @@ jobs:
       - name: Build verity CLI
         run: go build -o verity .
 
-      - name: Check if melange build needed
-        id: melange-check
-        env:
-          IMAGE: ${{ matrix.image }}
-          TYPE: ${{ matrix.type }}
-          VERSION: ${{ matrix.version }}
-        run: .github/scripts/melange-check.sh
-
-      - name: Build melange package
-        if: steps.melange-check.outputs.needed == 'true'
-        env:
-          UPSTREAM: ${{ steps.melange-check.outputs.upstream }}
-          BESPOKE_JSON: ${{ steps.melange-check.outputs.bespoke_json }}
-          ENV_FILE: ${{ steps.melange-check.outputs.env_file }}
-          BUILD_OPTION: ${{ steps.melange-check.outputs.build_option }}
-        run: .github/scripts/melange-build.sh
-
-      - name: Generate apko config and build image (local, no push)
+      - name: Build bespoke package
         run: |
-          if [ "${{ steps.melange-check.outputs.needed }}" != "true" ]; then
-            ./verity integer build \
-              --image ${{ matrix.image }} \
-              --version ${{ matrix.version }} \
-              --type ${{ matrix.type }} \
-              --output image.tar \
-              --arch amd64
-          else
-            ./verity integer discover --gen-dir ./gen
+          ./verity integer melange build \
+            --image "$INTEGER_IMAGE" \
+            --version "$INTEGER_VERSION" \
+            --type "$INTEGER_TYPE" \
+            --arch x86_64
 
-            config="gen/${{ matrix.image }}/${{ matrix.version }}/${{ matrix.type }}.apko.yaml"
-            if [ ! -f "$config" ]; then
-              echo "Config not found: $config" >&2
-              exit 1
-            fi
+      - name: Build image (local, no push)
+        run: |
+          ./verity integer build \
+            --image "$INTEGER_IMAGE" \
+            --version "$INTEGER_VERSION" \
+            --type "$INTEGER_TYPE" \
+            --output image.tar \
+            --arch amd64 \
+            --fail-on-severity "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
 
-            apko build \
-              --arch amd64 \
-              --repository-append "${GITHUB_WORKSPACE}/packages/repo" \
-              --keyring-append "${GITHUB_WORKSPACE}/melange-work/melange.rsa.pub" \
-              "$config" \
-              "${{ matrix.image }}:smoke-test" \
-              "$GITHUB_WORKSPACE/image.tar"
-          fi
-
-      - name: Trivy vulnerability scan
+      - name: Full vulnerability report
+        if: always()
         run: |
           trivy image \
             --exit-code 0 \
-            --severity CRITICAL,HIGH,MEDIUM,LOW \
+            --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
             --vuln-type os,library \
             --format json \
             --output trivy-report.json \
             --input image.tar
-        continue-on-error: true
+
+          TOTAL=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' trivy-report.json)
+          echo "Total vulnerabilities: ${TOTAL}"
 
       - name: Upload Trivy report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: "trivy-${{ matrix.image }}-${{ matrix.version }}-${{ matrix.type }}"
+          name: "trivy-smoke-${{ matrix.image }}-${{ matrix.version }}-${{ matrix.type }}"
           path: trivy-report.json
           retention-days: 7
 
@@ -310,9 +252,11 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
+          git show "${BASE_SHA}":packages/upstream.lock.json > "$RUNNER_TEMP/base-upstream.lock.json" 2>/dev/null || printf '{"packages":{},"pipeline_files":{}}\n' > "$RUNNER_TEMP/base-upstream.lock.json"
           ./verity ci plan \
             --kind integer-pr \
             --changed-files changed-files.txt \
+            --base-upstream-lock "$RUNNER_TEMP/base-upstream.lock.json" \
             --gen-dir "$RUNNER_TEMP/integer-gen" \
             > ci-plan.json
 
@@ -333,6 +277,10 @@ jobs:
     needs: [changes, detect-changed-images]
     if: needs.changes.outputs.integer == 'true' && needs.detect-changed-images.outputs.has-changes == 'true'
     runs-on: ubuntu-latest
+    env:
+      INTEGER_IMAGE: ${{ matrix.image }}
+      INTEGER_VERSION: ${{ matrix.version }}
+      INTEGER_TYPE: ${{ matrix.type }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.detect-changed-images.outputs.matrix) }}
@@ -363,68 +311,81 @@ jobs:
       - name: Build verity CLI
         run: go build -o verity .
 
-      - name: Check if melange build needed
-        id: melange-check
-        env:
-          IMAGE: ${{ matrix.image }}
-          TYPE: ${{ matrix.type }}
-        run: .github/scripts/melange-check.sh
+      - name: Build bespoke package
+        run: |
+          ./verity integer melange build \
+            --image "$INTEGER_IMAGE" \
+            --version "$INTEGER_VERSION" \
+            --type "$INTEGER_TYPE" \
+            --arch x86_64
 
-      - name: Build melange package
-        if: steps.melange-check.outputs.needed == 'true'
-        env:
-          UPSTREAM: ${{ steps.melange-check.outputs.upstream }}
-          BESPOKE_JSON: ${{ steps.melange-check.outputs.bespoke_json }}
-          ENV_FILE: ${{ steps.melange-check.outputs.env_file }}
-          BUILD_OPTION: ${{ steps.melange-check.outputs.build_option }}
-        run: .github/scripts/melange-build.sh
+      - name: Set up QEMU for Linkerd pinning canary
+        if: matrix.image == 'linkerd' && matrix.version == '25' && matrix.type == 'default'
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+        with:
+          image: docker.io/tonistiigi/binfmt:latest@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0
+          platforms: arm64
+
+      - name: Exercise production package pinning
+        if: matrix.image == 'linkerd' && matrix.version == '25' && matrix.type == 'default'
+        run: |
+          ./verity integer melange build \
+            --image "$INTEGER_IMAGE" \
+            --version "$INTEGER_VERSION" \
+            --type "$INTEGER_TYPE" \
+            --arch aarch64 \
+            --staged
+
+          ./verity integer discover \
+            --apkindex-url "" \
+            --gen-dir ./pin-config-gen
+          config="pin-config-gen/${INTEGER_IMAGE}/${INTEGER_VERSION}/${INTEGER_TYPE}.apko.yaml"
+          ./verity integer melange pin-config \
+            --config "$config" \
+            --repository packages/repo \
+            --arch x86_64 \
+            --arch aarch64
+          grep -Eq 'linkerd2-cli=[^ ,]+@local' "$config"
+
+          for arch in amd64 arm64; do
+            image="pin-config-${arch}.tar"
+            report="pin-config-${arch}.json"
+            apko build \
+              --arch "$arch" \
+              --repository-append "@local packages/repo" \
+              --keyring-append melange-work/melange.rsa.pub \
+              "$config" \
+              integer:pin-config-canary \
+              "$image"
+            trivy image \
+              --exit-code 1 \
+              --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
+              --vuln-type os,library \
+              --format json \
+              --output "$report" \
+              --input "$image"
+            total=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' "$report")
+            echo "Pin-config canary ${arch}: Total vulnerabilities: ${total}"
+          done
 
       - name: Build image (local, no push)
         run: |
-          if [ "${{ steps.melange-check.outputs.needed }}" != "true" ]; then
-            ./verity integer build \
-              --image ${{ matrix.image }} \
-              --version ${{ matrix.version }} \
-              --type ${{ matrix.type }} \
-              --output image.tar \
-              --arch amd64
-          else
-            ./verity integer discover --gen-dir ./gen
+          ./verity integer build \
+            --image "$INTEGER_IMAGE" \
+            --version "$INTEGER_VERSION" \
+            --type "$INTEGER_TYPE" \
+            --output image.tar \
+            --arch amd64 \
+            --fail-on-severity "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
 
-            config="gen/${{ matrix.image }}/${{ matrix.version }}/${{ matrix.type }}.apko.yaml"
-            if [ ! -f "$config" ]; then
-              echo "Config not found: $config" >&2
-              exit 1
-            fi
-
-            apko build \
-              --arch amd64 \
-              --repository-append "${GITHUB_WORKSPACE}/packages/repo" \
-              --keyring-append "${GITHUB_WORKSPACE}/melange-work/melange.rsa.pub" \
-              "$config" \
-              "${{ matrix.image }}:pr-test" \
-              "$GITHUB_WORKSPACE/image.tar"
-          fi
-
-          echo "\u2713 Built ${{ matrix.image }}:${{ matrix.version }}-${{ matrix.type }}"
+          echo "Built ${INTEGER_IMAGE}:${INTEGER_VERSION}-${INTEGER_TYPE}"
           ls -lh image.tar
-
-      - name: Trivy vulnerability scan
-        run: |
-          trivy image \
-            --exit-code 1 \
-            --severity CRITICAL,HIGH \
-            --vuln-type os,library \
-            --format table \
-            --input image.tar
-
-          echo "\u2713 Zero CRITICAL/HIGH CVEs"
 
       - name: Full vulnerability report
         if: always()
         run: |
           trivy image \
-            --severity CRITICAL,HIGH,MEDIUM,LOW \
+            --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
             --vuln-type os,library \
             --format json \
             --output trivy-report.json \
@@ -437,7 +398,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: "trivy-${{ matrix.image }}-${{ matrix.version }}-${{ matrix.type }}"
+          name: "trivy-build-${{ matrix.image }}-${{ matrix.version }}-${{ matrix.type }}"
           path: trivy-report.json
           retention-days: 7
 
@@ -537,7 +498,11 @@ jobs:
 
       - name: Set safe artifact name
         id: safe-name
-        run: echo "name=$(echo '${{ matrix.name }}' | tr '/' '-')" >> "$GITHUB_OUTPUT"
+        env:
+          IMAGE_NAME: ${{ matrix.name }}
+        run: |
+          SAFE_NAME=$(printf '%s' "$IMAGE_NAME" | tr -cs 'A-Za-z0-9._-' '-' | cut -c1-80)
+          printf 'name=%s\n' "$SAFE_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
@@ -608,9 +573,11 @@ jobs:
         if: env.skip_patch != 'true'
         env:
           IMAGE_LABEL: "${{ matrix.name }}:${{ matrix.tag }}"
+          IMAGE_NAME: ${{ matrix.name }}
+          IMAGE_TAG: ${{ matrix.tag }}
         run: |
-          SAFE_IMAGE=$(echo "${{ matrix.name }}" | tr '/: ' '---')
-          export PATCHED_IMAGE="localhost:5000/regression:${SAFE_IMAGE}-${{ matrix.tag }}-amd64"
+          SAFE_IMAGE=$(printf '%s' "$IMAGE_NAME" | tr '/: ' '---')
+          export PATCHED_IMAGE="localhost:5000/regression:${SAFE_IMAGE}-${IMAGE_TAG}-amd64"
           ./.github/scripts/verify-patched.sh
 
       - name: Upload scan reports
@@ -722,9 +689,11 @@ jobs:
         if: env.skip_patch != 'true'
         env:
           IMAGE_LABEL: "${{ matrix.name }}:${{ matrix.tag }}"
+          IMAGE_NAME: ${{ matrix.name }}
+          IMAGE_TAG: ${{ matrix.tag }}
         run: |
-          SAFE_IMAGE=$(echo "${{ matrix.name }}" | tr '/: ' '---')
-          export PATCHED_IMAGE="localhost:5000/regression:${SAFE_IMAGE}-${{ matrix.tag }}-amd64"
+          SAFE_IMAGE=$(printf '%s' "$IMAGE_NAME" | tr '/: ' '---')
+          export PATCHED_IMAGE="localhost:5000/regression:${SAFE_IMAGE}-${IMAGE_TAG}-amd64"
           ./.github/scripts/verify-patched.sh
 
       - name: Upload scan reports
@@ -744,7 +713,6 @@ jobs:
       - discover
       - validate
       - detect-changed-images
-      - detect-smoke-scope
       - integer-smoke-test
       - integer-build-changed
       - detect-copa-changes
@@ -761,7 +729,7 @@ jobs:
           DISCOVER_RESULT: ${{ needs.discover.result }}
           VALIDATE_RESULT: ${{ needs.validate.result }}
           DETECT_INTEGER_RESULT: ${{ needs.detect-changed-images.result }}
-          DETECT_SMOKE_RESULT: ${{ needs.detect-smoke-scope.result }}
+          INTEGER_HAS_CHANGES: ${{ needs.detect-changed-images.outputs.has-changes }}
           INTEGER_SMOKE_RESULT: ${{ needs.integer-smoke-test.result }}
           INTEGER_BUILD_RESULT: ${{ needs.integer-build-changed.result }}
           DETECT_COPA_RESULT: ${{ needs.detect-copa-changes.result }}
@@ -774,7 +742,7 @@ jobs:
           echo "discover: ${DISCOVER_RESULT}"
           echo "validate: ${VALIDATE_RESULT}"
           echo "detect-changed-images: ${DETECT_INTEGER_RESULT}"
-          echo "detect-smoke-scope: ${DETECT_SMOKE_RESULT}"
+          echo "integer-has-changes: ${INTEGER_HAS_CHANGES}"
           echo "integer-smoke-test: ${INTEGER_SMOKE_RESULT}"
           echo "integer-build-changed: ${INTEGER_BUILD_RESULT}"
           echo "detect-copa-changes: ${DETECT_COPA_RESULT}"
@@ -807,13 +775,16 @@ jobs:
           if [ "$INTEGER" = "true" ]; then
             require_success "validate" "$VALIDATE_RESULT"
             require_success "detect-changed-images" "$DETECT_INTEGER_RESULT"
-            require_success "detect-smoke-scope" "$DETECT_SMOKE_RESULT"
-            allow_success_or_skipped "integer-smoke-test" "$INTEGER_SMOKE_RESULT"
-            allow_success_or_skipped "integer-build-changed" "$INTEGER_BUILD_RESULT"
+            if [ "$INTEGER_HAS_CHANGES" = "true" ]; then
+              require_success "integer-smoke-test" "$INTEGER_SMOKE_RESULT"
+              require_success "integer-build-changed" "$INTEGER_BUILD_RESULT"
+            else
+              allow_success_or_skipped "integer-smoke-test" "$INTEGER_SMOKE_RESULT"
+              allow_success_or_skipped "integer-build-changed" "$INTEGER_BUILD_RESULT"
+            fi
           else
             allow_success_or_skipped "validate" "$VALIDATE_RESULT"
             allow_success_or_skipped "detect-changed-images" "$DETECT_INTEGER_RESULT"
-            allow_success_or_skipped "detect-smoke-scope" "$DETECT_SMOKE_RESULT"
             allow_success_or_skipped "integer-smoke-test" "$INTEGER_SMOKE_RESULT"
             allow_success_or_skipped "integer-build-changed" "$INTEGER_BUILD_RESULT"
           fi

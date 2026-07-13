@@ -116,6 +116,32 @@ func TestIntegerSyncCommand_Apply(t *testing.T) {
 	assert.Contains(t, updated.Versions, "24")
 }
 
+func TestIntegerSyncCommand_ApplyContinuesPastMalformedDefinition(t *testing.T) {
+	// Given: a valid image with a new package stream and an unrelated malformed
+	// image definition in the same directory.
+	srv := intMakeAPKINDEXServer(t, "P:nodejs-22\nV:22.0.0\n\nP:nodejs-24\nV:24.0.0\n\n")
+	dir := t.TempDir()
+	imagesDir := filepath.Join(dir, "images")
+	intWriteFile(t, filepath.Join(imagesDir, "_base", "wolfi-base.yaml"), "# base\n")
+	intWriteFile(t, filepath.Join(imagesDir, "node.yaml"), intTestNodeYAML)
+	intWriteFile(t, filepath.Join(imagesDir, "broken.yaml"), "name: [\n")
+
+	// When: sync applies discovered versions.
+	err := intRunSyncApp(t, []string{
+		"sync",
+		"--images-dir", imagesDir,
+		"--apkindex-url", srv.URL,
+		"--cache-dir", t.TempDir(),
+		"--apply",
+	})
+
+	// Then: the malformed file is skipped and the valid image is still updated.
+	require.NoError(t, err)
+	updated, err := intconfig.LoadImage(filepath.Join(imagesDir, "node.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, updated.Versions, "24")
+}
+
 func TestIntegerSyncCommand_MissingImagesDir(t *testing.T) {
 	err := intRunSyncApp(t, []string{
 		"sync",

@@ -17,6 +17,7 @@ import (
 	"github.com/urfave/cli/v3"
 
 	intconfig "github.com/verity-org/verity/internal/integer/config"
+	"github.com/verity-org/verity/internal/integer/melange"
 )
 
 const intBuildNodeYAML = `
@@ -180,10 +181,9 @@ func intCapturingApko(t *testing.T, capturePath string) {
 	t.Helper()
 	tmpDir := t.TempDir()
 	script := filepath.Join(tmpDir, "apko")
-	// Note: positional args after the script itself are $1=build, $2=--arch,
-	// $3=<arch>, $4=<configFile>, $5=integer:local, $6=<output>. We only
-	// need $4.
-	body := "#!/bin/sh\nset -e\nmkdir -p \"$(dirname \"" + capturePath + "\")\"\ncp \"$4\" \"" + capturePath + "\"\nexit 0\n"
+	// Repository and keyring flags are optional, but the config is always
+	// the third argument from the end.
+	body := "#!/bin/sh\nset -e\nmkdir -p \"$(dirname \"" + capturePath + "\")\"\nwhile [ \"$#\" -gt 3 ]; do shift; done\ncp \"$1\" \"" + capturePath + "\"\nexit 0\n"
 	require.NoError(t, os.WriteFile(script, []byte(body), 0o755))
 	t.Setenv("PATH", tmpDir+":"+os.Getenv("PATH"))
 }
@@ -336,6 +336,63 @@ versions:
 				"unaliased literal would crash apko publish — guard against regression of the cmd/integer_build.go alias gap")
 		})
 	}
+}
+
+func TestIntegerBuildCommand_FloatingMajorAliasBuildsAndPinsResolvedBespokePackage(t *testing.T) {
+	// Given: a floating stream whose bespoke package name is versioned and whose
+	// published package stem resolves to a concrete minor.
+	repoRoot := t.TempDir()
+	chdirIntegerMelangeTest(t, repoRoot)
+	imagesDir := filepath.Join(repoRoot, "images")
+	require.NoError(t, os.MkdirAll(filepath.Join(imagesDir, "_base"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(imagesDir, "_base", "wolfi-base.yaml"), []byte("# base\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(imagesDir, "kyverno.yaml"), []byte(`
+name: kyverno
+upstream:
+  package: "kyverno-{{version}}"
+types:
+  default:
+    base: wolfi-base
+    packages: ["kyverno-{{version}}"]
+    entrypoint: /usr/bin/kyverno
+    melange:
+      upstream: "kyverno-{{version}}"
+versions:
+  "1": {}
+`), 0o644))
+
+	var captured melange.BuildOptions
+	originalBuild := integerMelangeBuild
+	integerMelangeBuild = func(_ context.Context, options *melange.BuildOptions) error {
+		captured = *options
+		return writeIntegerMelangeArtifacts(t, options)
+	}
+	t.Cleanup(func() {
+		integerMelangeBuild = originalBuild
+	})
+	srv := intMakeAPKINDEXServer(t, "P:kyverno-1.17\nV:1.17.5-r0\n\n")
+	capturePath := filepath.Join(repoRoot, "captured.apko.yaml")
+	intCapturingApko(t, capturePath)
+
+	// When: the floating stream is built.
+	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
+	err := root.Run(context.Background(), []string{
+		"verity", "integer", "build",
+		"--image", "kyverno",
+		"--version", "1",
+		"--type", "default",
+		"--images-dir", imagesDir,
+		"--apkindex-url", srv.URL,
+		"--output", filepath.Join(repoRoot, "image.tar"),
+	})
+
+	// Then: recipe resolution, package output, pinning, and rendering all use
+	// the same concrete minor version.
+	require.NoError(t, err)
+	assert.Equal(t, "kyverno-1.17", captured.Spec.Upstream)
+	rendered, err := os.ReadFile(capturePath)
+	require.NoError(t, err)
+	assert.Contains(t, string(rendered), "kyverno-1.17=1.0-r0@local")
 }
 
 // TestIntegerBuildCommand_OfflineLeavesVersionUnchanged locks in the

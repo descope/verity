@@ -70,6 +70,10 @@ func LoadImage(path string) (*ImageDef, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading image %q: %w", path, err)
 	}
+	return parseImage(data, path)
+}
+
+func parseImage(data []byte, path string) (*ImageDef, error) {
 	var def ImageDef
 	if err := yaml.Unmarshal(data, &def); err != nil {
 		return nil, fmt.Errorf("parsing image %q: %w", path, err)

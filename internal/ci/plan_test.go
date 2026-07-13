@@ -60,6 +60,113 @@ versions:
   latest:
     latest: true
 `)
+	writeTestFile(t, filepath.Join(root, "images", "caddy.yaml"), `
+name: caddy
+description: caddy
+upstream:
+  package: caddy
+types:
+  default:
+    base: wolfi-base
+    packages: ["caddy"]
+  fips:
+    base: wolfi-base
+    fips-profile: go
+    packages: ["caddy"]
+    environment:
+      GODEBUG: "fips140=on"
+    melange:
+      upstream: caddy
+      env-file: fips.env
+versions:
+  "1": {}
+  "2": {}
+`)
+	writeTestFile(t, filepath.Join(root, "images", "cilium.yaml"), `
+name: cilium
+description: cilium
+upstream:
+  package: cilium-{{version}}
+types:
+  default:
+    base: wolfi-base
+    packages: ["cilium-{{version}}"]
+    melange:
+      upstream: cilium-{{version}}
+versions:
+  "1.19": {}
+`)
+	writeTestFile(t, filepath.Join(root, "images", "linkerd.yaml"), `
+name: linkerd
+description: linkerd
+upstream:
+  package: linkerd2-cli
+types:
+  default:
+    base: wolfi-base
+    packages: ["linkerd2-cli=25.12.3-r99"]
+    melange:
+      bespoke: linkerd2-cli-25.yaml
+versions:
+  "25": {}
+`)
+	writeTestFile(t, filepath.Join(root, "images", "platform", "envoy.yaml"), `
+name: platform/envoy
+description: envoy
+upstream:
+  package: envoy-{{version}}
+types:
+  default:
+    base: wolfi-base
+    packages: ["envoy-{{version}}"]
+    melange:
+      upstream: envoy-{{version}}
+versions:
+  "1.2": {}
+`)
+	writeTestFile(t, filepath.Join(root, "packages", "upstream.lock.json"), `
+{
+  "packages": {
+    "caddy": {
+      "file": "caddy.yaml",
+      "sha256": "caddy-recipe",
+      "assets": {"caddy/Caddyfile": "caddyfile"}
+    },
+    "cilium-1.19": {
+      "file": "cilium-1.19.yaml",
+      "sha256": "cilium-recipe",
+      "assets": {}
+    },
+    "envoy-1.2": {
+      "file": "envoy-1.2.yaml",
+      "sha256": "envoy-recipe",
+      "assets": {}
+    }
+  },
+  "pipeline_files": {
+    "build/wrapper.yaml": "wrapper",
+    "go/bump.yaml": "go-bump",
+    "test/ver-check.yaml": "ver-check",
+    "test/unused.yaml": "unused"
+  }
+}
+`)
+	writeTestFile(t, filepath.Join(root, "packages", "bespoke", "locked", "caddy.yaml"), `
+pipeline:
+  - uses: build/wrapper
+`)
+	writeTestFile(t, filepath.Join(root, "packages", "bespoke", "locked", "caddy", "Caddyfile"), "test\n")
+	writeTestFile(t, filepath.Join(root, "packages", "bespoke", "locked", "cilium-1.19.yaml"), `
+pipeline:
+  - uses: test/ver-check
+`)
+	writeTestFile(t, filepath.Join(root, "packages", "bespoke", "locked", "envoy-1.2.yaml"), "pipeline: []\n")
+	writeTestFile(t, filepath.Join(root, "packages", "bespoke", "linkerd2-cli-25.yaml"), "pipeline: []\n")
+	writeTestFile(t, filepath.Join(root, "packages", "pipelines", "go", "bump.yaml"), "pipeline: []\n")
+	writeTestFile(t, filepath.Join(root, "packages", "pipelines", "build", "wrapper.yaml"), "pipeline:\n  - uses: go/bump\n")
+	writeTestFile(t, filepath.Join(root, "packages", "pipelines", "test", "ver-check.yaml"), "pipeline: []\n")
+	writeTestFile(t, filepath.Join(root, "packages", "pipelines", "test", "unused.yaml"), "pipeline: []\n")
+	writeTestFile(t, filepath.Join(root, "packages", "overrides", "fips.env"), "GOFIPS140=latest\n")
 	return root
 }
 
@@ -100,7 +207,7 @@ func TestPlanIntegerPREmptyWhenNoImageFilesChanged(t *testing.T) {
 	assert.Empty(t, plan.SmokeMatrix.Include)
 }
 
-func TestPlanIntegerPRFallsBackWhenAPKIndexFetchFails(t *testing.T) {
+func TestPlanIntegerPRFailsClosedWhenAPKIndexFetchFails(t *testing.T) {
 	root := setupIntegerPlanRepo(t)
 	originalFetch := apkindexFetch
 	apkindexFetch = func(string, string, time.Duration) ([]apkindex.Package, error) {
@@ -108,20 +215,14 @@ func TestPlanIntegerPRFallsBackWhenAPKIndexFetchFails(t *testing.T) {
 	}
 	t.Cleanup(func() { apkindexFetch = originalFetch })
 
-	plan, err := PlanIntegerPR(&IntegerPROptions{
+	_, err := PlanIntegerPR(&IntegerPROptions{
 		ChangedFiles: []string{"images/node.yaml"},
 		ConfigPath:   filepath.Join(root, "integer.yaml"),
 		ImagesDir:    filepath.Join(root, "images"),
 		APKIndexURL:  "https://example.invalid/APKINDEX.tar.gz",
 		GenDir:       filepath.Join(root, "gen"),
 	})
-	require.NoError(t, err)
-
-	assert.True(t, plan.HasChanges)
-	assert.ElementsMatch(t, []map[string]string{
-		{"image": "node", "version": "22", "type": "default"},
-		{"image": "node", "version": "22", "type": "dev"},
-	}, plan.Matrix.Include)
+	require.ErrorIs(t, err, errTemporaryAPKIndexOutage)
 }
 
 func TestPlanCopaPRDiffsSemanticImageEntries(t *testing.T) {
@@ -231,4 +332,27 @@ dependencies:
 
 	assert.False(t, plan.Strict)
 	assert.Equal(t, []map[string]string{{"chart": "grafana"}}, plan.Matrix.Include)
+}
+
+func TestPlanChartsIgnoresUnrelatedMakefileChanges(t *testing.T) {
+	// Given a repository with a configured chart.
+	charts := filepath.Join(t.TempDir(), "Chart.yaml")
+	writeTestFile(t, charts, `
+dependencies:
+  - name: grafana
+    version: "10.0.0"
+    repository: "https://grafana.github.io/helm-charts"
+`)
+
+	// When a pull request changes only a Makefile target unrelated to charts.
+	plan, err := PlanCharts(&ChartOptions{
+		EventName:    "pull_request",
+		ChangedFiles: []string{"Makefile"},
+		ChartsFile:   charts,
+	})
+	require.NoError(t, err)
+
+	// Then chart integration reports its required no-op gate without shards.
+	assert.False(t, plan.HasChanges)
+	assert.Empty(t, plan.Matrix.Include)
 }

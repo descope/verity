@@ -14,8 +14,6 @@ import (
 
 	"github.com/verity-org/verity/internal/config"
 	copadiscovery "github.com/verity-org/verity/internal/discovery"
-	"github.com/verity-org/verity/internal/integer/apkindex"
-	intconfig "github.com/verity-org/verity/internal/integer/config"
 	intdiscovery "github.com/verity-org/verity/internal/integer/discovery"
 )
 
@@ -33,6 +31,8 @@ type Plan struct {
 
 type IntegerPROptions struct {
 	ChangedFiles []string
+	RepoRoot     string
+	BaseLockPath string
 	ConfigPath   string
 	ImagesDir    string
 	APKIndexURL  string
@@ -55,56 +55,6 @@ type ChartOptions struct {
 	BaseChartsFile string
 	VerityConfig   string
 	ValuesDir      string
-}
-
-var apkindexFetch = apkindex.Fetch
-
-func PlanIntegerPR(opts *IntegerPROptions) (Plan, error) {
-	plan := Plan{Kind: "integer-pr"}
-	imageNames, allImages := changedIntegerImages(opts.ChangedFiles)
-	if !allImages && len(imageNames) == 0 {
-		plan.Matrix = Matrix{}
-		plan.SmokeMatrix = &Matrix{}
-		return plan, nil
-	}
-
-	cfg, err := intconfig.LoadConfig(defaultString(opts.ConfigPath, "integer.yaml"))
-	if err != nil {
-		return plan, fmt.Errorf("load integer config: %w", err)
-	}
-
-	var pkgs []apkindex.Package
-	if opts.APKIndexURL != "" {
-		pkgs, err = apkindexFetch(opts.APKIndexURL, defaultString(opts.CacheDir, os.TempDir()), apkindex.DefaultCacheMaxAge)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: APKINDEX unavailable (%v) — using versions map only\n", err)
-			pkgs = nil
-		}
-	}
-
-	imgs, err := intdiscovery.DiscoverFromFiles(intdiscovery.Options{
-		ImagesDir: defaultString(opts.ImagesDir, "images"),
-		Registry:  cfg.Target.Registry,
-		Packages:  pkgs,
-		GenDir:    opts.GenDir,
-	})
-	if err != nil {
-		return plan, fmt.Errorf("discover integer images: %w", err)
-	}
-	if !allImages {
-		imgs = filterIntegerByName(imgs, imageNames)
-	}
-	if len(imgs) == 0 {
-		plan.Matrix = Matrix{}
-		plan.SmokeMatrix = &Matrix{}
-		return plan, nil
-	}
-
-	plan.HasChanges = true
-	smokeMatrix := integerMatrix(imgs)
-	plan.SmokeMatrix = &smokeMatrix
-	plan.Matrix = latestIntegerMatrix(imgs)
-	return plan, nil
 }
 
 func PlanCopaPR(opts *CopaPROptions) (Plan, error) {
@@ -167,22 +117,6 @@ func PlanCharts(opts *ChartOptions) (Plan, error) {
 	plan.HasChanges = len(selected) > 0
 	plan.Matrix = chartMatrix(selected)
 	return plan, nil
-}
-
-func changedIntegerImages(files []string) (names map[string]struct{}, all bool) {
-	names = map[string]struct{}{}
-	for _, f := range files {
-		f = filepath.ToSlash(strings.TrimSpace(f))
-		switch {
-		case f == "integer.yaml", strings.HasPrefix(f, "images/_base/"):
-			all = true
-		default:
-			if name, ok := imageNameFromPath(f); ok {
-				names[name] = struct{}{}
-			}
-		}
-	}
-	return names, all
 }
 
 func changedCopaNames(basePath, headPath string) (map[string]struct{}, error) {
@@ -359,31 +293,6 @@ func integerMatrix(imgs []intdiscovery.DiscoveredImage) Matrix {
 	return Matrix{Include: include}
 }
 
-func latestIntegerMatrix(imgs []intdiscovery.DiscoveredImage) Matrix {
-	latest := map[string]intdiscovery.DiscoveredImage{}
-	for _, img := range imgs {
-		key := img.Name + "\x00" + img.Type
-		prev, ok := latest[key]
-		if !ok || apkindex.VersionLess(prev.Version, img.Version) {
-			latest[key] = img
-		}
-	}
-	out := make([]intdiscovery.DiscoveredImage, 0, len(latest))
-	for _, img := range latest {
-		out = append(out, img)
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Name != out[j].Name {
-			return out[i].Name < out[j].Name
-		}
-		if out[i].Type != out[j].Type {
-			return out[i].Type < out[j].Type
-		}
-		return apkindex.VersionLess(out[i].Version, out[j].Version)
-	})
-	return integerMatrix(out)
-}
-
 func firstCopaTagMatrix(imgs []copadiscovery.DiscoveredImage) Matrix {
 	sort.Slice(imgs, func(i, j int) bool {
 		if imgs[i].Name != imgs[j].Name {
@@ -412,16 +321,6 @@ func chartMatrix(charts []string) Matrix {
 		include = append(include, map[string]string{"chart": chart})
 	}
 	return Matrix{Include: include}
-}
-
-func filterIntegerByName(imgs []intdiscovery.DiscoveredImage, names map[string]struct{}) []intdiscovery.DiscoveredImage {
-	out := imgs[:0]
-	for _, img := range imgs {
-		if _, ok := names[img.Name]; ok {
-			out = append(out, img)
-		}
-	}
-	return out
 }
 
 func filterCopaByName(imgs []copadiscovery.DiscoveredImage, names map[string]struct{}) []copadiscovery.DiscoveredImage {
@@ -495,7 +394,6 @@ func broadChartPatterns() []*regexp.Regexp {
 		regexp.MustCompile(`^test/chart-integration/`),
 		regexp.MustCompile(`^\.github/workflows/chart-integration\.yaml$`),
 		regexp.MustCompile(`^mise\.toml$`),
-		regexp.MustCompile(`^Makefile$`),
 		regexp.MustCompile(`^verity\.yaml$`),
 		regexp.MustCompile(`^internal/chartgen/`),
 		regexp.MustCompile(`^internal/discovery/`),

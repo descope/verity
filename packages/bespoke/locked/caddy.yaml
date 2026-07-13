@@ -1,0 +1,177 @@
+package:
+  name: caddy
+  version: "2.11.4"
+  epoch: 3 # CVE-2026-42505, CVE-2026-39822, CVE-2026-41178
+  description: Fast and extensible multi-platform HTTP/1-2-3 web server with automatic HTTPS
+  copyright:
+    - license: Apache-2.0
+  resources:
+    cpu: "1"
+    memory: 6Gi
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      expected-commit: e2eee6a7fce366321294c9c2a79f3146891dcbdf
+      repository: https://github.com/caddyserver/caddy
+      tag: v${{package.version}}
+
+  - uses: go/bump
+    with:
+      deps: |-
+        golang.org/x/net@v0.51.0
+        go.opentelemetry.io/otel@v1.44.0
+        go.opentelemetry.io/otel/trace@v1.44.0
+        go.opentelemetry.io/otel/metric@v1.44.0
+        go.opentelemetry.io/otel/sdk@v1.44.0
+
+  - runs: |
+      install -m644 -D "./Caddyfile" "${{targets.destdir}}/etc/caddy/Caddyfile"
+      install -m755 -D "./index.html" "${{targets.destdir}}/usr/share/caddy/index.html"
+
+  - runs: tar cfv caddy-src.tar .
+
+  - uses: go/build
+    with:
+      output: caddy
+      packages: ./cmd/caddy
+
+subpackages:
+  - name: caddy-man
+    description: caddy manpages
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.subpkgdir}}"/usr/share
+          "${{targets.destdir}}"/usr/bin/caddy manpage --directory "${{targets.subpkgdir}}"/usr/share/
+
+  - name: caddy-src
+    description: Caddy sources
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.subpkgdir}}/usr/src/caddy"
+          tar xfv caddy-src.tar -C "${{targets.subpkgdir}}/usr/src/caddy"
+    test:
+      pipeline:
+        - uses: test/tw/srcpackage
+
+update:
+  enabled: true
+  manual: false
+  github:
+    identifier: caddyserver/caddy
+    strip-prefix: v
+    tag-filter: v
+    use-tag: true
+
+test:
+  environment:
+    contents:
+      packages:
+        - curl
+        - netcat-openbsd
+        - procps
+        - coreutils
+  pipeline:
+    - name: "Verify binary and version"
+      runs: |
+        caddy version
+        caddy --version
+    - name: "Check basic help output"
+      runs: |
+        caddy help
+        caddy list-modules
+    - name: "Test basic HTTP server"
+      uses: test/daemon-check-output
+      with:
+        setup: |
+          echo "http://localhost:2020 {
+            respond \"Hello, Verity!\"
+          }" > test.Caddyfile
+        start: caddy run --config test.Caddyfile
+        expected_output: "serving initial configuration"
+        error_strings: |
+          "msg":"error"
+          "level":"error"
+          "panic"
+          "fatal"
+          failed
+          Error:
+          error:
+          denied
+    - name: "Test static file serving"
+      uses: test/daemon-check-output
+      with:
+        setup: |
+          mkdir -p webroot
+          echo "Static Test" > webroot/test.txt
+          echo "http://localhost:2021 {
+            root * webroot
+            file_server
+          }" > static.Caddyfile
+        start: caddy run --config static.Caddyfile
+        expected_output: "serving initial configuration"
+        error_strings: |
+          "msg":"error"
+          "level":"error"
+          "panic"
+          "fatal"
+          failed
+          Error:
+          error:
+          denied
+        post: |
+          curl -s http://localhost:2021/test.txt | grep -q "Static Test"
+    - name: "Test module loading and functionality"
+      uses: test/daemon-check-output
+      with:
+        setup: |
+          cat <<EOF > modules.Caddyfile
+          http://localhost:2024 {
+            route /headers {
+              header Content-Type "text/plain"
+              respond "Headers Test"
+            }
+            route /reverse/* {
+              uri strip_prefix /reverse
+              reverse_proxy http://localhost:2024 {
+                header_up X-Real-IP {remote_host}
+              }
+            }
+            route /compress {
+              encode {
+                gzip
+                minimum_length 1
+              }
+              respond "Compression Test"
+            }
+          }
+          EOF
+        start: caddy run --config modules.Caddyfile
+        expected_output: "serving initial configuration"
+        error_strings: |
+          "msg":"error"
+          "level":"error"
+          "panic"
+          "fatal"
+          failed
+          Error:
+          error:
+          denied
+        post: |
+          # Test header module
+          curl -s -i http://localhost:2024/headers | grep -q "Content-Type: text/plain"
+
+          # Test reverse_proxy module
+          curl -s http://localhost:2024/reverse/headers | grep -q "Headers Test"
+
+          # Test compression module
+          curl -sSI -H "Accept-Encoding: gzip" http://localhost:2024/compress | grep -qi '^Content-Encoding: gzip'
+          curl -s --compressed -H "Accept-Encoding: gzip" http://localhost:2024/compress | grep -q "Compression Test"

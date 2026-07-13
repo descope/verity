@@ -1,0 +1,103 @@
+package:
+  name: prometheus-alertmanager
+  version: "0.31.1"
+  epoch: 1 # GHSA-9h8m-3fm2-qjrq
+  description: Prometheus Alertmanager
+  copyright:
+    - license: Apache-2.0
+  resources:
+    cpu: "3"
+    memory: 9Gi
+
+environment:
+  contents:
+    packages:
+      - bash
+      - build-base
+      - busybox
+      - ca-certificates-bundle
+      - curl
+      - go
+      - nodejs<21
+      - npm
+
+var-transforms:
+  - from: ${{package.version}}
+    match: ^(\d+).*
+    replace: $1
+    to: major-version
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/prometheus/alertmanager
+      tag: v${{package.version}}
+      expected-commit: 7a639ba087d6e877038cabfdaa645230f79001b8
+
+  - uses: go/bump
+    with:
+      deps: |-
+        go.opentelemetry.io/otel/sdk@v1.40.0
+
+  - runs: |
+      sed -i '/_ "net\/http\/pprof"/d' ui/web.go
+      git diff
+
+  - runs: |
+      make build
+
+  - runs: |
+      install -Dm755 amtool "${{targets.destdir}}"/usr/bin/amtool
+      install -Dm755 alertmanager "${{targets.destdir}}"/usr/bin/alertmanager
+      install -Dm644 examples/ha/alertmanager.yml "${{targets.destdir}}"/etc/alertmanager/alertmanager.yml
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: prometheus/alertmanager
+    strip-prefix: v
+
+test:
+  environment:
+    contents:
+      packages:
+        - curl
+  pipeline:
+    - runs: |
+        alertmanager --version
+        alertmanager --help
+        amtool --version
+        amtool --help
+    - name: Functional tests
+      runs: |
+        # Start alertmanager with test config
+        alertmanager \
+          --config.file=test-alertmanager-config.yaml \
+          --storage.path=alertmanager \
+          --web.listen-address=127.0.0.1:9093 \
+          --cluster.listen-address="" \
+          --log.level=debug > /dev/null 2>&1 &
+        AM_PID=$!
+        sleep 5
+
+        # Test health endpoints
+        curl -s http://127.0.0.1:9093/-/ready || exit 1
+        curl -s http://127.0.0.1:9093/-/healthy || exit 1
+
+        # Create a test alert
+        curl -XPOST -H "Content-Type: application/json" \
+          -d '[{"labels":{"alertname":"TestAlertFromMelangeTest","severity":"critical"}}]' \
+          http://127.0.0.1:9093/api/v2/alerts
+
+        # Verify alert exists
+        curl -s http://127.0.0.1:9093/api/v2/alerts | grep -q "TestAlertFromMelangeTest"
+
+        # Create a silence for our test alert
+        SILENCE_ID=$(curl -s -XPOST -H "Content-Type: application/json" \
+          -d '{"matchers":[{"name":"alertname","value":"TestAlertFromMelangeTest","isRegex":false}],"startsAt":"2021-01-01T00:00:00Z","endsAt":"2031-01-01T00:00:00Z","createdBy":"melange-test","comment":"test silence"}' \
+          http://127.0.0.1:9093/api/v2/silences | grep -o '"silenceID":"[^"]*"' | cut -d'"' -f4)
+
+        # Verify silence exists
+        curl -s http://127.0.0.1:9093/api/v2/silences | grep -q "$SILENCE_ID"

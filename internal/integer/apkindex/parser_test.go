@@ -13,6 +13,8 @@ import (
 const sampleAPKINDEX = `C:Q1...
 P:nodejs-20
 V:20.18.3-r0
+D:ca-certificates libstdc++ so:libc.musl-x86_64.so.1
+p:cmd:node=20.18.3-r0
 A:x86_64
 S:12345
 I:56789
@@ -67,6 +69,9 @@ func TestParse(t *testing.T) {
 
 	assert.Equal(t, "nodejs-20", pkgs[0].Name)
 	assert.Equal(t, "20.18.3-r0", pkgs[0].Version)
+	assert.Equal(t, []string{"ca-certificates", "libstdc++", "so:libc.musl-x86_64.so.1"}, pkgs[0].Dependencies)
+	assert.Equal(t, []string{"cmd:node=20.18.3-r0"}, pkgs[0].Provides)
+	assert.Equal(t, "nodejs-20", pkgs[0].Origin)
 
 	assert.Equal(t, "nodejs-22", pkgs[1].Name)
 	assert.Equal(t, "22.16.0-r0", pkgs[1].Version)
@@ -89,4 +94,15 @@ func TestParse_NoTrailingNewline(t *testing.T) {
 	require.Len(t, pkgs, 1)
 	assert.Equal(t, "bash", pkgs[0].Name)
 	assert.Equal(t, "5.2.0-r0", pkgs[0].Version)
+}
+
+func TestParse_DiscardsMalformedStanzaState(t *testing.T) {
+	input := "D:stale>=2.0-r0\n\nP:valid\nV:1.0-r0\n"
+
+	pkgs, err := apkindex.Parse(strings.NewReader(input))
+
+	require.NoError(t, err)
+	require.Len(t, pkgs, 1)
+	assert.Equal(t, "valid", pkgs[0].Name)
+	assert.Empty(t, pkgs[0].Dependencies)
 }

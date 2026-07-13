@@ -23,12 +23,13 @@ const latestSentinel = "latest"
 
 // DiscoveredImage represents one buildable image: a name × version × type.
 type DiscoveredImage struct {
-	Name     string   `json:"name"`
-	Version  string   `json:"version"`
-	Type     string   `json:"type"`
-	File     string   `json:"file"` // absolute path to the generated apko YAML
-	Tags     []string `json:"tags"`
-	Registry string   `json:"registry"`
+	Name           string   `json:"name"`
+	Version        string   `json:"version"`
+	Type           string   `json:"type"`
+	File           string   `json:"file"` // absolute path to the generated apko YAML
+	DefinitionFile string   `json:"-"`
+	Tags           []string `json:"tags"`
+	Registry       string   `json:"registry"`
 }
 
 // Options configures the Discover call.
@@ -53,7 +54,7 @@ type bespokeTagPackageFile struct {
 // (excluding _base/), resolves versions from APKINDEX, and returns every
 // buildable combination.
 func DiscoverFromFiles(opts Options) ([]DiscoveredImage, error) {
-	imageFiles, err := config.ImageFilePaths(opts.ImagesDir)
+	definitions, err := config.LoadImageDefinitions(opts.ImagesDir)
 	if err != nil {
 		return nil, fmt.Errorf("reading images dir %q: %w", opts.ImagesDir, err)
 	}
@@ -69,11 +70,9 @@ func DiscoverFromFiles(opts Options) ([]DiscoveredImage, error) {
 
 	var results []DiscoveredImage
 
-	for _, defPath := range imageFiles {
-		def, err := config.LoadImage(defPath)
-		if err != nil {
-			return nil, fmt.Errorf("loading %q: %w", defPath, err)
-		}
+	for _, image := range definitions {
+		defPath := image.Path
+		def := image.Definition
 		if err := config.Validate(def); err != nil {
 			return nil, fmt.Errorf("invalid image %q: %w", defPath, err)
 		}
@@ -81,6 +80,9 @@ func DiscoverFromFiles(opts Options) ([]DiscoveredImage, error) {
 		imgs, err := expandImage(def, opts.ImagesDir, opts.Registry, opts.Packages, genDir)
 		if err != nil {
 			return nil, fmt.Errorf("expanding image %q: %w", def.Name, err)
+		}
+		for i := range imgs {
+			imgs[i].DefinitionFile = defPath
 		}
 		results = append(results, imgs...)
 	}

@@ -77,7 +77,7 @@ var integerBuildCmd = &cli.Command{
 		imagesDir := cmd.String("images-dir")
 		apkindexURL := cmd.String("apkindex-url")
 
-		def, err := intconfig.LoadImage(fmt.Sprintf("%s/%s.yaml", imagesDir, imageName))
+		def, err := intconfig.LoadImageByName(imagesDir, imageName)
 		if err != nil {
 			return fmt.Errorf("loading image %q: %w", imageName, err)
 		}
@@ -125,12 +125,6 @@ var integerBuildCmd = &cli.Command{
 			return fmt.Errorf("image %q version %q not defined for build: %w", imageName, version, errIntegerVariantNotFound)
 		}
 
-		arch := cmd.String("arch")
-		extraRepos, extraKeyrings, err := integerPrepareMelangeBuild(ctx, tmpl.Melange, arch)
-		if err != nil {
-			return fmt.Errorf("preparing melange build: %w", err)
-		}
-
 		// Resolve the declared stream to the actual stem render.Config will
 		// substitute. For "22"-style streams that map 1:1 to a Wolfi APK
 		// (`nodejs-22`) renderVersion == version. For floating-major
@@ -140,6 +134,14 @@ var integerBuildCmd = &cli.Command{
 		// `internal/integer/discovery/discover.go::expandImage` exactly
 		// — see ResolveStreamRenderVersion's doc for the design.
 		renderVersion := discovery.ResolveStreamRenderVersion(def, pkgs, version)
+		arch := cmd.String("arch")
+		melangeArtifacts, err := integerPrepareMelangeBuild(ctx, tmpl.Melange, renderVersion, arch)
+		if err != nil {
+			return fmt.Errorf("preparing melange build: %w", err)
+		}
+		if err := pinLocalPackageVersions(&tmpl, renderVersion, melangeArtifacts.Packages); err != nil {
+			return fmt.Errorf("pinning bespoke package versions: %w", err)
+		}
 
 		tmp, err := os.CreateTemp("", "integer-build-*.apko.yaml")
 		if err != nil {
@@ -159,7 +161,7 @@ var integerBuildCmd = &cli.Command{
 
 		output := cmd.String("output")
 		fmt.Fprintf(os.Stderr, "Building %s:%s-%s (%s) → %s\n", imageName, version, typeName, arch, output)
-		if err := integerRunApkoBuild(ctx, tmp.Name(), output, arch, extraRepos, extraKeyrings); err != nil {
+		if err := integerRunApkoBuild(ctx, tmp.Name(), output, arch, melangeArtifacts.Repositories, melangeArtifacts.Keyrings); err != nil {
 			return err
 		}
 		if sev := cmd.String("fail-on-severity"); sev != "" {

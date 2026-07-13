@@ -95,22 +95,26 @@ func runIntegerValidate(_ context.Context, cmd *cli.Command) error {
 		fmt.Fprintf(os.Stdout, "OK   %s\n", cfgPath)
 	}
 
-	imageFiles, err := intconfig.ImageFilePaths(imagesDir)
+	images, loadFailures, err := intconfig.LoadImageDefinitionsBestEffort(imagesDir)
 	if err != nil {
-		return fmt.Errorf("reading images directory: %w", err)
+		fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", imagesDir, err)
+		failures++
+		return fmt.Errorf("%d error(s): %w", failures, errors.Join(errIntegerValidationFailed, err))
+	}
+	validationErrors := []error{errIntegerValidationFailed}
+	for _, failure := range loadFailures {
+		fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", failure.Path, failure.Err)
+		failures++
+		validationErrors = append(validationErrors, failure)
 	}
 
 	// Track which bespoke files are referenced so we can flag orphans below.
 	referencedBespoke := map[string]string{} // bespoke filename → image yaml path
 
 	checked := 0
-	for _, defPath := range imageFiles {
-		def, err := intconfig.LoadImage(defPath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", defPath, err)
-			failures++
-			continue
-		}
+	for _, image := range images {
+		defPath := image.Path
+		def := image.Definition
 		if err := intconfig.Validate(def); err != nil {
 			fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", defPath, err)
 			failures++
@@ -147,7 +151,7 @@ func runIntegerValidate(_ context.Context, cmd *cli.Command) error {
 	}
 
 	if failures > 0 {
-		return fmt.Errorf("%d error(s): %w", failures, errIntegerValidationFailed)
+		return fmt.Errorf("%d error(s): %w", failures, errors.Join(validationErrors...))
 	}
 
 	fmt.Fprintf(os.Stdout, "\nAll configs valid (%d images checked)\n", checked)
@@ -278,11 +282,7 @@ func tmplPackageMatchesBespoke(def *intconfig.ImageDef, typeName string, package
 }
 
 func apkPackageName(pkg string) string {
-	idx := strings.IndexAny(pkg, "<>=~!")
-	if idx < 0 {
-		return pkg
-	}
-	return pkg[:idx]
+	return apkindex.PackageName(pkg)
 }
 
 // isExistingDir returns true iff path is a non-empty string and refers to

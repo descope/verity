@@ -10,14 +10,17 @@ import (
 
 // Package represents a single package entry from an APKINDEX file.
 type Package struct {
-	Name    string // P: field
-	Version string // V: field (full apk version string, e.g. "22.16.0-r0")
+	Name         string   // P: field
+	Version      string   // V: field (full apk version string, e.g. "22.16.0-r0")
+	Origin       string   // o: field
+	Dependencies []string // D: field
+	Provides     []string // p: field
 }
 
 // Parse reads an APKINDEX text stream and returns all package entries.
 // The APKINDEX format is a sequence of stanzas separated by blank lines.
-// Each stanza has lines of the form "KEY:VALUE". Only P: (name) and
-// V: (version) fields are extracted.
+// Each stanza has lines of the form "KEY:VALUE". Package identity,
+// dependency, and provider fields are extracted.
 func Parse(r io.Reader) ([]Package, error) {
 	var packages []Package
 	var current Package
@@ -29,8 +32,8 @@ func Parse(r io.Reader) ([]Package, error) {
 			// Blank line ends the current stanza.
 			if current.Name != "" {
 				packages = append(packages, current)
-				current = Package{}
 			}
+			current = Package{}
 			continue
 		}
 		key, value, ok := strings.Cut(line, ":")
@@ -42,6 +45,12 @@ func Parse(r io.Reader) ([]Package, error) {
 			current.Name = value
 		case "V":
 			current.Version = value
+		case "o":
+			current.Origin = value
+		case "D":
+			current.Dependencies = strings.Fields(value)
+		case "p":
+			current.Provides = strings.Fields(value)
 		}
 	}
 	// Capture any trailing stanza without a trailing blank line.

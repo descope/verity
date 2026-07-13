@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
+
+	intconfig "github.com/verity-org/verity/internal/integer/config"
 )
 
 func TestIntegerValidateCommand_AllValid(t *testing.T) {
@@ -36,6 +38,44 @@ func TestIntegerValidateCommand_InvalidImageYaml(t *testing.T) {
 	})
 	require.Error(t, err)
 	assert.ErrorIs(t, err, errIntegerValidationFailed)
+}
+
+func TestIntegerValidateCommand_ContinuesAfterInvalidImageYaml(t *testing.T) {
+	// Given: one malformed definition and one valid definition whose package is
+	// absent from the supplied index.
+	srv := intMakeAPKINDEXServer(t, "P:curl\nV:8.0.0\n\n")
+	imagesDir, cfgPath := intSetupCmdImages(t)
+	intWriteFile(t, filepath.Join(imagesDir, "broken.yaml"), "name: [\n")
+
+	// When: all image definitions are validated.
+	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
+	err := root.Run(context.Background(), []string{
+		"verity", "integer", "validate",
+		"--config", cfgPath,
+		"--images-dir", imagesDir,
+		"--apkindex-url", srv.URL,
+		"--cache-dir", t.TempDir(),
+	})
+
+	// Then: both the malformed file and the valid image's package failure are
+	// counted instead of returning after the first load error.
+	require.ErrorIs(t, err, errIntegerValidationFailed)
+	assert.Contains(t, err.Error(), "2 error(s)")
+}
+
+func TestIntegerValidateCommand_RejectsDuplicateDeclaredNames(t *testing.T) {
+	imagesDir, cfgPath := intSetupCmdImages(t)
+	intWriteFile(t, filepath.Join(imagesDir, "nested", "duplicate.yaml"), intTestNodeYAML)
+
+	root := &cli.Command{Commands: []*cli.Command{IntegerCommand}}
+	err := root.Run(context.Background(), []string{
+		"verity", "integer", "validate",
+		"--config", cfgPath,
+		"--images-dir", imagesDir,
+	})
+
+	require.ErrorIs(t, err, errIntegerValidationFailed)
+	require.ErrorIs(t, err, intconfig.ErrDuplicateImageName)
 }
 
 func TestIntegerValidateCommand_InvalidConfig(t *testing.T) {

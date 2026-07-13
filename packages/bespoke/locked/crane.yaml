@@ -1,0 +1,146 @@
+package:
+  name: crane
+  version: "0.21.7"
+  epoch: 1
+  description: Tool for interacting with remote images and registries.
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/google/go-containerregistry
+      tag: v${{package.version}}
+      expected-commit: c68d899782693b63b7549166812aa996f17a660c
+
+  - uses: go/build
+    with:
+      packages: ./cmd/crane
+      ldflags: -buildid= -X github.com/google/go-containerregistry/cmd/crane/cmd.Version=${{package.version}} -X github.com/google/go-containerregistry/pkg/v1/remote/transport.Version=${{package.version}}
+      output: crane
+
+subpackages:
+  - name: crane-cov
+    description: "Crane compiled for collecting coverage profiles"
+    pipeline:
+      - uses: go/build
+        with:
+          packages: ./cmd/crane
+          extra-args: -cover
+          ldflags: -buildid= -X github.com/google/go-containerregistry/cmd/crane/cmd.Version=${{package.version}} -X github.com/google/go-containerregistry/pkg/v1/remote/transport.Version=${{package.version}}
+          modroot: /home/build
+          output: crane
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+            - go
+            - jq
+        environment:
+          GOCOVERDIR: /home/build
+      pipeline:
+        - name: Run a command with the instrumented binary
+          runs: |
+            crane manifest chainguard/static
+        - name: Check file paths are as expected.
+          runs: |
+            go tool covdata func -i=. 2>/dev/null | head -2 | awk {'print $1'} | grep -q -E "^github.com/google/go-containerregistry/"
+        - name: Check that coverage data is generated for the main function.
+          runs: |
+            go tool covdata func -i=. 2>/dev/null | head -2 | awk {'print $2'} | grep -q -E "^main$" -q
+        - name: Check that a coverage global summary by function is generated.
+          runs: |
+            go tool covdata func -i=. 2>/dev/null | tail -1 | awk {'print $2'} | grep -q -E "^\(statements\)$" -q
+            go tool covdata func -i=. 2>/dev/null | tail -1 | awk {'print $3'} | grep -q -E '^[0-9]+\.[0-9]+%$' -q
+
+  - name: krane
+    description: "Krane a drop-in replacement for crane with additional authentication"
+    pipeline:
+      - uses: go/build
+        with:
+          packages: .
+          ldflags: -buildid= -X github.com/google/go-containerregistry/cmd/crane/cmd.Version=${{package.version}} -X github.com/google/go-containerregistry/pkg/v1/remote/transport.Version=${{package.version}}
+          modroot: /home/build/cmd/krane
+          output: krane
+    test:
+      environment:
+        contents:
+          packages:
+            - jq
+      pipeline:
+        - name: Verify Krane installation
+          runs: |
+            krane version | grep ${{ package.version }} || exit 1
+            krane --help
+        - name: Fetch and verify manifest
+          runs: |
+            krane manifest chainguard/static | jq '.schemaVersion' | grep '2' || exit 1
+        - name: List tags for a public image
+          runs: |
+            krane ls chainguard/static | grep -E 'latest|v[0-9]+.[0-9]+.[0-9]+' || exit 1
+        - name: Validate image existence
+          runs: |
+            krane digest chainguard/static:latest && echo "Image exists" || exit 1
+        - name: Pull and save an image locally
+          runs: |
+            krane pull chainguard/static:latest static_latest.tar || exit 1
+            [ -f static_latest.tar ] || exit 1
+
+update:
+  enabled: true
+  github:
+    identifier: google/go-containerregistry
+    strip-prefix: v
+
+# We need them for xcover to load the BPF probe.
+# It is actually not required with the QEMU runner,
+# but it is declarative.
+capabilities:
+  add:
+    - CAP_SYS_ADMIN
+    - CAP_SYS_RESOURCE
+
+test:
+  environment:
+    contents:
+      packages:
+        - jq
+  pipeline:
+    - uses: xcover/profile
+      with:
+        executable-path: /usr/bin/crane
+        exclude-functions: ^runtime\\.
+    - name: Verify Crane installation
+      runs: |
+        crane version | grep ${{ package.version }} || exit 1
+        crane --help
+    - name: Fetch and verify manifest
+      runs: |
+        crane manifest chainguard/static | jq '.schemaVersion' | grep '2' || exit 1
+    - name: List tags for a public image
+      runs: |
+        crane ls chainguard/static | grep -E 'latest|v[0-9]+.[0-9]+.[0-9]+' || exit 1
+    - name: Validate image existence
+      runs: |
+        crane digest chainguard/static:latest && echo "Image exists" || exit 1
+    - name: Pull and save an image locally
+      runs: |
+        crane pull chainguard/static:latest static_latest.tar || exit 1
+        [ -f static_latest.tar ] || exit 1
+    - uses: xcover/stop
+    - uses: xcover/ensure
+      with:
+        min-coverage: 17

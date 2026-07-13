@@ -60,11 +60,11 @@ func download(url string) ([]Package, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("%w: HTTP %d", ErrHTTPDownload, resp.StatusCode)
 	}
-	return parseTarGz(resp.Body)
+	return ParseArchive(resp.Body)
 }
 
-// parseTarGz extracts the APKINDEX file from a tar.gz archive and parses it.
-func parseTarGz(r io.Reader) ([]Package, error) {
+// ParseArchive extracts and parses an APKINDEX file from a tar.gz archive.
+func ParseArchive(r io.Reader) ([]Package, error) {
 	gz, err := gzip.NewReader(r)
 	if err != nil {
 		return nil, fmt.Errorf("creating gzip reader: %w", err)

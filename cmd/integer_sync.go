@@ -56,14 +56,17 @@ func runIntegerSync(_ context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	imageFiles, err := intconfig.ImageFilePaths(imagesDir)
+	images, loadFailures, err := intconfig.LoadImageDefinitionsBestEffort(imagesDir)
 	if err != nil {
 		return fmt.Errorf("reading images directory: %w", err)
 	}
+	for _, failure := range loadFailures {
+		fmt.Fprintf(os.Stderr, "WARN %s: %v\n", failure.Path, failure.Err)
+	}
 
 	totalNew, totalStale := 0, 0
-	for _, defPath := range imageFiles {
-		n, s := integerProcessSyncEntry(defPath, pkgs, apply)
+	for _, image := range images {
+		n, s := integerProcessSyncDefinition(image.Path, image.Definition, pkgs, apply)
 		totalNew += n
 		totalStale += s
 	}
@@ -78,7 +81,10 @@ func integerProcessSyncEntry(defPath string, pkgs []apkindex.Package, apply bool
 		fmt.Fprintf(os.Stderr, "WARN %s: %v\n", defPath, err)
 		return 0, 0
 	}
+	return integerProcessSyncDefinition(defPath, def, pkgs, apply)
+}
 
+func integerProcessSyncDefinition(defPath string, def *intconfig.ImageDef, pkgs []apkindex.Package, apply bool) (newCount, staleCount int) {
 	discovered := apkindex.DiscoverVersions(pkgs, def.Upstream.Package)
 
 	discoveredSet := make(map[string]bool, len(discovered))

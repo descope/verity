@@ -6,6 +6,8 @@ import "github.com/urfave/cli/v3"
 // across the integer subcommands so a future rename ripples cleanly.
 const yamlExt = ".yaml"
 
+const integerCommandName = "integer"
+
 // latestSentinel is the special version string that means "resolve to the
 // highest version available in the APKINDEX at run time". Shared across
 // build, validate, and sync subcommands so the sentinel value lives in
@@ -13,15 +15,16 @@ const yamlExt = ".yaml"
 // internal/integer/discovery (kept in sync by the build path).
 const latestSentinel = "latest"
 
-// IntegerCommand is the top-level "integer" subcommand group for managing
-// Wolfi-based OCI images built from source.
+// IntegerCommand is the top-level subcommand group for managing bespoke OCI images.
 var IntegerCommand = &cli.Command{
-	Name:  "integer",
-	Usage: "Build and manage Wolfi-based OCI images from source",
+	Name:  integerCommandName,
+	Usage: "Build and manage bespoke OCI images from source",
 	Commands: []*cli.Command{
 		integerDiscoverCmd,
 		integerValidateCmd,
 		integerBuildCmd,
+		integerMetadataCmd,
+		integerMelangeCmd,
 		integerSyncCmd,
 		integerCatalogCmd,
 	},
