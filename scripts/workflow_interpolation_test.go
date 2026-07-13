@@ -133,14 +133,15 @@ func TestPRWorkflowExercisesProductionPinningOnLinkerdCanary(t *testing.T) {
 	}
 
 	// Then: only Linkerd runs the real dual-architecture publish pinning path.
+	const canaryCondition = "matrix.image == 'linkerd' && matrix.version == '25' && matrix.type == 'default'"
 	require.Equal(t, "Set up QEMU for Linkerd pinning canary", qemu.Name)
-	assert.Contains(t, qemu.If, "matrix.image == 'linkerd'")
+	assert.Equal(t, canaryCondition, qemu.If)
 	assert.Equal(t, "docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8", qemu.Uses)
 	assert.Equal(t, "docker.io/tonistiigi/binfmt:latest@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0", qemu.With["image"])
 	assert.Equal(t, "arm64", qemu.With["platforms"])
 	assert.Less(t, qemuIndex, canaryIndex)
 	require.Equal(t, "Exercise production package pinning", canary.Name)
-	assert.Contains(t, canary.If, "matrix.image == 'linkerd'")
+	assert.Equal(t, canaryCondition, canary.If)
 	assert.Contains(t, canary.Run, `--arch aarch64`)
 	assert.Contains(t, canary.Run, `--staged`)
 	assert.Contains(t, canary.Run, `./verity integer melange pin-config`)
