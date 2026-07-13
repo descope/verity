@@ -142,6 +142,7 @@ func TestPRWorkflowExercisesProductionPinningOnLinkerdCanary(t *testing.T) {
 	require.Equal(t, "Exercise production package pinning", canary.Name)
 	assert.Contains(t, canary.If, "matrix.image == 'linkerd'")
 	assert.Contains(t, canary.Run, `--arch aarch64`)
+	assert.Contains(t, canary.Run, `--staged`)
 	assert.Contains(t, canary.Run, `./verity integer melange pin-config`)
 	assert.Contains(t, canary.Run, `--repository packages/repo`)
 	assert.Contains(t, canary.Run, `--arch x86_64`)
