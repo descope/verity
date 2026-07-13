@@ -166,14 +166,14 @@ jobs:
         #   chart-wrapper backlog clears.
         # Tracking issue: TBD (chart-wrapper backlog).
         continue-on-error: ${{ github.event_name == 'pull_request' && needs.discover-charts.outputs.strict != 'true' }}
-        run: make chart-integration
+        run: go test -tags=integration -v -timeout=4h ./test/chart-integration/...
 
       - name: Record shard outcome
         if: always()
         # SKIPS.yaml (SCR-2026-05-14-001 AC-1/AC-3) lets a chart be explicitly
         # excluded from the smoke matrix. When that happens, the Go harness
         # drops `_skip-<chart>.txt` at the repo root and `t.Skipf`s — which
-        # means `make chart-integration` still exits 0 and
+        # means the integration test still exits 0 and
         # `steps.smoke.outcome` reports "success". That's misleading in the
         # summary, so we check for the sentinel and render skipped charts
         # distinctly (yellow ⚠) with the reason + tracking issue inline.

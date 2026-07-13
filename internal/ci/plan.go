@@ -394,7 +394,6 @@ func broadChartPatterns() []*regexp.Regexp {
 		regexp.MustCompile(`^test/chart-integration/`),
 		regexp.MustCompile(`^\.github/workflows/chart-integration\.yaml$`),
 		regexp.MustCompile(`^mise\.toml$`),
-		regexp.MustCompile(`^Makefile$`),
 		regexp.MustCompile(`^verity\.yaml$`),
 		regexp.MustCompile(`^internal/chartgen/`),
 		regexp.MustCompile(`^internal/discovery/`),

@@ -333,3 +333,26 @@ dependencies:
 	assert.False(t, plan.Strict)
 	assert.Equal(t, []map[string]string{{"chart": "grafana"}}, plan.Matrix.Include)
 }
+
+func TestPlanChartsIgnoresUnrelatedMakefileChanges(t *testing.T) {
+	// Given a repository with a configured chart.
+	charts := filepath.Join(t.TempDir(), "Chart.yaml")
+	writeTestFile(t, charts, `
+dependencies:
+  - name: grafana
+    version: "10.0.0"
+    repository: "https://grafana.github.io/helm-charts"
+`)
+
+	// When a pull request changes only a Makefile target unrelated to charts.
+	plan, err := PlanCharts(&ChartOptions{
+		EventName:    "pull_request",
+		ChangedFiles: []string{"Makefile"},
+		ChartsFile:   charts,
+	})
+	require.NoError(t, err)
+
+	// Then chart integration reports its required no-op gate without shards.
+	assert.False(t, plan.HasChanges)
+	assert.Empty(t, plan.Matrix.Include)
+}
