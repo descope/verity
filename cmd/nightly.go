@@ -437,20 +437,13 @@ func sourceTag(ref string) string {
 }
 
 func integerImageNames(imagesDir string) (map[string]struct{}, error) {
-	files, err := intconfig.ImageFilePaths(imagesDir)
+	images, err := intconfig.LoadImageDefinitions(imagesDir)
 	if err != nil {
 		return nil, fmt.Errorf("reading integer image names: %w", err)
 	}
-	names := make(map[string]struct{}, len(files))
-	for _, f := range files {
-		def, err := intconfig.LoadImage(f)
-		if err != nil {
-			return nil, fmt.Errorf("loading integer image %s: %w", f, err)
-		}
-		if _, exists := names[def.Name]; exists {
-			return nil, fmt.Errorf("%w %q", intconfig.ErrDuplicateImageName, def.Name)
-		}
-		names[def.Name] = struct{}{}
+	names := make(map[string]struct{}, len(images))
+	for _, image := range images {
+		names[image.Definition.Name] = struct{}{}
 	}
 	return names, nil
 }

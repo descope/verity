@@ -54,7 +54,7 @@ type bespokeTagPackageFile struct {
 // (excluding _base/), resolves versions from APKINDEX, and returns every
 // buildable combination.
 func DiscoverFromFiles(opts Options) ([]DiscoveredImage, error) {
-	imageFiles, err := config.ImageFilePaths(opts.ImagesDir)
+	definitions, err := config.LoadImageDefinitions(opts.ImagesDir)
 	if err != nil {
 		return nil, fmt.Errorf("reading images dir %q: %w", opts.ImagesDir, err)
 	}
@@ -70,11 +70,9 @@ func DiscoverFromFiles(opts Options) ([]DiscoveredImage, error) {
 
 	var results []DiscoveredImage
 
-	for _, defPath := range imageFiles {
-		def, err := config.LoadImage(defPath)
-		if err != nil {
-			return nil, fmt.Errorf("loading %q: %w", defPath, err)
-		}
+	for _, image := range definitions {
+		defPath := image.Path
+		def := image.Definition
 		if err := config.Validate(def); err != nil {
 			return nil, fmt.Errorf("invalid image %q: %w", defPath, err)
 		}

@@ -68,19 +68,15 @@ func Generate(imagesDir, reportsDir, registry string, pkgs []apkindex.Package, e
 		}
 	}
 
-	imageFiles, err := config.ImageFilePaths(imagesDir)
+	definitions, err := config.LoadImageDefinitions(imagesDir)
 	if err != nil {
 		return nil, fmt.Errorf("reading images dir %q: %w", imagesDir, err)
 	}
 
 	images := []Image{}
 
-	for _, defPath := range imageFiles {
-		def, err := config.LoadImage(defPath)
-		if err != nil {
-			return nil, fmt.Errorf("loading %s: %w", defPath, err)
-		}
-
+	for _, image := range definitions {
+		def := image.Definition
 		img, err := buildImage(def, registry, reportsDir, pkgs, eolFetcher)
 		if err != nil {
 			return nil, fmt.Errorf("building catalog entry for %q: %w", def.Name, err)

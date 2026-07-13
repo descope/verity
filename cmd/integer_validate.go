@@ -95,22 +95,20 @@ func runIntegerValidate(_ context.Context, cmd *cli.Command) error {
 		fmt.Fprintf(os.Stdout, "OK   %s\n", cfgPath)
 	}
 
-	imageFiles, err := intconfig.ImageFilePaths(imagesDir)
+	images, err := intconfig.LoadImageDefinitions(imagesDir)
 	if err != nil {
-		return fmt.Errorf("reading images directory: %w", err)
+		fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", imagesDir, err)
+		failures++
+		return fmt.Errorf("%d error(s): %w", failures, errors.Join(errIntegerValidationFailed, err))
 	}
 
 	// Track which bespoke files are referenced so we can flag orphans below.
 	referencedBespoke := map[string]string{} // bespoke filename → image yaml path
 
 	checked := 0
-	for _, defPath := range imageFiles {
-		def, err := intconfig.LoadImage(defPath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", defPath, err)
-			failures++
-			continue
-		}
+	for _, image := range images {
+		defPath := image.Path
+		def := image.Definition
 		if err := intconfig.Validate(def); err != nil {
 			fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", defPath, err)
 			failures++

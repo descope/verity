@@ -197,6 +197,17 @@ func TestDiscoverFromFiles_InvalidYAML(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestDiscoverFromFiles_RejectsDuplicateDeclaredNames(t *testing.T) {
+	imagesDir := setupImages(t, map[string]string{
+		"node.yaml":             nodeYAML,
+		"nested/duplicate.yaml": nodeYAML,
+	})
+
+	_, err := discovery.DiscoverFromFiles(opts(imagesDir, t.TempDir(), nil))
+
+	require.ErrorIs(t, err, config.ErrDuplicateImageName)
+}
+
 func TestDiscoverFromFiles_EmptyDir(t *testing.T) {
 	imagesDir := setupImages(t, nil)
 	genDir := t.TempDir()
