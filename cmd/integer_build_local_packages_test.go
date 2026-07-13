@@ -41,6 +41,28 @@ func TestPinLocalPackageVersionsReplacesExistingConstraint(t *testing.T) {
 	assert.Equal(t, []string{"linkerd2-cli=25.12.3-r100@local", "bash"}, tmpl.Packages)
 }
 
+func TestPinLocalPackageVersionsPinsLocalDependencyClosure(t *testing.T) {
+	// Given: a locally built package depends on local subpackages that are absent from the image template.
+	tmpl := intconfig.TypeTemplate{Packages: []string{"postgresql-15", "bash"}}
+	packages := []apkindex.Package{
+		{Name: "postgresql-15", Version: "15.14-r0", Dependencies: []string{"postgresql-15-base=15.14-r0", "libpq-15=15.14-r0", "tzdata"}},
+		{Name: "postgresql-15-base", Version: "15.14-r0", Dependencies: []string{"libpq-15=15.14-r0"}},
+		{Name: "libpq-15", Version: "15.14-r0"},
+	}
+
+	// When: local package versions are pinned.
+	err := pinLocalPackageVersions(&tmpl, "15", packages)
+
+	// Then: the root and every local dependency select the tagged repository exactly once.
+	require.NoError(t, err)
+	assert.Equal(t, []string{
+		"postgresql-15=15.14-r0@local",
+		"bash",
+		"postgresql-15-base=15.14-r0@local",
+		"libpq-15=15.14-r0@local",
+	}, tmpl.Packages)
+}
+
 func TestPinLocalPackageVersionsRejectsConflictingVersions(t *testing.T) {
 	tmpl := intconfig.TypeTemplate{Packages: []string{"cosign"}}
 

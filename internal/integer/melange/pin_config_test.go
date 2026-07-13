@@ -47,6 +47,36 @@ func TestPinConfigPackagesPinsLocalVersionsAcrossArchitectures(t *testing.T) {
 	}, readConfigPackages(t, configPath))
 }
 
+func TestPinConfigPackagesPinsLocalDependencyClosure(t *testing.T) {
+	// Given: the configured package depends on local subpackages in both architecture indexes.
+	root := t.TempDir()
+	configPath := filepath.Join(root, "config.apko.yaml")
+	repositoryDir := filepath.Join(root, "repo")
+	writeTestFile(t, configPath, "contents:\n  packages: [postgresql-15, bash]\n")
+	index := "P:postgresql-15\nV:15.14-r0\nD:postgresql-15-base=15.14-r0 libpq-15=15.14-r0 tzdata\n\n" +
+		"P:postgresql-15-base\nV:15.14-r0\nD:libpq-15=15.14-r0\n\n" +
+		"P:libpq-15\nV:15.14-r0\n\n"
+	writeAPKIndexArchive(t, filepath.Join(repositoryDir, "x86_64", "APKINDEX.tar.gz"), index)
+	writeAPKIndexArchive(t, filepath.Join(repositoryDir, "aarch64", "APKINDEX.tar.gz"), index)
+
+	// When: the publish config is pinned against both local indexes.
+	err := PinConfigPackages(PinConfigOptions{
+		RootDir:       root,
+		ConfigPath:    configPath,
+		RepositoryDir: repositoryDir,
+		Architectures: []Architecture{ArchitectureX8664, ArchitectureAArch64},
+	})
+
+	// Then: the root and every local dependency select the tagged repository exactly once.
+	require.NoError(t, err)
+	assert.Equal(t, []string{
+		"postgresql-15=15.14-r0@local",
+		"bash",
+		"postgresql-15-base=15.14-r0@local",
+		"libpq-15=15.14-r0@local",
+	}, readConfigPackages(t, configPath))
+}
+
 func TestPinConfigPackagesRejectsArchitectureVersionMismatch(t *testing.T) {
 	// Given: the local repositories disagree on the package revision.
 	root := t.TempDir()

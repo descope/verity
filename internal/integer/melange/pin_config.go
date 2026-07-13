@@ -32,12 +32,19 @@ type PinConfigOptions struct {
 	Architectures []Architecture
 }
 
+type pinnedPackageSets map[Architecture]map[string]apkindex.Package
+
+type pinnedPackageResolver struct {
+	architectures []Architecture
+	packageSets   pinnedPackageSets
+}
+
 func PinConfigPackages(options PinConfigOptions) error {
 	rootDir, repositoryRelative, configRelative, err := pinConfigPaths(options)
 	if err != nil {
 		return err
 	}
-	versions, err := loadPinnedPackageVersions(rootDir, repositoryRelative, options.Architectures)
+	packageSets, err := loadPinnedPackages(rootDir, repositoryRelative, options.Architectures)
 	if err != nil {
 		return err
 	}
@@ -61,24 +68,19 @@ func PinConfigPackages(options PinConfigOptions) error {
 		return fmt.Errorf("parse apko config %q: %w", options.ConfigPath, err)
 	}
 
-	pinned := 0
-	for _, packageNode := range packages.Content {
-		if packageNode.Kind != yaml.ScalarNode {
-			return fmt.Errorf("parse apko config %q: %w", options.ConfigPath, errPinnedConfigPackageNotScalar)
-		}
-		name := apkindex.PackageName(packageNode.Value)
-		version, local, err := pinnedPackageVersion(name, options.Architectures, versions)
-		if err != nil {
-			return err
-		}
-		if !local {
-			continue
-		}
-		packageNode.Value = name + "=" + version + "@" + localRepositoryTag
-		pinned++
+	resolver := pinnedPackageResolver{
+		architectures: options.Architectures,
+		packageSets:   packageSets,
 	}
-	if pinned == 0 {
+	queue, pinned, err := resolver.pinConfiguredPackages(options.ConfigPath, packages)
+	if err != nil {
+		return err
+	}
+	if len(queue) == 0 {
 		return errPinnedPackageNotUsed
+	}
+	if err := resolver.appendPinnedDependencies(packages, queue, pinned); err != nil {
+		return err
 	}
 
 	output, err := yaml.Marshal(&document)
@@ -107,8 +109,8 @@ func pinConfigPaths(options PinConfigOptions) (rootDir, repositoryRelative, conf
 	return rootDir, repositoryRelative, configRelative, nil
 }
 
-func loadPinnedPackageVersions(rootDir, repositoryRelative string, architectures []Architecture) (map[Architecture]map[string]string, error) {
-	versions := make(map[Architecture]map[string]string, len(architectures))
+func loadPinnedPackages(rootDir, repositoryRelative string, architectures []Architecture) (pinnedPackageSets, error) {
+	packageSets := make(pinnedPackageSets, len(architectures))
 	for _, architecture := range architectures {
 		if !architecture.valid() {
 			return nil, fmt.Errorf("%w %q", errUnsupportedArchitecture, architecture)
@@ -123,19 +125,19 @@ func loadPinnedPackageVersions(rootDir, repositoryRelative string, architectures
 		if err != nil {
 			return nil, fmt.Errorf("parse local package index %q: %w", indexPath, err)
 		}
-		architectureVersions := make(map[string]string, len(packages))
+		architecturePackages := make(map[string]apkindex.Package, len(packages))
 		for _, pkg := range packages {
 			if pkg.Version == "" {
 				return nil, fmt.Errorf("%w: %s in %s", errPinnedPackageVersionUndefined, pkg.Name, architecture)
 			}
-			if previous, exists := architectureVersions[pkg.Name]; exists && previous != pkg.Version {
-				return nil, fmt.Errorf("%w for %s in %s: %s and %s", errPinnedPackageVersionConflict, pkg.Name, architecture, previous, pkg.Version)
+			if previous, exists := architecturePackages[pkg.Name]; exists && previous.Version != pkg.Version {
+				return nil, fmt.Errorf("%w for %s in %s: %s and %s", errPinnedPackageVersionConflict, pkg.Name, architecture, previous.Version, pkg.Version)
 			}
-			architectureVersions[pkg.Name] = pkg.Version
+			architecturePackages[pkg.Name] = pkg
 		}
-		versions[architecture] = architectureVersions
+		packageSets[architecture] = architecturePackages
 	}
-	return versions, nil
+	return packageSets, nil
 }
 
 func pinnedRegularFileError(err, notRegular error) error {
@@ -145,29 +147,101 @@ func pinnedRegularFileError(err, notRegular error) error {
 	return err
 }
 
-func pinnedPackageVersion(name string, architectures []Architecture, versions map[Architecture]map[string]string) (version string, local bool, err error) {
+func (resolver pinnedPackageResolver) packageVersion(name string) (version string, local bool, err error) {
 	var selected string
 	found := false
-	for _, architecture := range architectures {
-		version, exists := versions[architecture][name]
+	for _, architecture := range resolver.architectures {
+		pkg, exists := resolver.packageSets[architecture][name]
 		if !exists {
 			continue
 		}
-		if found && version != selected {
-			return "", false, fmt.Errorf("%w for %s: %s and %s", errPinnedPackageVersionConflict, name, selected, version)
+		if found && pkg.Version != selected {
+			return "", false, fmt.Errorf("%w for %s: %s and %s", errPinnedPackageVersionConflict, name, selected, pkg.Version)
 		}
-		selected = version
+		selected = pkg.Version
 		found = true
 	}
 	if !found {
 		return "", false, nil
 	}
-	for _, architecture := range architectures {
-		if _, exists := versions[architecture][name]; !exists {
+	for _, architecture := range resolver.architectures {
+		if _, exists := resolver.packageSets[architecture][name]; !exists {
 			return "", false, fmt.Errorf("%w: %s for %s", errPinnedPackageMissingArch, name, architecture)
 		}
 	}
 	return selected, true, nil
+}
+
+func (resolver pinnedPackageResolver) pinConfiguredPackages(configPath string, packages *yaml.Node) (queue []string, pinned map[string]struct{}, err error) {
+	queue = make([]string, 0, len(packages.Content))
+	pinned = make(map[string]struct{}, len(packages.Content))
+	for _, packageNode := range packages.Content {
+		if packageNode.Kind != yaml.ScalarNode {
+			return nil, nil, fmt.Errorf("parse apko config %q: %w", configPath, errPinnedConfigPackageNotScalar)
+		}
+		name := apkindex.PackageName(packageNode.Value)
+		version, local, err := resolver.packageVersion(name)
+		if err != nil {
+			return nil, nil, err
+		}
+		if !local {
+			continue
+		}
+		packageNode.Value = name + "=" + version + "@" + localRepositoryTag
+		if _, exists := pinned[name]; !exists {
+			pinned[name] = struct{}{}
+			queue = append(queue, name)
+		}
+	}
+	return queue, pinned, nil
+}
+
+func (resolver pinnedPackageResolver) appendPinnedDependencies(packages *yaml.Node, queue []string, pinned map[string]struct{}) error {
+	for cursor := 0; cursor < len(queue); cursor++ {
+		for _, name := range resolver.localDependencies(queue[cursor]) {
+			if _, exists := pinned[name]; exists {
+				continue
+			}
+			version, local, err := resolver.packageVersion(name)
+			if err != nil {
+				return err
+			}
+			if !local {
+				continue
+			}
+			pinned[name] = struct{}{}
+			queue = append(queue, name)
+			packages.Content = append(packages.Content, &yaml.Node{
+				Kind:  yaml.ScalarNode,
+				Tag:   "!!str",
+				Value: name + "=" + version + "@" + localRepositoryTag,
+			})
+		}
+	}
+	return nil
+}
+
+func (resolver pinnedPackageResolver) localDependencies(name string) []string {
+	dependencies := []string{}
+	seen := map[string]struct{}{}
+	for _, architecture := range resolver.architectures {
+		pkg, exists := resolver.packageSets[architecture][name]
+		if !exists {
+			continue
+		}
+		for _, dependency := range pkg.Dependencies {
+			dependencyName := apkindex.PackageName(dependency)
+			if _, local := resolver.packageSets[architecture][dependencyName]; !local {
+				continue
+			}
+			if _, exists := seen[dependencyName]; exists {
+				continue
+			}
+			seen[dependencyName] = struct{}{}
+			dependencies = append(dependencies, dependencyName)
+		}
+	}
+	return dependencies
 }
 
 func configPackagesNode(document *yaml.Node) (*yaml.Node, error) {

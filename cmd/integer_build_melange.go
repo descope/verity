@@ -86,21 +86,42 @@ func readIntegerMelangePackages(paths *melange.Paths, arch melange.Architecture)
 }
 
 func pinLocalPackageVersions(tmpl *intconfig.TypeTemplate, renderVersion string, packages []apkindex.Package) error {
-	versions := make(map[string]string, len(packages))
+	packagesByName := make(map[string]apkindex.Package, len(packages))
 	for _, pkg := range packages {
 		if pkg.Version == "" {
 			return fmt.Errorf("%w: %s", errIntegerMelangePackageNoVersion, pkg.Name)
 		}
-		if previous, exists := versions[pkg.Name]; exists && previous != pkg.Version {
-			return fmt.Errorf("%w for %s: %s and %s", errIntegerMelangePackageConflict, pkg.Name, previous, pkg.Version)
+		if previous, exists := packagesByName[pkg.Name]; exists && previous.Version != pkg.Version {
+			return fmt.Errorf("%w for %s: %s and %s", errIntegerMelangePackageConflict, pkg.Name, previous.Version, pkg.Version)
 		}
-		versions[pkg.Name] = pkg.Version
+		packagesByName[pkg.Name] = pkg
 	}
 
+	pinned := make(map[string]struct{}, len(packages))
+	queue := make([]string, 0, len(packages))
 	for index, packageSpec := range tmpl.Packages {
 		name := apkPackageName(strings.ReplaceAll(packageSpec, "{{version}}", renderVersion))
-		if version, exists := versions[name]; exists {
-			tmpl.Packages[index] = name + "=" + version + integerMelangePackageTag
+		if pkg, exists := packagesByName[name]; exists {
+			tmpl.Packages[index] = name + "=" + pkg.Version + integerMelangePackageTag
+			if _, exists := pinned[name]; !exists {
+				pinned[name] = struct{}{}
+				queue = append(queue, name)
+			}
+		}
+	}
+	for cursor := 0; cursor < len(queue); cursor++ {
+		for _, dependency := range packagesByName[queue[cursor]].Dependencies {
+			name := apkindex.PackageName(dependency)
+			pkg, local := packagesByName[name]
+			if !local {
+				continue
+			}
+			if _, exists := pinned[name]; exists {
+				continue
+			}
+			pinned[name] = struct{}{}
+			queue = append(queue, name)
+			tmpl.Packages = append(tmpl.Packages, name+"="+pkg.Version+integerMelangePackageTag)
 		}
 	}
 	return nil
