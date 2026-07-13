@@ -96,7 +96,7 @@ func pinLocalPackageVersions(tmpl *intconfig.TypeTemplate, renderVersion string,
 	}
 
 	for index, packageSpec := range tmpl.Packages {
-		name := strings.ReplaceAll(packageSpec, "{{version}}", renderVersion)
+		name := apkPackageName(strings.ReplaceAll(packageSpec, "{{version}}", renderVersion))
 		if version, exists := versions[name]; exists {
 			tmpl.Packages[index] = name + "=" + version
 		}
