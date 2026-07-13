@@ -73,16 +73,16 @@ All patched images are verifiable without trusting Verity's registry directly.
 cosign verify \
   --certificate-identity-regexp "https://github.com/verity-org/verity/.github/workflows/" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-  ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
+  verity.supply/prometheus/prometheus:v3.9.1-patched
 
 # Verify the SBOM attestation (GitHub CLI)
 gh attestation verify \
-  oci://ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched \
+  oci://verity.supply/prometheus/prometheus:v3.9.1-patched \
   --owner verity-org --predicate-type https://cyclonedx.org/bom
 
 # Inspect the CycloneDX SBOM directly
 cosign download attestation \
-  ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched \
+  verity.supply/prometheus/prometheus:v3.9.1-patched \
   | jq '.payload | @base64d | fromjson | select(.predicateType | contains("cyclonedx"))'
 ```
 

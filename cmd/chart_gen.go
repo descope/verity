@@ -29,12 +29,12 @@ var ChartGenCommand = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "target-registry",
-			Usage:    "Registry where patched images live (e.g., ghcr.io/verity-org)",
+			Usage:    "Registry where patched images live (e.g., verity.supply)",
 			Required: true,
 		},
 		&cli.StringFlag{
 			Name:     "chart-registry",
-			Usage:    "OCI registry to push wrapper charts (e.g., oci://ghcr.io/verity-org/charts)",
+			Usage:    "OCI registry to push wrapper charts (e.g., oci://verity.supply/charts)",
 			Required: true,
 		},
 		&cli.StringFlag{

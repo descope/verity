@@ -16,12 +16,12 @@ import (
 
 const (
 	settleDuration       = 30 * time.Second
-	verityRegistryPrefix = "ghcr.io/verity-org/"
+	verityRegistryPrefix = "verity.supply/"
 )
 
 var (
 	errContainerRestarted = errors.New("container restarted during settle window")
-	errImageNotAccepted   = errors.New("container image not from ghcr.io/verity-org and not allowlisted")
+	errImageNotAccepted   = errors.New("container image not from verity.supply and not allowlisted")
 	// errAllowlistMissing is returned by loadAllowlist when the
 	// requested allowlist file does not exist on disk. Per
 	// SCR-2026-04-30-001 (Option E), missing-allowlist is a typed

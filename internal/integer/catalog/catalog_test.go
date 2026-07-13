@@ -54,7 +54,7 @@ func TestGenerate_NoReports(t *testing.T) {
 	imagesDir := t.TempDir()
 	writeFile(t, imagesDir, "node.yaml", nodeYAML)
 
-	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", testPkgs, nil)
+	cat, err := catalog.Generate(imagesDir, "", "verity.supply", testPkgs, nil)
 	require.NoError(t, err)
 
 	require.Len(t, cat.Images, 1)
@@ -72,7 +72,7 @@ func TestGenerate_NoReports(t *testing.T) {
 	defVariant := v22.Variants[0]
 	assert.Equal(t, "default", defVariant.Type)
 	assert.Equal(t, []string{"22"}, defVariant.Tags)
-	assert.Equal(t, "ghcr.io/verity-org/node:22", defVariant.Ref)
+	assert.Equal(t, "verity.supply/node:22", defVariant.Ref)
 	assert.Equal(t, "unknown", defVariant.Status)
 	assert.Empty(t, defVariant.Digest)
 
@@ -85,7 +85,7 @@ func TestGenerate_NoReports(t *testing.T) {
 	require.Len(t, v24.Variants, 2)
 	assert.Equal(t, []string{"24", "latest"}, v24.Variants[0].Tags)
 
-	assert.Equal(t, "ghcr.io/verity-org", cat.Registry)
+	assert.Equal(t, "verity.supply", cat.Registry)
 	assert.NotEmpty(t, cat.GeneratedAt)
 }
 
@@ -116,7 +116,7 @@ versions:
     skip-types: ["default"]
 `)
 
-	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", nil, nil)
+	cat, err := catalog.Generate(imagesDir, "", "verity.supply", nil, nil)
 	require.NoError(t, err)
 
 	out, err := json.Marshal(cat)
@@ -146,7 +146,7 @@ func TestGenerate_WithReports(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Dir(reportPath), 0o755))
 	require.NoError(t, os.WriteFile(reportPath, reportData, 0o644))
 
-	cat, err := catalog.Generate(imagesDir, reportsDir, "ghcr.io/verity-org", testPkgs, nil)
+	cat, err := catalog.Generate(imagesDir, reportsDir, "verity.supply", testPkgs, nil)
 	require.NoError(t, err)
 
 	v22 := cat.Images[0].Versions[0]
@@ -191,7 +191,7 @@ versions:
 	require.NoError(t, os.MkdirAll(filepath.Dir(reportPath), 0o755))
 	require.NoError(t, os.WriteFile(reportPath, reportData, 0o644))
 
-	cat, err := catalog.Generate(imagesDir, reportsDir, "ghcr.io/verity-org", testPkgs, nil)
+	cat, err := catalog.Generate(imagesDir, reportsDir, "verity.supply", testPkgs, nil)
 	require.NoError(t, err)
 
 	variants := cat.Images[0].Versions[0].Variants
@@ -204,19 +204,19 @@ func TestGenerate_SkipsNonYAML(t *testing.T) {
 	writeFile(t, imagesDir, "node.yaml", nodeYAML)
 	writeFile(t, imagesDir, "README.md", "# readme")
 
-	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", testPkgs, nil)
+	cat, err := catalog.Generate(imagesDir, "", "verity.supply", testPkgs, nil)
 	require.NoError(t, err)
 	assert.Len(t, cat.Images, 1)
 }
 
 func TestGenerate_InvalidImagesDir(t *testing.T) {
-	_, err := catalog.Generate("/nonexistent/path", "", "ghcr.io/verity-org", nil, nil)
+	_, err := catalog.Generate("/nonexistent/path", "", "verity.supply", nil, nil)
 	require.Error(t, err)
 }
 
 func TestGenerate_EmptyImagesDir(t *testing.T) {
 	imagesDir := t.TempDir()
-	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", nil, nil)
+	cat, err := catalog.Generate(imagesDir, "", "verity.supply", nil, nil)
 	require.NoError(t, err)
 	assert.Empty(t, cat.Images)
 }
@@ -231,7 +231,7 @@ func TestGenerate_CorruptReport(t *testing.T) {
 	require.NoError(t, os.WriteFile(reportPath, []byte("not json"), 0o644))
 
 	// Should not fail — corrupt report is silently skipped; status stays "unknown"
-	cat, err := catalog.Generate(imagesDir, reportsDir, "ghcr.io/verity-org", testPkgs, nil)
+	cat, err := catalog.Generate(imagesDir, reportsDir, "verity.supply", testPkgs, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "unknown", cat.Images[0].Versions[0].Variants[0].Status)
 }
@@ -260,7 +260,7 @@ versions:
 		{Name: "python-3.12"},
 	}
 
-	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", pkgs, nil)
+	cat, err := catalog.Generate(imagesDir, "", "verity.supply", pkgs, nil)
 	require.NoError(t, err)
 	assert.Len(t, cat.Images, 2)
 
@@ -273,7 +273,7 @@ func TestGenerate_NonExistentReportsDirErrors(t *testing.T) {
 	imagesDir := t.TempDir()
 	writeFile(t, imagesDir, "node.yaml", nodeYAML)
 
-	_, err := catalog.Generate(imagesDir, "/nonexistent/reports", "ghcr.io/verity-org", nil, nil)
+	_, err := catalog.Generate(imagesDir, "/nonexistent/reports", "verity.supply", nil, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "reports dir")
 }
@@ -282,7 +282,7 @@ func TestGenerate_EOLField(t *testing.T) {
 	imagesDir := t.TempDir()
 	writeFile(t, imagesDir, "node.yaml", nodeYAML)
 
-	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", testPkgs, nil)
+	cat, err := catalog.Generate(imagesDir, "", "verity.supply", testPkgs, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "2027-04-30", cat.Images[0].Versions[0].EOL)
 }
@@ -297,7 +297,7 @@ func TestGenerate_AutoDiscoveredVersion(t *testing.T) {
 		{Name: "nodejs-26"},
 	}
 
-	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", pkgs, nil)
+	cat, err := catalog.Generate(imagesDir, "", "verity.supply", pkgs, nil)
 	require.NoError(t, err)
 
 	require.Len(t, cat.Images[0].Versions, 3)
@@ -352,7 +352,7 @@ versions:
 		},
 	}
 
-	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", testPkgs, fetcher)
+	cat, err := catalog.Generate(imagesDir, "", "verity.supply", testPkgs, fetcher)
 	require.NoError(t, err)
 
 	require.Len(t, cat.Images, 1)
@@ -374,7 +374,7 @@ func TestGenerate_EOLFetcherOverridesYAML(t *testing.T) {
 		},
 	}
 
-	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", testPkgs, fetcher)
+	cat, err := catalog.Generate(imagesDir, "", "verity.supply", testPkgs, fetcher)
 	require.NoError(t, err)
 
 	assert.Equal(t, "2099-12-31", cat.Images[0].Versions[0].EOL)
@@ -389,7 +389,7 @@ func TestGenerate_EOLFetcherFallsBackToYAML(t *testing.T) {
 		data: map[string]eol.EOLData{},
 	}
 
-	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", testPkgs, fetcher)
+	cat, err := catalog.Generate(imagesDir, "", "verity.supply", testPkgs, fetcher)
 	require.NoError(t, err)
 
 	assert.Equal(t, "2027-04-30", cat.Images[0].Versions[0].EOL)
@@ -425,7 +425,7 @@ versions:
 		{Name: "nodejs-24"},
 	}
 
-	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", pkgs, nil)
+	cat, err := catalog.Generate(imagesDir, "", "verity.supply", pkgs, nil)
 	require.NoError(t, err)
 
 	require.Len(t, cat.Images[0].Versions, 3)
@@ -466,7 +466,7 @@ versions:
 		{Name: "prometheus-3.10"},
 	}
 
-	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", pkgs, nil)
+	cat, err := catalog.Generate(imagesDir, "", "verity.supply", pkgs, nil)
 	require.NoError(t, err)
 
 	require.Len(t, cat.Images[0].Versions, 3)
@@ -509,7 +509,7 @@ versions:
 		{Name: "prometheus-3.9"},
 	}
 
-	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", pkgs, nil)
+	cat, err := catalog.Generate(imagesDir, "", "verity.supply", pkgs, nil)
 	require.NoError(t, err)
 
 	require.Len(t, cat.Images, 1)
@@ -559,7 +559,7 @@ versions:
 		{Name: "prometheus-3.9"},
 	}
 
-	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", pkgs, nil)
+	cat, err := catalog.Generate(imagesDir, "", "verity.supply", pkgs, nil)
 	require.NoError(t, err)
 
 	require.Len(t, cat.Images, 1)
@@ -596,7 +596,7 @@ versions:
 
 	pkgs := []apkindex.Package{{Name: "curl"}}
 
-	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", pkgs, nil)
+	cat, err := catalog.Generate(imagesDir, "", "verity.supply", pkgs, nil)
 	require.NoError(t, err)
 
 	require.Len(t, cat.Images[0].Versions, 1)
@@ -615,7 +615,7 @@ func TestGenerate_FullSemverTags(t *testing.T) {
 		{Name: "nodejs-24", Version: "24.1.0-r1"},
 	}
 
-	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", pkgs, nil)
+	cat, err := catalog.Generate(imagesDir, "", "verity.supply", pkgs, nil)
 	require.NoError(t, err)
 
 	v22 := cat.Images[0].Versions[0]
@@ -652,7 +652,7 @@ versions:
 
 	pkgs := []apkindex.Package{{Name: "curl", Version: "8.13.0-r0"}}
 
-	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", pkgs, nil)
+	cat, err := catalog.Generate(imagesDir, "", "verity.supply", pkgs, nil)
 	require.NoError(t, err)
 
 	// ResolveVersions drops auto-discovered "latest" when explicit "8" exists.

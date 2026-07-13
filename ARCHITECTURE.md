@@ -13,7 +13,7 @@ covers the system design, component responsibilities, and pipeline mechanics.
 | **Trivy** | Vulnerability scanner (CVE detection, SBOM generation) |
 | **BuildKit** | Builds patched container images (production pipeline uses the GHCR-mirrored `buildx-stable-1` digest; PR smoke tests use a pinned buildx driver image; local `docker-compose.yaml` currently pins `moby/buildkit:v0.29.0`) |
 | **apko / melange** | Builds Wolfi-based Integer images from source (apko rootfs + melange APKs) |
-| **Helm** | Packages patched wrapper charts pushed to `oci://ghcr.io/verity-org/charts` |
+| **Helm** | Packages patched wrapper charts pushed to `oci://verity.supply/charts` |
 | **APK repository** | Experimental signed static APK repository served from GitHub Pages under `/apk/` |
 | **cosign** | Keyless image signing via Sigstore OIDC |
 | **GitHub Actions** | CI/CD pipeline orchestration (10 workflows) |
@@ -222,8 +222,8 @@ or Integer, according to `verity.yaml`). Wrappers are pushed as OCI artifacts.
 | --- | --- | --- |
 | `--charts-file` | `Chart.yaml` | Dependency source |
 | `--verity-config` | `verity.yaml` | Tag variant overrides and value-path hints |
-| `--target-registry` | *(required)* | Registry where patched images live (e.g., `ghcr.io/verity-org`) |
-| `--chart-registry` | *(required)* | OCI registry for wrapper charts (e.g., `oci://ghcr.io/verity-org/charts`) |
+| `--target-registry` | *(required)* | Registry where patched images live (e.g., `verity.supply`) |
+| `--chart-registry` | *(required)* | OCI registry for wrapper charts (e.g., `oci://verity.supply/charts`) |
 | `--exclude-names` | | Comma-separated names to exclude |
 | `--dry-run` | `false` | Output JSON plan without pushing charts |
 
@@ -266,7 +266,7 @@ apiVersion: copa.sh/v1alpha1
 kind: PatchConfig
 
 target:
-  registry: "ghcr.io/verity-org"
+  registry: "verity.supply"
 
 overrides:
   "timberio/vector":
@@ -345,7 +345,7 @@ Source images are published under the target registry with a `-patched` suffix.
 The registry prefix is stripped and replaced:
 
 - **Source:** `quay.io/prometheus/prometheus:v3.9.1`
-- **Patched:** `ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched`
+- **Patched:** `verity.supply/prometheus/prometheus:v3.9.1-patched`
 
 On subsequent re-patches the suffix increments: `-patched-2`, `-patched-3`, etc.
 
@@ -413,7 +413,7 @@ captures a post-build Trivy scan.
 
 Runs at 04:00 UTC (after both Copa and Integer have had time to settle). Calls
 `verity chart-gen` to generate one wrapper chart per dependency in `Chart.yaml`
-and pushes to `oci://ghcr.io/verity-org/charts`. Each wrapper's `values.yaml`
+and pushes to `oci://verity.supply/charts`. Each wrapper's `values.yaml`
 overrides upstream image references to point at the patched (or Integer)
 equivalent.
 

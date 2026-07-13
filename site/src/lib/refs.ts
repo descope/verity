@@ -8,7 +8,7 @@ const PATCHED_SUFFIX_PATTERN = /-patched$/;
  * Extract the catalog name from a patched image reference by stripping
  * the registry prefix, digest, and tag.
  *
- * e.g. "ghcr.io/verity-org/kiwigrid/k8s-sidecar:1.28.0" → "kiwigrid/k8s-sidecar"
+ * e.g. "verity.supply/kiwigrid/k8s-sidecar:1.28.0" → "kiwigrid/k8s-sidecar"
  */
 export function patchedRefToName(ref: string | undefined): string {
   if (!ref) {
@@ -48,7 +48,7 @@ export function patchedRefToName(ref: string | undefined): string {
  * are stripped first so the digest is never mistaken for a tag.
  *
  * e.g. "docker.io/rabbitmqoperator/cluster-operator:2.19.1" → "2.19.1"
- *      "ghcr.io/verity-org/nginx:1.29.3-patched"            → "1.29.3"
+ *      "verity.supply/nginx:1.29.3-patched"            → "1.29.3"
  *      "gcr.io/distroless/static@sha256:abc123"             → ""
  */
 export function extractVersionFromRef(ref: string): string {

@@ -89,9 +89,9 @@ export const GET: APIRoute = ({ site }) => {
 
   const content = `# Verity — Complete LLM Reference
 
-> Verity is a self-maintaining registry of security-patched container images. It continuously scans container images for CVEs, patches them in-place using Copa (no Dockerfile rebuild required), signs with cosign/Sigstore keyless OIDC, attests with SLSA Level 3 build provenance and CycloneDX SBOMs, and publishes signed drop-in replacements to GitHub Container Registry at ghcr.io/verity-org.
+> Verity is a self-maintaining registry of security-patched container images. It continuously scans container images for CVEs, patches them in-place using Copa (no Dockerfile rebuild required), signs with cosign/Sigstore keyless OIDC, attests with SLSA Level 3 build provenance and CycloneDX SBOMs, and publishes signed drop-in replacements to \`verity.supply\`.
 
-**Registry**: \`ghcr.io/verity-org\`
+**Registry**: \`verity.supply\`
 **Website**: ${siteUrl}
 **Repository**: https://github.com/verity-org/verity
 **Pipeline schedule**: Daily at 02:00 UTC + on every config change
@@ -122,7 +122,7 @@ export const GET: APIRoute = ({ site }) => {
 
 Container images ship with packages — both OS-level (apt, yum, apk) and application-level (pip, etc.) — that accumulate CVEs daily. Upstream maintainers patch on their own schedule, if at all. Organizations are left choosing between manually rebuilding every image they depend on or running known-vulnerable containers in production.
 
-Verity eliminates that trade-off. It continuously scans container images for vulnerabilities, patches them in-place using [Copa](https://github.com/project-copacetic/copacetic) (no Dockerfile rebuild required), and publishes signed, attested, drop-in replacements to GitHub Container Registry.
+Verity eliminates that trade-off. It continuously scans container images for vulnerabilities, patches them in-place using [Copa](https://github.com/project-copacetic/copacetic) (no Dockerfile rebuild required), and publishes signed, attested, drop-in replacements to \`verity.supply\`.
 
 ### Two Types of Images
 
@@ -147,17 +147,17 @@ Replace your image reference. That's it.
 
 \`\`\`bash
 # Pull a patched image
-docker pull ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
+docker pull verity.supply/prometheus/prometheus:v3.9.1-patched
 \`\`\`
 
 \`\`\`yaml
 # Use in Kubernetes
-image: ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
+image: verity.supply/prometheus/prometheus:v3.9.1-patched
 
 # Use in Docker Compose
 services:
   prometheus:
-    image: ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
+    image: verity.supply/prometheus/prometheus:v3.9.1-patched
 \`\`\`
 
 ### Naming Convention
@@ -166,17 +166,17 @@ All patched images follow the same convention:
 
 | Original | Patched |
 |----------|---------|
-| \`quay.io/prometheus/prometheus:v3.9.1\` | \`ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched\` |
-| \`docker.io/library/nginx:1.29.5\` | \`ghcr.io/verity-org/library/nginx:1.29.5-patched\` |
-| \`gcr.io/distroless/static:nonroot\` | \`ghcr.io/verity-org/distroless/static:nonroot-patched\` |
+| \`quay.io/prometheus/prometheus:v3.9.1\` | \`verity.supply/prometheus/prometheus:v3.9.1-patched\` |
+| \`docker.io/library/nginx:1.29.5\` | \`verity.supply/library/nginx:1.29.5-patched\` |
+| \`gcr.io/distroless/static:nonroot\` | \`verity.supply/distroless/static:nonroot-patched\` |
 
 For Wolfi-based images (no upstream equivalent):
 \`\`\`
-ghcr.io/verity-org/golang:latest
-ghcr.io/verity-org/python:latest-dev
-ghcr.io/verity-org/caddy:latest-fips
-ghcr.io/verity-org/static:latest
-ghcr.io/verity-org/static:latest-fips
+verity.supply/golang:latest
+verity.supply/python:latest-dev
+verity.supply/caddy:latest-fips
+verity.supply/static:latest
+verity.supply/static:latest-fips
 \`\`\`
 
 On subsequent re-patches, the suffix increments: \`-patched-2\`, \`-patched-3\`, etc.
@@ -206,7 +206,7 @@ On subsequent re-patches, the suffix increments: \`-patched-2\`, \`-patched-3\`,
    └────┬────┘     reports attached as in-toto attestations.
         ▼
    ┌─────────┐
-   │ Publish │     Pushed to ghcr.io/verity-org with -patched suffix.
+   │ Publish │     Pushed to verity.supply with -patched suffix.
    └─────────┘
 \`\`\`
 
@@ -449,7 +449,7 @@ Reads \`copa-config.yaml\`, resolves tags, and runs Trivy against each image in 
 \`\`\`bash
 ./verity scan \\
   --config copa-config.yaml \\
-  --target-registry ghcr.io/verity-org \\
+  --target-registry verity.supply \\
   --trivy-server http://localhost:4954 \\
   --parallel 10 \\
   --output reports/
@@ -472,7 +472,7 @@ Reads Trivy reports and an \`images.json\` manifest to produce \`catalog.json\`.
 ./verity catalog \\
   --output site/src/data/catalog.json \\
   --images-json images.json \\
-  --registry ghcr.io/verity-org \\
+  --registry verity.supply \\
   --reports-dir reports/ \\
   --post-reports-dir post-reports/
 \`\`\`
@@ -496,7 +496,7 @@ apiVersion: copa.sh/v1alpha1
 kind: PatchConfig
 
 target:
-  registry: "ghcr.io/verity-org"
+  registry: "verity.supply"
 
 # Helm chart — Copa auto-discovers all container images from templates
 charts:
@@ -547,14 +547,14 @@ Every patched image is signed and attested. Verify it yourself:
 cosign verify \\
   --certificate-identity-regexp "https://github.com/verity-org/verity/.github/workflows/" \\
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \\
-  ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
+  verity.supply/prometheus/prometheus:v3.9.1-patched
 \`\`\`
 
 ### Verify build provenance (GitHub CLI)
 
 \`\`\`bash
 gh attestation verify \\
-  oci://ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched \\
+  oci://verity.supply/prometheus/prometheus:v3.9.1-patched \\
   --owner verity-org
 \`\`\`
 

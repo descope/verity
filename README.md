@@ -25,7 +25,7 @@ they depend on or running known-vulnerable containers in production.
 Verity eliminates that trade-off. It continuously scans container images for
 vulnerabilities, patches them in-place using [Copa](https://github.com/project-copacetic/copacetic)
 (no Dockerfile rebuild required), and publishes signed, attested, drop-in
-replacements to GitHub Container Registry.
+replacements to the public Verity registry at `verity.supply`.
 
 **Browse the catalog:** [verity.supply](https://verity.supply/)
 
@@ -35,25 +35,25 @@ Replace your image reference. That's it.
 
 ```bash
 # Pull a patched image
-docker pull ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
+docker pull verity.supply/prometheus/prometheus:v3.9.1-patched
 ```
 
 ```yaml
 # Use in Kubernetes
-image: ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
+image: verity.supply/prometheus/prometheus:v3.9.1-patched
 
 # Use in Docker Compose
 services:
   prometheus:
-    image: ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
+    image: verity.supply/prometheus/prometheus:v3.9.1-patched
 ```
 
 All patched images follow the same convention:
 
 | Original | Patched |
 | --- | --- |
-| `quay.io/prometheus/prometheus:v3.9.1` | `ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched` |
-| `docker.io/library/nginx:1.29.5` | `ghcr.io/verity-org/library/nginx:1.29.5-patched` |
+| `quay.io/prometheus/prometheus:v3.9.1` | `verity.supply/prometheus/prometheus:v3.9.1-patched` |
+| `docker.io/library/nginx:1.29.5` | `verity.supply/library/nginx:1.29.5-patched` |
 
 ## How It Works
 
@@ -78,7 +78,7 @@ All patched images follow the same convention:
    └────┬────┘     (via actions/attest), recorded in Rekor.
         ▼
    ┌─────────┐
-   │ Publish │     Pushed to ghcr.io/verity-org with -patched suffix.
+   │ Publish │     Pushed to verity.supply with -patched suffix.
    └─────────┘
 ```
 
@@ -124,7 +124,7 @@ For Helm users, Verity provides drop-in wrapper charts that override all image
 references to patched equivalents:
 
 ```bash
-helm install prometheus oci://ghcr.io/verity-org/charts/prometheus --version 29.2.1
+helm install prometheus oci://verity.supply/charts/prometheus --version 29.2.1
 ```
 
 Wrapper chart versions track the corresponding `dependencies:` version in
@@ -142,11 +142,11 @@ Every patched image is signed and attested. Verify it yourself:
 cosign verify \
   --certificate-identity-regexp "https://github.com/verity-org/verity/.github/workflows/" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-  ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
+  verity.supply/prometheus/prometheus:v3.9.1-patched
 
 # Verify the SBOM attestation (GitHub CLI)
 gh attestation verify \
-  oci://ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched \
+  oci://verity.supply/prometheus/prometheus:v3.9.1-patched \
   --owner verity-org --predicate-type https://cyclonedx.org/bom
 ```
 
@@ -207,7 +207,7 @@ go build -o verity .
 ./verity catalog \
   --images-json images.json \
   --output site/src/data/catalog.json \
-  --registry ghcr.io/verity-org \
+  --registry verity.supply \
   --reports-dir reports/
 ```
 

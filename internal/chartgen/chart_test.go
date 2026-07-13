@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	testPromRepo       = "ghcr.io/verity-org/prom"
-	testPromServerRepo = "ghcr.io/verity-org/prometheus"
+	testPromRepo       = "verity.supply/prom"
+	testPromServerRepo = "verity.supply/prometheus"
 	testPromServerTag  = "v3.2.1"
 )
 
@@ -378,7 +378,7 @@ func TestBuildWrapperChartValues_ChartImageOverrideSingleSource(t *testing.T) {
 
 	overrides, err := buildChartImageOverrides(original.Name, []ImageMapping{{
 		Source:      "STRIMZI_DEFAULT_KAFKA_EXPORTER_IMAGE",
-		PatchedRepo: "ghcr.io/verity-org/kafka",
+		PatchedRepo: "verity.supply/kafka",
 		PatchedTag:  "patched-tag",
 	}}, vc)
 	if err != nil {
@@ -403,7 +403,7 @@ func TestBuildWrapperChartValues_ChartImageOverrideSingleSource(t *testing.T) {
 	if !ok {
 		t.Fatalf("kafka node missing or invalid: %#v", root["kafka"])
 	}
-	if kafka["image"] != "ghcr.io/verity-org/kafka:patched-tag" {
+	if kafka["image"] != "verity.supply/kafka:patched-tag" {
 		t.Fatalf("kafka.image = %#v, want patched image string", kafka["image"])
 	}
 }
@@ -427,14 +427,14 @@ func TestBuildWrapperChartValues_ChartImageOverrideCSV(t *testing.T) {
 			Source:       "STRIMZI_KAFKA_IMAGES",
 			OriginalRepo: "quay.io/strimzi/kafka",
 			OriginalTag:  "0.51.0-kafka-4.1.0",
-			PatchedRepo:  "ghcr.io/verity-org/kafka",
+			PatchedRepo:  "verity.supply/kafka",
 			PatchedTag:   "patched-4.1.0",
 		},
 		{
 			Source:       "STRIMZI_KAFKA_IMAGES",
 			OriginalRepo: "quay.io/strimzi/kafka",
 			OriginalTag:  "0.51.0-kafka-4.2.0",
-			PatchedRepo:  "ghcr.io/verity-org/kafka",
+			PatchedRepo:  "verity.supply/kafka",
 			PatchedTag:   "patched-4.2.0",
 		},
 	}, vc)
@@ -464,10 +464,10 @@ func TestBuildWrapperChartValues_ChartImageOverrideCSV(t *testing.T) {
 	if !ok {
 		t.Fatalf("versions node missing or invalid: %#v", kafka["versions"])
 	}
-	if versions["4.1.0"] != "ghcr.io/verity-org/kafka:patched-4.1.0" {
+	if versions["4.1.0"] != "verity.supply/kafka:patched-4.1.0" {
 		t.Fatalf("versions[4.1.0] = %#v, want patched 4.1.0 image", versions["4.1.0"])
 	}
-	if versions["4.2.0"] != "ghcr.io/verity-org/kafka:patched-4.2.0" {
+	if versions["4.2.0"] != "verity.supply/kafka:patched-4.2.0" {
 		t.Fatalf("versions[4.2.0] = %#v, want patched 4.2.0 image", versions["4.2.0"])
 	}
 }
@@ -507,47 +507,47 @@ func TestBuildValuesTree(t *testing.T) {
 			// 3-field shape (postgres-operator, traefik, jenkins, etc.):
 			// upstream chart templates `{{ image.registry }}/{{ image.repository }}`.
 			// The wrapper composes the FQDN into the two sibling fields so
-			// the rendered ref is `ghcr.io/verity-org/zalando/postgres-operator:v1.15.1`,
+			// the rendered ref is `verity.supply/zalando/postgres-operator:v1.15.1`,
 			// no leading slash. See #308 wave 2.
 			name:      "composes registry sibling for grafana/traefik shape",
 			chartName: "postgres-operator",
 			overrides: []ValueOverride{{
 				Path:        "image",
-				Repository:  "verity-org/zalando/postgres-operator",
+				Repository:  "zalando/postgres-operator",
 				Tag:         "v1.15.1",
-				SetRegistry: "ghcr.io",
+				SetRegistry: "verity.supply",
 			}},
 			want: map[string]any{
 				"postgres-operator": map[string]any{
 					"image": map[string]any{
-						"registry":   "ghcr.io",
-						"repository": "verity-org/zalando/postgres-operator",
+						"registry":   "verity.supply",
+						"repository": "zalando/postgres-operator",
 						"tag":        "v1.15.1",
 					},
 				},
 			},
 		},
 		{
-			// kyverno 3.7.x — composes `defaultRegistry: ghcr.io` +
-			// `repository: verity-org/kyverno` so kyverno's helper
+			// kyverno 3.7.x — composes `defaultRegistry: verity.supply` +
+			// `repository: kyverno` so kyverno's helper
 			// `default (default .image.defaultRegistry .globalRegistry) .image.registry`
-			// resolves to `ghcr.io` (registry=nil, globalRegistry=nil → defaultRegistry fires).
-			// Rendered ref: `ghcr.io/verity-org/kyverno:1.17`. See #308 wave 2.
+			// resolves to `verity.supply` (registry=nil, globalRegistry=nil → defaultRegistry fires).
+			// Rendered ref: `verity.supply/kyverno:1.17`. See #308 wave 2.
 			name:      "composes defaultRegistry sibling for kyverno shape",
 			chartName: "kyverno",
 			overrides: []ValueOverride{{
 				Path:               "admissionController.container.image",
-				Repository:         "verity-org/kyverno",
+				Repository:         "kyverno",
 				Tag:                "1.17",
-				SetDefaultRegistry: "ghcr.io",
+				SetDefaultRegistry: "verity.supply",
 			}},
 			want: map[string]any{
 				"kyverno": map[string]any{
 					"admissionController": map[string]any{
 						"container": map[string]any{
 							"image": map[string]any{
-								"defaultRegistry": "ghcr.io",
-								"repository":      "verity-org/kyverno",
+								"defaultRegistry": "verity.supply",
+								"repository":      "kyverno",
 								"tag":             "1.17",
 							},
 						},
@@ -558,22 +558,22 @@ func TestBuildValuesTree(t *testing.T) {
 		{
 			// Hybrid shape (`registry | default defaultRegistry`): both
 			// siblings get the registry hostname so either short-circuit
-			// path resolves to `ghcr.io`.
+			// path resolves to `verity.supply`.
 			name:      "composes both registry and defaultRegistry siblings",
 			chartName: "hybrid",
 			overrides: []ValueOverride{{
 				Path:               "image",
-				Repository:         "verity-org/foo/bar",
+				Repository:         "foo/bar",
 				Tag:                "v1",
-				SetRegistry:        "ghcr.io",
-				SetDefaultRegistry: "ghcr.io",
+				SetRegistry: "verity.supply",
+				SetDefaultRegistry: "verity.supply",
 			}},
 			want: map[string]any{
 				"hybrid": map[string]any{
 					"image": map[string]any{
-						"registry":        "ghcr.io",
-						"defaultRegistry": "ghcr.io",
-						"repository":      "verity-org/foo/bar",
+						"registry":        "verity.supply",
+						"defaultRegistry": "verity.supply",
+						"repository":      "foo/bar",
 						"tag":             "v1",
 					},
 				},
@@ -652,7 +652,7 @@ func TestBuildValuesTree(t *testing.T) {
 // + buildValuesTree) for two fixtures that mirror the upstream chart
 // template shapes that produced the leading-slash bug, then renders the
 // merged values through a Helm-like text/template to assert the final
-// image reference is well-formed (`ghcr.io/verity-org/<repo>:<tag>`, no
+// image reference is well-formed (`verity.supply/<repo>:<tag>`, no
 // leading slash, no empty registry).
 //
 // Shape 1 (grafana / traefik / argo-rollouts / falco / jenkins / postgres-operator
@@ -664,7 +664,7 @@ func TestBuildValuesTree(t *testing.T) {
 //
 //	{{ .Values.image.registry | default .Values.image.defaultRegistry }}/...
 //
-// Both shapes must produce `ghcr.io/verity-org/grafana:12.3` after the
+// Both shapes must produce `verity.supply/grafana:12.3` after the
 // fix — no `/ghcr.io/...` leading slash, no `docker.io/ghcr.io/...` double
 // registry.
 // renderCase is the table-row shape for TestComposeRegistryRendersValidImageRefs.
@@ -690,7 +690,7 @@ func TestComposeRegistryRendersValidImageRefs(t *testing.T) {
 			// Upstream `image: { registry, repository, tag }` with template
 			// shape `{{ image.registry }}/{{ image.repository }}:{{ image.tag }}`
 			// (direct concatenation, no `default` short-circuit). Pre-fix
-			// the wrapper wrote `registry: ""` → `/ghcr.io/verity-org/grafana:12.3`
+			// the wrapper wrote `registry: ""` → `/verity.supply/grafana:12.3`
 			// (kubelet `InvalidImageName`).
 			name: "grafana-shape direct concatenation produces valid ref",
 			valuesYML: `image:
@@ -700,13 +700,13 @@ func TestComposeRegistryRendersValidImageRefs(t *testing.T) {
 `,
 			mappings: []ImageMapping{{
 				OriginalRepo: "grafana/grafana",
-				PatchedRepo:  "ghcr.io/verity-org/grafana",
+				PatchedRepo:  "verity.supply/grafana",
 				PatchedTag:   "12.3",
 			}},
 			templateExpr:      `{{ .image.registry }}/{{ .image.repository }}:{{ .image.tag }}`,
-			wantImage:         "ghcr.io/verity-org/grafana:12.3",
-			wantRegistrySet:   "ghcr.io",
-			wantRepoStripped:  "verity-org/grafana",
+			wantImage:         "verity.supply/grafana:12.3",
+			wantRegistrySet: "verity.supply",
+			wantRepoStripped:  "grafana",
 			assertRegistryKey: "registry",
 		},
 		{
@@ -715,7 +715,7 @@ func TestComposeRegistryRendersValidImageRefs(t *testing.T) {
 			// Pre-fix the wrapper wrote `defaultRegistry: ""` and that broke
 			// any chart whose template was a plain concat rather than the
 			// `default`-short-circuit shape. After the fix the wrapper writes
-			// `defaultRegistry: ghcr.io` + `repository: verity-org/kyverno`,
+			// `defaultRegistry: verity.supply` + `repository: kyverno`,
 			// which composes correctly with kyverno's helper AND with any
 			// plain-concat template.
 			name: "kyverno-shape default short-circuit produces valid ref",
@@ -727,22 +727,22 @@ func TestComposeRegistryRendersValidImageRefs(t *testing.T) {
 `,
 			mappings: []ImageMapping{{
 				OriginalRepo: "kyverno/kyverno",
-				PatchedRepo:  "ghcr.io/verity-org/kyverno",
+				PatchedRepo:  "verity.supply/kyverno",
 				PatchedTag:   "1.17",
 			}},
 			// kyverno's resolved registry expression: registry | default defaultRegistry.
 			// In Helm: `default fallback primary` = primary if primary != empty else fallback.
 			// Equivalent here: if .image.registry is empty, use .image.defaultRegistry.
 			templateExpr:      `{{ orDefault .image.registry .image.defaultRegistry }}/{{ .image.repository }}:{{ .image.tag }}`,
-			wantImage:         "ghcr.io/verity-org/kyverno:1.17",
-			wantDefRegistry:   "ghcr.io",
-			wantRepoStripped:  "verity-org/kyverno",
+			wantImage:         "verity.supply/kyverno:1.17",
+			wantDefRegistry: "verity.supply",
+			wantRepoStripped:  "kyverno",
 			assertRegistryKey: "defaultRegistry",
 		},
 		{
 			// Mixed shape: chart that templates `{{ registry | default defaultRegistry }}/...`
 			// AND has both siblings declared upstream. Both wrapper leaves
-			// must be set so the short-circuit resolves to `ghcr.io` no
+			// must be set so the short-circuit resolves to `verity.supply` no
 			// matter which path the helper takes.
 			name: "registry|default-defaultRegistry shape with both siblings present",
 			valuesYML: `image:
@@ -753,14 +753,14 @@ func TestComposeRegistryRendersValidImageRefs(t *testing.T) {
 `,
 			mappings: []ImageMapping{{
 				OriginalRepo: "foo/bar",
-				PatchedRepo:  "ghcr.io/verity-org/foo/bar",
+				PatchedRepo:  "verity.supply/foo/bar",
 				PatchedTag:   "v1",
 			}},
 			templateExpr:      `{{ orDefault .image.registry .image.defaultRegistry }}/{{ .image.repository }}:{{ .image.tag }}`,
-			wantImage:         "ghcr.io/verity-org/foo/bar:v1",
-			wantRegistrySet:   "ghcr.io",
-			wantDefRegistry:   "ghcr.io",
-			wantRepoStripped:  "verity-org/foo/bar",
+			wantImage:         "verity.supply/foo/bar:v1",
+			wantRegistrySet: "verity.supply",
+			wantDefRegistry: "verity.supply",
+			wantRepoStripped:  "foo/bar",
 			assertRegistryKey: "registry",
 		},
 		{
@@ -779,13 +779,13 @@ func TestComposeRegistryRendersValidImageRefs(t *testing.T) {
 `,
 			mappings: []ImageMapping{{
 				OriginalRepo: "foo/bar",
-				PatchedRepo:  "ghcr.io/verity-org/foo/bar",
+				PatchedRepo:  "verity.supply/foo/bar",
 				PatchedTag:   "v1",
 			}},
 			templateExpr:      `{{ .image.registry }}/{{ .image.repository }}:{{ .image.tag }}`,
-			wantImage:         "ghcr.io/verity-org/foo/bar:v1",
-			wantRegistrySet:   "ghcr.io",
-			wantRepoStripped:  "verity-org/foo/bar",
+			wantImage:         "verity.supply/foo/bar:v1",
+			wantRegistrySet: "verity.supply",
+			wantRepoStripped:  "foo/bar",
 			assertRegistryKey: "registry",
 		},
 		{
@@ -807,13 +807,13 @@ image:
 `,
 			mappings: []ImageMapping{{
 				OriginalRepo: "bitnamilegacy/postgresql",
-				PatchedRepo:  "ghcr.io/verity-org/bitnamilegacy/postgresql",
+				PatchedRepo:  "verity.supply/bitnamilegacy/postgresql",
 				PatchedTag:   "16.1.0-debian-11-r15",
 			}},
 			templateExpr:      `{{ orDefault .global.imageRegistry .image.registry }}/{{ .image.repository }}:{{ .image.tag }}`,
-			wantImage:         "ghcr.io/verity-org/bitnamilegacy/postgresql:16.1.0-debian-11-r15",
-			wantRegistrySet:   "ghcr.io",
-			wantRepoStripped:  "verity-org/bitnamilegacy/postgresql",
+			wantImage:         "verity.supply/bitnamilegacy/postgresql:16.1.0-debian-11-r15",
+			wantRegistrySet: "verity.supply",
+			wantRepoStripped:  "bitnamilegacy/postgresql",
 			assertRegistryKey: "registry",
 		},
 		{
@@ -826,7 +826,7 @@ image:
 			// With neutralisation, the wrapper writes both
 			// `image.registry: ghcr.io` AND `global.imageRegistry: ""`,
 			// so the helper falls through to per-image and renders
-			// `ghcr.io/verity-org/bitnamilegacy/postgresql:<tag>`.
+			// `verity.supply/bitnamilegacy/postgresql:<tag>`.
 			name: "global.imageRegistry NON-empty upstream — neutralised by wave-3",
 			valuesYML: `global:
   imageRegistry: "docker.io"
@@ -837,13 +837,13 @@ image:
 `,
 			mappings: []ImageMapping{{
 				OriginalRepo: "bitnamilegacy/postgresql",
-				PatchedRepo:  "ghcr.io/verity-org/bitnamilegacy/postgresql",
+				PatchedRepo:  "verity.supply/bitnamilegacy/postgresql",
 				PatchedTag:   "16.1.0-debian-11-r15",
 			}},
 			templateExpr:      `{{ orDefault .global.imageRegistry .image.registry }}/{{ .image.repository }}:{{ .image.tag }}`,
-			wantImage:         "ghcr.io/verity-org/bitnamilegacy/postgresql:16.1.0-debian-11-r15",
-			wantRegistrySet:   "ghcr.io",
-			wantRepoStripped:  "verity-org/bitnamilegacy/postgresql",
+			wantImage:         "verity.supply/bitnamilegacy/postgresql:16.1.0-debian-11-r15",
+			wantRegistrySet: "verity.supply",
+			wantRepoStripped:  "bitnamilegacy/postgresql",
 			assertRegistryKey: "registry",
 		},
 		{
@@ -865,14 +865,14 @@ image:
 `,
 			mappings: []ImageMapping{{
 				OriginalRepo: "grafana/tempo",
-				PatchedRepo:  "ghcr.io/verity-org/tempo",
+				PatchedRepo:  "verity.supply/tempo",
 				PatchedTag:   "2.4",
 			}},
 			// Sprig `coalesce` mirrored: returns the first non-empty value.
 			templateExpr:      `{{ coalesceFirst .global.image.registry .image.registry }}/{{ .image.repository }}:{{ .image.tag }}`,
-			wantImage:         "ghcr.io/verity-org/tempo:2.4",
-			wantRegistrySet:   "ghcr.io",
-			wantRepoStripped:  "verity-org/tempo",
+			wantImage:         "verity.supply/tempo:2.4",
+			wantRegistrySet: "verity.supply",
+			wantRepoStripped:  "tempo",
 			assertRegistryKey: "registry",
 		},
 	}

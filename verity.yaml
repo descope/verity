@@ -99,7 +99,7 @@ chartValues:
   # false` via `mimir.structuredConfig` — the chart's documented hook
   # for overriding the rendered text-config.
   mimir-distributed:
-    image.repository: ghcr.io/verity-org/mimir
+    image.repository: verity.supply/mimir
     image.tag: "3.0"
     gateway.enabled: false
     kafka.enabled: false
@@ -170,7 +170,7 @@ chartValues:
   # traefik 41.0.1 leaves `image.registry`, `image.repository`, and `image.tag`
   # null in values.yaml, so chart-gen cannot auto-detect the split registry+
   # repository shape from defaults. Hard-set the wrapper values here so the
-  # rendered Deployment uses ghcr.io/verity-org/traefik:3.7.
+  # rendered Deployment uses verity.supply/traefik:3.7.
   traefik:
     image.registry: ghcr.io
     image.repository: verity-org/traefik
@@ -252,9 +252,9 @@ chartValues:
   # cilium chart pins each component image by digest (e.g.
   # `image.digest: sha256:2e61680...`) AND has `image.useDigest: true`,
   # so the rendered pod spec is `image@sha256:...`. chart-gen replaces
-  # the repository with `ghcr.io/verity-org/cilium`, but the upstream
+  # the repository with `verity.supply/cilium`, but the upstream
   # digest doesn't match verity's rebuild content — pull fails:
-  #   Failed to pull image "ghcr.io/verity-org/cilium:1.19@sha256:2e616...":
+  #   Failed to pull image "verity.supply/cilium:1.19@sha256:2e616...":
   #     failed to resolve reference (digest mismatch)
   # Disable per-component useDigest so the chart pulls by tag only.
   # Same `useDigest: false` flip needed for the operator image (chart
@@ -290,7 +290,7 @@ chartValues:
 
   # valkey 0.20.2 (cloudpirates chart) pins its default image tag to
   # `9.0.0-alpine3.22@sha256:...`. chart-gen's replacement maps
-  # `valkey/valkey` to `ghcr.io/verity-org/valkey:9.0`, but the
+  # `valkey/valkey` to `verity.supply/valkey:9.0`, but the
   # digest suffix can survive the wrapper render and force kubelet
   # back to the upstream docker.io image, tripping the image-origin
   # gate. Explicitly set the chart's image tuple to the Integer-backed
@@ -306,7 +306,7 @@ chartValues:
   # than an `image.repository` map that chart-gen can auto-rewrite. The Verity
   # Wolfi rebuild also lacked `/opt/airflow/bin` on PATH, so the chart's
   # `bash -c "exec airflow ..."` commands failed even when these scalars were
-  # pointed at `ghcr.io/verity-org/airflow`. Keep those scalars explicitly on
+  # pointed at `verity.supply/airflow`. Keep those scalars explicitly on
   # the Verity rebuild now that images/airflow.yaml publishes PATH + /usr/bin
   # compatibility.
   #
@@ -317,7 +317,7 @@ chartValues:
   # chart's own `postgresql.image.registry: docker.io` default, so the
   # rendered reference is the broken double-prefix:
   #
-  #   docker.io/ghcr.io/verity-org/bitnamilegacy/postgresql:16.1.0-debian-11-r15
+  #   docker.io/verity.supply/bitnamilegacy/postgresql:16.1.0-debian-11-r15
   #                                          ^^^^^^^^^^^^^^^^^^^^^^^^^
   #                                          (chart-gen-rewritten repo,
   #                                           with docker.io still
@@ -325,14 +325,14 @@ chartValues:
   #                                           untouched image.registry
   #                                           field)
   #
-  # The `ghcr.io/verity-org/bitnamilegacy/postgresql:16.1.0-debian-11-r15`
+  # The `verity.supply/bitnamilegacy/postgresql:16.1.0-debian-11-r15`
   # tag DOES exist in verity-org/ — the only thing wrong with the
   # generated wrapper is the extraneous `docker.io/` prefix.
   #
   # Clearing `postgresql.image.registry` prevents the parent chart's
   # registry scalar from being prepended to chartgen's generated FQDN
   # repository override, yielding the clean
-  # `ghcr.io/verity-org/bitnamilegacy/postgresql:16.1.0-debian-11-r15`.
+  # `verity.supply/bitnamilegacy/postgresql:16.1.0-debian-11-r15`.
   # See verity-org/verity#318 for the related registry-composition class.
   #
   # Bucket E (probe-race) — bucket-confirmation.md (airflow row) shows
@@ -366,17 +366,17 @@ chartValues:
   # Supporting knobs:
   # - `postgresql.image.registry: ""` prevents the parent-level
   #   registry scalar from being prepended to the generated FQDN
-  #   repository override. Do NOT set it to `ghcr.io`: during chart
+  #   repository override. Do NOT set it to a registry hostname: during chart
   #   generation, chartgen overwrites
   #   `airflow.postgresql.image.repository` with an FQDN repository for
   #   this parent path, and a non-empty registry renders the broken
-  #   `ghcr.io/ghcr.io/verity-org/bitnamilegacy/postgresql`.
+  #   `<registry>/verity.supply/bitnamilegacy/postgresql`.
   # - `postgresql.image.repository: bitnamilegacy/postgresql` keeps
   #   image discovery on the upstream source path. Do NOT pre-prefix
   #   it with `verity-org/`: chartgen derives patched targets from
   #   discovered images, so pre-prefixing makes the source name
   #   `verity-org/bitnamilegacy/postgresql` and renders the broken
-  #   `ghcr.io/verity-org/verity-org/bitnamilegacy/postgresql`.
+  #   `verity.supply/verity-org/bitnamilegacy/postgresql`.
   # - `images.migrationsWaitTimeout: 300` (default 60s) — wait budget
   #   for `wait-for-airflow-migrations`. Kept generous so the init
   #   container still has headroom while the migrations Job runs.
@@ -392,7 +392,7 @@ chartValues:
   #   StatsD metrics are not required for the smoke test (which only
   #   verifies install + pod readiness, not metric scraping).
   airflow:
-    defaultAirflowRepository: ghcr.io/verity-org/airflow
+    defaultAirflowRepository: verity.supply/airflow
     defaultAirflowTag: "3"
     postgresql.image.registry: ""
     postgresql.image.repository: bitnamilegacy/postgresql
@@ -482,7 +482,7 @@ chartValues:
     server.dev.enabled: true
 
   # gitea chart defaults `image.rootless: true`, which pulls
-  # `ghcr.io/verity-org/gitea:1-rootless` — a tag verity does not publish
+  # `verity.supply/gitea:1-rootless` — a tag verity does not publish
   # (only `gitea:1` is rebuilt). Switch to the non-rootless image so the
   # chart pulls a tag that actually resolves. Trade-off: chart drops the
   # rootless-only security context default; acceptable for CI smoke.
@@ -506,7 +506,7 @@ chartValues:
   # note was taken: the `"gitea"` replacement entry is removed from
   # the `replacements:` block below, and `images/gitea.yaml` is
   # deleted so Integer Orchestrator no longer rebuilds an unused
-  # `ghcr.io/verity-org/gitea` image. The chart now resolves to
+  # `verity.supply/gitea` image. The chart now resolves to
   # crane-mirrored `docker.io/bitnamilegacy/gitea` (Bitnami migrated
   # the image to the bitnamilegacy namespace in late 2024) whose
   # init scripts at `/usr/sbinx/init_directory_structure.sh` match
@@ -833,7 +833,7 @@ chartValues:
   # `kubectl` from `registry.k8s.io/kubectl:v1.34.3`. Verity rebuilds kubectl
   # on the floating `1.34` minor track (`images/kubectl.yaml`) but does not
   # publish this exact `v1.34.3` patch tag; the hook is also a no-op on a
-  # fresh `helm install` and would otherwise be the only non-`ghcr.io/verity-org/*`
+  # fresh `helm install` and would otherwise be the only non-`verity.supply/*`
   # reference rendered into the wrapper — disabling it avoids both the
   # unpatched-tag pull and an `AssertImageOrigin` allowlist exception. The
   # `defaultRegistry: reg.kyverno.io` registry-prefix neutralisation that
@@ -851,7 +851,7 @@ chartValues:
 # a Copa-patched version.
 replacements:
   "kube-state-metrics/kube-state-metrics":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "kube-state-metrics"
     tag: "2.18.0"
   # prometheus chart pulls pushgateway:v1.11.2 (with v prefix); verity-org
@@ -860,7 +860,7 @@ replacements:
   # actually resolves. Closes the prometheus shard's only red pod (the rest
   # of the chart is green per nightly diagnostics).
   "prometheus/pushgateway":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "pushgateway"
     tag: "1.11"
 
@@ -870,21 +870,21 @@ replacements:
   # we add no replacements for prometheus/prometheus or prometheus/alertmanager
   # here — the existing prometheus chart's wrapper falls through to crane.
   "grafana/grafana":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "grafana"
     tag: "12.3"
   "grafana/loki":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "loki"
     tag: "3.6"
   "grafana/mimir":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "mimir"
     tag: "3.0"
   # tempo-distributed 1.61.3 renders config accepted by Tempo 2.10.0 while
   # Tempo 2.9.0 carries fixed HIGH/CRITICAL Go CVEs in Wolfi.
   "grafana/tempo":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "tempo"
     tag: "2.10.0"
 
@@ -895,7 +895,7 @@ replacements:
   # wrapper leaves the upstream ghcr.io/rabbitmq image in place and the
   # chart-integration image-origin gate fails.
   "rabbitmq/cluster-operator":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "rabbitmq-cluster-operator"
     tag: "2"
 
@@ -917,31 +917,31 @@ replacements:
   # our already-FQDN repository overrides, now neutralised by chart-gen's
   # `ClearDefaultRegistry` plumbing in `internal/chartgen/values.go`.
   "kyverno/kyverno":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "kyverno"
     tag: "1.17"
   "kyverno/background-controller":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "kyverno-background-controller"
     tag: "1.17"
   "kyverno/reports-controller":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "kyverno-reports-controller"
     tag: "1.17"
   "kyverno/cleanup-controller":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "kyverno-cleanup-controller"
     tag: "1.17"
   "kyverno/readiness-checker":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "kyverno-readiness-checker"
     tag: "1.17"
   "kyverno/kyvernopre":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "kyverno-kyvernopre"
     tag: "1.17"
   "kyverno/kyverno-cli":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "kyverno-cli"
     tag: "1.17"
 
@@ -954,17 +954,17 @@ replacements:
   # strips the `v` and floats on minor patches. Same root cause as
   # kyverno (#254 / PR #298); same fix shape. See #308 Wave 1.
   "argoproj/argocd":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "argocd"
     tag: "3.3"
   "argoproj/argo-rollouts":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "argo-rollouts"
     tag: "1"
   # Tag `2` pins the floating-major track published by images/dex.yaml
   # (`versions: "2": {}`); chart's appVersion `v2.44.0` is not published.
   "dexidp/dex":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "dex"
     tag: "2"
 
@@ -976,7 +976,7 @@ replacements:
   # Wolfi minor bumps; if/when 0.9.x ships, declare `"0.9": {}` too and
   # bump this pin.
   "metrics-server/metrics-server":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "metrics-server"
     tag: "0.8"
 
@@ -984,11 +984,11 @@ replacements:
   # floating-major track published by images/opensearch{,-dashboards}.yaml
   # (`versions: "3": {}`); chart's `:3.6.0` is not published.
   "opensearchproject/opensearch":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "opensearch"
     tag: "3"
   "opensearchproject/opensearch-dashboards":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "opensearch-dashboards"
     tag: "3"
 
@@ -1001,26 +1001,26 @@ replacements:
   # non-v tags only — same v-prefix mismatch as argocd/dex (Wave 1, #310).
   # The dedicated `1.15` stream survives Wolfi minor bumps; if/when 1.16.x
   # ships, declare `"1.16": {}` too and bump this pin. Sample pre-fix
-  # failure: `ghcr.io/verity-org/postgres-operator:v1.15.1: not found`
+  # failure: `verity.supply/postgres-operator:v1.15.1: not found`
   # (run 25318761444 → diagnostics-postgres-operator).
   "zalando/postgres-operator":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "postgres-operator"
     tag: "1.15"
 
   # cert-manager chart (1.20.2). Jetstack chart image refs keep the upstream
   # quay.io/jetstack path and v-prefixed tag; Verity publishes the rebuilds at
-  # flattened ghcr.io/verity-org/<name> repos with non-v tags.
+  # flattened verity.supply/<name> repos with non-v tags.
   "jetstack/cert-manager-controller":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "cert-manager-controller"
     tag: "1.20.2"
   "jetstack/cert-manager-cainjector":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "cert-manager-cainjector"
     tag: "1.20.2"
   "jetstack/cert-manager-webhook":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "cert-manager-webhook"
     tag: "1.20.2"
 
@@ -1028,27 +1028,27 @@ replacements:
   # Copa-patched repos preserve the standalone source naming used in
   # copa-config.yaml rather than the charts' rendered repo paths.
   "ingress-nginx/controller":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "kubernetes/ingress-nginx/controller"
   "ingress-nginx/kube-webhook-certgen":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "kubernetes/ingress-nginx/kube-webhook-certgen"
   # external-dns chart 1.20.0 ships appVersion v0.20.0; Wolfi currently
   # only publishes up to external-dns-0.18.x. The rebuild lives at
-  # ghcr.io/verity-org/external-dns (see images/external-dns.yaml).
+  # verity.supply/external-dns (see images/external-dns.yaml).
   # Pin to "0.18" — the highest minor Wolfi actually publishes — until
   # upstream catches up. Chart-vs-binary skew is two minors but the
   # external-dns CLI flags consumed by the chart Deployment have been
   # stable since 0.10+, so this is expected to render and run.
   # Tracked: verity-org/verity#309 (#318 Wave 1 follow-up).
   "external-dns/external-dns":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "external-dns"
     tag: "0.18"
 
   # Integer-backed free wins.
   "valkey/valkey":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "valkey"
     tag: "9.0"
   # etcd: pin to the floating major.minor tag (`3.6`) instead of the
@@ -1058,18 +1058,18 @@ replacements:
   # — which makes the patch tag "sticky" to whatever content was
   # last published when the package version changed (currently
   # commit 94ed8f9e, pre-#365 era). The chart-integration on
-  # 2026-05-16 was pulling `ghcr.io/verity-org/etcd:3.6.10` which
+  # 2026-05-16 was pulling `verity.supply/etcd:3.6.10` which
   # still lacks the FHS symlink to `/usr/local/bin/etcd` added in
   # `images/etcd.yaml` post-#365. The floating `:3.6` tag has the
   # current build and the symlink. See verity-org/verity#318 (A.2)
   # for the underlying chart-vs-image FHS-path mismatch the symlink
   # exists to bridge.
   "etcd-development/etcd":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "etcd"
     tag: "3.6"
   "velero/velero":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "velero"
     tag: "1.18.0"
 
@@ -1077,7 +1077,7 @@ replacements:
   # renders only the operator deployment; route it to the existing Wolfi
   # rebuild whose published tags omit the upstream v-prefix.
   "minio/operator":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "minio-operator"
     tag: "7.1.1"
 
@@ -1103,7 +1103,7 @@ replacements:
   # republishes when the rebuild changes. For jenkins, that's the major.
   # See verity-org/verity#328 follow-up for the original busybox addition.
   "jenkins/jenkins":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "jenkins"
     tag: "2"
 
@@ -1111,12 +1111,12 @@ replacements:
   # traefik 41.0.0 → traefik 3.7.x; rebuild publishes major.minor tag.
   # Image is `docker.io/traefik` (root-level, no namespace).
   "traefik":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "traefik"
     tag: "3.7"
   # grafana/alloy 1.8.0 → alloy v1.16.x; prometheus-config-reloader falls through.
   "grafana/alloy":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "grafana-alloy"
     tag: "1"
 
@@ -1124,13 +1124,13 @@ replacements:
   # openbao 0.27.2 → openbao v2.5.x; chart's hashicorp/vault-k8s injector
   # falls through to crane (no rebuild for vault-k8s).
   "openbao/openbao":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "openbao"
     tag: "2"
   # apache-airflow 1.21.0 → airflow v3.2.x; bitnamilegacy/postgresql,
   # statsd-exporter, and root-level redis fall through to crane.
   "apache/airflow":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "airflow"
     tag: "3"
 
@@ -1155,7 +1155,7 @@ replacements:
   # no longer builds a verity-org/gitea image that nothing consumes.
   # crossplane 2.2.1 → crossplane v2.2.x; single image.
   "crossplane/crossplane":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "crossplane"
     tag: "2"
 
@@ -1163,39 +1163,39 @@ replacements:
   # minio 5.4.0 → minio server; rebuild publishes "RELEASE" floating tag.
   # The chart's `minio/mc` (CLI) image has a different path and falls through.
   "minio/minio":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "minio"
     tag: "RELEASE"
   # chartmuseum 3.10.4 → chartmuseum v0.16.x; single image.
   "helm/chartmuseum":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "chartmuseum"
     tag: "0"
   # trivy-operator 0.32.1 → trivy-operator v0.30.x; single image.
   "aquasec/trivy-operator":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "trivy-operator"
     tag: "0"
   # victoria-metrics-single 0.35.0 → victoria-metrics v1.140.x; single image.
   "victoriametrics/victoria-metrics":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "victoriametrics"
     tag: "1"
 
   # Wave 8 charts (search, AI, automation).
   # meilisearch 0.32.0 → meilisearch v1.42.x; chart's busybox helper falls through.
   "getmeili/meilisearch":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "meilisearch"
     tag: "1"
   # weaviate 17.8.0 → weaviate v1.37.x; chart's alpine test image falls through.
   "semitechnologies/weaviate":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "weaviate"
     tag: "1"
   # atlantis 6.3.0 → atlantis v0.42.x; chart's bats helm-test image falls through.
   "runatlantis/atlantis":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "atlantis"
     tag: "0"
 
@@ -1213,7 +1213,7 @@ replacements:
     registry: "docker.io"
     image: "hashicorp/vault-k8s"
   "hashicorp/vault":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "vault"
     tag: "1"
 
@@ -1234,7 +1234,7 @@ replacements:
     registry: "docker.io"
     image: "natsio/nats-box"
   "nats":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "nats"
     tag: "2"
 
@@ -1243,11 +1243,11 @@ replacements:
   # The chart also deploys envoyproxy/envoy:v1.35.10 → images/envoy.yaml
   # rebuild (major.minor track 1.35).
   "projectcontour/contour":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "contour"
     tag: "1.33.4"
   "envoyproxy/envoy":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "envoy"
     tag: "1.35"
 
@@ -1255,24 +1255,24 @@ replacements:
   # aws-load-balancer-controller chart 1.17.1 (app v2.17.1) → controller binary
   # on Wolfi rebuild (v2 major track). Older chart line maintained for v2 users.
   "eks/aws-load-balancer-controller":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "aws-load-balancer-controller"
     tag: "2"
   # cert-manager-csi-driver v0.15.0 (app v0.15.0) → exact tag match.
   # csi-node-driver-registrar and livenessprobe are different binaries under
   # quay.io/jetstack and have no rebuilds; they stay upstream in smoke tests.
   "jetstack/cert-manager-csi-driver":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "cert-manager-csi-driver"
     tag: "0.15"
   # descheduler 0.35.1 (app 0.35.1) → exact tag match; single image.
   "descheduler/descheduler":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "descheduler"
     tag: "0.35"
   # prometheus-blackbox-exporter 11.9.1 (app v0.28.0) → single image.
   "prometheus/blackbox-exporter":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "blackbox-exporter"
     tag: "0.28.0"
 
@@ -1286,30 +1286,30 @@ replacements:
     registry: "quay.io"
     image: "cilium/cilium-envoy"
   "cilium/cilium":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "cilium"
     tag: "1.19"
   # oauth2-proxy 10.4.3 (app v7.15.2) → exact tag match.
   "oauth2-proxy/oauth2-proxy":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "oauth2-proxy"
     tag: "7.15.2"
   # influxdb2 2.1.2 (app 2.7.4) → influxdb v2.7 rebuild track.
   # Image is `docker.io/influxdb` (root-level, no namespace).
   "influxdb":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "influxdb"
     tag: "2.7"
   # prometheus-nginx-exporter 1.21.1 (app 1.5.1) → exact tag match.
   "nginx/nginx-prometheus-exporter":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "nginx-prometheus-exporter"
     tag: "1.5.1"
   # fluent-bit 0.56.0 (app 4.2.3) → fluent-bit v4.2 rebuild track.
   # Newer charts deploy v5.x but rebuild is still at v4.2; this older chart
   # version aligns with the rebuild track.
   "fluent/fluent-bit":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "fluent-bit"
     tag: "4.2"
 
@@ -1318,21 +1318,21 @@ replacements:
   # Rebuild config declares `versions: "1.35"` which publishes a 1.35 floating
   # tag tracking the latest 1.35.x package release.
   "autoscaling/cluster-autoscaler":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "cluster-autoscaler"
     tag: "1.35"
   # nfs-subdir-external-provisioner 4.0.18 (app 4.0.2) → v4 major track.
   # Rebuild config declares `versions: "4"` (major-only), so the durable tag
   # is "4". Pinning to "4.0" would break when Wolfi advances to 4.1.x.
   "sig-storage/nfs-subdir-external-provisioner":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "nfs-subdir-external-provisioner"
     tag: "4"
   # workload-identity-webhook 1.5.1 (app v1.5.1) → v1 major track.
   # Rebuild config declares `versions: "1"` (major-only), so the durable tag
   # is "1". Image path has 3 segments (azure/workload-identity/webhook).
   "azure/workload-identity/webhook":
-    registry: "ghcr.io/verity-org"
+    registry: "verity.supply"
     image: "azure-workload-identity-webhook"
     tag: "1"
 

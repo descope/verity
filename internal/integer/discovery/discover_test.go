@@ -66,7 +66,7 @@ func writeFile(t *testing.T, dir, name, content string) {
 func opts(imagesDir, genDir string, pkgs []apkindex.Package) discovery.Options {
 	return discovery.Options{
 		ImagesDir: imagesDir,
-		Registry:  "ghcr.io/verity-org",
+		Registry:  "verity.supply",
 		Packages:  pkgs,
 		GenDir:    genDir,
 	}
@@ -85,7 +85,7 @@ func TestDiscoverFromFiles_Basic(t *testing.T) {
 	assert.Len(t, imgs, 4)
 
 	for _, img := range imgs {
-		assert.Equal(t, "ghcr.io/verity-org", img.Registry)
+		assert.Equal(t, "verity.supply", img.Registry)
 		assert.Equal(t, "node", img.Name)
 	}
 

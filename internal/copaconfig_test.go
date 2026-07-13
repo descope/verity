@@ -16,9 +16,9 @@ func TestParseImageRef(t *testing.T) {
 	}{
 		{
 			name:           "full reference with tag",
-			ref:            "ghcr.io/verity-org/library/nginx:1.25.3",
-			wantRegistry:   "ghcr.io",
-			wantRepository: "verity-org/library/nginx",
+			ref:            "verity.supply/library/nginx:1.25.3",
+			wantRegistry: "verity.supply",
+			wantRepository: "library/nginx",
 			wantTag:        "1.25.3",
 		},
 		{
@@ -44,9 +44,9 @@ func TestParseImageRef(t *testing.T) {
 		},
 		{
 			name:           "no tag",
-			ref:            "ghcr.io/verity-org/nginx",
-			wantRegistry:   "ghcr.io",
-			wantRepository: "verity-org/nginx",
+			ref:            "verity.supply/nginx",
+			wantRegistry: "verity.supply",
+			wantRepository: "nginx",
 			wantTag:        "",
 		},
 		{
@@ -58,9 +58,9 @@ func TestParseImageRef(t *testing.T) {
 		},
 		{
 			name:           "digest reference",
-			ref:            "ghcr.io/verity-org/nginx@sha256:abc123def",
-			wantRegistry:   "ghcr.io",
-			wantRepository: "verity-org/nginx",
+			ref:            "verity.supply/nginx@sha256:abc123def",
+			wantRegistry: "verity.supply",
+			wantRepository: "nginx",
 			wantTag:        "sha256:abc123def",
 		},
 		{
@@ -130,8 +130,8 @@ func TestNormalizeImageRef(t *testing.T) {
 		},
 		{
 			name: "ghcr.io image",
-			ref:  "ghcr.io/verity-org/nginx:1.25.3",
-			want: "ghcr.io/verity-org/nginx:1.25.3",
+			ref:  "verity.supply/nginx:1.25.3",
+			want: "verity.supply/nginx:1.25.3",
 		},
 		{
 			name: "docker hub user image",
@@ -159,14 +159,14 @@ func TestParseCopaOutput(t *testing.T) {
       "name": "nginx",
       "status": "Patched",
       "source_image": "docker.io/library/nginx:1.25.3",
-      "patched_image": "ghcr.io/verity-org/library/nginx:1.25.3",
+      "patched_image": "verity.supply/library/nginx:1.25.3",
       "details": "OK"
     },
     {
       "name": "prometheus",
       "status": "Skipped",
       "source_image": "quay.io/prometheus/prometheus:v3.9.1",
-      "patched_image": "ghcr.io/verity-org/prometheus/prometheus:v3.9.1",
+      "patched_image": "verity.supply/prometheus/prometheus:v3.9.1",
       "details": "no fixable vulnerabilities"
     }
   ]

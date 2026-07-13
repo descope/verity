@@ -7,7 +7,7 @@ func TestSanitizeFilename(t *testing.T) {
 		input, want string
 	}{
 		{"docker.io/library/nginx:1.27", "docker.io_library_nginx_1.27"},
-		{"ghcr.io/verity-org/node:22", "ghcr.io_verity-org_node_22"},
+		{"verity.supply/node:22", "verity.supply_node_22"},
 		{"simple", "simple"},
 	}
 	for _, tt := range tests {

@@ -39,13 +39,13 @@ func TestResolveValuePaths(t *testing.T) {
 			mappings: []ImageMapping{
 				{
 					OriginalRepo: "quay.io/prometheus/prometheus",
-					PatchedRepo:  "ghcr.io/verity-org/prometheus/prometheus",
+					PatchedRepo:  "verity.supply/prometheus/prometheus",
 					PatchedTag:   "v3.2.1",
 				},
 			},
 			want: []ValueOverride{{
 				Path:       "image",
-				Repository: "ghcr.io/verity-org/prometheus/prometheus",
+				Repository: "verity.supply/prometheus/prometheus",
 				Tag:        "v3.2.1",
 			}},
 		},
@@ -58,12 +58,12 @@ func TestResolveValuePaths(t *testing.T) {
 `,
 			mappings: []ImageMapping{{
 				OriginalRepo: "nginx",
-				PatchedRepo:  "ghcr.io/verity-org/library/nginx",
+				PatchedRepo:  "verity.supply/library/nginx",
 				PatchedTag:   "1.25",
 			}},
 			want: []ValueOverride{{
 				Path:       "server.image",
-				Repository: "ghcr.io/verity-org/library/nginx",
+				Repository: "verity.supply/library/nginx",
 				Tag:        "1.25",
 			}},
 		},
@@ -75,7 +75,7 @@ func TestResolveValuePaths(t *testing.T) {
 `,
 			mappings: []ImageMapping{{
 				OriginalRepo: "valkey",
-				PatchedRepo:  "ghcr.io/verity-org/valkey/valkey",
+				PatchedRepo:  "verity.supply/valkey/valkey",
 				PatchedTag:   "7.0",
 			}},
 			want: []ValueOverride{},
@@ -94,24 +94,24 @@ metrics:
 			mappings: []ImageMapping{
 				{
 					OriginalRepo: "nginx",
-					PatchedRepo:  "ghcr.io/verity-org/library/nginx",
+					PatchedRepo:  "verity.supply/library/nginx",
 					PatchedTag:   "1.25",
 				},
 				{
 					OriginalRepo: "valkey",
-					PatchedRepo:  "ghcr.io/verity-org/valkey/valkey",
+					PatchedRepo:  "verity.supply/valkey/valkey",
 					PatchedTag:   "7.2",
 				},
 			},
 			want: []ValueOverride{
 				{
 					Path:       "controller.image",
-					Repository: "ghcr.io/verity-org/library/nginx",
+					Repository: "verity.supply/library/nginx",
 					Tag:        "1.25",
 				},
 				{
 					Path:       "metrics.image",
-					Repository: "ghcr.io/verity-org/valkey/valkey",
+					Repository: "verity.supply/valkey/valkey",
 					Tag:        "7.2",
 				},
 			},
@@ -124,7 +124,7 @@ metrics:
 `,
 			mappings: []ImageMapping{{
 				OriginalRepo: "nginx",
-				PatchedRepo:  "ghcr.io/verity-org/library/nginx",
+				PatchedRepo:  "verity.supply/library/nginx",
 				PatchedTag:   "1.25",
 			}},
 			overrides: map[string]config.Override{
@@ -132,7 +132,7 @@ metrics:
 			},
 			want: []ValueOverride{{
 				Path:       "custom.image",
-				Repository: "ghcr.io/verity-org/library/nginx",
+				Repository: "verity.supply/library/nginx",
 				Tag:        "1.25",
 			}},
 		},
@@ -142,7 +142,7 @@ metrics:
 			// wrapper splits the patched FQDN into <registry>/<path> and
 			// emits the registry hostname into `registry`, so the chart's
 			// `{{ image.registry }}/{{ image.repository }}` template
-			// composes to `ghcr.io/verity-org/<repo>:<tag>` regardless of
+			// composes to `verity.supply/<repo>:<tag>` regardless of
 			// short-circuit semantics. See #308 wave 2.
 			name: "explicit value path composes registry on 3-field shape",
 			valuesYML: `image:
@@ -152,7 +152,7 @@ metrics:
 `,
 			mappings: []ImageMapping{{
 				OriginalRepo: "zalando/postgres-operator",
-				PatchedRepo:  "ghcr.io/verity-org/zalando/postgres-operator",
+				PatchedRepo:  "verity.supply/zalando/postgres-operator",
 				PatchedTag:   "v1.15.1",
 			}},
 			overrides: map[string]config.Override{
@@ -160,9 +160,9 @@ metrics:
 			},
 			want: []ValueOverride{{
 				Path:        "image",
-				Repository:  "verity-org/zalando/postgres-operator",
+				Repository:  "zalando/postgres-operator",
 				Tag:         "v1.15.1",
-				SetRegistry: "ghcr.io",
+				SetRegistry: "verity.supply",
 			}},
 		},
 		{
@@ -173,7 +173,7 @@ metrics:
 `,
 			mappings: []ImageMapping{{
 				OriginalRepo: "docker.io/timberio/vector",
-				PatchedRepo:  "ghcr.io/verity-org/timberio/vector",
+				PatchedRepo:  "verity.supply/timberio/vector",
 				PatchedTag:   "0.40",
 			}},
 			overrides: map[string]config.Override{
@@ -181,7 +181,7 @@ metrics:
 			},
 			want: []ValueOverride{{
 				Path:       "custom.vectorImage",
-				Repository: "ghcr.io/verity-org/timberio/vector",
+				Repository: "verity.supply/timberio/vector",
 				Tag:        "0.40",
 			}},
 		},
@@ -197,14 +197,14 @@ metrics:
 `,
 			mappings: []ImageMapping{{
 				OriginalRepo: "zalando/postgres-operator",
-				PatchedRepo:  "ghcr.io/verity-org/zalando/postgres-operator",
+				PatchedRepo:  "verity.supply/zalando/postgres-operator",
 				PatchedTag:   "v1.15.1",
 			}},
 			want: []ValueOverride{{
 				Path:        "image",
-				Repository:  "verity-org/zalando/postgres-operator",
+				Repository:  "zalando/postgres-operator",
 				Tag:         "v1.15.1",
-				SetRegistry: "ghcr.io",
+				SetRegistry: "verity.supply",
 			}},
 		},
 	}
@@ -264,10 +264,10 @@ func TestResolveValuePaths_DefaultRegistry(t *testing.T) {
 		{
 			// kyverno 3.7.x admission-controller shape — `registry` is
 			// null, the host lives under `defaultRegistry`. The wrapper
-			// emits `defaultRegistry: ghcr.io` + `repository: verity-org/kyverno`
+			// emits `defaultRegistry: verity.supply` + `repository: kyverno`
 			// so kyverno's `default (default .image.defaultRegistry .globalRegistry) .image.registry`
-			// resolves to `ghcr.io` and the rendered ref is
-			// `ghcr.io/verity-org/kyverno:1.17` (no leading slash).
+			// resolves to `verity.supply` and the rendered ref is
+			// `verity.supply/kyverno:1.17` (no leading slash).
 			name: "kyverno defaultRegistry sibling override",
 			valuesYML: `admissionController:
   container:
@@ -279,20 +279,20 @@ func TestResolveValuePaths_DefaultRegistry(t *testing.T) {
 `,
 			mappings: []ImageMapping{{
 				OriginalRepo: "kyverno/kyverno",
-				PatchedRepo:  "ghcr.io/verity-org/kyverno",
+				PatchedRepo:  "verity.supply/kyverno",
 				PatchedTag:   "1.17",
 			}},
 			want: []ValueOverride{{
 				Path:               "admissionController.container.image",
-				Repository:         "verity-org/kyverno",
+				Repository:         "kyverno",
 				Tag:                "1.17",
-				SetDefaultRegistry: "ghcr.io",
+				SetDefaultRegistry: "verity.supply",
 			}},
 		},
 		{
 			// Chart that uses BOTH sibling fields. Both get the registry
 			// hostname so any of `registry`, `defaultRegistry`, or
-			// `registry | default defaultRegistry` resolves to `ghcr.io`.
+			// `registry | default defaultRegistry` resolves to `verity.supply`.
 			name: "registry and defaultRegistry both compose",
 			valuesYML: `image:
   registry: "ghcr.io"
@@ -302,15 +302,15 @@ func TestResolveValuePaths_DefaultRegistry(t *testing.T) {
 `,
 			mappings: []ImageMapping{{
 				OriginalRepo: "foo/bar",
-				PatchedRepo:  "ghcr.io/verity-org/foo/bar",
+				PatchedRepo:  "verity.supply/foo/bar",
 				PatchedTag:   "v1",
 			}},
 			want: []ValueOverride{{
 				Path:               "image",
-				Repository:         "verity-org/foo/bar",
+				Repository:         "foo/bar",
 				Tag:                "v1",
-				SetRegistry:        "ghcr.io",
-				SetDefaultRegistry: "ghcr.io",
+				SetRegistry: "verity.supply",
+				SetDefaultRegistry: "verity.supply",
 			}},
 		},
 		{
@@ -326,7 +326,7 @@ func TestResolveValuePaths_DefaultRegistry(t *testing.T) {
 `,
 			mappings: []ImageMapping{{
 				OriginalRepo: "kyverno/kyverno",
-				PatchedRepo:  "ghcr.io/verity-org/kyverno",
+				PatchedRepo:  "verity.supply/kyverno",
 				PatchedTag:   "1.17",
 			}},
 			overrides: map[string]config.Override{
@@ -334,9 +334,9 @@ func TestResolveValuePaths_DefaultRegistry(t *testing.T) {
 			},
 			want: []ValueOverride{{
 				Path:               "admissionController.container.image",
-				Repository:         "verity-org/kyverno",
+				Repository:         "kyverno",
 				Tag:                "1.17",
-				SetDefaultRegistry: "ghcr.io",
+				SetDefaultRegistry: "verity.supply",
 			}},
 		},
 	}
@@ -528,24 +528,24 @@ func TestResolveValuePathsWithSubcharts(t *testing.T) {
 			mappings: []ImageMapping{
 				{
 					OriginalRepo: "quay.io/prometheus/alertmanager",
-					PatchedRepo:  "ghcr.io/verity-org/prometheus/alertmanager",
+					PatchedRepo:  "verity.supply/prometheus/alertmanager",
 					PatchedTag:   "v0.28.1",
 				},
 				{
 					OriginalRepo: "registry.k8s.io/kube-state-metrics/kube-state-metrics",
-					PatchedRepo:  "ghcr.io/verity-org/kube-state-metrics/kube-state-metrics",
+					PatchedRepo:  "verity.supply/kube-state-metrics/kube-state-metrics",
 					PatchedTag:   "v2.15.0",
 				},
 			},
 			want: []ValueOverride{
 				{
 					Path:       "alertmanager.image",
-					Repository: "ghcr.io/verity-org/prometheus/alertmanager",
+					Repository: "verity.supply/prometheus/alertmanager",
 					Tag:        "v0.28.1",
 				},
 				{
 					Path:       "kube-state-metrics.image",
-					Repository: "ghcr.io/verity-org/kube-state-metrics/kube-state-metrics",
+					Repository: "verity.supply/kube-state-metrics/kube-state-metrics",
 					Tag:        "v2.15.0",
 				},
 			},
@@ -565,24 +565,24 @@ func TestResolveValuePathsWithSubcharts(t *testing.T) {
 			mappings: []ImageMapping{
 				{
 					OriginalRepo: "nginx",
-					PatchedRepo:  "ghcr.io/verity-org/library/nginx",
+					PatchedRepo:  "verity.supply/library/nginx",
 					PatchedTag:   "1.25",
 				},
 				{
 					OriginalRepo: "valkey",
-					PatchedRepo:  "ghcr.io/verity-org/valkey/valkey",
+					PatchedRepo:  "verity.supply/valkey/valkey",
 					PatchedTag:   "7.2",
 				},
 			},
 			want: []ValueOverride{
 				{
 					Path:       "image",
-					Repository: "ghcr.io/verity-org/library/nginx",
+					Repository: "verity.supply/library/nginx",
 					Tag:        "1.25",
 				},
 				{
 					Path:       "metrics.image",
-					Repository: "ghcr.io/verity-org/valkey/valkey",
+					Repository: "verity.supply/valkey/valkey",
 					Tag:        "7.2",
 				},
 			},
@@ -598,7 +598,7 @@ func TestResolveValuePathsWithSubcharts(t *testing.T) {
 			},
 			mappings: []ImageMapping{{
 				OriginalRepo: "nginx",
-				PatchedRepo:  "ghcr.io/verity-org/library/nginx",
+				PatchedRepo:  "verity.supply/library/nginx",
 				PatchedTag:   "1.25",
 			}},
 			want: []ValueOverride{},
@@ -685,15 +685,15 @@ image:
 			},
 			mappings: []ImageMapping{{
 				OriginalRepo: "bitnamilegacy/postgresql",
-				PatchedRepo:  "ghcr.io/verity-org/bitnamilegacy/postgresql",
+				PatchedRepo:  "verity.supply/bitnamilegacy/postgresql",
 				PatchedTag:   "16.1.0-debian-11-r15",
 			}},
 			want: []ValueOverride{
 				{
 					Path:        "postgresql.image",
-					Repository:  "verity-org/bitnamilegacy/postgresql",
+					Repository:  "bitnamilegacy/postgresql",
 					Tag:         "16.1.0-debian-11-r15",
-					SetRegistry: "ghcr.io",
+					SetRegistry: "verity.supply",
 				},
 				{
 					Path:             "postgresql.global.imageRegistry",
@@ -724,15 +724,15 @@ image:
 			},
 			mappings: []ImageMapping{{
 				OriginalRepo: "bitnamilegacy/postgresql",
-				PatchedRepo:  "ghcr.io/verity-org/bitnamilegacy/postgresql",
+				PatchedRepo:  "verity.supply/bitnamilegacy/postgresql",
 				PatchedTag:   "16.1.0-debian-11-r15",
 			}},
 			want: []ValueOverride{
 				{
 					Path:        "postgresql.image",
-					Repository:  "verity-org/bitnamilegacy/postgresql",
+					Repository:  "bitnamilegacy/postgresql",
 					Tag:         "16.1.0-debian-11-r15",
-					SetRegistry: "ghcr.io",
+					SetRegistry: "verity.supply",
 				},
 				{
 					Path:             "postgresql.global.imageRegistry",
@@ -759,15 +759,15 @@ image:
 			},
 			mappings: []ImageMapping{{
 				OriginalRepo: "grafana/tempo",
-				PatchedRepo:  "ghcr.io/verity-org/tempo",
+				PatchedRepo:  "verity.supply/tempo",
 				PatchedTag:   "2.4",
 			}},
 			want: []ValueOverride{
 				{
 					Path:        "telemetry.image",
-					Repository:  "verity-org/tempo",
+					Repository:  "tempo",
 					Tag:         "2.4",
-					SetRegistry: "ghcr.io",
+					SetRegistry: "verity.supply",
 				},
 				{
 					Path:             "telemetry.global.image.registry",
@@ -822,15 +822,15 @@ image:
 			// should be neutralised; rabbitmq.global.imageRegistry stays alone.
 			mappings: []ImageMapping{{
 				OriginalRepo: "bitnamilegacy/postgresql",
-				PatchedRepo:  "ghcr.io/verity-org/bitnamilegacy/postgresql",
+				PatchedRepo:  "verity.supply/bitnamilegacy/postgresql",
 				PatchedTag:   "16.1.0-debian-11-r15",
 			}},
 			want: []ValueOverride{
 				{
 					Path:        "postgresql.image",
-					Repository:  "verity-org/bitnamilegacy/postgresql",
+					Repository:  "bitnamilegacy/postgresql",
 					Tag:         "16.1.0-debian-11-r15",
-					SetRegistry: "ghcr.io",
+					SetRegistry: "verity.supply",
 				},
 				{
 					Path:             "postgresql.global.imageRegistry",
@@ -1539,7 +1539,7 @@ func TestSplitRegistryHost(t *testing.T) {
 		ok       bool
 	}{
 		// Docker-convention positive cases.
-		{"dns hostname", "ghcr.io/verity-org/grafana", "ghcr.io", "verity-org/grafana", true},
+		{"dns hostname", "verity.supply/grafana", "verity.supply", "grafana", true},
 		{"dns hostname multi-segment", "registry.k8s.io/kube-apiserver", "registry.k8s.io", "kube-apiserver", true},
 		{"host with port", "registry.example.com:5000/foo/bar", "registry.example.com:5000", "foo/bar", true},
 		{"localhost with port", "localhost:5000/foo", "localhost:5000", "foo", true},
@@ -1553,7 +1553,7 @@ func TestSplitRegistryHost(t *testing.T) {
 		// implicit `docker.io/library/` namespace) and our helper falls
 		// back to "leave the repo as-is".
 		{"dockerhub library shorthand", "library/nginx", "", "library/nginx", false},
-		{"dockerhub user/repo", "verity-org/grafana", "", "verity-org/grafana", false},
+		{"dockerhub user/repo", "grafana", "", "grafana", false},
 		{"single segment", "nginx", "", "nginx", false},
 		{"empty input", "", "", "", false},
 		{"leading slash", "/foo/bar", "", "/foo/bar", false},
@@ -1580,7 +1580,7 @@ func TestResolveValuePathsComposeRegistryOnRegistryOnlyPath(t *testing.T) {
 `
 	mappings := []ImageMapping{{
 		OriginalRepo: "zalando/postgres-operator",
-		PatchedRepo:  "ghcr.io/verity-org/zalando/postgres-operator",
+		PatchedRepo:  "verity.supply/zalando/postgres-operator",
 		PatchedTag:   "v1",
 	}}
 	overrides := map[string]config.Override{
@@ -1593,9 +1593,9 @@ func TestResolveValuePathsComposeRegistryOnRegistryOnlyPath(t *testing.T) {
 	}
 	want := []ValueOverride{{
 		Path:        "image",
-		Repository:  "verity-org/zalando/postgres-operator",
+		Repository:  "zalando/postgres-operator",
 		Tag:         "v1",
-		SetRegistry: "ghcr.io",
+		SetRegistry: "verity.supply",
 	}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("ResolveValuePaths() = %#v, want %#v", got, want)
@@ -1608,14 +1608,14 @@ func TestResolveValuePathPairsConsumesDuplicateRepoPairs(t *testing.T) {
 		{Path: "sidecar.image", Repo: "example/app", HasTag: true, HasRegistry: true, Registry: "docker.io"},
 	}
 	mappings := []ImageMapping{
-		{OriginalRepo: "example/app", PatchedRepo: "ghcr.io/verity-org/example/app", PatchedTag: "1"},
-		{OriginalRepo: "example/app", PatchedRepo: "ghcr.io/verity-org/example/app", PatchedTag: "2"},
+		{OriginalRepo: "example/app", PatchedRepo: "verity.supply/example/app", PatchedTag: "1"},
+		{OriginalRepo: "example/app", PatchedRepo: "verity.supply/example/app", PatchedTag: "2"},
 	}
 
 	got := resolveValuePathPairs(pairs, nil, mappings, nil)
 	want := []ValueOverride{
-		{Path: "primary.image", Repository: "verity-org/example/app", Tag: "1", SetRegistry: "ghcr.io"},
-		{Path: "sidecar.image", Repository: "verity-org/example/app", Tag: "2", SetRegistry: "ghcr.io"},
+		{Path: "primary.image", Repository: "example/app", Tag: "1", SetRegistry: "verity.supply"},
+		{Path: "sidecar.image", Repository: "example/app", Tag: "2", SetRegistry: "verity.supply"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("resolveValuePathPairs() = %#v, want %#v", got, want)

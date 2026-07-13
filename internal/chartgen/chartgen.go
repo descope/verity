@@ -72,7 +72,7 @@ func Run(cfg *Config) (*DryRunResult, error) {
 	// exclude-names so chart-gen does NOT generate a verity-org
 	// mapping for these chart-discovered images. Without this,
 	// chart-gen would crane-mirror an upstream image into
-	// `ghcr.io/verity-org/<repo>` even though the Copa pipeline
+	// `verity.supply/<repo>` even though the Copa pipeline
 	// also patches that image and may break it (notably:
 	// `victoriametrics/victoria-logs`, a statically-linked Go
 	// binary in a FROM-SCRATCH base that Copa converts to

@@ -2,14 +2,14 @@
 
 ## Overview
 
-Pull requests automatically validate the Verity pipeline without pushing to the production registry (`ghcr.io/verity-org`).
+Pull requests automatically validate the Verity pipeline without pushing to the production registry (`verity.supply`).
 
 ## How It Works
 
 ### Production Mode (main branch + nightly)
 
 - `orchestrator.yaml` runs at 02:00 UTC, dispatches `patch-image.yaml` per image
-- Pushes to `ghcr.io/verity-org` with `-patched` suffix
+- Pushes to `verity.supply` with `-patched` suffix
 - Signs with cosign keyless and attaches an SBOM attestation via `actions/attest`
 - Catalog assembly and site deploy happen in `build-site.yaml` at 05:00 UTC (decoupled)
 

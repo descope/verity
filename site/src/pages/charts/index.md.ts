@@ -66,7 +66,7 @@ export const GET: APIRoute = ({ site }) => {
 ## How It Works
 
 1. **Wrapper chart** — A thin Helm chart that declares the original chart as a dependency and overrides \`values.yaml\` to point image references at patched versions.
-2. **OCI registry** — Wrapper charts are pushed to \`${chartsCatalog.chartRegistry || charts[0]?.registry || "oci://ghcr.io/verity-org/charts"}\` and can be installed directly via \`helm install\`.
+2. **OCI registry** — Wrapper charts are pushed to \`${chartsCatalog.chartRegistry || charts[0]?.registry || "oci://verity.supply/charts"}\` and can be installed directly via \`helm install\`.
 3. **Drop-in replace** — Install the wrapper chart instead of the original. Helm resolves the dependency and applies all patched image overrides automatically.
 
 ## Available Charts

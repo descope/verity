@@ -165,7 +165,7 @@ func TestCraneOptions(t *testing.T) {
 		image     string
 		wantCount int
 	}{
-		{"ghcr.io/verity-org/nginx:latest", 0},
+		{"verity.supply/nginx:latest", 0},
 		{"docker.io/library/nginx:1.27", 0},
 		{"localhost/myimage:v1", 1},
 		{"localhost:5000/myimage:v1", 1},

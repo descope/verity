@@ -41,7 +41,7 @@ func TestGenerate_VariantVersions_LatestTagStaysOnLatest(t *testing.T) {
 	imagesDir := t.TempDir()
 	writeFile(t, imagesDir, "static.yaml", variantOnlyYAML)
 
-	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", nil, nil)
+	cat, err := catalog.Generate(imagesDir, "", "verity.supply", nil, nil)
 	require.NoError(t, err)
 
 	require.Len(t, cat.Images, 1)
@@ -57,7 +57,7 @@ func TestGenerate_NumericVersionBeatsExplicitLatest(t *testing.T) {
 	imagesDir := t.TempDir()
 	writeFile(t, imagesDir, "mixed.yaml", latestPlusNumericYAML)
 
-	cat, err := catalog.Generate(imagesDir, "", "ghcr.io/verity-org", nil, nil)
+	cat, err := catalog.Generate(imagesDir, "", "verity.supply", nil, nil)
 	require.NoError(t, err)
 
 	require.Len(t, cat.Images, 1)

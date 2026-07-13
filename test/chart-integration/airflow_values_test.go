@@ -41,8 +41,8 @@ func TestAirflowPostgresqlImageOverrideIsComposable(t *testing.T) {
 	if err := yaml.Unmarshal(body, &values); err != nil {
 		t.Fatalf("parse %s: %v", valuesPath, err)
 	}
-	if values.Airflow.DefaultAirflowRepository != "ghcr.io/verity-org/airflow" {
-		t.Fatalf("defaultAirflowRepository=%q want ghcr.io/verity-org/airflow", values.Airflow.DefaultAirflowRepository)
+	if values.Airflow.DefaultAirflowRepository != "verity.supply/airflow" {
+		t.Fatalf("defaultAirflowRepository=%q want verity.supply/airflow", values.Airflow.DefaultAirflowRepository)
 	}
 	if values.Airflow.DefaultAirflowTag != "3" {
 		t.Fatalf("defaultAirflowTag=%q want 3", values.Airflow.DefaultAirflowTag)

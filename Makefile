@@ -162,10 +162,10 @@ down:
 
 # ── Chart Integration Smoke Tests ─────────────────────────────────────
 
-# Smoke-test the wrapper charts published nightly to ghcr.io/verity-org/charts.
+# Smoke-test the wrapper charts published nightly to verity.supply/charts.
 # Spins up a kind cluster, helm-installs each chart in Chart.yaml from the
 # published OCI registry, waits for healthy, asserts every running container
-# image is from ghcr.io/verity-org and no container restarted within 30s.
+# image is from verity.supply and no container restarted within 30s.
 #
 #   make chart-integration                           # all charts in Chart.yaml
 #   VERITY_CHART=victoria-logs-single make chart-integration   # single chart

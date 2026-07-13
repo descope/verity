@@ -61,7 +61,7 @@ func TestGenerateSiteData_WithReportsDir(t *testing.T) {
 	images := []ImageEntry{
 		{
 			Original: "docker.io/library/nginx:1.27.3",
-			Patched:  "ghcr.io/verity-org/nginx:1.27.3",
+			Patched:  "verity.supply/nginx:1.27.3",
 			Report:   reportName,
 		},
 	}
@@ -74,7 +74,7 @@ func TestGenerateSiteData_WithReportsDir(t *testing.T) {
 	}
 
 	outputPath := filepath.Join(tmpDir, "catalog.json")
-	err = generateAndWrite(imagesJSON, reportsDir, "", "ghcr.io/verity-org", outputPath)
+	err = generateAndWrite(imagesJSON, reportsDir, "", "verity.supply", outputPath)
 	if err != nil {
 		t.Fatalf("generateAndWrite failed: %v", err)
 	}
@@ -123,7 +123,7 @@ func TestGenerateSiteData_BeforeAfter(t *testing.T) {
 
 	// Pre-patch report named after source ref; post-patch report named after patched ref.
 	preReportName := "docker.io_library_nginx_1.27.3.json"
-	postReportName := "ghcr.io_verity-org_nginx_1.27.3.json"
+	postReportName := "verity.supply_nginx_1.27.3.json"
 
 	// Pre-patch: 3 vulns
 	preReport := map[string]any{
@@ -166,7 +166,7 @@ func TestGenerateSiteData_BeforeAfter(t *testing.T) {
 	imagesJSON := filepath.Join(tmpDir, "images.json")
 	images := []ImageEntry{{
 		Original: "docker.io/library/nginx:1.27.3",
-		Patched:  "ghcr.io/verity-org/nginx:1.27.3",
+		Patched:  "verity.supply/nginx:1.27.3",
 		Report:   preReportName,
 	}}
 	d, err := json.Marshal(images)
@@ -178,7 +178,7 @@ func TestGenerateSiteData_BeforeAfter(t *testing.T) {
 	}
 
 	outputPath := filepath.Join(tmpDir, "catalog.json")
-	if err := generateAndWrite(imagesJSON, preDir, postDir, "ghcr.io/verity-org", outputPath); err != nil {
+	if err := generateAndWrite(imagesJSON, preDir, postDir, "verity.supply", outputPath); err != nil {
 		t.Fatalf("generateAndWrite failed: %v", err)
 	}
 
@@ -216,7 +216,7 @@ func TestGenerateSiteData_FallbackWithoutReportsDir(t *testing.T) {
 	images := []ImageEntry{
 		{
 			Original: "docker.io/library/nginx:1.27.3",
-			Patched:  "ghcr.io/verity-org/nginx:1.27.3",
+			Patched:  "verity.supply/nginx:1.27.3",
 			Report:   "",
 		},
 	}
@@ -229,7 +229,7 @@ func TestGenerateSiteData_FallbackWithoutReportsDir(t *testing.T) {
 	}
 
 	outputPath := filepath.Join(tmpDir, "catalog.json")
-	err = generateAndWrite(imagesJSON, "", "", "ghcr.io/verity-org", outputPath)
+	err = generateAndWrite(imagesJSON, "", "", "verity.supply", outputPath)
 	if err != nil {
 		t.Fatalf("generateAndWrite failed: %v", err)
 	}
@@ -255,7 +255,7 @@ func TestGenerateSiteData_FallbackWithoutReportsDir(t *testing.T) {
 	if img.OriginalRef != "docker.io/library/nginx:1.27.3" {
 		t.Errorf("wrong original ref: %s", img.OriginalRef)
 	}
-	if img.PatchedRef != "ghcr.io/verity-org/nginx:1.27.3" {
+	if img.PatchedRef != "verity.supply/nginx:1.27.3" {
 		t.Errorf("wrong patched ref: %s", img.PatchedRef)
 	}
 }
@@ -410,7 +410,7 @@ func TestImageReference(t *testing.T) {
 		{"repo only", Image{Repository: "nginx"}, "nginx"},
 		{"registry and repo", Image{Registry: "docker.io", Repository: "library/nginx"}, "docker.io/library/nginx"},
 		{"repo and tag", Image{Repository: "nginx", Tag: "1.27"}, "nginx:1.27"},
-		{"full ref", Image{Registry: "ghcr.io", Repository: "verity-org/nginx", Tag: "latest"}, "ghcr.io/verity-org/nginx:latest"},
+		{"full ref", Image{Registry: "verity.supply", Repository: "nginx", Tag: "latest"}, "verity.supply/nginx:latest"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -32,10 +32,10 @@ func TestCheckOrphanReplacements_AllMatched(t *testing.T) {
 	}
 	vc := &config.VerityConfig{
 		Replacements: map[string]config.Replacement{
-			"prometheus/pushgateway":                {Registry: "ghcr.io/verity-org", Image: "pushgateway"},
-			"kube-state-metrics/kube-state-metrics": {Registry: "ghcr.io/verity-org", Image: "kube-state-metrics"},
-			"argoproj/argocd":                       {Registry: "ghcr.io/verity-org", Image: "argocd"},
-			"dexidp/dex":                            {Registry: "ghcr.io/verity-org", Image: "dex"},
+			"prometheus/pushgateway":                {Registry: "verity.supply", Image: "pushgateway"},
+			"kube-state-metrics/kube-state-metrics": {Registry: "verity.supply", Image: "kube-state-metrics"},
+			"argoproj/argocd":                       {Registry: "verity.supply", Image: "argocd"},
+			"dexidp/dex":                            {Registry: "verity.supply", Image: "dex"},
 		},
 	}
 
@@ -55,8 +55,8 @@ func TestCheckOrphanReplacements_OneOrphan(t *testing.T) {
 	}
 	vc := &config.VerityConfig{
 		Replacements: map[string]config.Replacement{
-			"prometheus/pushgateway":      {Registry: "ghcr.io/verity-org", Image: "pushgateway"},
-			"jimmidyson/configmap-reload": {Registry: "ghcr.io/verity-org", Image: "configmap-reload"},
+			"prometheus/pushgateway":      {Registry: "verity.supply", Image: "pushgateway"},
+			"jimmidyson/configmap-reload": {Registry: "verity.supply", Image: "configmap-reload"},
 		},
 	}
 
@@ -92,7 +92,7 @@ func TestCheckOrphanReplacements_SubstringMatchesCount(t *testing.T) {
 	}
 	vc := &config.VerityConfig{
 		Replacements: map[string]config.Replacement{
-			"kyverno/kyverno": {Registry: "ghcr.io/verity-org", Image: "kyverno"},
+			"kyverno/kyverno": {Registry: "verity.supply", Image: "kyverno"},
 		},
 	}
 	issues, err := CheckOrphanReplacements(charts, vc, "verity.yaml", "Chart.yaml", fakeExtractor(chartImages))
