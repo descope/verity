@@ -38,11 +38,11 @@ type ValueOverride struct {
 	// write `<path>.registry: <SetRegistry>` and to render Repository
 	// with the registry hostname stripped. The chart's template
 	// `{{ <path>.registry }}/{{ <path>.repository }}` therefore composes
-	// to `verity.supply/<repo>:<tag>` whether the template
+	// to `ghcr.io/verity-org/<repo>:<tag>` whether the template
 	// short-circuits via `default` or concatenates directly:
 	//
-	//   {{ .Values.image.registry }}/{{ repository }}             → verity.supply/<repo>
-	//   {{ registry | default defaultRegistry }}/{{ repository }} → verity.supply/<repo> (registry fires)
+	//   {{ .Values.image.registry }}/{{ repository }}             → ghcr.io/verity-org/<repo>
+	//   {{ registry | default defaultRegistry }}/{{ repository }} → ghcr.io/verity-org/<repo> (registry fires)
 	//
 	// IMPORTANT scoping caveat: SetRegistry only writes the per-image
 	// registry sibling at `<path>.registry`. If the chart's template
@@ -325,7 +325,7 @@ func buildValueOverride(path, patchedRepo, patchedTag string, hasRegistry, hasDe
 }
 
 // splitRegistryHost splits a fully-qualified image reference like
-// `verity.supply/grafana` into (`verity.supply`, `grafana`, true).
+// `ghcr.io/verity-org/grafana` into (`ghcr.io`, `verity-org/grafana`, true).
 // A path is considered to have a registry host when its first segment
 // contains either a `.` (DNS hostname), a `:` (port), or equals `localhost`
 // — these are the three cases Docker's reference parser treats as a
@@ -801,9 +801,9 @@ func walkValues(prefix string, node map[string]any, pairs *[]repoTagPair) {
 		// The empty-string declaration is the trickier case: if the chart
 		// templates `{{ .Values.image.registry }}/{{ repository }}` and we
 		// leave the wrapper leaf alone, the rendered ref becomes
-		// `"" + "/" + verity.supply/...` — the same leading-slash bug this PR
+		// `"" + "/" + ghcr.io/...` — the same leading-slash bug this PR
 		// is fixing. We must still compose the registry into the sibling
-		// so the rendered ref is `verity.supply/<repo>`. The
+		// so the rendered ref is `ghcr.io/<verity-org>/<repo>`. The
 		// previous shape (`registry != ""`) silently skipped these
 		// charts; #312 review caught the gap.
 		registry, hasRegistry := child["registry"].(string)
@@ -812,10 +812,10 @@ func walkValues(prefix string, node map[string]any, pairs *[]repoTagPair) {
 		// that the chart concatenates to the override repository when
 		// `registry` is unset. Without an explicit signal, our wrapper would
 		// inherit that prefix and produce broken refs like
-		// `reg.kyverno.io/verity.supply/kyverno:1.17` (issue #254).
+		// `reg.kyverno.io/ghcr.io/verity-org/kyverno:1.17` (issue #254).
 		// Treat it as a parallel registry-sibling: detect it here, plumb
 		// it through SetDefaultRegistry, and have buildValuesTree write
-		// `defaultRegistry: <verity.supply>` into the override leaf.
+		// `defaultRegistry: <ghcr.io>` into the override leaf.
 		defaultRegistry, hasDefaultRegistry := child["defaultRegistry"].(string)
 
 		switch {

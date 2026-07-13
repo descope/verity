@@ -26,7 +26,7 @@ const (
 	helmInstallTimeout            = 10 * time.Minute
 	airflowHelmInstallTimeout     = 20 * time.Minute
 	certManagerHelmInstallTimeout = 15 * time.Minute
-	chartRegistry                 = "oci://verity.supply/charts"
+	chartRegistry                 = "oci://ghcr.io/verity-org/charts"
 )
 
 type chartPrerequisite struct {

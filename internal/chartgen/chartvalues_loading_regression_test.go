@@ -79,8 +79,8 @@ func TestVerityConfigChartValuesLoading(t *testing.T) {
 	if !ok {
 		t.Fatalf("missing replacement for rabbitmq/cluster-operator")
 	}
-	if rabbitmqClusterOperator.Registry != "verity.supply" {
-		t.Fatalf("rabbitmq/cluster-operator replacement registry=%q, want verity.supply", rabbitmqClusterOperator.Registry)
+	if rabbitmqClusterOperator.Registry != "ghcr.io/verity-org" {
+		t.Fatalf("rabbitmq/cluster-operator replacement registry=%q, want ghcr.io/verity-org", rabbitmqClusterOperator.Registry)
 	}
 	if rabbitmqClusterOperator.Image != "rabbitmq-cluster-operator" {
 		t.Fatalf("rabbitmq/cluster-operator replacement image=%q, want rabbitmq-cluster-operator", rabbitmqClusterOperator.Image)

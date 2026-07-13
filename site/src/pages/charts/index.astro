@@ -7,7 +7,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getChartVulns, getImageVulns } from "../../lib/chart-vulns.ts";
 import type { ChartEntry, ChartImageMapping } from "../../lib/charts.ts";
 import { getChartsCatalog } from "../../lib/charts.ts";
-import { patchedRefToName } from "../../lib/refs.ts";
+import { patchedRefToName, toPublicRef } from "../../lib/refs.ts";
 
 const base = import.meta.env.BASE_URL;
 const chartsCatalog = getChartsCatalog();
@@ -139,7 +139,8 @@ for (const cat of fullCatalog) {
     <div class="space-y-10">
       {
         charts.map((chart: ChartEntry) => {
-          const installCmd = `helm install ${chart.wrapperName} ${chart.registry}/${chart.wrapperName} --version ${chart.wrapperVersion}`;
+          const publicChartRegistry = toPublicRef(chart.registry);
+          const installCmd = `helm install ${chart.wrapperName} ${publicChartRegistry}/${chart.wrapperName} --version ${chart.wrapperVersion}`;
           const mappingCount = chart.imageMappings.length + chart.valueOverrides.length;
           const chartVulns = chartVulnMap.get(chart.name) ?? { total: 0, severityCounts: {} };
 
@@ -214,7 +215,7 @@ for (const cat of fullCatalog) {
                       <SeverityBadges summary={imgVulns} />
                     </div>
                     <div class="text-xs text-verity-text-secondary font-mono break-words">
-                      {m.patchedRepo}:{m.patchedTag}
+                      {toPublicRef(m.patchedRepo)}:{m.patchedTag}
                     </div>
                   </a>
                 );
@@ -229,7 +230,9 @@ for (const cat of fullCatalog) {
                   <div class="text-sm text-verity-text-muted font-mono truncate">{v.path}</div>
                   <div />
                   <div />
-                  <div class="text-xs text-verity-nucleus font-mono break-words">{v.value}</div>
+                  <div class="text-xs text-verity-nucleus font-mono break-words">
+                    {toPublicRef(v.value)}
+                  </div>
                 </div>
               ))}
             </div>

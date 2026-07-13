@@ -219,7 +219,7 @@ dependencies:
     version: "7.0.0"
     repository: "https://grafana.github.io/helm-charts"
 `)
-	writeTestFile(t, filepath.Join(valuesDir, "grafana.yaml"), "image: verity.supply/grafana:12\n")
+	writeTestFile(t, filepath.Join(valuesDir, "grafana.yaml"), "image: ghcr.io/verity-org/grafana:12\n")
 
 	plan, err := PlanCharts(&ChartOptions{
 		EventName:    "pull_request",

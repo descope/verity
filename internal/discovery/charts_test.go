@@ -200,7 +200,7 @@ func TestSplitRef(t *testing.T) {
 	}{
 		{"docker.io/foo/bar:1.0-alpine", "docker.io/foo/bar", "1.0-alpine"},
 		{"nginx:latest", "nginx", "latest"},
-		{"verity.supply/nginx", "verity.supply/nginx", ""},
+		{"ghcr.io/verity-org/nginx", "ghcr.io/verity-org/nginx", ""},
 		{"localhost:5000/myimage:v1", "localhost:5000/myimage", "v1"},
 		{"registry.example.com:8080/repo:tag", "registry.example.com:8080/repo", "tag"},
 		{"simple", "simple", ""},
@@ -277,7 +277,7 @@ spec:
     spec:
       containers:
       - name: tiny
-        image: verity.supply/tiny:v1.2.3
+        image: ghcr.io/verity-org/tiny:v1.2.3
 `)
 
 		got, err := extractImagesFromManifests(yaml)
@@ -288,8 +288,8 @@ spec:
 		if len(got) != 1 {
 			t.Fatalf("extractImagesFromManifests() returned %d images, want 1: %v", len(got), got)
 		}
-		if got[0] != "verity.supply/tiny:v1.2.3" {
-			t.Fatalf("extractImagesFromManifests() = %v, want verity.supply/tiny:v1.2.3", got)
+		if got[0] != "ghcr.io/verity-org/tiny:v1.2.3" {
+			t.Fatalf("extractImagesFromManifests() = %v, want ghcr.io/verity-org/tiny:v1.2.3", got)
 		}
 	})
 
@@ -378,7 +378,7 @@ spec:
     spec:
       containers:
       - name: operator
-        image: verity.supply/operator:v0.1.0
+        image: ghcr.io/verity-org/operator:v0.1.0
         args:
         - --default-image=https://example.com/foo:bar
         env:
@@ -407,7 +407,7 @@ data:
 			t.Fatalf("extractImagesFromManifests() error = %v", err)
 		}
 
-		want := []string{"verity.supply/operator:v0.1.0"}
+		want := []string{"ghcr.io/verity-org/operator:v0.1.0"}
 		if len(got) != len(want) {
 			t.Fatalf("extractImagesFromManifests() returned %d images, want %d: %v", len(got), len(want), got)
 		}

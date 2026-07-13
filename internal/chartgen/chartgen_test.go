@@ -29,7 +29,7 @@ func TestPushChartWithRetrySucceedsAfterTransientTagRace(t *testing.T) {
 		if timeout != helmPushTimeout {
 			t.Fatalf("timeout = %s, want %s", timeout, helmPushTimeout)
 		}
-		if name != "helm" || strings.Join(args, " ") != "push /tmp/wrapper.tgz oci://verity.supply/charts" {
+		if name != "helm" || strings.Join(args, " ") != "push /tmp/wrapper.tgz oci://ghcr.io/verity-org/charts" {
 			t.Fatalf("command = %s %s", name, strings.Join(args, " "))
 		}
 		if attempts < 3 {
@@ -42,7 +42,7 @@ func TestPushChartWithRetrySucceedsAfterTransientTagRace(t *testing.T) {
 		return nil
 	}
 
-	if err := pushChartWithRetry(context.Background(), "/tmp/wrapper.tgz", "oci://verity.supply/charts", runner, sleeper, 4); err != nil {
+	if err := pushChartWithRetry(context.Background(), "/tmp/wrapper.tgz", "oci://ghcr.io/verity-org/charts", runner, sleeper, 4); err != nil {
 		t.Fatalf("pushChartWithRetry() error = %v", err)
 	}
 	if attempts != 3 {
@@ -70,7 +70,7 @@ func TestPushChartWithRetryStopsOnPermanentError(t *testing.T) {
 		return nil
 	}
 
-	err := pushChartWithRetry(context.Background(), "/tmp/wrapper.tgz", "oci://verity.supply/charts", runner, sleeper, 4)
+	err := pushChartWithRetry(context.Background(), "/tmp/wrapper.tgz", "oci://ghcr.io/verity-org/charts", runner, sleeper, 4)
 	if err == nil {
 		t.Fatal("pushChartWithRetry() error = nil, want error")
 	}
@@ -93,7 +93,7 @@ func TestPushChartWithRetryDoesNotRetryGenericNotFound(t *testing.T) {
 		return nil
 	}
 
-	err := pushChartWithRetry(context.Background(), "/tmp/wrapper.tgz", "oci://verity.supply/charts", runner, sleeper, 4)
+	err := pushChartWithRetry(context.Background(), "/tmp/wrapper.tgz", "oci://ghcr.io/verity-org/charts", runner, sleeper, 4)
 	if err == nil {
 		t.Fatal("pushChartWithRetry() error = nil, want error")
 	}
@@ -113,7 +113,7 @@ func TestPushChartWithRetryPreservesErrorsAfterExhaustion(t *testing.T) {
 	}
 	sleeper := func(context.Context, time.Duration) error { return nil }
 
-	err := pushChartWithRetry(context.Background(), "/tmp/wrapper.tgz", "oci://verity.supply/charts", runner, sleeper, 3)
+	err := pushChartWithRetry(context.Background(), "/tmp/wrapper.tgz", "oci://ghcr.io/verity-org/charts", runner, sleeper, 3)
 	if err == nil {
 		t.Fatal("pushChartWithRetry() error = nil, want error")
 	}
@@ -133,7 +133,7 @@ func TestPushChartWithRetryLabelsSleepErrorsWithoutFakeAttempt(t *testing.T) {
 	}
 	sleeper := func(context.Context, time.Duration) error { return errRetrySleep }
 
-	err := pushChartWithRetry(context.Background(), "/tmp/wrapper.tgz", "oci://verity.supply/charts", runner, sleeper, 4)
+	err := pushChartWithRetry(context.Background(), "/tmp/wrapper.tgz", "oci://ghcr.io/verity-org/charts", runner, sleeper, 4)
 	if err == nil {
 		t.Fatal("pushChartWithRetry() error = nil, want error")
 	}
@@ -167,19 +167,19 @@ func TestDryRunResultJSON(t *testing.T) {
 				Version:        "28.9.1",
 				WrapperName:    "prometheus",
 				WrapperVersion: "28.9.1",
-				Registry:       "oci://verity.supply/charts",
+				Registry:       "oci://ghcr.io/verity-org/charts",
 				ImageMappings: []ImageMapping{
 					{
 						OriginalRepo: "quay.io/prometheus/prometheus",
 						OriginalTag:  "v3.2.1",
-						PatchedRepo:  "verity.supply/prometheus/prometheus",
+						PatchedRepo:  "ghcr.io/verity-org/prometheus/prometheus",
 						PatchedTag:   "v3.2.1",
 					},
 				},
 				ValueOverrides: []ValueOverride{
 					{
 						Path:       "server.image",
-						Repository: "verity.supply/prometheus/prometheus",
+						Repository: "ghcr.io/verity-org/prometheus/prometheus",
 						Tag:        "v3.2.1",
 					},
 				},
@@ -227,8 +227,8 @@ func TestRunDryRunNoCharts(t *testing.T) {
 	res, err := Run(&Config{
 		ChartsFile:     chartsPath,
 		VerityConfig:   verityPath,
-		TargetRegistry: "verity.supply",
-		ChartRegistry:  "oci://verity.supply/charts",
+		TargetRegistry: "ghcr.io/verity-org",
+		ChartRegistry:  "oci://ghcr.io/verity-org/charts",
 		ExcludeNames:   map[string]struct{}{},
 		DryRun:         true,
 	})
@@ -286,8 +286,8 @@ func TestRunDryRunStrictNoChartsPasses(t *testing.T) {
 	res, err := Run(&Config{
 		ChartsFile:     filepath.Join(tmpDir, "does-not-exist.yaml"),
 		VerityConfig:   filepath.Join(tmpDir, "does-not-exist.yaml"),
-		TargetRegistry: "verity.supply",
-		ChartRegistry:  "oci://verity.supply/charts",
+		TargetRegistry: "ghcr.io/verity-org",
+		ChartRegistry:  "oci://ghcr.io/verity-org/charts",
 		ExcludeNames:   map[string]struct{}{},
 		DryRun:         true,
 		Strict:         true,
@@ -309,8 +309,8 @@ func TestApplyReplacements(t *testing.T) {
 
 	vc := &config.VerityConfig{
 		Replacements: map[string]config.Replacement{
-			"kube-state-metrics/kube-state-metrics": {Registry: "verity.supply", Image: "kube-state-metrics"},
-			"prometheus/pushgateway":                {Registry: "verity.supply", Image: "pushgateway", Tag: "1.11"},
+			"kube-state-metrics/kube-state-metrics": {Registry: "ghcr.io/verity-org", Image: "kube-state-metrics"},
+			"prometheus/pushgateway":                {Registry: "ghcr.io/verity-org", Image: "pushgateway", Tag: "1.11"},
 		},
 	}
 
@@ -329,7 +329,7 @@ func TestApplyReplacements(t *testing.T) {
 
 	// kube-state-metrics: no Tag override, uses source tag
 	ksm := replacements[0]
-	if ksm.PatchedRepo != "verity.supply/kube-state-metrics" {
+	if ksm.PatchedRepo != "ghcr.io/verity-org/kube-state-metrics" {
 		t.Errorf("ksm PatchedRepo = %q", ksm.PatchedRepo)
 	}
 	if ksm.PatchedTag != "v2.18.0" {
@@ -338,7 +338,7 @@ func TestApplyReplacements(t *testing.T) {
 
 	// pushgateway: Tag override
 	pg := replacements[1]
-	if pg.PatchedRepo != "verity.supply/pushgateway" {
+	if pg.PatchedRepo != "ghcr.io/verity-org/pushgateway" {
 		t.Errorf("pg PatchedRepo = %q", pg.PatchedRepo)
 	}
 	if pg.PatchedTag != "1.11" {
@@ -368,20 +368,20 @@ func TestApplyReplacementsLongestPatternWins(t *testing.T) {
 	}
 	vc := &config.VerityConfig{
 		Replacements: map[string]config.Replacement{
-			"kyverno/kyverno":                         {Registry: "verity.supply", Image: "kyverno"},
-			"kyverno/kyverno-cli":                     {Registry: "verity.supply", Image: "kyverno-cli"},
-			"opensearchproject/opensearch":            {Registry: "verity.supply", Image: "opensearch"},
-			"opensearchproject/opensearch-dashboards": {Registry: "verity.supply", Image: "opensearch-dashboards"},
+			"kyverno/kyverno":                         {Registry: "ghcr.io/verity-org", Image: "kyverno"},
+			"kyverno/kyverno-cli":                     {Registry: "ghcr.io/verity-org", Image: "kyverno-cli"},
+			"opensearchproject/opensearch":            {Registry: "ghcr.io/verity-org", Image: "opensearch"},
+			"opensearchproject/opensearch-dashboards": {Registry: "ghcr.io/verity-org", Image: "opensearch-dashboards"},
 		},
 	}
 
 	_, replacements, _ := applyReplacements(refs, vc, nil)
 
 	want := map[string]string{
-		"reg.kyverno.io/kyverno/kyverno":          "verity.supply/kyverno",
-		"reg.kyverno.io/kyverno/kyverno-cli":      "verity.supply/kyverno-cli",
-		"opensearchproject/opensearch":            "verity.supply/opensearch",
-		"opensearchproject/opensearch-dashboards": "verity.supply/opensearch-dashboards",
+		"reg.kyverno.io/kyverno/kyverno":          "ghcr.io/verity-org/kyverno",
+		"reg.kyverno.io/kyverno/kyverno-cli":      "ghcr.io/verity-org/kyverno-cli",
+		"opensearchproject/opensearch":            "ghcr.io/verity-org/opensearch",
+		"opensearchproject/opensearch-dashboards": "ghcr.io/verity-org/opensearch-dashboards",
 	}
 	if len(replacements) != len(want) {
 		t.Fatalf("replacements = %d, want %d", len(replacements), len(want))
@@ -406,7 +406,7 @@ func TestApplyReplacementsExcludedWithoutReplacement(t *testing.T) {
 	refs := []string{"quay.io/prometheus/pushgateway:v1.11.2"}
 	vc := &config.VerityConfig{
 		Replacements: map[string]config.Replacement{
-			"some-unrelated/image": {Registry: "verity.supply", Image: "other"},
+			"some-unrelated/image": {Registry: "ghcr.io/verity-org", Image: "other"},
 		},
 	}
 	exclude := map[string]struct{}{"pushgateway": {}}
@@ -437,9 +437,9 @@ func TestApplyReplacementsWinsOverExclude(t *testing.T) {
 	}
 	vc := &config.VerityConfig{
 		Replacements: map[string]config.Replacement{
-			"opensearchproject/opensearch":  {Registry: "verity.supply", Image: "opensearch"},
-			"metrics-server/metrics-server": {Registry: "verity.supply", Image: "metrics-server"},
-			"kyverno/kyverno":               {Registry: "verity.supply", Image: "kyverno"},
+			"opensearchproject/opensearch":  {Registry: "ghcr.io/verity-org", Image: "opensearch"},
+			"metrics-server/metrics-server": {Registry: "ghcr.io/verity-org", Image: "metrics-server"},
+			"kyverno/kyverno":               {Registry: "ghcr.io/verity-org", Image: "kyverno"},
 		},
 	}
 	// These exclude names match the basenames of the images above —
@@ -460,9 +460,9 @@ func TestApplyReplacementsWinsOverExclude(t *testing.T) {
 	}
 
 	want := map[string]string{
-		"opensearchproject/opensearch":                  "verity.supply/opensearch",
-		"registry.k8s.io/metrics-server/metrics-server": "verity.supply/metrics-server",
-		"reg.kyverno.io/kyverno/kyverno":                "verity.supply/kyverno",
+		"opensearchproject/opensearch":                  "ghcr.io/verity-org/opensearch",
+		"registry.k8s.io/metrics-server/metrics-server": "ghcr.io/verity-org/metrics-server",
+		"reg.kyverno.io/kyverno/kyverno":                "ghcr.io/verity-org/kyverno",
 	}
 	for _, r := range replacements {
 		expected, ok := want[r.OriginalRepo]

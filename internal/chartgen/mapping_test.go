@@ -116,13 +116,13 @@ if [ "$1" != "ls" ]; then
 fi
 
 case "$2" in
-  "verity.supply/prometheus/prometheus")
+  "ghcr.io/verity-org/prometheus/prometheus")
     printf "v3.2.1\nlatest\n"
     ;;
-  "verity.supply/kiwigrid/k8s-sidecar")
+  "ghcr.io/verity-org/kiwigrid/k8s-sidecar")
     printf "1.28.0\n"
     ;;
-  "verity.supply/library/no-patch")
+  "ghcr.io/verity-org/library/no-patch")
     printf "latest\n"
     ;;
   *)
@@ -147,7 +147,7 @@ esac
 		"k8s-sidecar": {},
 	}
 
-	got, err := BuildImageMappings(imageRefs, "verity.supply", excludeNames)
+	got, err := BuildImageMappings(imageRefs, "ghcr.io/verity-org", excludeNames)
 	if err != nil {
 		t.Fatalf("BuildImageMappings() error = %v", err)
 	}
@@ -159,7 +159,7 @@ esac
 	want := ImageMapping{
 		OriginalRepo: "quay.io/prometheus/prometheus",
 		OriginalTag:  "v3.2.1",
-		PatchedRepo:  "verity.supply/prometheus/prometheus",
+		PatchedRepo:  "ghcr.io/verity-org/prometheus/prometheus",
 		PatchedTag:   "v3.2.1",
 	}
 

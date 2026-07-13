@@ -107,12 +107,12 @@ func TestClassifyMissingAllowlist(t *testing.T) {
 	}{
 		{
 			name:      "missing+all-verity (clean pass)",
-			images:    []string{"verity.supply/prometheus/prometheus:v3.9.1", "verity.supply/library/nginx:1.29.5-patched"},
+			images:    []string{"ghcr.io/verity-org/prometheus/prometheus:v3.9.1", "ghcr.io/verity-org/library/nginx:1.29.5-patched"},
 			offenders: nil,
 		},
 		{
 			name:      "missing+non-verity (hard fail)",
-			images:    []string{"verity.supply/prometheus/prometheus:v3.9.1", "quay.io/upstream/foo:latest"},
+			images:    []string{"ghcr.io/verity-org/prometheus/prometheus:v3.9.1", "quay.io/upstream/foo:latest"},
 			offenders: []string{"quay.io/upstream/foo:latest"},
 		},
 		{
@@ -127,8 +127,8 @@ func TestClassifyMissingAllowlist(t *testing.T) {
 		},
 		{
 			name:      "missing+double-ghcr-bug-pattern (chart-gen rewrite gap is non-verity)",
-			images:    []string{"ghcr.io/verity.supply/foo:tag"},
-			offenders: []string{"ghcr.io/verity.supply/foo:tag"},
+			images:    []string{"ghcr.io/ghcr.io/verity-org/foo:tag"},
+			offenders: []string{"ghcr.io/ghcr.io/verity-org/foo:tag"},
 		},
 	}
 	for _, c := range cases {
@@ -179,14 +179,14 @@ func TestIsAccepted(t *testing.T) {
 		imageID string
 		want    bool
 	}{
-		{"verity registry", "verity.supply/prometheus/prometheus:v3.9.1", "", true},
-		{"verity registry verbose", "verity.supply/library/nginx:1.29.5-patched", "", true},
+		{"verity registry", "ghcr.io/verity-org/prometheus/prometheus:v3.9.1", "", true},
+		{"verity registry verbose", "ghcr.io/verity-org/library/nginx:1.29.5-patched", "", true},
 		{"allowlist exact", "quay.io/special/escape-hatch:latest", "", true},
 		{"allowlist prefix", "registry.k8s.io/known-cant-rewrite/sub:v1", "", true},
 		{"upstream rejected", "quay.io/prometheus/prometheus:v3.9.1", "", false},
 		{"docker hub rejected", "docker.io/library/postgres:17", "", false},
 		{"empty rejected", "", "", false},
-		{"double-ghcr (chart-gen bug pattern) rejected", "ghcr.io/verity.supply/foo:tag", "", false},
+		{"double-ghcr (chart-gen bug pattern) rejected", "ghcr.io/ghcr.io/verity-org/foo:tag", "", false},
 		// Bare-digest fallback: kubelet sometimes records the
 		// container status image as just "sha256:<hex>" (no registry
 		// path), with the canonical reference preserved in imageID.
@@ -202,7 +202,7 @@ func TestIsAccepted(t *testing.T) {
 		{
 			name:    "bare digest with verity-prefixed imageID accepted",
 			image:   "sha256:deadbeef",
-			imageID: "verity.supply/library/foo@sha256:deadbeef",
+			imageID: "ghcr.io/verity-org/library/foo@sha256:deadbeef",
 			want:    true,
 		},
 		{

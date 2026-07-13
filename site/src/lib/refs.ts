@@ -1,8 +1,25 @@
 import { REGISTRY } from "../data/full-catalog.ts";
 
+const CANONICAL_REGISTRY = "ghcr.io/verity-org";
+const PUBLIC_REGISTRY = "verity.supply";
 const REGISTRY_PREFIX = REGISTRY + "/";
 const REGISTRY_HOST_PATTERN = /[.:]/;
 const PATCHED_SUFFIX_PATTERN = /-patched$/;
+
+/** Convert a Verity-owned canonical reference to its public vanity form. */
+export function toPublicRef(ref: string): string {
+  const canonicalOciPrefix = `oci://${CANONICAL_REGISTRY}/`;
+  if (ref.startsWith(canonicalOciPrefix)) {
+    return `oci://${PUBLIC_REGISTRY}/${ref.slice(canonicalOciPrefix.length)}`;
+  }
+
+  const canonicalPrefix = `${CANONICAL_REGISTRY}/`;
+  if (ref.startsWith(canonicalPrefix)) {
+    return `${PUBLIC_REGISTRY}/${ref.slice(canonicalPrefix.length)}`;
+  }
+
+  return ref;
+}
 
 /**
  * Extract the catalog name from a patched image reference by stripping

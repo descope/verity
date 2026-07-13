@@ -50,33 +50,33 @@ func TestNightlyTargetRefs(t *testing.T) {
 	copa, err := copaTargetRef(&discovery.DiscoveredImage{
 		Name:           "prometheus/prometheus",
 		Source:         "quay.io/prometheus/prometheus:v3.9.1",
-		TargetRegistry: "verity.supply",
+		TargetRegistry: "ghcr.io/verity-org",
 	})
 	require.NoError(t, err)
-	assert.Equal(t, "verity.supply/prometheus/prometheus:v3.9.1", copa)
+	assert.Equal(t, "ghcr.io/verity-org/prometheus/prometheus:v3.9.1", copa)
 
 	integer, err := integerTargetRef(&intdiscovery.DiscoveredImage{
 		Name:     "node",
 		Version:  "24",
 		Type:     "default",
 		Tags:     []string{"24", "latest"},
-		Registry: "verity.supply",
+		Registry: "ghcr.io/verity-org",
 	})
 	require.NoError(t, err)
-	assert.Equal(t, "verity.supply/node:24", integer)
+	assert.Equal(t, "ghcr.io/verity-org/node:24", integer)
 
 	integerRefs, err := integerTargetRefs(&intdiscovery.DiscoveredImage{
 		Name:     "node",
 		Version:  "24",
 		Type:     "dev",
 		Tags:     []string{"24-dev", "24.18-dev", "latest-dev"},
-		Registry: "verity.supply",
+		Registry: "ghcr.io/verity-org",
 	})
 	require.NoError(t, err)
 	assert.Equal(t, []nightlyScanTarget{
-		{ref: "verity.supply/node:24-dev", label: "verity.supply/node:24-dev"},
-		{ref: "verity.supply/node:24.18-dev", label: "verity.supply/node:24.18-dev"},
-		{ref: "verity.supply/node:latest-dev", label: "verity.supply/node:latest-dev"},
+		{ref: "ghcr.io/verity-org/node:24-dev", label: "ghcr.io/verity-org/node:24-dev"},
+		{ref: "ghcr.io/verity-org/node:24.18-dev", label: "ghcr.io/verity-org/node:24.18-dev"},
+		{ref: "ghcr.io/verity-org/node:latest-dev", label: "ghcr.io/verity-org/node:latest-dev"},
 	}, integerRefs)
 }
 
@@ -84,7 +84,7 @@ func TestNightlyTargetRefErrors(t *testing.T) {
 	_, err := copaTargetRef(&discovery.DiscoveredImage{
 		Name:           "digest",
 		Source:         "repo/img@sha256:abc",
-		TargetRegistry: "verity.supply",
+		TargetRegistry: "ghcr.io/verity-org",
 	})
 	require.ErrorIs(t, err, errSourceTagUnavailable)
 
@@ -98,7 +98,7 @@ func TestNightlyTargetRefErrors(t *testing.T) {
 		Name:     "node",
 		Version:  "24",
 		Type:     "default",
-		Registry: "verity.supply",
+		Registry: "ghcr.io/verity-org",
 	})
 	require.ErrorIs(t, err, errMissingIntegerTags)
 
@@ -118,7 +118,7 @@ func TestNightlyDispatchInputs(t *testing.T) {
 	copaData, err := json.Marshal([]discovery.DiscoveredImage{{
 		Name:           "library/nginx",
 		Source:         "mirror.gcr.io/library/nginx:1.29.3",
-		TargetRegistry: "verity.supply",
+		TargetRegistry: "ghcr.io/verity-org",
 		Platforms:      "linux/amd64,linux/arm64",
 		GoVcsURL:       "https://github.com/nginx/nginx@release-1.29.3",
 	}})
@@ -130,7 +130,7 @@ func TestNightlyDispatchInputs(t *testing.T) {
 	require.Equal(t, []map[string]string{{
 		"image-name":      "library/nginx",
 		"source-ref":      "mirror.gcr.io/library/nginx:1.29.3",
-		"target-registry": "verity.supply",
+		"target-registry": "ghcr.io/verity-org",
 		"platforms":       "linux/amd64,linux/arm64",
 		"go-vcs-url":      "https://github.com/nginx/nginx@release-1.29.3",
 	}}, copa)
@@ -141,7 +141,7 @@ func TestNightlyDispatchInputs(t *testing.T) {
 		Version:  "24",
 		Type:     "dev",
 		Tags:     []string{"24-dev", "latest-dev"},
-		Registry: "verity.supply",
+		Registry: "ghcr.io/verity-org",
 	}})
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(integerPath, integerData, 0o644))
@@ -153,7 +153,7 @@ func TestNightlyDispatchInputs(t *testing.T) {
 		"version":  "24",
 		"type":     "dev",
 		"tags":     "24-dev,latest-dev",
-		"registry": "verity.supply",
+		"registry": "ghcr.io/verity-org",
 	}}, integer)
 }
 

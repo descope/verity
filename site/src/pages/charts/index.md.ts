@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { getChartsCatalog } from "../../lib/charts.ts";
+import { toPublicRef } from "../../lib/refs.ts";
 
 export const GET: APIRoute = ({ site }) => {
   const base = import.meta.env.BASE_URL;
@@ -18,7 +19,7 @@ export const GET: APIRoute = ({ site }) => {
     charts.length > 0
       ? charts
           .map((chart) => {
-            const installCmd = `helm install ${chart.wrapperName} ${chart.registry}/${chart.wrapperName} --version ${chart.wrapperVersion}`;
+            const installCmd = `helm install ${chart.wrapperName} ${toPublicRef(chart.registry)}/${chart.wrapperName} --version ${chart.wrapperVersion}`;
             const mappingCount = chart.imageMappings.length + chart.valueOverrides.length;
 
             let entry = `### ${chart.name} v${chart.version}\n\n`;
@@ -34,7 +35,7 @@ export const GET: APIRoute = ({ site }) => {
               entry += chart.imageMappings
                 .map(
                   (m) =>
-                    `| \`${m.originalRepo}:${m.originalTag}\` | \`${m.patchedRepo}:${m.patchedTag}\` |`
+                    `| \`${m.originalRepo}:${m.originalTag}\` | \`${toPublicRef(m.patchedRepo)}:${m.patchedTag}\` |`
                 )
                 .join("\n");
               entry += "\n";
@@ -43,7 +44,7 @@ export const GET: APIRoute = ({ site }) => {
             if (chart.valueOverrides.length > 0) {
               entry += "\n**Value overrides:**\n\n";
               entry += chart.valueOverrides
-                .map((v) => `- \`${v.path}\` → \`${v.value}\``)
+                .map((v) => `- \`${v.path}\` → \`${toPublicRef(v.value)}\``)
                 .join("\n");
               entry += "\n";
             }
@@ -66,7 +67,7 @@ export const GET: APIRoute = ({ site }) => {
 ## How It Works
 
 1. **Wrapper chart** — A thin Helm chart that declares the original chart as a dependency and overrides \`values.yaml\` to point image references at patched versions.
-2. **OCI registry** — Wrapper charts are pushed to \`${chartsCatalog.chartRegistry || charts[0]?.registry || "oci://verity.supply/charts"}\` and can be installed directly via \`helm install\`.
+2. **OCI registry** — Wrapper charts are available from \`${toPublicRef(chartsCatalog.chartRegistry || charts[0]?.registry || "oci://ghcr.io/verity-org/charts")}\` and can be installed directly via \`helm install\`.
 3. **Drop-in replace** — Install the wrapper chart instead of the original. Helm resolves the dependency and applies all patched image overrides automatically.
 
 ## Available Charts

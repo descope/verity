@@ -28,7 +28,7 @@ var CatalogCommand = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "registry",
-			Usage: "target registry for patched images (e.g. verity.supply)",
+			Usage: "target registry for patched images (e.g. ghcr.io/verity-org)",
 		},
 		&cli.StringFlag{
 			Name:  "reports-dir",

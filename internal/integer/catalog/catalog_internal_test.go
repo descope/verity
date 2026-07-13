@@ -7,8 +7,8 @@ import (
 )
 
 func TestBuildVariantFallbackPreservesTypeSuffix(t *testing.T) {
-	variant := buildVariant("node", "24", "dev", "verity.supply", "", nil)
+	variant := buildVariant("node", "24", "dev", "ghcr.io/verity-org", "", nil)
 
 	assert.Equal(t, []string{"24-dev"}, variant.Tags)
-	assert.Equal(t, "verity.supply/node:24-dev", variant.Ref)
+	assert.Equal(t, "ghcr.io/verity-org/node:24-dev", variant.Ref)
 }

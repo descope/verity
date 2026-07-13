@@ -106,7 +106,7 @@ func TestCheckCopaImage_UnchangedClean(t *testing.T) {
 	img := discovery.DiscoveredImage{
 		Name:           "nginx",
 		Source:         "mirror.gcr.io/library/nginx:1.29.3",
-		TargetRegistry: "verity.supply",
+		TargetRegistry: "ghcr.io/verity-org",
 	}
 
 	origFn := digestFn
@@ -128,7 +128,7 @@ func TestCheckCopaImage_MissingTargetForcesBuild(t *testing.T) {
 	img := discovery.DiscoveredImage{
 		Name:           "nginx",
 		Source:         "mirror.gcr.io/library/nginx:1.29.3",
-		TargetRegistry: "verity.supply",
+		TargetRegistry: "ghcr.io/verity-org",
 	}
 
 	origDigest := digestFn

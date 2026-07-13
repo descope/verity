@@ -135,18 +135,19 @@ Browse all charts at [verity.supply/charts](https://verity.supply/charts/).
 
 ## Verify the Supply Chain
 
-Every patched image is signed and attested. Verify it yourself:
+Every patched image is signed and attested. Pull through `verity.supply`; verify
+the canonical GHCR artifact so its signatures and attestations resolve directly:
 
 ```bash
 # Verify signature (cosign)
 cosign verify \
   --certificate-identity-regexp "https://github.com/verity-org/verity/.github/workflows/" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-  verity.supply/prometheus/prometheus:v3.9.1-patched
+  ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
 
 # Verify the SBOM attestation (GitHub CLI)
 gh attestation verify \
-  oci://verity.supply/prometheus/prometheus:v3.9.1-patched \
+  oci://ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched \
   --owner verity-org --predicate-type https://cyclonedx.org/bom
 ```
 
@@ -207,7 +208,7 @@ go build -o verity .
 ./verity catalog \
   --images-json images.json \
   --output site/src/data/catalog.json \
-  --registry verity.supply \
+  --registry ghcr.io/verity-org \
   --reports-dir reports/
 ```
 

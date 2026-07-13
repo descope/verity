@@ -45,7 +45,7 @@ func ParseCopaOutput(path string) (*CopaOutput, error) {
 
 // ParseImageRef parses a full image reference into registry, repository, and tag.
 // Handles both tag-based and digest-based references:
-// - "verity.supply/nginx:1.25.3" -> registry="verity.supply", repository="nginx", tag="1.25.3"
+// - "ghcr.io/verity-org/nginx:1.25.3" -> registry="ghcr.io", repository="verity-org/nginx", tag="1.25.3"
 // - "nginx@sha256:abc123" -> registry="", repository="nginx", tag="sha256:abc123"
 // - "nginx:1.25@sha256:abc" -> registry="", repository="nginx", tag="sha256:abc" (digest takes precedence)
 //

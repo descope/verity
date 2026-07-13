@@ -6,6 +6,7 @@ import { apkRepository } from "../data/apk-repository.ts";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { getChartVulns } from "../lib/chart-vulns.ts";
 import { getChartsCatalog } from "../lib/charts.ts";
+import { toPublicRef } from "../lib/refs.ts";
 
 const base = import.meta.env.BASE_URL;
 const chartsCatalog = getChartsCatalog();
@@ -64,7 +65,7 @@ const charts = chartsCatalog.charts;
         </p>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {charts.slice(0, 3).map((chart) => {
-            const installCmd = `helm install ${chart.wrapperName} ${chart.registry}/${chart.wrapperName} --version ${chart.wrapperVersion}`;
+            const installCmd = `helm install ${chart.wrapperName} ${toPublicRef(chart.registry)}/${chart.wrapperName} --version ${chart.wrapperVersion}`;
             const overrideCount = chart.imageMappings.length + chart.valueOverrides.length;
             const chartVulns = getChartVulns(chart);
             return (

@@ -33,7 +33,7 @@ var DiscoverCommand = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "target-registry",
-			Usage: "Override the target registry from config (e.g., verity.supply)",
+			Usage: "Override the target registry from config (e.g., ghcr.io/verity-org)",
 		},
 		&cli.StringFlag{
 			Name:  "charts-file",

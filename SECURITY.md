@@ -66,23 +66,23 @@ eliminates the risk of accidental dependency changes during a rebuild.
 
 ## Verifying Images
 
-All patched images are verifiable without trusting Verity's registry directly.
+All patched images are verifiable against their canonical GHCR artifact.
 
 ```bash
 # Verify the cosign signature
 cosign verify \
   --certificate-identity-regexp "https://github.com/verity-org/verity/.github/workflows/" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-  verity.supply/prometheus/prometheus:v3.9.1-patched
+  ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
 
 # Verify the SBOM attestation (GitHub CLI)
 gh attestation verify \
-  oci://verity.supply/prometheus/prometheus:v3.9.1-patched \
+  oci://ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched \
   --owner verity-org --predicate-type https://cyclonedx.org/bom
 
 # Inspect the CycloneDX SBOM directly
 cosign download attestation \
-  verity.supply/prometheus/prometheus:v3.9.1-patched \
+  ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched \
   | jq '.payload | @base64d | fromjson | select(.predicateType | contains("cyclonedx"))'
 ```
 

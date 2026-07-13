@@ -42,7 +42,7 @@ var ScanCommand = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "target-registry",
-			Usage: "Target registry to check for existing patched images (e.g., verity.supply)",
+			Usage: "Target registry to check for existing patched images (e.g., ghcr.io/verity-org)",
 		},
 		&cli.StringFlag{
 			Name:  "trivy-server",

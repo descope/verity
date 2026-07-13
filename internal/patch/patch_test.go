@@ -229,7 +229,7 @@ func TestRunRejectsDigestSmuggledTag(t *testing.T) {
 	t.Parallel()
 
 	// Verbatim string from the failing nightly run:
-	//   verity.supply/cache:cilium-operator-generic-v1.19.3@sha256-amd64
+	//   ghcr.io/verity-org/cache:cilium-operator-generic-v1.19.3@sha256-amd64
 	// The PatchedTag field is the part after the staging registry's `:`.
 	cfg := &Config{
 		Image:      "quay.io/cilium/operator-generic:v1.19.3@sha256:205b09abc",

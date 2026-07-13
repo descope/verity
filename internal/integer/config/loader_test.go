@@ -13,7 +13,7 @@ import (
 
 const globalConfig = `
 target:
-  registry: verity.supply
+  registry: ghcr.io/verity-org
 defaults:
   archs: [amd64, arm64]
 `
@@ -65,7 +65,7 @@ func TestLoadConfig(t *testing.T) {
 	cfg, err := config.LoadConfig(path)
 	require.NoError(t, err)
 
-	assert.Equal(t, "verity.supply", cfg.Target.Registry)
+	assert.Equal(t, "ghcr.io/verity-org", cfg.Target.Registry)
 	assert.Equal(t, []string{"amd64", "arm64"}, cfg.Defaults.Archs)
 }
 

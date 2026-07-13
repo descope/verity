@@ -266,7 +266,7 @@ func buildValuesTree(chartName string, chartValues map[string]any, overrides []V
 		// SetRegistry / SetDefaultRegistry carry the registry hostname
 		// (e.g. `ghcr.io`) extracted from the patched FQDN, so the
 		// chart's template `{{ <sibling> }}/{{ repository }}` composes
-		// to `verity.supply/<repo>:<tag>` regardless of whether
+		// to `ghcr.io/verity-org/<repo>:<tag>` regardless of whether
 		// the template short-circuits via `default` or concatenates
 		// directly. Empty siblings (`""`) would produce leading-slash
 		// renders for direct-concatenation templates (see #308 wave 2).

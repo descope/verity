@@ -4,7 +4,7 @@
 
 Catch broken wrapper charts every night, before users do. The nightly
 `chart-gen` workflow publishes wrapper charts to
-`oci://verity.supply/charts`; this workflow installs each one on a
+`oci://ghcr.io/verity-org/charts`; this workflow installs each one on a
 kind cluster and verifies the published artifact actually deploys with
 patched images.
 
@@ -16,7 +16,7 @@ reconstruction, not a unit test. We pull what was published and run it.
 | Failure class                                               | Signal                                  |
 |-------------------------------------------------------------|-----------------------------------------|
 | Wrapper chart never published / version mismatch            | `helm pull` fails                       |
-| Patched image missing from `verity.supply`             | `ImagePullBackOff` -> `--wait` timeout  |
+| Patched image missing from `ghcr.io/verity-org`             | `ImagePullBackOff` -> `--wait` timeout  |
 | Patched image broken (Copa corrupted binary, missing libc)  | `CrashLoopBackOff` -> never Ready       |
 | Patched image starts but dies under load                    | restartCount > 0 in 30 s settle window  |
 | `chart-gen` missed an image (subchart-resolution, split fmt)| image-origin assertion lists exact refs |
@@ -46,7 +46,7 @@ correctness-sensitive runs use `VERITY_CHART=<name>` per chart.
 Per-chart inside the test process:
 
 ```text
-1. helm install <chart> oci://verity.supply/charts/<chart>
+1. helm install <chart> oci://ghcr.io/verity-org/charts/<chart>
        --version <pinned> --wait --timeout=10m
    (no local registry, no chart-gen invocation, no image seeding —
     we install exactly what was published.)
@@ -54,7 +54,7 @@ Per-chart inside the test process:
 3. sleep 30 s                   (settle window for delayed crashes)
 4. assert: every container's restartCount == 0
 5. assert: every running container image starts with
-            verity.supply/  OR  is in the chart's optional
+            ghcr.io/verity-org/  OR  is in the chart's optional
             allowlist file
 6. helm uninstall + delete namespace
 ```
@@ -90,7 +90,7 @@ The default install path uses upstream defaults.
   name. Used only when the chart can't install on kind defaults.
 - `values/<chart>.allowlist.txt` -- one upstream image-ref prefix per
   line. The image-origin assertion accepts these in addition to
-  `verity.supply/`. Lines starting with `#` and blank lines are
+  `ghcr.io/verity-org/`. Lines starting with `#` and blank lines are
   comments. Add an entry only with a comment linking to a follow-up
   issue, never silently. Allowlist size is a code-review signal: it
   should shrink as chart-gen gaps close.
@@ -128,7 +128,7 @@ target), `.gitignore` (diagnostic dump dirs).
 
 - Per-chart Go test files (one harness, period).
 - In-test chart-gen invocation (we test artifacts, not rebuild them).
-- Local image registry (we pull from the real `verity.supply`).
+- Local image registry (we pull from the real `ghcr.io/verity-org`).
 - Rewriting fixtures defensively for charts that already install
   cleanly (only add a fixture when an actual install fails).
 - Multi-arch coverage.
@@ -141,7 +141,7 @@ target), `.gitignore` (diagnostic dump dirs).
 - New `chart-integration.yaml` runs after every successful `chart-gen`,
   matrix matches `Chart.yaml` deps automatically.
 - Image-origin assertion fails any container image not under
-  `verity.supply/` and not allowlisted, with pod/container/image
+  `ghcr.io/verity-org/` and not allowlisted, with pod/container/image
   details in the error message.
 - `go test ./...` (no tag) is unchanged -- integration files are gated
   by `//go:build integration` and contribute zero statements.
@@ -165,7 +165,7 @@ While verifying the design works, helm-pulling the published charts
 revealed three real bugs the smoke test would catch nightly:
 
 - **postgres-operator wrapper @1.15.1**: ships a malformed image ref
-  `ghcr.io/verity.supply/zalando/postgres-operator:v1.15.1` --
+  `ghcr.io/ghcr.io/verity-org/zalando/postgres-operator:v1.15.1` --
   chart-gen does not handle the `image.{registry,repository,tag}` split
   format. Pods would never pull. Caught by `helm install --wait` timeout.
 - **prometheus wrapper @29.2.1**: 5 subchart images (alertmanager,

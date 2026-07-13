@@ -118,7 +118,7 @@ func TestDiscoverStandaloneImage_List(t *testing.T) {
 		Platforms: []string{"linux/amd64", "linux/arm64"},
 	}
 
-	got, err := discoverStandaloneImage(spec, "verity.supply")
+	got, err := discoverStandaloneImage(spec, "ghcr.io/verity-org")
 	if err != nil {
 		t.Fatalf("discoverStandaloneImage() error = %v", err)
 	}
@@ -131,8 +131,8 @@ func TestDiscoverStandaloneImage_List(t *testing.T) {
 		if img.Name != testNginxName {
 			t.Errorf("[%d] Name = %q, want %q", i, img.Name, testNginxName)
 		}
-		if img.TargetRegistry != "verity.supply" {
-			t.Errorf("[%d] TargetRegistry = %q, want %q", i, img.TargetRegistry, "verity.supply")
+		if img.TargetRegistry != "ghcr.io/verity-org" {
+			t.Errorf("[%d] TargetRegistry = %q, want %q", i, img.TargetRegistry, "ghcr.io/verity-org")
 		}
 		if img.Platforms != "linux/amd64,linux/arm64" {
 			t.Errorf("[%d] Platforms = %q, want %q", i, img.Platforms, "linux/amd64,linux/arm64")
@@ -158,7 +158,7 @@ func TestDiscoverStandaloneImage_PerImageRegistryOverride(t *testing.T) {
 		Target: config.TargetSpec{Registry: "ghcr.io/custom-org"},
 	}
 
-	got, err := discoverStandaloneImage(spec, "verity.supply")
+	got, err := discoverStandaloneImage(spec, "ghcr.io/verity-org")
 	if err != nil {
 		t.Fatalf("discoverStandaloneImage() error = %v", err)
 	}
@@ -183,7 +183,7 @@ func TestDiscoverStandaloneImage_GoVcsUrl(t *testing.T) {
 		GoVcsTagPrefix: "v",
 	}
 
-	got, err := discoverStandaloneImage(spec, "verity.supply")
+	got, err := discoverStandaloneImage(spec, "ghcr.io/verity-org")
 	if err != nil {
 		t.Fatalf("discoverStandaloneImage() error = %v", err)
 	}
@@ -205,7 +205,7 @@ func TestDiscoverStandaloneImage_GoVcsUrlEmpty(t *testing.T) {
 		Tags:  config.TagStrategy{Strategy: "list", List: []string{"1.25.3"}},
 	}
 
-	got, err := discoverStandaloneImage(spec, "verity.supply")
+	got, err := discoverStandaloneImage(spec, "ghcr.io/verity-org")
 	if err != nil {
 		t.Fatalf("discoverStandaloneImage() error = %v", err)
 	}
@@ -224,7 +224,7 @@ func TestDiscoverStandaloneImage_GoVcsUrlNoPrefix(t *testing.T) {
 		GoVcsURL: "https://github.com/zalando/postgres-operator",
 	}
 
-	got, err := discoverStandaloneImage(spec, "verity.supply")
+	got, err := discoverStandaloneImage(spec, "ghcr.io/verity-org")
 	if err != nil {
 		t.Fatalf("discoverStandaloneImage() error = %v", err)
 	}
@@ -598,7 +598,7 @@ func TestRepoStandaloneSourceRegression_556_579(t *testing.T) {
 
 func TestDiscover_StandaloneOnly(t *testing.T) {
 	cfg := &config.CopaConfig{
-		Target: config.TargetSpec{Registry: "verity.supply"},
+		Target: config.TargetSpec{Registry: "ghcr.io/verity-org"},
 		Images: []config.ImageSpec{
 			{
 				Name:  testNginxName,
@@ -624,8 +624,8 @@ func TestDiscover_StandaloneOnly(t *testing.T) {
 
 	// Verify target registry from config
 	for _, img := range got {
-		if img.TargetRegistry != "verity.supply" {
-			t.Errorf("TargetRegistry = %q, want %q", img.TargetRegistry, "verity.supply")
+		if img.TargetRegistry != "ghcr.io/verity-org" {
+			t.Errorf("TargetRegistry = %q, want %q", img.TargetRegistry, "ghcr.io/verity-org")
 		}
 	}
 }
@@ -657,7 +657,7 @@ func TestDiscover_TargetRegistryOverride(t *testing.T) {
 
 func TestDiscover_Deduplication(t *testing.T) {
 	cfg := &config.CopaConfig{
-		Target: config.TargetSpec{Registry: "verity.supply"},
+		Target: config.TargetSpec{Registry: "ghcr.io/verity-org"},
 		Images: []config.ImageSpec{
 			{
 				Name:  testNginxName,
@@ -687,7 +687,7 @@ func TestDiscover_ChartErrorContinues(t *testing.T) {
 	// A chart with an invalid helm repository should log a warning and not
 	// block standalone image discovery (Discover returns partial results).
 	cfg := &config.CopaConfig{
-		Target: config.TargetSpec{Registry: "verity.supply"},
+		Target: config.TargetSpec{Registry: "ghcr.io/verity-org"},
 		Images: []config.ImageSpec{
 			{
 				Name:  testNginxName,
@@ -720,7 +720,7 @@ func TestDiscover_InvalidImageWarningContinues(t *testing.T) {
 	// An image with an invalid repo (non-existent registry) for pattern/latest strategy
 	// should produce a warning and not block other image discovery.
 	cfg := &config.CopaConfig{
-		Target: config.TargetSpec{Registry: "verity.supply"},
+		Target: config.TargetSpec{Registry: "ghcr.io/verity-org"},
 		Images: []config.ImageSpec{
 			{
 				Name:  "bad-image",
@@ -775,7 +775,7 @@ YAML
 	t.Setenv("PATH", binDir+":"+os.Getenv("PATH"))
 
 	cfg := &config.CopaConfig{
-		Target: config.TargetSpec{Registry: "verity.supply"},
+		Target: config.TargetSpec{Registry: "ghcr.io/verity-org"},
 		Images: []config.ImageSpec{
 			{
 				Name:  "prometheus",
@@ -820,7 +820,7 @@ YAML
 func TestDiscover_ExcludeNamesNil(t *testing.T) {
 	// nil excludeNames should not affect anything.
 	cfg := &config.CopaConfig{
-		Target: config.TargetSpec{Registry: "verity.supply"},
+		Target: config.TargetSpec{Registry: "ghcr.io/verity-org"},
 		Images: []config.ImageSpec{
 			{
 				Name:  testNginxName,
@@ -930,7 +930,7 @@ func TestIsExcluded(t *testing.T) {
 
 func TestDiscover_UnpatchableStandaloneStillIncluded(t *testing.T) {
 	cfg := &config.CopaConfig{
-		Target: config.TargetSpec{Registry: "verity.supply"},
+		Target: config.TargetSpec{Registry: "ghcr.io/verity-org"},
 		Images: []config.ImageSpec{
 			{
 				Name:  "cert-manager/cert-manager-openshift-routes",

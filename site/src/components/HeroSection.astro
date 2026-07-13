@@ -2,6 +2,7 @@
 import { copaCount, integerCount, totalCategories, totalImages } from "../data/full-catalog.ts";
 import { catalog } from "../lib/catalog.ts";
 import { getChartsCatalog } from "../lib/charts.ts";
+import { toPublicRef } from "../lib/refs.ts";
 import CopyButton from "./CopyButton.astro";
 
 const base = import.meta.env.BASE_URL;
@@ -11,7 +12,9 @@ const chartCount = chartsCatalog.charts.length;
 const exampleImage =
   catalog.images.find((img) => img.beforeVulns.total - img.afterVulns.total > 0) ??
   catalog.images.at(0);
-const exampleRef = exampleImage?.patchedRef ?? "verity.supply/prometheus/prometheus:v3.9.1";
+const exampleRef = toPublicRef(
+  exampleImage?.patchedRef ?? "ghcr.io/verity-org/prometheus/prometheus:v3.9.1"
+);
 const pullCmd = `docker pull ${exampleRef}`;
 
 const pipelineSteps = [

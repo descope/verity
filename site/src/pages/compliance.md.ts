@@ -166,14 +166,14 @@ Verity does not claim that a whole container image is itself FIPS validated. The
 cosign verify \\
   --certificate-identity-regexp "https://github.com/verity-org/verity/.github/workflows/" \\
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \\
-  verity.supply/grafana/grafana:11.6.0-patched
+  ghcr.io/verity-org/grafana/grafana:11.6.0-patched
 \`\`\`
 
 ### Verify build provenance
 
 \`\`\`bash
 gh attestation verify \\
-  oci://verity.supply/grafana/grafana:11.6.0-patched \\
+  oci://ghcr.io/verity-org/grafana/grafana:11.6.0-patched \\
   --owner verity-org
 \`\`\`
 
@@ -184,7 +184,7 @@ gh attestation verify \\
 1. **Discover** — Container images enumerated from \`values.yaml\`
 2. **Scan** — Trivy scans each image for OS-level vulnerabilities
 3. **Patch** — Copa patches fixable CVEs in-place on ephemeral runners
-4. **Push** — Patched images pushed to \`verity.supply\`
+4. **Push** — Patched images pushed to GHCR and exposed for pulls through \`verity.supply\`
 5. **Sign** — Cosign signs via keyless OIDC; signatures logged in Rekor
 6. **Attest** — SLSA provenance, CycloneDX SBOM, and vulnerability reports attached
 

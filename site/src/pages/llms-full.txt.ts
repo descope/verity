@@ -11,6 +11,7 @@ import {
   upstreamPath,
 } from "../data/full-catalog.ts";
 import { getChartsCatalog } from "../lib/charts.ts";
+import { toPublicRef } from "../lib/refs.ts";
 
 const TRAILING_SLASH_PATTERN = /\/$/;
 
@@ -60,7 +61,7 @@ export const GET: APIRoute = ({ site }) => {
       ? (() => {
           const chartEntries = chartsCatalog.charts
             .map((chart) => {
-              const installCmd = `helm install ${chart.wrapperName} ${chart.registry}/${chart.wrapperName} --version ${chart.wrapperVersion}`;
+              const installCmd = `helm install ${chart.wrapperName} ${toPublicRef(chart.registry)}/${chart.wrapperName} --version ${chart.wrapperVersion}`;
               const overrideCount = chart.imageMappings.length + chart.valueOverrides.length;
               let entry = `### ${chart.name} (v${chart.version})\n\n`;
               entry += `- **Wrapper chart**: \`${chart.wrapperName}\` v${chart.wrapperVersion}\n`;
@@ -75,7 +76,7 @@ export const GET: APIRoute = ({ site }) => {
                 entry += chart.imageMappings
                   .map(
                     (m) =>
-                      `| \`${m.originalRepo}:${m.originalTag}\` | \`${m.patchedRepo}:${m.patchedTag}\` |`
+                      `| \`${m.originalRepo}:${m.originalTag}\` | \`${toPublicRef(m.patchedRepo)}:${m.patchedTag}\` |`
                   )
                   .join("\n");
                 entry += "\n";
@@ -472,7 +473,7 @@ Reads Trivy reports and an \`images.json\` manifest to produce \`catalog.json\`.
 ./verity catalog \\
   --output site/src/data/catalog.json \\
   --images-json images.json \\
-  --registry verity.supply \\
+  --registry ghcr.io/verity-org \\
   --reports-dir reports/ \\
   --post-reports-dir post-reports/
 \`\`\`
@@ -547,14 +548,14 @@ Every patched image is signed and attested. Verify it yourself:
 cosign verify \\
   --certificate-identity-regexp "https://github.com/verity-org/verity/.github/workflows/" \\
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \\
-  verity.supply/prometheus/prometheus:v3.9.1-patched
+  ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
 \`\`\`
 
 ### Verify build provenance (GitHub CLI)
 
 \`\`\`bash
 gh attestation verify \\
-  oci://verity.supply/prometheus/prometheus:v3.9.1-patched \\
+  oci://ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched \\
   --owner verity-org
 \`\`\`
 
