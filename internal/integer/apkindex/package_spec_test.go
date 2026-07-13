@@ -82,6 +82,21 @@ func TestResolveDependencyRejectsAmbiguousLocalProvider(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestResolveDependencyForPackagePrefersMatchingOrigin(t *testing.T) {
+	packages := map[string]Package{
+		"postgresql-15-base": {Name: "postgresql-15-base", Version: "15.14-r0", Origin: "postgresql-15"},
+		"libpq-14":           {Name: "libpq-14", Version: "14.20-r2", Origin: "postgresql-14", Provides: []string{"so:libpq.so.5"}},
+		"libpq-15":           {Name: "libpq-15", Version: "15.14-r0", Origin: "postgresql-15", Provides: []string{"so:libpq.so.5"}},
+	}
+
+	dependent := packages["postgresql-15-base"]
+	pkg, local, err := ResolveDependencyForPackage(packages, &dependent, "so:libpq.so.5")
+
+	require.NoError(t, err)
+	assert.True(t, local)
+	assert.Equal(t, "libpq-15", pkg.Name)
+}
+
 func TestResolveDependencyFallsBackToSatisfyingProvider(t *testing.T) {
 	packages := map[string]Package{
 		"foo":        {Name: "foo", Version: "1.0-r0"},

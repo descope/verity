@@ -53,9 +53,10 @@ func TestPinConfigPackagesPinsLocalDependencyClosure(t *testing.T) {
 	configPath := filepath.Join(root, "config.apko.yaml")
 	repositoryDir := filepath.Join(root, "repo")
 	writeTestFile(t, configPath, "contents:\n  packages: [postgresql-15, bash]\n")
-	index := "P:postgresql-15\nV:15.14-r0\nD:postgresql-15-base=15.14-r0 libpq-15=15.14-r0 tzdata\n\n" +
-		"P:postgresql-15-base\nV:15.14-r0\nD:libpq-15=15.14-r0\n\n" +
-		"P:libpq-15\nV:15.14-r0\n\n"
+	index := "P:postgresql-15\nV:15.14-r0\no:postgresql-15\nD:postgresql-15-base=15.14-r0 tzdata\n\n" +
+		"P:postgresql-15-base\nV:15.14-r0\no:postgresql-15\nD:so:libpq.so.5\n\n" +
+		"P:libpq-14\nV:14.20-r2\no:postgresql-14\np:so:libpq.so.5\n\n" +
+		"P:libpq-15\nV:15.14-r0\no:postgresql-15\np:so:libpq.so.5\n\n"
 	writeAPKIndexArchive(t, filepath.Join(repositoryDir, "x86_64", "APKINDEX.tar.gz"), index)
 	writeAPKIndexArchive(t, filepath.Join(repositoryDir, "aarch64", "APKINDEX.tar.gz"), index)
 

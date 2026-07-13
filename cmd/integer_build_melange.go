@@ -118,8 +118,9 @@ func pinLocalPackageVersions(tmpl *intconfig.TypeTemplate, renderVersion string,
 		return errIntegerMelangePackageNotUsed
 	}
 	for cursor := 0; cursor < len(queue); cursor++ {
-		for _, dependency := range packagesByName[queue[cursor]].Dependencies {
-			pkg, local, err := apkindex.ResolveDependency(packagesByName, dependency)
+		dependent := packagesByName[queue[cursor]]
+		for _, dependency := range dependent.Dependencies {
+			pkg, local, err := apkindex.ResolveDependencyForPackage(packagesByName, &dependent, dependency)
 			if err != nil {
 				return fmt.Errorf("%w: %s dependency %q: %w", errIntegerMelangeDependencyConstraint, queue[cursor], dependency, err)
 			}

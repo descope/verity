@@ -103,7 +103,7 @@ func (resolver pinnedPackageResolver) localDependencies(name string) ([]string, 
 			continue
 		}
 		for _, dependency := range pkg.Dependencies {
-			localPackage, local, err := apkindex.ResolveDependency(resolver.packageSets[architecture], dependency)
+			localPackage, local, err := apkindex.ResolveDependencyForPackage(resolver.packageSets[architecture], &pkg, dependency)
 			if err != nil {
 				return nil, fmt.Errorf("%w: %s dependency %q for %s: %w", errPinnedDependencyConstraint, name, dependency, architecture, err)
 			}

@@ -71,6 +71,7 @@ func TestParse(t *testing.T) {
 	assert.Equal(t, "20.18.3-r0", pkgs[0].Version)
 	assert.Equal(t, []string{"ca-certificates", "libstdc++", "so:libc.musl-x86_64.so.1"}, pkgs[0].Dependencies)
 	assert.Equal(t, []string{"cmd:node=20.18.3-r0"}, pkgs[0].Provides)
+	assert.Equal(t, "nodejs-20", pkgs[0].Origin)
 
 	assert.Equal(t, "nodejs-22", pkgs[1].Name)
 	assert.Equal(t, "22.16.0-r0", pkgs[1].Version)

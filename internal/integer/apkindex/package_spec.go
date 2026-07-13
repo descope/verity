@@ -47,6 +47,14 @@ func PackageSatisfiesConstraint(packageSpec, candidateVersion string) (bool, err
 }
 
 func ResolveDependency(packages map[string]Package, dependency string) (Package, bool, error) {
+	return resolveDependency(packages, dependency, "")
+}
+
+func ResolveDependencyForPackage(packages map[string]Package, dependent *Package, dependency string) (Package, bool, error) {
+	return resolveDependency(packages, dependency, dependent.Origin)
+}
+
+func resolveDependency(packages map[string]Package, dependency, preferredOrigin string) (Package, bool, error) {
 	name := PackageName(dependency)
 	if name == "" {
 		return Package{}, false, nil
@@ -62,7 +70,7 @@ func ResolveDependency(packages map[string]Package, dependency string) (Package,
 		}
 		concreteError = fmt.Errorf("%w: %s requires %s, local version is %s", errUnsatisfiedPackageVersion, name, dependency, pkg.Version)
 	}
-	pkg, local, err := resolveProvidedDependency(packages, dependency, name)
+	pkg, local, err := resolveProvidedDependency(packages, dependency, name, preferredOrigin)
 	if err != nil {
 		return Package{}, false, err
 	}
@@ -72,7 +80,7 @@ func ResolveDependency(packages map[string]Package, dependency string) (Package,
 	return Package{}, false, concreteError
 }
 
-func resolveProvidedDependency(packages map[string]Package, dependency, name string) (Package, bool, error) {
+func resolveProvidedDependency(packages map[string]Package, dependency, name, preferredOrigin string) (Package, bool, error) {
 	matches := map[string]Package{}
 	for _, pkg := range packages {
 		for _, provided := range pkg.Provides {
@@ -94,6 +102,19 @@ func resolveProvidedDependency(packages map[string]Package, dependency, name str
 	if len(matches) == 1 {
 		for _, pkg := range matches {
 			return pkg, true, nil
+		}
+	}
+	if preferredOrigin != "" {
+		var matched Package
+		count := 0
+		for _, pkg := range matches {
+			if pkg.Origin == preferredOrigin {
+				matched = pkg
+				count++
+			}
+		}
+		if count == 1 {
+			return matched, true, nil
 		}
 	}
 	names := make([]string, 0, len(matches))

@@ -45,9 +45,10 @@ func TestPinLocalPackageVersionsPinsLocalDependencyClosure(t *testing.T) {
 	// Given: a locally built package depends on local subpackages that are absent from the image template.
 	tmpl := intconfig.TypeTemplate{Packages: []string{"postgresql-15", "bash"}}
 	packages := []apkindex.Package{
-		{Name: "postgresql-15", Version: "15.14-r0", Dependencies: []string{"postgresql-15-base=15.14-r0", "libpq-15=15.14-r0", "tzdata"}},
-		{Name: "postgresql-15-base", Version: "15.14-r0", Dependencies: []string{"libpq-15=15.14-r0"}},
-		{Name: "libpq-15", Version: "15.14-r0"},
+		{Name: "postgresql-15", Version: "15.14-r0", Origin: "postgresql-15", Dependencies: []string{"postgresql-15-base=15.14-r0", "tzdata"}},
+		{Name: "postgresql-15-base", Version: "15.14-r0", Origin: "postgresql-15", Dependencies: []string{"so:libpq.so.5"}},
+		{Name: "libpq-14", Version: "14.20-r2", Origin: "postgresql-14", Provides: []string{"so:libpq.so.5"}},
+		{Name: "libpq-15", Version: "15.14-r0", Origin: "postgresql-15", Provides: []string{"so:libpq.so.5"}},
 	}
 
 	// When: local package versions are pinned.

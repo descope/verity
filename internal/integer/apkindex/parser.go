@@ -12,6 +12,7 @@ import (
 type Package struct {
 	Name         string   // P: field
 	Version      string   // V: field (full apk version string, e.g. "22.16.0-r0")
+	Origin       string   // o: field
 	Dependencies []string // D: field
 	Provides     []string // p: field
 }
@@ -44,6 +45,8 @@ func Parse(r io.Reader) ([]Package, error) {
 			current.Name = value
 		case "V":
 			current.Version = value
+		case "o":
+			current.Origin = value
 		case "D":
 			current.Dependencies = strings.Fields(value)
 		case "p":
