@@ -12,8 +12,9 @@ func TestPlanIntegerPRUnrelatedInternalChangesDoNotFanOut(t *testing.T) {
 	root := setupIntegerPlanRepo(t)
 
 	for _, changed := range []string{
+		"internal/ci/plan.go",
+		"internal/ci/plan_test.go",
 		"internal/integer/config/loader.go",
-		"cmd/integer_build.go",
 		"cmd/integer.go",
 	} {
 		t.Run(changed, func(t *testing.T) {
@@ -30,11 +31,11 @@ func TestPlanIntegerPRPinningToolingSelectsConstrainedMelangeCanary(t *testing.T
 	root := setupIntegerPlanRepo(t)
 
 	for _, changed := range []string{
+		"cmd/integer_build.go",
 		"cmd/integer_build_melange.go",
 		"cmd/integer_melange.go",
 		"internal/integer/apkindex/package_spec.go",
 		"internal/integer/melange/pin_config.go",
-		"internal/ci/plan.go",
 		".github/workflows/integer-build-image.yaml",
 		".github/workflows/pr-test.yaml",
 	} {

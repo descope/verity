@@ -129,9 +129,9 @@ func integerPinningToolingChanged(files []string) bool {
 	for _, file := range files {
 		file = filepath.ToSlash(strings.TrimSpace(file))
 		switch {
-		case strings.HasPrefix(file, "cmd/integer_build_melange"),
+		case file == "cmd/integer_build.go",
+			strings.HasPrefix(file, "cmd/integer_build_melange"),
 			strings.HasPrefix(file, "cmd/integer_melange"),
-			strings.HasPrefix(file, "internal/ci/"),
 			strings.HasPrefix(file, "internal/integer/apkindex/package_spec"),
 			strings.HasPrefix(file, "internal/integer/melange/"),
 			file == ".github/workflows/integer-build-image.yaml",
