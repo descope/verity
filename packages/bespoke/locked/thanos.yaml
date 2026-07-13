@@ -37,34 +37,6 @@ pipeline:
         -X github.com/prometheus/common/version.Revision=$(git rev-parse HEAD)
         -X github.com/prometheus/common/version.BuildDate=$(date -d @$SOURCE_DATE_EPOCH +%Y%m%d-%H:%M:%S)
 
-subpackages:
-  - name: ${{package.name}}-iamguarded-compat
-    description: "compat package for iamguarded"
-    dependencies:
-      runtime:
-        - ${{package.name}}
-    pipeline:
-      - runs: |
-          mkdir -p /opt/iamguarded/thanos/bin/
-          ln -sf /usr/bin/thanos /opt/iamguarded/thanos/bin/thanos
-      - uses: iamguarded/build-compat
-        with:
-          package: thanos
-          version: ${{vars.major-version}}
-      - uses: iamguarded/finalize-compat
-        with:
-          package: thanos
-          version: ${{vars.major-version}}
-    test:
-      pipeline:
-        - runs: |
-            stat /opt/iamguarded/thanos/bin/thanos
-            /opt/iamguarded/thanos/bin/thanos --version
-        - uses: iamguarded/test-compat
-          with:
-            package: thanos
-            version: ${{vars.major-version}}
-
 update:
   enabled: true
   ignore-regex-patterns:

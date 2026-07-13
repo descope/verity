@@ -127,38 +127,6 @@ subpackages:
         - runs: |
             ruby -e "require 'fluent/plugin/out_loki'"
 
-  - name: ${{package.name}}-iamguarded-compat
-    dependencies:
-      provides:
-        - loki-iamguarded-compat=${{package.full-version}}
-    options:
-      no-provides: true
-    pipeline:
-      - uses: iamguarded/build-compat
-        with:
-          package: grafana-loki
-          version: ${{vars.major-version}}
-      - runs: |
-          mkdir -p "/opt/iamguarded/grafana-loki/bin"
-          mkdir -p "/bitnami/grafana-loki/wal"
-          mkdir -p "/bitnami/grafana-loki/data"
-          mkdir -p "/bitnami/grafana-loki/loki"
-          ln -s "/usr/bin/loki" "/opt/iamguarded/grafana-loki/bin/loki"
-          ln -s "/usr/bin/logcli" "/opt/iamguarded/grafana-loki/bin/logcli"
-          ln -s "/opt/iamguarded/grafana-loki/wal" "/wal"
-          ln -s "/opt/iamguarded/grafana-loki/data" "/data"
-          ln -s "/opt/iamguarded/grafana-loki/loki" "/loki"
-      - uses: iamguarded/finalize-compat
-        with:
-          package: grafana-loki
-          version: ${{vars.major-version}}
-    test:
-      pipeline:
-        - uses: iamguarded/test-compat
-          with:
-            package: grafana-loki
-            version: ${{vars.major-version}}
-
 update:
   enabled: true
   github:

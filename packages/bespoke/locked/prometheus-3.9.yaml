@@ -88,46 +88,6 @@ pipeline:
       install -Dm644 -t "${{targets.destdir}}"/etc/prometheus \
         documentation/examples/prometheus.yml
 
-subpackages:
-  - name: ${{package.name}}-iamguarded-compat
-    dependencies:
-      runtime:
-        - ${{package.name}}
-      provides:
-        - prometheus-iamguarded-compat=${{package.full-version}}
-    description: "compat package for iamguarded"
-    pipeline:
-      - uses: iamguarded/build-compat
-        with:
-          package: prometheus
-          version: ${{vars.major-version}}
-      - runs: |
-          mkdir -p /opt/iamguarded/prometheus/bin/
-          mkdir -p /opt/iamguarded/prometheus/conf
-          mkdir -p /opt/iamguarded/prometheus/data
-
-          chmod g+rwX /opt/iamguarded
-
-          ln -sf /usr/bin/prometheus /opt/iamguarded/prometheus/bin/prometheus
-          ln -sf /usr/bin/promtool /opt/iamguarded/prometheus/bin/promtool
-          cp -r ${{targets.destdir}}/etc/prometheus/* /opt/iamguarded/prometheus/conf/
-          cp -r ${{targets.destdir}}/var/lib/prometheus/data /opt/iamguarded/prometheus/data
-      - uses: iamguarded/finalize-compat
-        with:
-          package: prometheus
-          version: ${{vars.major-version}}
-    test:
-      pipeline:
-        - runs: |
-            stat /opt/iamguarded/prometheus/bin/prometheus
-            stat /opt/iamguarded/prometheus/bin/promtool
-            /opt/iamguarded/prometheus/bin/prometheus --version
-            /opt/iamguarded/prometheus/bin/promtool --version
-        - uses: iamguarded/test-compat
-          with:
-            package: prometheus
-            version: ${{vars.major-version}}
-
 update:
   ignore-regex-patterns:
     - '\+stringlabels' # looks like stringlabels are still experimental, let's stick to the main version stream.

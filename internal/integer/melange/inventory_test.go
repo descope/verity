@@ -101,6 +101,40 @@ func TestCustomPipelineInventoryComplete(t *testing.T) {
 	}
 }
 
+func TestPackagingInputsDoNotCheckoutMutableBranches(t *testing.T) {
+	// Given: every repository-owned recipe and custom pipeline.
+	paths := repositoryTestPaths(t)
+
+	// When: its YAML is inspected for git checkouts of mutable default branches.
+	for _, root := range []string{paths.BespokeDir, paths.PipelinesDir} {
+		err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if entry.IsDir() || filepath.Ext(path) != ".yaml" {
+				return nil
+			}
+			relative, relativeErr := filepath.Rel(root, path)
+			if relativeErr != nil {
+				return relativeErr
+			}
+			data, readErr := readRegularFile(root, relative)
+			if readErr != nil {
+				return readErr
+			}
+			var document yaml.Node
+			if unmarshalErr := yaml.Unmarshal(data, &document); unmarshalErr != nil {
+				return unmarshalErr
+			}
+
+			// Then: every external checkout is content-addressed or version-addressed.
+			require.False(t, containsMutableGitCheckout(&document), path)
+			return nil
+		})
+		require.NoError(t, err)
+	}
+}
+
 func pipelineUses(path string) (map[string]struct{}, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -129,6 +163,21 @@ func collectPipelineUses(node *yaml.Node, uses map[string]struct{}) {
 	for _, child := range node.Content {
 		collectPipelineUses(child, uses)
 	}
+}
+
+func containsMutableGitCheckout(node *yaml.Node) bool {
+	if node.Kind == yaml.MappingNode {
+		uses := yamlMappingValue(node, "uses")
+		with := yamlMappingValue(node, "with")
+		var branch *yaml.Node
+		if with != nil {
+			branch = yamlMappingValue(with, "branch")
+		}
+		if uses != nil && uses.Value == "git-checkout" && branch != nil && (branch.Value == "main" || branch.Value == "master") {
+			return true
+		}
+	}
+	return slices.ContainsFunc(node.Content, containsMutableGitCheckout)
 }
 
 func isCustomPipeline(name string) bool {
