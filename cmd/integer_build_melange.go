@@ -25,6 +25,7 @@ var (
 	errIntegerMelangeDependencyConstraint = errors.New("bespoke package dependency constraint is not satisfied")
 	errIntegerMelangePackageConflict      = errors.New("bespoke package repository contains conflicting versions")
 	errIntegerMelangePackageNoVersion     = errors.New("bespoke package repository entry has no version")
+	errIntegerMelangePackageNotUsed       = errors.New("image config does not use a bespoke package")
 )
 
 type integerMelangeArtifacts struct {
@@ -87,6 +88,9 @@ func readIntegerMelangePackages(paths *melange.Paths, arch melange.Architecture)
 }
 
 func pinLocalPackageVersions(tmpl *intconfig.TypeTemplate, renderVersion string, packages []apkindex.Package) error {
+	if len(packages) == 0 {
+		return nil
+	}
 	packagesByName := make(map[string]apkindex.Package, len(packages))
 	for _, pkg := range packages {
 		if pkg.Version == "" {
@@ -110,20 +114,19 @@ func pinLocalPackageVersions(tmpl *intconfig.TypeTemplate, renderVersion string,
 			}
 		}
 	}
+	if len(queue) == 0 {
+		return errIntegerMelangePackageNotUsed
+	}
 	for cursor := 0; cursor < len(queue); cursor++ {
 		for _, dependency := range packagesByName[queue[cursor]].Dependencies {
-			name := apkindex.PackageName(dependency)
-			pkg, local := packagesByName[name]
-			if !local {
-				continue
-			}
-			satisfied, err := apkindex.PackageSatisfiesConstraint(dependency, pkg.Version)
+			pkg, local, err := apkindex.ResolveDependency(packagesByName, dependency)
 			if err != nil {
 				return fmt.Errorf("%w: %s dependency %q: %w", errIntegerMelangeDependencyConstraint, queue[cursor], dependency, err)
 			}
-			if !satisfied {
-				return fmt.Errorf("%w: %s requires %s, local %s is %s", errIntegerMelangeDependencyConstraint, queue[cursor], dependency, name, pkg.Version)
+			if !local {
+				continue
 			}
+			name := pkg.Name
 			if _, exists := pinned[name]; exists {
 				continue
 			}

@@ -57,3 +57,27 @@ func TestPackageSatisfiesConstraintRejectsInvalidConstraint(t *testing.T) {
 
 	require.Error(t, err)
 }
+
+func TestResolveDependencyUsesUniqueLocalProvider(t *testing.T) {
+	packages := map[string]Package{
+		"application": {Name: "application", Version: "1.0-r0"},
+		"libfoo":      {Name: "libfoo", Version: "1.0-r0", Provides: []string{"so:libfoo.so.1"}},
+	}
+
+	pkg, local, err := ResolveDependency(packages, "so:libfoo.so.1")
+
+	require.NoError(t, err)
+	assert.True(t, local)
+	assert.Equal(t, "libfoo", pkg.Name)
+}
+
+func TestResolveDependencyRejectsAmbiguousLocalProvider(t *testing.T) {
+	packages := map[string]Package{
+		"libfoo":     {Name: "libfoo", Version: "1.0-r0", Provides: []string{"so:libfoo.so.1"}},
+		"libfoo-alt": {Name: "libfoo-alt", Version: "1.0-r0", Provides: []string{"so:libfoo.so.1"}},
+	}
+
+	_, _, err := ResolveDependency(packages, "so:libfoo.so.1")
+
+	require.Error(t, err)
+}

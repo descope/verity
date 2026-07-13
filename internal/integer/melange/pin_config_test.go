@@ -77,6 +77,29 @@ func TestPinConfigPackagesPinsLocalDependencyClosure(t *testing.T) {
 	}, readConfigPackages(t, configPath))
 }
 
+func TestPinConfigPackagesPinsVirtualLocalDependency(t *testing.T) {
+	// Given: both repositories contain a subpackage providing the root package's virtual dependency.
+	root := t.TempDir()
+	configPath := filepath.Join(root, "config.apko.yaml")
+	repositoryDir := filepath.Join(root, "repo")
+	writeTestFile(t, configPath, "contents:\n  packages: [application]\n")
+	index := "P:application\nV:1.0-r0\nD:so:libfoo.so.1\n\nP:libfoo\nV:1.0-r0\np:so:libfoo.so.1\n\n"
+	writeAPKIndexArchive(t, filepath.Join(repositoryDir, "x86_64", "APKINDEX.tar.gz"), index)
+	writeAPKIndexArchive(t, filepath.Join(repositoryDir, "aarch64", "APKINDEX.tar.gz"), index)
+
+	// When: the publish config is pinned against both local indexes.
+	err := PinConfigPackages(PinConfigOptions{
+		RootDir:       root,
+		ConfigPath:    configPath,
+		RepositoryDir: repositoryDir,
+		Architectures: []Architecture{ArchitectureX8664, ArchitectureAArch64},
+	})
+
+	// Then: the concrete provider is pinned from the local repository.
+	require.NoError(t, err)
+	assert.Equal(t, []string{"application=1.0-r0@local", "libfoo=1.0-r0@local"}, readConfigPackages(t, configPath))
+}
+
 func TestPinConfigPackagesRejectsArchitectureVersionMismatch(t *testing.T) {
 	// Given: the local repositories disagree on the package revision.
 	root := t.TempDir()

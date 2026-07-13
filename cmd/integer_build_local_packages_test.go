@@ -63,6 +63,22 @@ func TestPinLocalPackageVersionsPinsLocalDependencyClosure(t *testing.T) {
 	}, tmpl.Packages)
 }
 
+func TestPinLocalPackageVersionsPinsVirtualLocalDependency(t *testing.T) {
+	// Given: a locally built subpackage provides the virtual dependency requested by the root package.
+	tmpl := intconfig.TypeTemplate{Packages: []string{"application"}}
+	packages := []apkindex.Package{
+		{Name: "application", Version: "1.0-r0", Dependencies: []string{"so:libfoo.so.1"}},
+		{Name: "libfoo", Version: "1.0-r0", Provides: []string{"so:libfoo.so.1"}},
+	}
+
+	// When: local package versions are pinned.
+	err := pinLocalPackageVersions(&tmpl, "1", packages)
+
+	// Then: the concrete provider is pinned from the local repository.
+	require.NoError(t, err)
+	assert.Equal(t, []string{"application=1.0-r0@local", "libfoo=1.0-r0@local"}, tmpl.Packages)
+}
+
 func TestPinLocalPackageVersionsRejectsConflictingVersions(t *testing.T) {
 	tmpl := intconfig.TypeTemplate{Packages: []string{"cosign"}}
 
@@ -87,6 +103,18 @@ func TestPinLocalPackageVersionsRejectsUnsatisfiedLocalDependency(t *testing.T) 
 
 	// Then: the build fails closed instead of silently selecting a remote dependency.
 	require.ErrorIs(t, err, errIntegerMelangeDependencyConstraint)
+}
+
+func TestPinLocalPackageVersionsRejectsConfigWithoutLocalPackage(t *testing.T) {
+	// Given: the bespoke repository does not provide any package requested by the image.
+	tmpl := intconfig.TypeTemplate{Packages: []string{"haproxy-3.2", "bash"}}
+	packages := []apkindex.Package{{Name: "haproxy", Version: "3.2.0-r0"}}
+
+	// When: local package versions are pinned.
+	err := pinLocalPackageVersions(&tmpl, "3.2", packages)
+
+	// Then: the build fails closed instead of silently using the remote package.
+	require.ErrorIs(t, err, errIntegerMelangePackageNotUsed)
 }
 
 func TestIntegerBuildCommandPinsLocalArtifactVersion(t *testing.T) {

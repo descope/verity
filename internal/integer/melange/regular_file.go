@@ -41,11 +41,12 @@ func replaceRegularFile(rootPath, path string, data []byte, mode os.FileMode, no
 		closeErr := temporary.Close()
 		return errors.Join(fmt.Errorf("write temporary %s: %w", path, err), closeErr, removeTemporaryRegularFile(parent, temporaryName, path))
 	}
+	if err := temporary.Chmod(mode); err != nil {
+		closeErr := temporary.Close()
+		return errors.Join(fmt.Errorf("set mode on temporary %s: %w", path, err), closeErr, removeTemporaryRegularFile(parent, temporaryName, path))
+	}
 	if err := temporary.Close(); err != nil {
 		return errors.Join(fmt.Errorf("close temporary %s: %w", path, err), removeTemporaryRegularFile(parent, temporaryName, path))
-	}
-	if err := parent.Chmod(temporaryName, mode); err != nil {
-		return errors.Join(fmt.Errorf("set mode on temporary %s: %w", path, err), removeTemporaryRegularFile(parent, temporaryName, path))
 	}
 	if err := parent.Rename(temporaryName, name); err != nil {
 		return errors.Join(fmt.Errorf("replace %s: %w", path, err), removeTemporaryRegularFile(parent, temporaryName, path))
