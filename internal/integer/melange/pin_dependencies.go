@@ -95,6 +95,7 @@ func (resolver pinnedPackageResolver) appendPinnedDependencies(packages *yaml.No
 
 func (resolver pinnedPackageResolver) localDependencies(name string) ([]string, error) {
 	dependencies := []string{}
+	providers := map[string]string{}
 	seen := map[string]struct{}{}
 	for _, architecture := range resolver.architectures {
 		pkg, exists := resolver.packageSets[architecture][name]
@@ -110,6 +111,11 @@ func (resolver pinnedPackageResolver) localDependencies(name string) ([]string, 
 				continue
 			}
 			dependencyName := localPackage.Name
+			providedName := apkindex.PackageName(dependency)
+			if previous, exists := providers[providedName]; exists && previous != dependencyName {
+				return nil, fmt.Errorf("%w: %s resolves %s to %s for %s and %s for another architecture", errPinnedProviderArchitectureConflict, name, providedName, dependencyName, architecture, previous)
+			}
+			providers[providedName] = dependencyName
 			if _, exists := seen[dependencyName]; exists {
 				continue
 			}

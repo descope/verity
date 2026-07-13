@@ -81,3 +81,16 @@ func TestResolveDependencyRejectsAmbiguousLocalProvider(t *testing.T) {
 
 	require.Error(t, err)
 }
+
+func TestResolveDependencyFallsBackToSatisfyingProvider(t *testing.T) {
+	packages := map[string]Package{
+		"foo":        {Name: "foo", Version: "1.0-r0"},
+		"foo-compat": {Name: "foo-compat", Version: "2.0-r0", Provides: []string{"foo=2.0-r0"}},
+	}
+
+	pkg, local, err := ResolveDependency(packages, "foo>=2.0-r0")
+
+	require.NoError(t, err)
+	assert.True(t, local)
+	assert.Equal(t, "foo-compat", pkg.Name)
+}

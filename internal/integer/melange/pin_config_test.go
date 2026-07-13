@@ -100,6 +100,29 @@ func TestPinConfigPackagesPinsVirtualLocalDependency(t *testing.T) {
 	assert.Equal(t, []string{"application=1.0-r0@local", "libfoo=1.0-r0@local"}, readConfigPackages(t, configPath))
 }
 
+func TestPinConfigPackagesRejectsArchitectureProviderMismatch(t *testing.T) {
+	// Given: each architecture resolves the same virtual dependency to a different local package.
+	root := t.TempDir()
+	configPath := filepath.Join(root, "config.apko.yaml")
+	repositoryDir := filepath.Join(root, "repo")
+	writeTestFile(t, configPath, "contents:\n  packages: [application]\n")
+	x86Index := "P:application\nV:1.0-r0\nD:so:libfoo.so.1\n\nP:libfoo\nV:1.0-r0\np:so:libfoo.so.1\n\n"
+	armIndex := "P:application\nV:1.0-r0\nD:so:libfoo.so.1\n\nP:libfoo-alt\nV:1.0-r0\np:so:libfoo.so.1\n\n"
+	writeAPKIndexArchive(t, filepath.Join(repositoryDir, "x86_64", "APKINDEX.tar.gz"), x86Index)
+	writeAPKIndexArchive(t, filepath.Join(repositoryDir, "aarch64", "APKINDEX.tar.gz"), armIndex)
+
+	// When: the shared publish config is pinned across both architectures.
+	err := PinConfigPackages(PinConfigOptions{
+		RootDir:       root,
+		ConfigPath:    configPath,
+		RepositoryDir: repositoryDir,
+		Architectures: []Architecture{ArchitectureX8664, ArchitectureAArch64},
+	})
+
+	// Then: publishing fails closed because one exact package list cannot represent both providers.
+	require.ErrorIs(t, err, errPinnedProviderArchitectureConflict)
+}
+
 func TestPinConfigPackagesRejectsArchitectureVersionMismatch(t *testing.T) {
 	// Given: the local repositories disagree on the package revision.
 	root := t.TempDir()

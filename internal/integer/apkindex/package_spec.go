@@ -51,17 +51,25 @@ func ResolveDependency(packages map[string]Package, dependency string) (Package,
 	if name == "" {
 		return Package{}, false, nil
 	}
+	var concreteError error
 	if pkg, exists := packages[name]; exists {
 		satisfied, err := PackageSatisfiesConstraint(dependency, pkg.Version)
 		if err != nil {
 			return Package{}, false, err
 		}
-		if !satisfied {
-			return Package{}, false, fmt.Errorf("%w: %s requires %s, local version is %s", errUnsatisfiedPackageVersion, name, dependency, pkg.Version)
+		if satisfied {
+			return pkg, true, nil
 		}
+		concreteError = fmt.Errorf("%w: %s requires %s, local version is %s", errUnsatisfiedPackageVersion, name, dependency, pkg.Version)
+	}
+	pkg, local, err := resolveProvidedDependency(packages, dependency, name)
+	if err != nil {
+		return Package{}, false, err
+	}
+	if local {
 		return pkg, true, nil
 	}
-	return resolveProvidedDependency(packages, dependency, name)
+	return Package{}, false, concreteError
 }
 
 func resolveProvidedDependency(packages map[string]Package, dependency, name string) (Package, bool, error) {

@@ -15,15 +15,16 @@ import (
 const localRepositoryTag = "local"
 
 var (
-	errPinnedConfigNotRegular        = errors.New("apko config is not a regular file")
-	errPinnedConfigPackageNotScalar  = errors.New("apko config package entry is not a scalar")
-	errPinnedConfigPackagesMissing   = errors.New("apko config contents.packages is missing")
-	errPinnedDependencyConstraint    = errors.New("local package dependency constraint is not satisfied")
-	errPinnedIndexNotRegular         = errors.New("local package index is not a regular file")
-	errPinnedPackageMissingArch      = errors.New("local package is missing for an architecture")
-	errPinnedPackageNotUsed          = errors.New("apko config does not use a local package")
-	errPinnedPackageVersionConflict  = errors.New("local package versions conflict")
-	errPinnedPackageVersionUndefined = errors.New("local package version is empty")
+	errPinnedConfigNotRegular             = errors.New("apko config is not a regular file")
+	errPinnedConfigPackageNotScalar       = errors.New("apko config package entry is not a scalar")
+	errPinnedConfigPackagesMissing        = errors.New("apko config contents.packages is missing")
+	errPinnedDependencyConstraint         = errors.New("local package dependency constraint is not satisfied")
+	errPinnedIndexNotRegular              = errors.New("local package index is not a regular file")
+	errPinnedPackageMissingArch           = errors.New("local package is missing for an architecture")
+	errPinnedPackageNotUsed               = errors.New("apko config does not use a local package")
+	errPinnedPackageVersionConflict       = errors.New("local package versions conflict")
+	errPinnedPackageVersionUndefined      = errors.New("local package version is empty")
+	errPinnedProviderArchitectureConflict = errors.New("local dependency resolves to different packages across architectures")
 )
 
 type PinConfigOptions struct {
