@@ -126,7 +126,7 @@ var integerBuildCmd = &cli.Command{
 		}
 
 		arch := cmd.String("arch")
-		extraRepos, extraKeyrings, err := integerPrepareMelangeBuild(ctx, tmpl.Melange, version, arch)
+		melangeArtifacts, err := integerPrepareMelangeBuild(ctx, tmpl.Melange, version, arch)
 		if err != nil {
 			return fmt.Errorf("preparing melange build: %w", err)
 		}
@@ -140,6 +140,9 @@ var integerBuildCmd = &cli.Command{
 		// `internal/integer/discovery/discover.go::expandImage` exactly
 		// — see ResolveStreamRenderVersion's doc for the design.
 		renderVersion := discovery.ResolveStreamRenderVersion(def, pkgs, version)
+		if err := pinLocalPackageVersions(&tmpl, renderVersion, melangeArtifacts.Packages); err != nil {
+			return fmt.Errorf("pinning bespoke package versions: %w", err)
+		}
 
 		tmp, err := os.CreateTemp("", "integer-build-*.apko.yaml")
 		if err != nil {
@@ -159,7 +162,7 @@ var integerBuildCmd = &cli.Command{
 
 		output := cmd.String("output")
 		fmt.Fprintf(os.Stderr, "Building %s:%s-%s (%s) → %s\n", imageName, version, typeName, arch, output)
-		if err := integerRunApkoBuild(ctx, tmp.Name(), output, arch, extraRepos, extraKeyrings); err != nil {
+		if err := integerRunApkoBuild(ctx, tmp.Name(), output, arch, melangeArtifacts.Repositories, melangeArtifacts.Keyrings); err != nil {
 			return err
 		}
 		if sev := cmd.String("fail-on-severity"); sev != "" {

@@ -180,10 +180,9 @@ func intCapturingApko(t *testing.T, capturePath string) {
 	t.Helper()
 	tmpDir := t.TempDir()
 	script := filepath.Join(tmpDir, "apko")
-	// Note: positional args after the script itself are $1=build, $2=--arch,
-	// $3=<arch>, $4=<configFile>, $5=integer:local, $6=<output>. We only
-	// need $4.
-	body := "#!/bin/sh\nset -e\nmkdir -p \"$(dirname \"" + capturePath + "\")\"\ncp \"$4\" \"" + capturePath + "\"\nexit 0\n"
+	// Repository and keyring flags are optional, but the config is always
+	// the third argument from the end.
+	body := "#!/bin/sh\nset -e\nmkdir -p \"$(dirname \"" + capturePath + "\")\"\nwhile [ \"$#\" -gt 3 ]; do shift; done\ncp \"$1\" \"" + capturePath + "\"\nexit 0\n"
 	require.NoError(t, os.WriteFile(script, []byte(body), 0o755))
 	t.Setenv("PATH", tmpDir+":"+os.Getenv("PATH"))
 }
