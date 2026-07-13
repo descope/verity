@@ -129,6 +129,9 @@ func TestPRWorkflowExercisesProductionPinningOnLinkerdCanary(t *testing.T) {
 	assert.Contains(t, canary.Run, `./verity integer melange pin-config`)
 	assert.Contains(t, canary.Run, `--repository packages/repo`)
 	assert.Contains(t, canary.Run, `--arch x86_64`)
+	assert.Contains(t, canary.Run, `apko build`)
+	assert.Contains(t, canary.Run, `--repository-append "@local packages/repo"`)
+	assert.Contains(t, canary.Run, `trivy image`)
 }
 
 func TestIntegerBuildWorkflowReadsMetadataThroughVerity(t *testing.T) {

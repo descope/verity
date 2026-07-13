@@ -339,6 +339,27 @@ jobs:
             --arch aarch64
           grep -Eq 'linkerd2-cli=[^ ,]+@local' "$config"
 
+          for arch in amd64 arm64; do
+            image="pin-config-${arch}.tar"
+            report="pin-config-${arch}.json"
+            apko build \
+              --arch "$arch" \
+              --repository-append "@local packages/repo" \
+              --keyring-append melange-work/melange.rsa.pub \
+              "$config" \
+              integer:pin-config-canary \
+              "$image"
+            trivy image \
+              --exit-code 1 \
+              --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
+              --vuln-type os,library \
+              --format json \
+              --output "$report" \
+              --input "$image"
+            total=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' "$report")
+            echo "Pin-config canary ${arch}: Total vulnerabilities: ${total}"
+          done
+
       - name: Build image (local, no push)
         run: |
           ./verity integer build \
