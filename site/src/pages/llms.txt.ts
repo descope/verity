@@ -1,20 +1,9 @@
 import type { APIRoute } from "astro";
-import {
-  copaCount,
-  fullCatalog,
-  integerCount,
-  totalCategories,
-  totalImages,
-} from "../data/full-catalog.ts";
+import { copaCount, integerCount, totalCategories, totalImages } from "../data/full-catalog.ts";
+import { renderCategoryRows } from "../lib/machine-docs.ts";
 
 export function renderLlmsText(prefix: string): string {
-  const categoryRows = fullCatalog
-    .map((category) => {
-      const copaImages = category.images.filter((image) => image.source === "copa").length;
-      const wolfiImages = category.images.length - copaImages;
-      return `  ${category.id},${category.images.length},${copaImages},${wolfiImages}`;
-    })
-    .join("\n");
+  const categoryRows = renderCategoryRows();
 
   return `# Verity
 
