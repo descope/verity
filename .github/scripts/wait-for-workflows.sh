@@ -48,6 +48,35 @@ while true; do
 
   if [ -z "$active" ]; then
     echo "No active producer workflow runs remain."
+
+    for workflow in "$@"; do
+      latest="$(
+        gh api "repos/${repo}/actions/workflows/${workflow}/runs" \
+          --method GET \
+          --paginate \
+          -f branch="${BRANCH}" \
+          --jq ".workflow_runs | map(select(.created_at >= \"${cutoff}\" and .status == \"completed\")) | sort_by(.created_at) | last | if . == null then empty else [.id, .run_attempt, .conclusion, .created_at, .html_url] | @tsv end"
+      )"
+
+      if [ -z "$latest" ]; then
+        echo "No completed ${workflow} producer run found since ${cutoff}." >&2
+        exit 1
+      fi
+
+      IFS=$'\t' read -r run_id run_attempt conclusion created_at run_url <<< "$latest"
+      if [ "$conclusion" != "success" ]; then
+        echo "Latest ${workflow} producer run did not succeed: ${conclusion} (${run_url})" >&2
+        exit 1
+      fi
+
+      output_name="${workflow%.yaml}_batch_id"
+      output_name="${output_name//-/_}"
+      if [ -n "${GITHUB_OUTPUT:-}" ]; then
+        echo "${output_name}=${run_id}-${run_attempt}" >> "$GITHUB_OUTPUT"
+      fi
+      echo "Latest ${workflow} producer succeeded at ${created_at}: ${run_id}-${run_attempt}"
+    done
+
     exit 0
   fi
 

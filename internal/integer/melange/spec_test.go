@@ -59,6 +59,32 @@ versions:
 	assert.False(t, spec.Needed())
 }
 
+func TestResolveSpecReturnsEmptyForAutoDiscoveredStandardVersion(t *testing.T) {
+	// Given: a standard image whose APKINDEX-discovered version is newer than
+	// the explicitly curated versions map.
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "images", "traefik.yaml"), `
+name: traefik
+description: traefik
+upstream:
+  package: traefik-{{version}}
+types:
+  default:
+    base: wolfi-base
+    packages: ["traefik-{{version}}"]
+versions:
+  "3.6": {}
+`)
+
+	// When: the unconditional workflow preparation step resolves the
+	// auto-discovered version.
+	spec, err := ResolveSpec(filepath.Join(root, "images"), "traefik", "3.7", "default")
+
+	// Then: no bespoke build is required and preparation remains a no-op.
+	require.NoError(t, err)
+	assert.False(t, spec.Needed())
+}
+
 func TestResolveSpecFindsNestedDefinitionByDeclaredName(t *testing.T) {
 	// Given: a nested definition whose file path and declared name differ.
 	root := t.TempDir()

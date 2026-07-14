@@ -23,6 +23,21 @@ type Catalog struct {
 	Images      []Image `json:"images"`
 }
 
+// Options configures catalog generation and optional nightly batch matching.
+type Options struct {
+	ImagesDir       string
+	ReportsDir      string
+	Registry        string
+	Packages        []apkindex.Package
+	EOLFetcher      eol.Fetcher
+	ExpectedBatchID string
+}
+
+type reportSource struct {
+	dir             string
+	expectedBatchID string
+}
+
 // Image represents a single named image with all its version streams.
 type Image struct {
 	Name        string    `json:"name"`
@@ -50,6 +65,7 @@ type Variant struct {
 
 // buildReport matches the JSON written by .github/scripts/push-reports.sh.
 type buildReport struct {
+	BatchID string `json:"batch_id"`
 	Digest  string `json:"digest"`
 	Status  string `json:"status"`
 	BuiltAt string `json:"built_at"`
@@ -62,22 +78,36 @@ type buildReport struct {
 // A non-empty reportsDir that does not exist is an error.
 // eolFetcher may be nil (EOL data falls back to YAML definitions).
 func Generate(imagesDir, reportsDir, registry string, pkgs []apkindex.Package, eolFetcher eol.Fetcher) (*Catalog, error) {
-	if reportsDir != "" {
-		if _, err := os.Stat(reportsDir); err != nil {
-			return nil, fmt.Errorf("reports dir %q: %w", reportsDir, err)
+	return GenerateWithOptions(&Options{
+		ImagesDir:  imagesDir,
+		ReportsDir: reportsDir,
+		Registry:   registry,
+		Packages:   pkgs,
+		EOLFetcher: eolFetcher,
+	})
+}
+
+// GenerateWithOptions rejects reports that do not match ExpectedBatchID.
+func GenerateWithOptions(options *Options) (*Catalog, error) {
+	if options.ReportsDir != "" {
+		if _, err := os.Stat(options.ReportsDir); err != nil {
+			return nil, fmt.Errorf("reports dir %q: %w", options.ReportsDir, err)
 		}
 	}
 
-	definitions, err := config.LoadImageDefinitions(imagesDir)
+	definitions, err := config.LoadImageDefinitions(options.ImagesDir)
 	if err != nil {
-		return nil, fmt.Errorf("reading images dir %q: %w", imagesDir, err)
+		return nil, fmt.Errorf("reading images dir %q: %w", options.ImagesDir, err)
 	}
 
 	images := []Image{}
 
 	for _, image := range definitions {
 		def := image.Definition
-		img, err := buildImage(def, registry, reportsDir, pkgs, eolFetcher)
+		img, err := buildImage(def, options.Registry, reportSource{
+			dir:             options.ReportsDir,
+			expectedBatchID: options.ExpectedBatchID,
+		}, options.Packages, options.EOLFetcher)
 		if err != nil {
 			return nil, fmt.Errorf("building catalog entry for %q: %w", def.Name, err)
 		}
@@ -91,12 +121,12 @@ func Generate(imagesDir, reportsDir, registry string, pkgs []apkindex.Package, e
 
 	return &Catalog{
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
-		Registry:    registry,
+		Registry:    options.Registry,
 		Images:      images,
 	}, nil
 }
 
-func buildImage(def *config.ImageDef, registry, reportsDir string, pkgs []apkindex.Package, eolFetcher eol.Fetcher) (Image, error) {
+func buildImage(def *config.ImageDef, registry string, reports reportSource, pkgs []apkindex.Package, eolFetcher eol.Fetcher) (Image, error) {
 	img := Image{
 		Name:        def.Name,
 		Description: def.Description,
@@ -143,7 +173,7 @@ func buildImage(def *config.ImageDef, registry, reportsDir string, pkgs []apkind
 			if discovery.ShouldSkipType(def, v, typeName) {
 				continue
 			}
-			ver.Variants = append(ver.Variants, buildVariant(def.Name, v, typeName, registry, reportsDir, baseTags))
+			ver.Variants = append(ver.Variants, buildVariant(def.Name, v, typeName, registry, reports, baseTags))
 		}
 
 		img.Versions = append(img.Versions, ver)
@@ -167,7 +197,7 @@ func buildImage(def *config.ImageDef, registry, reportsDir string, pkgs []apkind
 	return img, nil
 }
 
-func buildVariant(imageName, version, typeName, registry, reportsDir string, baseTags []string) Variant {
+func buildVariant(imageName, version, typeName, registry string, reports reportSource, baseTags []string) Variant {
 	if len(baseTags) == 0 && version != "" {
 		baseTags = []string{version}
 	}
@@ -182,9 +212,9 @@ func buildVariant(imageName, version, typeName, registry, reportsDir string, bas
 		Ref:    ref,
 		Status: "unknown",
 	}
-	if reportsDir != "" {
-		reportPath := filepath.Join(reportsDir, imageName, version, typeName, "latest.json")
-		if report, err := loadReport(reportPath); err == nil {
+	if reports.dir != "" {
+		reportPath := filepath.Join(reports.dir, imageName, version, typeName, "latest.json")
+		if report, err := loadReport(reportPath); err == nil && (reports.expectedBatchID == "" || report.BatchID == reports.expectedBatchID) {
 			variant.Digest = report.Digest
 			variant.BuiltAt = report.BuiltAt
 			variant.Status = report.Status

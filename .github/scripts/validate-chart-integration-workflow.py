@@ -3,6 +3,7 @@ from pathlib import Path
 workflow = Path(".github/workflows/chart-integration.yaml").read_text()
 
 required = [
+    "timeout-minutes: 15",
     "./verity ci plan \\",
     "--kind chart \\",
     "json=\"$(jq -c '[.matrix.include[].chart]' ci-plan.json)\"",
