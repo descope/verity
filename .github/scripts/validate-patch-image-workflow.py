@@ -4,6 +4,13 @@
 from pathlib import Path
 import sys
 
+from workflow_validation import (
+    has_only_archive_token,
+    named_step_body,
+    top_level_grants_actions,
+    uncomment_yaml,
+)
+
 
 WORKFLOW = Path(".github/workflows/patch-image.yaml")
 METRICS_WORKFLOW = Path(".github/workflows/metrics-finalize.yaml")
@@ -24,6 +31,12 @@ def self_test() -> None:
         "inline YAML comments must not satisfy guards",
     )
     require(
+        "validate-metrics-json_test.sh" in uncomment_yaml(
+            'run: "printf \\" # literal; bash .github/scripts/validate-metrics-json_test.sh"'
+        ),
+        "hashes inside double-quoted YAML with escaped quotes must remain active",
+    )
+    require(
         named_step_body("steps:\n", "Upload metrics artifact") is None,
         "missing workflow steps must return a controlled result",
     )
@@ -40,6 +53,20 @@ def self_test() -> None:
     require(
         bounded_step is not None and "retention-days: 7" not in bounded_step,
         "step lookup must stop at the next sibling step",
+    )
+    require(
+        named_step_body(
+            """      - name: Upload metrics artifact
+        with:
+          retention-days: 7
+      - name: Upload metrics artifact
+        with:
+          retention-days: 1
+""",
+            "Upload metrics artifact",
+        )
+        is None,
+        "duplicate named workflow steps must be rejected",
     )
     archive = """  archive-metrics:
     secrets:
@@ -70,76 +97,6 @@ def require(condition: bool, message: str) -> None:
     if not condition:
         print(f"patch-image workflow check failed: {message}", file=sys.stderr)
         sys.exit(1)
-
-
-def uncomment_yaml(text: str) -> str:
-    lines: list[str] = []
-    for line in text.splitlines():
-        single_quoted = False
-        double_quoted = False
-        comment_at: int | None = None
-        for index, character in enumerate(line):
-            if character == "'" and not double_quoted:
-                single_quoted = not single_quoted
-            elif character == '"' and not single_quoted:
-                double_quoted = not double_quoted
-            elif (
-                character == "#"
-                and not single_quoted
-                and not double_quoted
-                and (index == 0 or line[index - 1].isspace())
-            ):
-                comment_at = index
-                break
-        active = line if comment_at is None else line[:comment_at]
-        if active.strip():
-            lines.append(active.rstrip())
-    return "\n".join(lines)
-
-
-def named_step_body(text: str, step_name: str) -> str | None:
-    lines = text.splitlines()
-    start = next(
-        (
-            index
-            for index, line in enumerate(lines)
-            if line.lstrip() == f"- name: {step_name}"
-        ),
-        None,
-    )
-    if start is None:
-        return None
-    indent = len(lines[start]) - len(lines[start].lstrip())
-    end = len(lines)
-    for index in range(start + 1, len(lines)):
-        line = lines[index]
-        if (
-            len(line) - len(line.lstrip()) == indent
-            and line.lstrip().startswith("- name:")
-        ):
-            end = index
-            break
-    return "\n".join(lines[start:end])
-
-
-def has_only_archive_token(job: str) -> bool:
-    secret_lines = [
-        line.strip() for line in job.splitlines() if "${{ secrets." in line
-    ]
-    return secret_lines == [
-        "archive-token: ${{ secrets.GITHUB_TOKEN }}"
-    ] and "secrets: inherit" not in job
-
-
-def top_level_grants_actions(text: str) -> bool:
-    for line in uncomment_yaml(text).splitlines():
-        stripped = line.strip()
-        if "actions:" in stripped or stripped in {
-            "permissions: read-all",
-            "permissions: write-all",
-        }:
-            return True
-    return False
 
 
 def job_body(text: str, job: str) -> str:
