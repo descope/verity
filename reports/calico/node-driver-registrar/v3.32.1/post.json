@@ -1,10 +1,10 @@
 {
   "SchemaVersion": 2,
   "Trivy": {
-    "Version": "0.70.0"
+    "Version": "0.72.0"
   },
-  "ReportID": "019f43a2-54f3-77f2-8c83-14d371cacf52",
-  "CreatedAt": "2026-07-08T21:28:59.891521751Z",
+  "ReportID": "019f6267-3ec7-7949-b2bc-cbc39a739597",
+  "CreatedAt": "2026-07-14T20:52:41.28760987Z",
   "ArtifactID": "sha256:07c4cfba5aa3aea1c1e6d61b2390c755a3f647a30d0edf69e5db1739602ed5a4",
   "ArtifactName": "ghcr.io/verity-org/cache:calico-node-driver-registrar-v3.32.1",
   "ArtifactType": "container_image",
@@ -890,6 +890,40 @@
       ],
       "Vulnerabilities": [
         {
+          "VulnerabilityID": "CVE-2026-56852",
+          "VendorIDs": [
+            "GO-2026-5970"
+          ],
+          "PkgID": "golang.org/x/text@v0.38.0",
+          "PkgName": "golang.org/x/text",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/golang.org/x/text@v0.38.0",
+            "UID": "3316ac280b0e80dd"
+          },
+          "InstalledVersion": "v0.38.0",
+          "FixedVersion": "0.39.0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:fd9445d0f171829e5baa79965600f8fdbed089d5a5322b2fa79fc185a4213151",
+            "DiffID": "sha256:b967633d69a8dc002ee057c6a8b427141bec90d330b30335fe62106b0a0cd87f"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-56852",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:2d267437ce8f3fc633a1b02e0c6804fa2635f6d8da6713b82e590c57c39b1427",
+          "Title": "Infinite loop on invalid input in golang.org/x/text",
+          "Description": "A norm.Iter can enter an infinite loop when handling input containing invalid UTF-8 bytes.",
+          "Severity": "UNKNOWN",
+          "References": [
+            "https://go.dev/cl/794100",
+            "https://go.dev/issue/80142",
+            "https://pkg.go.dev/vuln/GO-2026-5970"
+          ]
+        },
+        {
           "VulnerabilityID": "CVE-2026-39822",
           "VendorIDs": [
             "GO-2026-4970"
@@ -914,17 +948,44 @@
             "URL": "https://pkg.go.dev/vuln/"
           },
           "Fingerprint": "sha256:8a8e77ee7dd2ca3dd911cd7a6652e067d24e93fb928fa339fa88b4cd39aebc08",
-          "Title": "Root escape via symlink plus trailing slash in os",
+          "Title": "os: golang: Go os.Root: Symlink following vulnerability allows directory traversal",
           "Description": "On Unix systems, opening a file in an os.Root improperly follows symlinks to locations outside of the Root when the final path component of the a path is a symbolic link and the path ends in /. For example, 'root.Open(\"symlink/\")' will open \"symlink\" even when \"symlink\" is a symbolic link pointing outside of the root.",
-          "Severity": "UNKNOWN",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-61"
+          ],
+          "VendorSeverity": {
+            "alma": 3,
+            "bitnami": 3,
+            "oracle-oval": 3,
+            "redhat": 3
+          },
+          "CVSS": {
+            "bitnami": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 7.8
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 7.8
+            }
+          },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:38878",
+            "https://access.redhat.com/security/cve/CVE-2026-39822",
+            "https://bugzilla.redhat.com/2498152",
+            "https://errata.almalinux.org/9/ALSA-2026-38878.html",
             "https://go.dev/cl/797880",
             "https://go.dev/issue/79005",
             "https://groups.google.com/g/golang-announce/c/OrmQE_Yp5Sc",
-            "https://pkg.go.dev/vuln/GO-2026-4970"
+            "https://linux.oracle.com/cve/CVE-2026-39822.html",
+            "https://linux.oracle.com/errata/ELSA-2026-37435.html",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-39822",
+            "https://pkg.go.dev/vuln/GO-2026-4970",
+            "https://www.cve.org/CVERecord?id=CVE-2026-39822"
           ],
           "PublishedDate": "2026-07-08T17:17:21.31Z",
-          "LastModifiedDate": "2026-07-08T17:17:21.31Z"
+          "LastModifiedDate": "2026-07-13T14:54:26.317Z"
         },
         {
           "VulnerabilityID": "CVE-2026-42505",
@@ -951,17 +1012,37 @@
             "URL": "https://pkg.go.dev/vuln/"
           },
           "Fingerprint": "sha256:5455b3be9fe950c223be7115d70af2a69d762efee75b25e6a0a9e4240e7d1f97",
-          "Title": "Invoking Encrypted Client Hello privacy leak in crypto/tls",
+          "Title": "crypto/tls: golang: Go crypto/tls: Information disclosure in Encrypted Client Hello",
           "Description": "Handshakes which used Encrypted Client Hello could be de-anonymized by a passive network observer due to a disclosure of pre-shared key identities in the unencrypted client hello.",
-          "Severity": "UNKNOWN",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-201"
+          ],
+          "VendorSeverity": {
+            "bitnami": 2,
+            "redhat": 2
+          },
+          "CVSS": {
+            "bitnami": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+              "V3Score": 5.3
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+              "V3Score": 5.3
+            }
+          },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-42505",
             "https://go.dev/cl/775960",
             "https://go.dev/issue/79282",
             "https://groups.google.com/g/golang-announce/c/OrmQE_Yp5Sc",
-            "https://pkg.go.dev/vuln/GO-2026-5856"
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-42505",
+            "https://pkg.go.dev/vuln/GO-2026-5856",
+            "https://www.cve.org/CVERecord?id=CVE-2026-42505"
           ],
           "PublishedDate": "2026-07-08T17:17:21.497Z",
-          "LastModifiedDate": "2026-07-08T17:17:21.497Z"
+          "LastModifiedDate": "2026-07-13T17:05:36.303Z"
         }
       ]
     }
