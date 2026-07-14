@@ -42,6 +42,7 @@ SPECIAL_RECIPE_SOURCES: Final = {
 }
 SUPPORTED_GITHUB_TAGS: Final = {
     "${{package.version}}",
+    "gha-runner-scale-set-${{package.version}}",
     "v${{package.version}}",
     "openssl-${{package.version}}",
     "REL_${{vars.mangled-package-version}}",
@@ -76,6 +77,23 @@ def workflow_image_name(match: re.Match[str]) -> str:
 
 def self_test() -> None:
     errors: list[str] = []
+    require(
+        errors,
+        "gha-runner-scale-set-${{package.version}}" in SUPPORTED_GITHUB_TAGS,
+        "runner scale-set GitHub tag rejected",
+    )
+    for malformed_tag in (
+        "gha-runner-${{package.version}}",
+        "gha-runner-scale-${{package.version}}",
+        "gha-runner-scale-sets-${{package.version}}",
+        "other-gha-runner-scale-set-${{package.version}}",
+    ):
+        require(
+            errors,
+            malformed_tag not in SUPPORTED_GITHUB_TAGS,
+            f"malformed runner scale-set GitHub tag accepted: {malformed_tag}",
+        )
+
     marker = (
         "# renovate: datasource=github-tags depName=example/project "
         "versioning=semver-coerced"
