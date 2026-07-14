@@ -29,10 +29,34 @@ func Prepare(ctx context.Context, options *BuildOptions) error {
 	if err := Stage(&options.Paths, options.Spec); err != nil {
 		return err
 	}
+	keyPairExists, err := signingKeyPairExists(&options.Paths)
+	if err != nil {
+		return err
+	}
+	if keyPairExists {
+		return restrictStagedPrivateKey(&options.Paths)
+	}
 	if err := runMelange(ctx, options, "keygen", "melange-work/melange.rsa"); err != nil {
 		return err
 	}
 	return restrictStagedPrivateKey(&options.Paths)
+}
+
+func signingKeyPairExists(paths *Paths) (bool, error) {
+	for _, name := range []string{"melange.rsa", "melange.rsa.pub"} {
+		path := filepath.Join(paths.WorkDir, name)
+		info, err := os.Lstat(path)
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		if err != nil {
+			return false, fmt.Errorf("inspect signing key %q: %w", path, err)
+		}
+		if !info.Mode().IsRegular() {
+			return false, fmt.Errorf("signing key %q %w", path, errNotRegularFile)
+		}
+	}
+	return true, nil
 }
 
 func Build(ctx context.Context, options *BuildOptions) error {

@@ -142,6 +142,32 @@ func TestPrepareRestrictsGeneratedPrivateKeyPermissions(t *testing.T) {
 	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
 }
 
+func TestPrepareReusesExistingSigningKeyPair(t *testing.T) {
+	// Given: one workspace used to build packages for multiple architectures.
+	root := t.TempDir()
+	writeTestFile(t, testPath(root, "packages/bespoke/custom.yaml"), "package:\n  name: custom\n")
+	writeTestFile(t, testPath(root, "packages/upstream.lock.json"), `{"packages":{},"pipeline_files":{}}`)
+	runner := &fakeRunner{}
+	options := &BuildOptions{
+		Paths:  testPaths(root),
+		Spec:   Spec{Bespoke: []string{"custom.yaml"}},
+		Runner: runner,
+	}
+
+	// When: preparation runs once per architecture.
+	require.NoError(t, Prepare(context.Background(), options))
+	require.NoError(t, Prepare(context.Background(), options))
+
+	// Then: both architecture indexes will share the same signing key.
+	var keygenCount int
+	for _, command := range runner.commands {
+		if len(command.args) > 0 && command.args[0] == "keygen" {
+			keygenCount++
+		}
+	}
+	assert.Equal(t, 1, keygenCount)
+}
+
 func TestBuildRejectsUnsafeArchitectureBeforeRemovingOutput(t *testing.T) {
 	root := t.TempDir()
 	sentinel := testPath(root, "victim/sentinel")
