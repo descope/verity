@@ -85,15 +85,17 @@ def main() -> None:
     require(
         "nightly plan" in integer_orchestrator
         and "--family integer" in integer_orchestrator
-        and "nightly dispatch" in integer_orchestrator
-        and "--family integer" in integer_orchestrator
-        and "gh workflow run integer-build-image.yaml" not in integer_orchestrator,
-        "Integer orchestrator must scan published targets and dispatch through verity nightly, not shell gh loops",
+        and "uses: ./.github/workflows/integer-build-image.yaml" in integer_orchestrator
+        and "fromJSON(needs.discover.outputs.images)" in integer_orchestrator
+        and "fail-fast: false" in integer_orchestrator
+        and "CHILD_RESULT: ${{ needs.build.result }}" in integer_orchestrator
+        and "nightly dispatch" not in integer_orchestrator,
+        "Integer orchestrator must await every reusable child and fail the parent when the matrix fails",
     )
     require(
-        'IMAGES: ${{ needs.discover.outputs.images }}' not in integer_orchestrator
-        and "__IMAGES_JSON_EOF__" in integer_orchestrator,
-        "Integer orchestrator must not pass the large dispatch matrix through an environment variable",
+        "batch_id: ${{ github.run_id }}-${{ github.run_attempt }}" in integer_orchestrator
+        and "concurrency:" in integer_orchestrator,
+        "Integer orchestrator must serialize batch reports and pass their freshness identifier to children",
     )
     require(
         "bash .github/scripts/wait-for-workflows.sh patch-image.yaml" in chart_gen
@@ -107,10 +109,10 @@ def main() -> None:
         "wait helper must use GET pagination and REST run ids",
     )
     require(
-        "bash .github/scripts/wait-for-workflows.sh patch-image.yaml integer-build-image.yaml chart-gen.yaml"
+        "bash .github/scripts/wait-for-workflows.sh patch-image.yaml integer-orchestrator.yaml chart-gen.yaml"
         in build_site
         and "actions: read" in build_site,
-        "site build must wait for active patch, Integer, and chart generation producer runs",
+        "site build must wait for active patch, Integer orchestration, and chart generation producer runs",
     )
     require(
         "  schedule:" not in chart_integration,

@@ -71,6 +71,23 @@ def main() -> None:
         "Integer Trivy scans must not be report-only",
     )
     require(
+        "workflow_call:" in workflow and "batch_id:" in workflow,
+        "Integer Build Image must accept an explicit parent batch identifier",
+    )
+    require(
+        "needs: [melange-prep, melange-build, build]" in workflow
+        and "MELANGE_PREP_RESULT" in workflow
+        and "MELANGE_BUILD_RESULT" in workflow
+        and "BUILD_RESULT" in workflow
+        and "if: always()" in workflow,
+        "Integer terminal reporting must run after every prepare, Melange, or build result",
+    )
+    require(
+        "batch_id: $batch_id" in workflow
+        and '"reports/${INPUT_IMAGE}/${INPUT_VERSION}/${INPUT_TYPE}/latest.json"' in workflow,
+        "Integer reports must replace latest.json with the current batch result",
+    )
+    require(
         workflow.index("--exit-code 1 \\") < workflow.index('"crane copy"'),
         "Trivy staged-image gate must run before final crane copy promotion",
     )

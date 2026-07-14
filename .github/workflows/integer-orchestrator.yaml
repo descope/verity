@@ -21,8 +21,14 @@ on:
         default: ""
 
 permissions:
-  contents: read
-  actions: write    # required to dispatch integer-build-image.yaml
+  contents: write      # inherited by the reusable child to publish reports
+  packages: write      # inherited by the reusable child to publish images
+  id-token: write      # inherited by the reusable child for keyless signing
+  attestations: write  # inherited by the reusable child for SBOM attestation
+
+concurrency:
+  group: integer-nightly-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   # ── Job 1: Detect changed images (push only) ──────────────────────
@@ -145,49 +151,38 @@ jobs:
           echo "✓ Planned $(jq 'length' images.json) Integer remediation run(s)"
           jq -r '.[] | "  - \(.name):\(.version)-\(.type) → \(.registry)/\(.name):\(.tags[0])"' images.json
 
-  dispatch:
-    name: Dispatch builds
+  build:
+    name: Build ${{ matrix.name }}:${{ matrix.version }}-${{ matrix.type }}
     needs: discover
-    runs-on: ubuntu-latest
     if: always() && !failure() && !cancelled() && needs.discover.outputs.count != '0'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.discover.outputs.images) }}
+    uses: ./.github/workflows/integer-build-image.yaml
+    with:
+      image: ${{ matrix.name }}
+      version: ${{ matrix.version }}
+      type: ${{ matrix.type }}
+      tags: ${{ join(matrix.tags, ',') }}
+      registry: ${{ matrix.registry }}
+      batch_id: ${{ github.run_id }}-${{ github.run_attempt }}
+    secrets: inherit
+
+  aggregate:
+    name: Aggregate build results
+    needs: build
+    if: always()
+    runs-on: ubuntu-latest
     steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Install mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
-        with:
-          install: true
-          cache: true
-
-      - name: Cache Go modules
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/dev/go/pkg/mod
-            ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
-          restore-keys: go-${{ runner.os }}-
-
-      - name: Build verity CLI
-        run: go build -o verity .
-
-      - name: Dispatch integer-build-image.yaml for each image
+      - name: Fail when any child build failed
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHILD_RESULT: ${{ needs.build.result }}
         run: |
-          # Keep the large all-image matrix out of env/argv. GitHub-hosted
-          # Linux runners can reject oversized environment entries before the
-          # shell starts, which breaks forced all-image Integer dispatches.
-          cat > "$RUNNER_TEMP/images.json" <<'__IMAGES_JSON_EOF__'
-          ${{ needs.discover.outputs.images }}
-          __IMAGES_JSON_EOF__
-          ./verity nightly dispatch \
-            --family integer \
-            --input "$RUNNER_TEMP/images.json" \
-            --repo "${{ github.repository }}" \
-            --ref "${{ github.ref_name }}"
+          if [ "$CHILD_RESULT" = "success" ] || [ "$CHILD_RESULT" = "skipped" ]; then
+            echo "All dispatched Integer child builds succeeded."
+            exit 0
+          fi
+
+          echo "Integer child build matrix concluded: $CHILD_RESULT" >&2
+          exit 1

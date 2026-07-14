@@ -162,3 +162,34 @@ func TestIntegerBuildWorkflowReadsMetadataThroughVerity(t *testing.T) {
 	assert.Contains(t, workflow, `./verity integer metadata`)
 	assert.NotContains(t, workflow, `image_yaml="images/${INPUT_IMAGE}.yaml"`)
 }
+
+func TestIntegerNightlyWorkflowAggregatesChildFailuresAndPublishesCurrentReports(t *testing.T) {
+	// Given: the nightly parent and reusable Integer child workflows.
+	parentData, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "integer-orchestrator.yaml"))
+	require.NoError(t, err)
+	childData, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "integer-build-image.yaml"))
+	require.NoError(t, err)
+	parent := string(parentData)
+	child := string(childData)
+
+	// When: nightly builds are dispatched through the parent matrix.
+	// Then: each child is awaited, failures reach the parent conclusion, and
+	// every terminal child state replaces any stale successful report.
+	assert.Contains(t, parent, "uses: ./.github/workflows/integer-build-image.yaml")
+	assert.Contains(t, parent, "fail-fast: false")
+	assert.Contains(t, parent, "secrets: inherit")
+	assert.Contains(t, parent, "batch_id: ${{ github.run_id }}")
+	assert.Contains(t, parent, "CHILD_RESULT: ${{ needs.build.result }}")
+	assert.Contains(t, parent, `[ "$CHILD_RESULT" = "skipped" ]`)
+	assert.Contains(t, parent, "exit 1")
+
+	assert.Contains(t, child, "workflow_call:")
+	assert.Contains(t, child, "batch_id:")
+	assert.Contains(t, child, "needs: [melange-prep, melange-build, build]")
+	assert.Contains(t, child, "if: always()")
+	assert.Contains(t, child, "MELANGE_PREP_RESULT")
+	assert.Contains(t, child, "MELANGE_BUILD_RESULT")
+	assert.Contains(t, child, "BUILD_RESULT")
+	assert.Contains(t, child, "BATCH_ID")
+	assert.Contains(t, child, "batch_id: $batch_id")
+}

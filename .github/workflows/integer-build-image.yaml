@@ -2,6 +2,27 @@ name: Integer Build Image
 run-name: "Build ${{ inputs.image }}:${{ inputs.version }}-${{ inputs.type }}"
 
 on:
+  workflow_call:
+    inputs:
+      image:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      type:
+        required: true
+        type: string
+      tags:
+        required: true
+        type: string
+      registry:
+        required: true
+        type: string
+      batch_id:
+        required: false
+        type: string
+        default: ""
   workflow_dispatch:
     inputs:
       image:
@@ -21,6 +42,10 @@ on:
         description: "Target registry"
         required: true
         default: "ghcr.io/verity-org"
+      batch_id:
+        description: "Parent nightly run freshness identifier (empty = this run)"
+        required: false
+        default: ""
 
 permissions:
   contents: write          # push-reports.sh writes to reports branch via GitHub API
@@ -152,6 +177,9 @@ jobs:
     # sets its result to 'skipped' — that's fine, not a failure.
     if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+      failure_stage: ${{ steps.report-context.outputs.failure_stage }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -294,6 +322,7 @@ jobs:
           fi
 
       - name: Pin publish config to local package revisions
+        id: pin
         if: needs.melange-prep.outputs.needed == 'true'
         env:
           CONFIG_PATH: ${{ steps.gen.outputs.path }}
@@ -308,6 +337,7 @@ jobs:
 
       # ── Zero-CVE preflight gate: build locally & scan BEFORE any registry write
       - name: Trivy publish gate (not clean, no go)
+        id: trivy-preflight
         env:
           INPUT_IMAGE: ${{ inputs.image }}
           INPUT_VERSION: ${{ inputs.version }}
@@ -448,10 +478,43 @@ jobs:
           predicate-path: sbom-amd64.spdx.json
           push-to-registry: true
 
-      # ── Report ─────────────────────────────────────────────────────────────
-
-      - name: Push build report to reports branch
+      - name: Capture report context
         if: always()
+        id: report-context
+        env:
+          PIN_OUTCOME: ${{ steps.pin.outcome }}
+          TRIVY_PREFLIGHT_OUTCOME: ${{ steps.trivy-preflight.outcome }}
+          PUBLISH_OUTCOME: ${{ steps.build.outcome }}
+        run: |
+          failure_stage=""
+          if [ "$PIN_OUTCOME" = "failure" ]; then
+            failure_stage="pin"
+          elif [ "$TRIVY_PREFLIGHT_OUTCOME" = "failure" ]; then
+            failure_stage="trivy"
+          elif [ "$PUBLISH_OUTCOME" = "failure" ]; then
+            failure_stage="publish"
+          fi
+          echo "failure_stage=$failure_stage" >> "$GITHUB_OUTPUT"
+
+  # ── Report ─────────────────────────────────────────────────────────────
+  # This independent terminal job runs even when prepare, either native
+  # Melange build, pinning, or a Trivy gate fails before the build job can
+  # reach its normal final step. It replaces latest.json for this exact batch
+  # so the site cannot retain a previous successful result.
+  report:
+    name: "Report ${{ inputs.image }}:${{ inputs.version }}-${{ inputs.type }}"
+    needs: [melange-prep, melange-build, build]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Push current build report to reports branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           INPUT_IMAGE: ${{ inputs.image }}
@@ -459,28 +522,45 @@ jobs:
           INPUT_TYPE: ${{ inputs.type }}
           INPUT_TAGS: ${{ inputs.tags }}
           INPUT_REGISTRY: ${{ inputs.registry }}
-          DIGEST: ${{ steps.build.outputs.digest }}
-          JOB_STATUS: ${{ job.status }}
+          DIGEST: ${{ needs.build.outputs.digest }}
+          MELANGE_PREP_RESULT: ${{ needs.melange-prep.result }}
+          MELANGE_BUILD_RESULT: ${{ needs.melange-build.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          BUILD_FAILURE_STAGE: ${{ needs.build.outputs.failure_stage }}
+          BATCH_ID: ${{ inputs.batch_id }}
           RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
           status="success"
-          if [ "$JOB_STATUS" != "success" ]; then
+          failure_stage=""
+          if [ "$MELANGE_PREP_RESULT" = "failure" ] || [ "$MELANGE_PREP_RESULT" = "cancelled" ]; then
             status="failure"
+            failure_stage="melange-prep"
+          elif [ "$MELANGE_BUILD_RESULT" = "failure" ] || [ "$MELANGE_BUILD_RESULT" = "cancelled" ]; then
+            status="failure"
+            failure_stage="melange-build"
+          elif [ "$BUILD_RESULT" = "failure" ] || [ "$BUILD_RESULT" = "cancelled" ]; then
+            status="failure"
+            failure_stage="${BUILD_FAILURE_STAGE:-build}"
           fi
 
+          batch_id="${BATCH_ID:-${RUN_ID}-${RUN_ATTEMPT}}"
           report=$(jq -n \
-            --arg image    "$INPUT_IMAGE" \
-            --arg version  "$INPUT_VERSION" \
-            --arg type     "$INPUT_TYPE" \
-            --arg tags     "$INPUT_TAGS" \
-            --arg registry "$INPUT_REGISTRY" \
-            --arg digest   "$DIGEST" \
-            --arg status   "$status" \
-            --arg built_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --arg run_id   "$RUN_ID" \
+            --arg image          "$INPUT_IMAGE" \
+            --arg version        "$INPUT_VERSION" \
+            --arg type           "$INPUT_TYPE" \
+            --arg tags           "$INPUT_TAGS" \
+            --arg registry       "$INPUT_REGISTRY" \
+            --arg digest         "$DIGEST" \
+            --arg status         "$status" \
+            --arg failure_stage  "$failure_stage" \
+            --arg built_at       "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg run_id         "$RUN_ID" \
+            --arg batch_id       "$batch_id" \
             '{image: $image, version: $version, type: $type, tags: ($tags | split(",")),
               registry: $registry, digest: $digest, status: $status,
-              built_at: $built_at, run_id: $run_id}')
+              failure_stage: $failure_stage, built_at: $built_at, run_id: $run_id,
+              batch_id: $batch_id}')
 
           echo "$report" > report.json
           bash .github/scripts/push-reports.sh \
@@ -488,13 +568,13 @@ jobs:
             report.json
 
       - name: Update preflight manifest
-        if: success()
+        if: needs.build.result == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           INPUT_IMAGE: ${{ inputs.image }}
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_TYPE: ${{ inputs.type }}
-          DIGEST: ${{ steps.build.outputs.digest }}
+          DIGEST: ${{ needs.build.outputs.digest }}
         run: |
           MANIFEST_FILE="reports/preflight-manifest.json"
           BRANCH="reports"
