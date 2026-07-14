@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.72.0"
   },
-  "ReportID": "019f5507-6956-7f1f-a061-33508b4b323e",
-  "CreatedAt": "2026-07-12T06:32:56.91899241Z",
+  "ReportID": "019f5f36-eefa-75aa-92ba-94ccda04a891",
+  "CreatedAt": "2026-07-14T06:01:03.482372805Z",
   "ArtifactID": "sha256:a0a1427b79085dd582d6a536d5308590204ec3b956fdc3ca70ec335571e8fd1f",
   "ArtifactName": "docker.io/library/haproxy:3.4.1",
   "ArtifactType": "container_image",
@@ -8185,7 +8185,7 @@
             "amazon": 2,
             "debian": 1,
             "oracle-oval": 2,
-            "photon": 3,
+            "photon": 2,
             "redhat": 2,
             "rocky": 2
           },
@@ -14846,6 +14846,111 @@
           ],
           "PublishedDate": "2020-01-31T18:15:11.343Z",
           "LastModifiedDate": "2025-08-04T19:04:38.29Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-13221",
+          "PkgID": "perl-base@5.40.1-6",
+          "PkgName": "perl-base",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/perl-base@5.40.1-6?arch=amd64\u0026distro=debian-13.5",
+            "UID": "546ba1bdcd66d61"
+          },
+          "InstalledVersion": "5.40.1-6",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:e95a6c7ea7d49b37920899b023ecd0e32796c976c1748491f76cae53ba86d13a",
+            "DiffID": "sha256:3edb2192497af6e965b9b7e57dc6dbdce1f3ea721d14a98110419d4ded523298"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-13221",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:04f77928a5e342845a82113c5791f3899fab72329d222614675872308cb9003b",
+          "Title": "Perl versions through 5.43.9 produce silently incorrect regular expres ...",
+          "Description": "Perl versions through 5.43.9 produce silently incorrect regular expression matches when an alternation of more than 65535 fixed string branches is compiled into a trie in Perl_study_chunk.\n\nWhen such branches are combined into a trie, the delta between the first branch and the shared tail is stored in a 16-bit field. A branch count above 65535 overflows the field, and the trie's match decision table is truncated with no warning or error.\n\nA pattern of this shape produces false positive matches (matching strings it should not) and false negative matches (failing to match strings it should). When such a pattern gates an access or filtering decision, the result is wrong.",
+          "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-190"
+          ],
+          "References": [
+            "http://www.openwall.com/lists/oss-security/2026/07/13/5",
+            "https://github.com/Perl/perl5/commit/03f74bbbd3a68350d926ee93d56ee4808c28c4c7.patch",
+            "https://github.com/Perl/perl5/issues/23388"
+          ],
+          "PublishedDate": "2026-07-13T17:16:48.923Z",
+          "LastModifiedDate": "2026-07-13T20:16:42.643Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-57432",
+          "PkgID": "perl-base@5.40.1-6",
+          "PkgName": "perl-base",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/perl-base@5.40.1-6?arch=amd64\u0026distro=debian-13.5",
+            "UID": "546ba1bdcd66d61"
+          },
+          "InstalledVersion": "5.40.1-6",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:e95a6c7ea7d49b37920899b023ecd0e32796c976c1748491f76cae53ba86d13a",
+            "DiffID": "sha256:3edb2192497af6e965b9b7e57dc6dbdce1f3ea721d14a98110419d4ded523298"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-57432",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:7926971f243d34439c46495df19c1daddceaf19b91a25be362af68522dc73e68",
+          "Title": "Perl versions through 5.43.10 have an integer overflow in S_measure_st ...",
+          "Description": "Perl versions through 5.43.10 have an integer overflow in S_measure_struct leading to an out-of-bounds heap read in pack and unpack.\n\nS_measure_struct adds each item's size times its repeat count to a running total with no overflow check, so a large repeat count in a pack or unpack template wraps the signed SSize_t total negative. The @, X, and x position codes then guard their moves with a signed length comparison that passes when the length is negative, advancing the buffer pointer out of bounds.\n\nA template derived from untrusted input can read heap memory past the buffer and return it to the caller.",
+          "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-125",
+            "CWE-190"
+          ],
+          "References": [
+            "http://www.openwall.com/lists/oss-security/2026/07/13/6",
+            "https://github.com/Perl/perl5/commit/40754edc72dd3e513d758153c0e2f0215897740e.patch",
+            "https://github.com/Perl/perl5/commit/5f7eb6bbbe0510964e3fb1d6bb691e5445913e55.patch"
+          ],
+          "PublishedDate": "2026-07-13T17:17:55.67Z",
+          "LastModifiedDate": "2026-07-13T20:16:48.7Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-57433",
+          "PkgID": "perl-base@5.40.1-6",
+          "PkgName": "perl-base",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/perl-base@5.40.1-6?arch=amd64\u0026distro=debian-13.5",
+            "UID": "546ba1bdcd66d61"
+          },
+          "InstalledVersion": "5.40.1-6",
+          "Status": "affected",
+          "Layer": {
+            "Digest": "sha256:e95a6c7ea7d49b37920899b023ecd0e32796c976c1748491f76cae53ba86d13a",
+            "DiffID": "sha256:3edb2192497af6e965b9b7e57dc6dbdce1f3ea721d14a98110419d4ded523298"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-57433",
+          "DataSource": {
+            "ID": "debian",
+            "Name": "Debian Security Tracker",
+            "URL": "https://salsa.debian.org/security-tracker-team/security-tracker"
+          },
+          "Fingerprint": "sha256:c4607966ed13321d8d7e780c59daefa3c1ebebd87f1cbc7d46561ffa3cc8918b",
+          "Title": "Storable versions before 3.41 for Perl have a signed integer overflow  ...",
+          "Description": "Storable versions before 3.41 for Perl have a signed integer overflow when deserializing a crafted SX_HOOK record.\n\nretrieve_hook_common reads a signed 32-bit item count from an SX_HOOK record and calls av_extend with that count plus one. A count of I32_MAX wraps the addition to a negative value.\n\nA crafted blob passed to thaw or retrieve triggers the overflow; av_extend receives the negative count and dies with a panic, terminating the deserialization.",
+          "Severity": "UNKNOWN",
+          "CweIDs": [
+            "CWE-190"
+          ],
+          "References": [
+            "http://www.openwall.com/lists/oss-security/2026/07/13/7",
+            "https://github.com/Perl/perl5/commit/e4f681784bcdeaa91ff02a2fa4cdcae5c46779d7.patch"
+          ],
+          "PublishedDate": "2026-07-13T17:17:55.783Z",
+          "LastModifiedDate": "2026-07-13T20:16:48.8Z"
         },
         {
           "VulnerabilityID": "CVE-2026-7017",
