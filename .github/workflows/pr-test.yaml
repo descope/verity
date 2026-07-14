@@ -129,14 +129,13 @@ jobs:
 
   # ── Integer smoke test ────────────────────────────────────────────────
   integer-smoke-test:
-    name: "Integer ${{ matrix.image }}:${{ matrix.version }}-${{ matrix.type }}"
+    name: "Integer smoke batch ${{ matrix.batch_id }}"
     needs: [changes, detect-changed-images]
     if: needs.changes.outputs.integer == 'true' && needs.detect-changed-images.outputs.has-changes == 'true'
     runs-on: ubuntu-latest
     env:
-      INTEGER_IMAGE: ${{ matrix.image }}
-      INTEGER_VERSION: ${{ matrix.version }}
-      INTEGER_TYPE: ${{ matrix.type }}
+      INTEGER_ENTRIES: ${{ toJson(matrix.entries) }}
+      INTEGER_BATCH_ID: ${{ matrix.batch_id }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.detect-changed-images.outputs.smoke-matrix) }}
@@ -167,44 +166,81 @@ jobs:
       - name: Build verity CLI
         run: go build -o verity .
 
-      - name: Build bespoke package
+      - name: Set up QEMU for dual-architecture verification
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+        with:
+          image: docker.io/tonistiigi/binfmt:latest@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0
+          platforms: arm64
+
+      - name: Build and verify dual-architecture Integer smoke batch
         run: |
-          ./verity integer melange build \
-            --image "$INTEGER_IMAGE" \
-            --version "$INTEGER_VERSION" \
-            --type "$INTEGER_TYPE" \
-            --arch x86_64
+          mkdir -p integer-security
+          while IFS= read -r entry; do
+            image=$(jq -r '.image' <<< "$entry")
+            version=$(jq -r '.version' <<< "$entry")
+            type=$(jq -r '.type' <<< "$entry")
+            safe_image=$(printf '%s' "$image" | tr '/:' '--')
+            report_dir="trivy-reports/${safe_image}-${version}-${type}"
+            mkdir -p "$report_dir"
 
-      - name: Build image (local, no push)
-        run: |
-          ./verity integer build \
-            --image "$INTEGER_IMAGE" \
-            --version "$INTEGER_VERSION" \
-            --type "$INTEGER_TYPE" \
-            --output image.tar \
-            --arch amd64 \
-            --fail-on-severity "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+            for package_arch in x86_64 aarch64; do
+              ./verity integer melange build \
+                --image "$image" \
+                --version "$version" \
+                --type "$type" \
+                --arch "$package_arch"
+            done
 
-      - name: Full vulnerability report
-        if: always()
-        run: |
-          trivy image \
-            --exit-code 0 \
-            --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
-            --vuln-type os,library \
-            --format json \
-            --output trivy-report.json \
-            --input image.tar
+            for arch in amd64 arm64; do
+              tar_path="image-${safe_image}-${version}-${type}-${arch}.tar"
+              ./verity integer build \
+                --image "$image" \
+                --version "$version" \
+                --type "$type" \
+                --output "$tar_path" \
+                --arch "$arch" \
+                --fail-on-severity "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
 
-          TOTAL=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' trivy-report.json)
-          echo "Total vulnerabilities: ${TOTAL}"
+              load_output=$(docker load --input "$tar_path")
+              echo "$load_output"
+              loaded_ref=$(awk -F': ' '/^Loaded image: / {print $2}' <<< "$load_output" | tail -1)
+              if [ -z "$loaded_ref" ]; then
+                echo "::error::docker load did not report an image reference for ${arch}"
+                exit 1
+              fi
+              runtime_arch=$(docker image inspect "$loaded_ref" --format '{{.Architecture}}')
+              if [ "$runtime_arch" != "$arch" ]; then
+                echo "::error::runtime architecture mismatch: expected ${arch}, got ${runtime_arch}"
+                exit 1
+              fi
 
-      - name: Upload Trivy report
+              trivy image \
+                --exit-code 1 \
+                --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
+                --vuln-type os,library \
+                --format json \
+                --output "${report_dir}/${arch}.json" \
+                --input "$tar_path"
+              total=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' "${report_dir}/${arch}.json")
+              echo "${image}:${version}-${type} ${arch}: Total vulnerabilities: ${total}"
+              touch "integer-security/smoke-${safe_image}-${version}-${type}-${arch}.passed"
+              rm -f "$tar_path"
+            done
+          done < <(jq -c '.[]' <<< "$INTEGER_ENTRIES")
+
+      - name: Upload Integer security completion
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: "integer-security-smoke-batch-${{ matrix.batch_id }}"
+          path: integer-security/*.passed
+          retention-days: 7
+
+      - name: Upload architecture-qualified Trivy reports
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: "trivy-smoke-${{ matrix.image }}-${{ matrix.version }}-${{ matrix.type }}"
-          path: trivy-report.json
+          name: "trivy-smoke-batch-${{ matrix.batch_id }}-amd64-arm64"
+          path: trivy-reports/**/*.json
           retention-days: 7
 
   # ── Build + scan changed Integer images ──────────────────────────────
@@ -216,6 +252,8 @@ jobs:
     outputs:
       matrix: ${{ steps.detect.outputs.matrix }}
       smoke-matrix: ${{ steps.detect.outputs.smoke-matrix }}
+      expected-matrix: ${{ steps.detect.outputs.expected-matrix }}
+      expected-smoke-matrix: ${{ steps.detect.outputs.expected-smoke-matrix }}
       has-changes: ${{ steps.detect.outputs.has-changes }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -260,27 +298,31 @@ jobs:
             --gen-dir "$RUNNER_TEMP/integer-gen" \
             > ci-plan.json
 
-          matrix=$(jq -c '.matrix' ci-plan.json)
-          smoke_matrix=$(jq -c '.smokeMatrix' ci-plan.json)
+          expected_matrix=$(jq -c '.matrix' ci-plan.json)
+          expected_smoke_matrix=$(jq -c '.smokeMatrix' ci-plan.json)
+          matrix=$(jq -c '[.matrix.include | to_entries | group_by((.key / 16 | floor))[] | {batch_id: (.[0].key / 16 | floor), entries: map(.value)}] | {include: .}' ci-plan.json)
+          smoke_matrix=$(jq -c '[.smokeMatrix.include | to_entries | group_by((.key / 16 | floor))[] | {batch_id: (.[0].key / 16 | floor), entries: map(.value)}] | {include: .}' ci-plan.json)
           has_changes=$(jq -r '.hasChanges' ci-plan.json)
-          count=$(jq '.include | length' <<< "$matrix")
-          echo "Matrix: ${count} image builds"
+          count=$(jq '.include | length' <<< "$expected_matrix")
+          batch_count=$(jq '.include | length' <<< "$matrix")
+          echo "Matrix: ${count} image builds in ${batch_count} batches"
           echo "$matrix" | jq .
           {
             echo "matrix=${matrix}"
             echo "smoke-matrix=${smoke_matrix}"
+            echo "expected-matrix=${expected_matrix}"
+            echo "expected-smoke-matrix=${expected_smoke_matrix}"
             echo "has-changes=${has_changes}"
           } >> "$GITHUB_OUTPUT"
 
   integer-build-changed:
-    name: "Build ${{ matrix.image }}:${{ matrix.version }}-${{ matrix.type }}"
+    name: "Integer build batch ${{ matrix.batch_id }}"
     needs: [changes, detect-changed-images]
     if: needs.changes.outputs.integer == 'true' && needs.detect-changed-images.outputs.has-changes == 'true'
     runs-on: ubuntu-latest
     env:
-      INTEGER_IMAGE: ${{ matrix.image }}
-      INTEGER_VERSION: ${{ matrix.version }}
-      INTEGER_TYPE: ${{ matrix.type }}
+      INTEGER_ENTRIES: ${{ toJson(matrix.entries) }}
+      INTEGER_BATCH_ID: ${{ matrix.batch_id }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.detect-changed-images.outputs.matrix) }}
@@ -311,95 +353,120 @@ jobs:
       - name: Build verity CLI
         run: go build -o verity .
 
-      - name: Build bespoke package
-        run: |
-          ./verity integer melange build \
-            --image "$INTEGER_IMAGE" \
-            --version "$INTEGER_VERSION" \
-            --type "$INTEGER_TYPE" \
-            --arch x86_64
-
-      - name: Set up QEMU for Linkerd pinning canary
-        if: matrix.image == 'linkerd' && matrix.version == '25' && matrix.type == 'default'
+      - name: Set up QEMU for dual-architecture verification
         uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
         with:
           image: docker.io/tonistiigi/binfmt:latest@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0
           platforms: arm64
 
-      - name: Exercise production package pinning
-        if: matrix.image == 'linkerd' && matrix.version == '25' && matrix.type == 'default'
+      - name: Build and verify dual-architecture Integer batch
         run: |
-          ./verity integer melange build \
-            --image "$INTEGER_IMAGE" \
-            --version "$INTEGER_VERSION" \
-            --type "$INTEGER_TYPE" \
-            --arch aarch64 \
-            --staged
+          mkdir -p integer-security
+          while IFS= read -r entry; do
+            image=$(jq -r '.image' <<< "$entry")
+            version=$(jq -r '.version' <<< "$entry")
+            type=$(jq -r '.type' <<< "$entry")
+            safe_image=$(printf '%s' "$image" | tr '/:' '--')
+            report_dir="trivy-reports/${safe_image}-${version}-${type}"
+            mkdir -p "$report_dir"
 
-          ./verity integer discover \
-            --apkindex-url "" \
-            --gen-dir ./pin-config-gen
-          config="pin-config-gen/${INTEGER_IMAGE}/${INTEGER_VERSION}/${INTEGER_TYPE}.apko.yaml"
-          ./verity integer melange pin-config \
-            --config "$config" \
-            --repository packages/repo \
-            --arch x86_64 \
-            --arch aarch64
-          grep -Eq 'linkerd2-cli=[^ ,]+@local' "$config"
+            for package_arch in x86_64 aarch64; do
+              ./verity integer melange build \
+                --image "$image" \
+                --version "$version" \
+                --type "$type" \
+                --arch "$package_arch"
+            done
 
-          for arch in amd64 arm64; do
-            image="pin-config-${arch}.tar"
-            report="pin-config-${arch}.json"
-            apko build \
-              --arch "$arch" \
-              --repository-append "@local packages/repo" \
-              --keyring-append melange-work/melange.rsa.pub \
-              "$config" \
-              integer:pin-config-canary \
-              "$image"
-            trivy image \
-              --exit-code 1 \
-              --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
-              --vuln-type os,library \
-              --format json \
-              --output "$report" \
-              --input "$image"
-            total=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' "$report")
-            echo "Pin-config canary ${arch}: Total vulnerabilities: ${total}"
-          done
+            if [ "$image" = linkerd ] && [ "$version" = 25 ] && [ "$type" = default ]; then
+              ./verity integer melange build \
+                --image "$image" \
+                --version "$version" \
+                --type "$type" \
+                --arch aarch64 \
+                --staged
 
-      - name: Build image (local, no push)
-        run: |
-          ./verity integer build \
-            --image "$INTEGER_IMAGE" \
-            --version "$INTEGER_VERSION" \
-            --type "$INTEGER_TYPE" \
-            --output image.tar \
-            --arch amd64 \
-            --fail-on-severity "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+              ./verity integer discover --apkindex-url "" --gen-dir ./pin-config-gen
+              config="pin-config-gen/${image}/${version}/${type}.apko.yaml"
+              ./verity integer melange pin-config \
+                --config "$config" \
+                --repository packages/repo \
+                --arch x86_64 \
+                --arch aarch64
+              grep -Eq 'linkerd2-cli=[^ ,]+@local' "$config"
 
-          echo "Built ${INTEGER_IMAGE}:${INTEGER_VERSION}-${INTEGER_TYPE}"
-          ls -lh image.tar
+              for arch in amd64 arm64; do
+                canary_image="pin-config-${arch}.tar"
+                canary_report="pin-config-${arch}.json"
+                apko build \
+                  --arch "$arch" \
+                  --repository-append "@local packages/repo" \
+                  --keyring-append melange-work/melange.rsa.pub \
+                  "$config" \
+                  integer:pin-config-canary \
+                  "$canary_image"
+                trivy image \
+                  --exit-code 1 \
+                  --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
+                  --vuln-type os,library \
+                  --format json \
+                  --output "$canary_report" \
+                  --input "$canary_image"
+                total=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' "$canary_report")
+                echo "Pin-config canary ${arch}: Total vulnerabilities: ${total}"
+              done
+            fi
 
-      - name: Full vulnerability report
-        if: always()
-        run: |
-          trivy image \
-            --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
-            --vuln-type os,library \
-            --format json \
-            --output trivy-report.json \
-            --input image.tar
+            for arch in amd64 arm64; do
+              tar_path="image-${safe_image}-${version}-${type}-${arch}.tar"
+              ./verity integer build \
+                --image "$image" \
+                --version "$version" \
+                --type "$type" \
+                --output "$tar_path" \
+                --arch "$arch" \
+                --fail-on-severity "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
 
-          TOTAL=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' trivy-report.json)
-          echo "Total vulnerabilities: ${TOTAL}"
+              load_output=$(docker load --input "$tar_path")
+              echo "$load_output"
+              loaded_ref=$(awk -F': ' '/^Loaded image: / {print $2}' <<< "$load_output" | tail -1)
+              if [ -z "$loaded_ref" ]; then
+                echo "::error::docker load did not report an image reference for ${arch}"
+                exit 1
+              fi
+              runtime_arch=$(docker image inspect "$loaded_ref" --format '{{.Architecture}}')
+              if [ "$runtime_arch" != "$arch" ]; then
+                echo "::error::runtime architecture mismatch: expected ${arch}, got ${runtime_arch}"
+                exit 1
+              fi
 
-      - name: Upload Trivy report
+              trivy image \
+                --exit-code 1 \
+                --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
+                --vuln-type os,library \
+                --format json \
+                --output "${report_dir}/${arch}.json" \
+                --input "$tar_path"
+              total=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' "${report_dir}/${arch}.json")
+              echo "${image}:${version}-${type} ${arch}: Total vulnerabilities: ${total}"
+              touch "integer-security/build-${safe_image}-${version}-${type}-${arch}.passed"
+              rm -f "$tar_path"
+            done
+          done < <(jq -c '.[]' <<< "$INTEGER_ENTRIES")
+
+      - name: Upload Integer security completion
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: "integer-security-build-batch-${{ matrix.batch_id }}"
+          path: integer-security/*.passed
+          retention-days: 7
+
+      - name: Upload architecture-qualified Trivy reports
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: "trivy-build-${{ matrix.image }}-${{ matrix.version }}-${{ matrix.type }}"
-          path: trivy-report.json
+          name: "trivy-build-batch-${{ matrix.batch_id }}-amd64-arm64"
+          path: trivy-reports/**/*.json
           retention-days: 7
 
   # ── Detect changed Copa images and test them ─────────────────────────
@@ -721,6 +788,14 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
+      - name: Download Integer security completions
+        if: needs.changes.outputs.integer == 'true' && needs.detect-changed-images.outputs.has-changes == 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: integer-security-*
+          path: integer-security-results
+          merge-multiple: true
+
       - name: Aggregate PR test results
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
@@ -732,6 +807,8 @@ jobs:
           INTEGER_HAS_CHANGES: ${{ needs.detect-changed-images.outputs.has-changes }}
           INTEGER_SMOKE_RESULT: ${{ needs.integer-smoke-test.result }}
           INTEGER_BUILD_RESULT: ${{ needs.integer-build-changed.result }}
+          EXPECTED_INTEGER_MATRIX: ${{ needs.detect-changed-images.outputs.expected-matrix }}
+          EXPECTED_INTEGER_SMOKE_MATRIX: ${{ needs.detect-changed-images.outputs.expected-smoke-matrix }}
           DETECT_COPA_RESULT: ${{ needs.detect-copa-changes.result }}
           COPA_CHANGED_RESULT: ${{ needs.copa-patching-changed.result }}
           COPA_REGRESSION_RESULT: ${{ needs.copa-patching-regression.result }}
@@ -770,6 +847,35 @@ jobs:
             esac
           }
 
+          require_integer_markers() {
+            local matrix="$1"
+            local kind="$2"
+            local entries
+            if ! entries=$(jq -ce '
+              if (.include | type) == "array" and (.include | length) > 0 then
+                .include | unique_by(.image, .version, .type)[]
+              else
+                error("expected a non-empty include array")
+              end
+            ' <<< "$matrix"); then
+              echo "::error::invalid expected Integer ${kind} matrix"
+              exit 1
+            fi
+            while IFS= read -r entry; do
+              image=$(jq -r '.image' <<< "$entry")
+              version=$(jq -r '.version' <<< "$entry")
+              type=$(jq -r '.type' <<< "$entry")
+              safe_image=$(printf '%s' "$image" | tr '/:' '--')
+              for arch in amd64 arm64; do
+                marker="integer-security-results/${kind}-${safe_image}-${version}-${type}-${arch}.passed"
+                if [ ! -f "$marker" ]; then
+                  echo "::error::missing successful Integer ${kind} security leg: ${image}:${version}-${type} (${arch})"
+                  exit 1
+                fi
+              done
+            done <<< "$entries"
+          }
+
           require_success "changes" "$CHANGES_RESULT"
 
           if [ "$INTEGER" = "true" ]; then
@@ -778,6 +884,8 @@ jobs:
             if [ "$INTEGER_HAS_CHANGES" = "true" ]; then
               require_success "integer-smoke-test" "$INTEGER_SMOKE_RESULT"
               require_success "integer-build-changed" "$INTEGER_BUILD_RESULT"
+              require_integer_markers "$EXPECTED_INTEGER_SMOKE_MATRIX" smoke
+              require_integer_markers "$EXPECTED_INTEGER_MATRIX" build
             else
               allow_success_or_skipped "integer-smoke-test" "$INTEGER_SMOKE_RESULT"
               allow_success_or_skipped "integer-build-changed" "$INTEGER_BUILD_RESULT"
