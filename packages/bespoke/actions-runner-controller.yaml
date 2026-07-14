@@ -1,0 +1,63 @@
+package:
+  name: actions-runner-controller
+  version: "0.14.2"
+  # Revision r5 rebuilds every shipped Go binary with the current patched Go
+  # toolchain, substantively remediating CVE-2026-42505 without changing the
+  # upstream application version.
+  epoch: 5
+  description: Kubernetes controller for GitHub Actions self-hosted runners
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/actions/actions-runner-controller
+      tag: gha-runner-scale-set-${{package.version}}
+      expected-commit: 9bb16ae49d0ce585d8e682aa7e2668a6e832d5d8
+
+  - uses: go/build
+    with:
+      packages: .
+      output: manager
+      ldflags: |
+        -X github.com/actions/actions-runner-controller/build.Version=${{package.version}}
+        -X github.com/actions/actions-runner-controller/build.CommitSHA=$(git rev-parse HEAD)
+
+  - uses: go/build
+    with:
+      packages: ./cmd/ghalistener
+      output: ghalistener
+      ldflags: |
+        -X github.com/actions/actions-runner-controller/build.Version=${{package.version}}
+        -X github.com/actions/actions-runner-controller/build.CommitSHA=$(git rev-parse HEAD)
+
+  - uses: go/build
+    with:
+      packages: ./cmd/githubwebhookserver
+      output: github-webhook-server
+
+  - uses: go/build
+    with:
+      packages: ./cmd/actionsmetricsserver
+      output: actions-metrics-server
+
+test:
+  pipeline:
+    - runs: |
+        manager --help
+        ghalistener --help
+        github-webhook-server --help
+        actions-metrics-server --help
