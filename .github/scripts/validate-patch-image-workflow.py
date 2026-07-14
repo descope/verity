@@ -10,10 +10,59 @@ METRICS_WORKFLOW = Path(".github/workflows/metrics-finalize.yaml")
 CI_WORKFLOW = Path(".github/workflows/ci.yaml")
 
 
+def self_test() -> None:
+    require(
+        "validate-metrics-json_test.sh" not in uncomment_yaml(
+            "# bash .github/scripts/validate-metrics-json_test.sh"
+        ),
+        "commented workflow commands must not satisfy guards",
+    )
+    require(
+        named_step_body("steps:\n", "Upload metrics artifact") is None,
+        "missing workflow steps must return a controlled result",
+    )
+    archive = """  archive-metrics:
+    secrets:
+      archive-token: ${{ secrets.GITHUB_TOKEN }}
+"""
+    require(
+        has_only_archive_token(archive),
+        "the archive job's sole token mapping must be accepted",
+    )
+    require(
+        not has_only_archive_token(
+            archive + "      extra-token: ${{ secrets.EXTRA_TOKEN }}\n"
+        ),
+        "additional archive secrets must be rejected",
+    )
+
+
 def require(condition: bool, message: str) -> None:
     if not condition:
         print(f"patch-image workflow check failed: {message}", file=sys.stderr)
         sys.exit(1)
+
+
+def uncomment_yaml(text: str) -> str:
+    return "\n".join(
+        line for line in text.splitlines() if not line.lstrip().startswith("#")
+    )
+
+
+def named_step_body(text: str, step_name: str) -> str | None:
+    parts = text.rsplit(f"- name: {step_name}", 1)
+    if len(parts) != 2:
+        return None
+    return parts[1]
+
+
+def has_only_archive_token(job: str) -> bool:
+    secret_lines = [
+        line.strip() for line in job.splitlines() if "${{ secrets." in line
+    ]
+    return secret_lines == [
+        "archive-token: ${{ secrets.GITHUB_TOKEN }}"
+    ] and "secrets: inherit" not in job
 
 
 def job_body(text: str, job: str) -> str:
@@ -34,17 +83,13 @@ def job_body(text: str, job: str) -> str:
 
 
 def main() -> None:
+    self_test()
     text = WORKFLOW.read_text(encoding="utf-8")
     metrics_text = METRICS_WORKFLOW.read_text(encoding="utf-8")
     ci_text = CI_WORKFLOW.read_text(encoding="utf-8")
-    uncommented = "\n".join(
-        line for line in text.splitlines() if not line.lstrip().startswith("#")
-    )
-    metrics_uncommented = "\n".join(
-        line
-        for line in metrics_text.splitlines()
-        if not line.lstrip().startswith("#")
-    )
+    uncommented = uncomment_yaml(text)
+    metrics_uncommented = uncomment_yaml(metrics_text)
+    ci_uncommented = uncomment_yaml(ci_text)
 
     require(
         "docker/login-action" not in uncommented,
@@ -98,9 +143,14 @@ def main() -> None:
         "patch-image must call the metrics finalizer directly",
     )
     require(
-        'archive-token: ${{ secrets.GITHUB_TOKEN }}' in archive
-        and "secrets: inherit" not in archive,
+        has_only_archive_token(archive),
         "metrics finalization must receive only the repository token",
+    )
+    top_level = uncommented.split("jobs:", 1)[0]
+    require(
+        "actions: read" not in top_level
+        and "permissions:\n      contents: write\n      actions: read" in archive,
+        "artifact read access must be scoped to the archive job",
     )
     require(
         "inputs.is-pr != true" in archive,
@@ -120,15 +170,23 @@ def main() -> None:
         "missing metrics artifacts must fail finalization",
     )
     failure_metrics = job_body(uncommented, "metrics-on-failure")
+    finalize_upload = named_step_body(finalize, "Upload metrics artifact")
+    failure_upload = named_step_body(failure_metrics, "Upload metrics artifact")
     require(
-        "retention-days: 7" in finalize.rsplit("- name: Upload metrics artifact", 1)[1]
-        and "retention-days: 7"
-        in failure_metrics.rsplit("- name: Upload metrics artifact", 1)[1],
+        finalize_upload is not None
+        and "retention-days: 7" in finalize_upload
+        and failure_upload is not None
+        and "retention-days: 7" in failure_upload,
         "metrics artifacts must remain recoverable for seven days",
     )
     require(
-        "bash .github/scripts/validate-metrics-json_test.sh" in ci_text,
+        "bash .github/scripts/validate-metrics-json_test.sh" in ci_uncommented,
         "CI must run the metrics JSON validator regression checks",
+    )
+    require(
+        uncommented.count("--jq '.run_started_at'") == 2
+        and "--jq '.run_started_at' 2>/dev/null" not in uncommented,
+        "metrics producers must fail instead of recording an empty start timestamp",
     )
 
 

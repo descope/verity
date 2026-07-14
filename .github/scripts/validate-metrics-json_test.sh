@@ -88,6 +88,32 @@ jq '.scan.after.vuln_count = 2' "$TMPDIR/valid/metrics-example-1.2.3.json" \
 expect_failure "severity total mismatch" \
   bash "$VALIDATOR" 42 3 "$TMPDIR/bad-total"
 
+mkdir -p "$TMPDIR/multi-document"
+{
+  echo '{}'
+  cat "$TMPDIR/valid/metrics-example-1.2.3.json"
+} > "$TMPDIR/multi-document/metrics-example-1.2.3.json"
+expect_failure "multiple JSON documents" \
+  bash "$VALIDATOR" 42 3 "$TMPDIR/multi-document"
+
+mkdir -p "$TMPDIR/missing-platforms"
+jq 'del(.platforms)' "$TMPDIR/failure/metrics-example-1.2.3.json" \
+  > "$TMPDIR/missing-platforms/metrics-example-1.2.3.json"
+expect_failure "missing platforms container" \
+  bash "$VALIDATOR" 42 3 "$TMPDIR/missing-platforms"
+
+mkdir -p "$TMPDIR/missing-supply-chain"
+jq 'del(.supply_chain)' "$TMPDIR/failure/metrics-example-1.2.3.json" \
+  > "$TMPDIR/missing-supply-chain/metrics-example-1.2.3.json"
+expect_failure "missing supply-chain container" \
+  bash "$VALIDATOR" 42 3 "$TMPDIR/missing-supply-chain"
+
+mkdir -p "$TMPDIR/empty-started-at"
+jq '.run.started_at = ""' "$TMPDIR/valid/metrics-example-1.2.3.json" \
+  > "$TMPDIR/empty-started-at/metrics-example-1.2.3.json"
+expect_failure "empty start timestamp" \
+  bash "$VALIDATOR" 42 3 "$TMPDIR/empty-started-at"
+
 mkdir -p "$TMPDIR/empty"
 expect_failure "missing metrics files" bash "$VALIDATOR" 42 3 "$TMPDIR/empty"
 

@@ -28,7 +28,7 @@ if [ "${#files[@]}" -eq 0 ]; then
 fi
 
 for file in "${files[@]}"; do
-  if ! jq -e \
+  if ! jq -se \
     --argjson expected_run_id "$RUN_ID" \
     --argjson expected_run_attempt "$RUN_ATTEMPT" '
       def integer: type == "number" and floor == .;
@@ -64,33 +64,42 @@ for file in "${files[@]}"; do
           and (.staging_digest | nullable_digest)
         );
 
-      .schema_version == "v1"
-      and (.run.id == $expected_run_id)
-      and (.run.attempt == $expected_run_attempt)
-      and (.run.started_at | type == "string")
-      and (.run.ended_at | nonempty_string)
-      and (.run.conclusion | IN("success", "failure", "cancelled", "skipped"))
-      and (.image.name | nonempty_string)
-      and (.image.source_tag | nonempty_string)
-      and (
-        if .run.conclusion == "success" then
-          (.image.target_ref | nonempty_string)
-          and (.image.manifest_digest | digest)
-          and (.scan.before | scan)
-          and (.scan.after | scan)
-        else
-          (.image.target_ref | nullable_string)
-          and (.image.manifest_digest | nullable_digest)
-          and (.scan.before == null or (.scan.before | scan))
-          and (.scan.after == null or (.scan.after | scan))
-        end
+      length == 1
+      and (.[0] |
+        type == "object"
+        and (.run | type == "object")
+        and (.image | type == "object")
+        and (.scan | type == "object")
+        and (.platforms | type == "object")
+        and (.supply_chain | type == "object")
+        and .schema_version == "v1"
+        and (.run.id == $expected_run_id)
+        and (.run.attempt == $expected_run_attempt)
+        and (.run.started_at | nonempty_string)
+        and (.run.ended_at | nonempty_string)
+        and (.run.conclusion | IN("success", "failure", "cancelled", "skipped"))
+        and (.image.name | nonempty_string)
+        and (.image.source_tag | nonempty_string)
+        and (
+          if .run.conclusion == "success" then
+            (.image.target_ref | nonempty_string)
+            and (.image.manifest_digest | digest)
+            and (.scan.before | scan)
+            and (.scan.after | scan)
+          else
+            (.image.target_ref | nullable_string)
+            and (.image.manifest_digest | nullable_digest)
+            and (.scan.before == null or (.scan.before | scan))
+            and (.scan.after == null or (.scan.after | scan))
+          end
+        )
+        and (.platforms.amd64 | platform("amd64"))
+        and (.platforms.arm64 | platform("arm64"))
+        and (.supply_chain.rekor_url | nullable_string)
+        and (.supply_chain.attestation_id | nullable_string)
+        and (.supply_chain.sbom_digest | nullable_digest)
+        and (.supply_chain.attestation_bundle_path | nullable_string)
       )
-      and (.platforms.amd64 | platform("amd64"))
-      and (.platforms.arm64 | platform("arm64"))
-      and (.supply_chain.rekor_url | nullable_string)
-      and (.supply_chain.attestation_id | nullable_string)
-      and (.supply_chain.sbom_digest | nullable_digest)
-      and (.supply_chain.attestation_bundle_path | nullable_string)
     ' "$file" >/dev/null; then
     echo "Invalid metrics JSON: $file" >&2
     exit 1

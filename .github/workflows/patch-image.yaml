@@ -67,7 +67,6 @@ on:
 
 permissions:
   contents: write       # push to reports branch
-  actions: read         # download metrics artifacts in the archive workflow
   packages: write       # push images to GHCR
   id-token: write       # cosign keyless signing + actions/attest
   attestations: write   # actions/attest
@@ -822,7 +821,7 @@ jobs:
         run: |
           set -euo pipefail
           OUT="metrics-${SAFE_NAME}-${SOURCE_TAG}.json"
-          STARTED_AT=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq '.run_started_at' 2>/dev/null || true)
+          STARTED_AT=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq '.run_started_at')
           FINALIZE_CONCLUSION="success"
           for outcome in \
             "$HARDEN_OUTCOME" \
@@ -964,7 +963,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          STARTED_AT=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq '.run_started_at' 2>/dev/null || echo "")
+          STARTED_AT=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq '.run_started_at')
           echo "value=${STARTED_AT}" >> "$GITHUB_OUTPUT"
 
       - name: Build minimal failure metrics JSON
@@ -1030,6 +1029,9 @@ jobs:
     name: Archive Metrics
     needs: [scan, patch, finalize, metrics-on-failure]
     if: ${{ always() && !cancelled() && inputs.is-pr != true && needs.scan.outputs.needs-patch == 'true' }}
+    permissions:
+      contents: write
+      actions: read
     uses: ./.github/workflows/metrics-finalize.yaml
     with:
       run-id: ${{ github.run_id }}
