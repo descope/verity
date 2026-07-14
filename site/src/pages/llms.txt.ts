@@ -7,7 +7,7 @@ export function renderLlmsText(prefix: string): string {
 
   return `# Verity
 
-> Self-maintaining registry of security-patched container images. Verity scans, patches, signs, attests, and publishes drop-in replacements at ghcr.io/verity-org.
+> Self-maintaining registry of security-patched container images. Verity scans, patches, signs, attests, and publishes drop-in replacements at verity.supply.
 
 scope: summary
 total_images: ${totalImages}
@@ -19,7 +19,7 @@ full_reference: ${prefix}llms-full.txt
 ## Quick Start
 
 \`\`\`
-docker pull ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
+docker pull verity.supply/prometheus/prometheus:v3.9.1-patched
 \`\`\`
 
 ## Catalog by Category

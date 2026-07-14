@@ -66,7 +66,7 @@ eliminates the risk of accidental dependency changes during a rebuild.
 
 ## Verifying Images
 
-All patched images are verifiable without trusting Verity's registry directly.
+All patched images are verifiable against their canonical GHCR artifact.
 
 ```bash
 # Verify the cosign signature
