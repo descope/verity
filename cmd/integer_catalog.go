@@ -83,7 +83,7 @@ func runIntegerCatalog(_ context.Context, cmd *cli.Command) error {
 		eolFetcher = eol.NewClient()
 	}
 
-	cat, err := catalog.GenerateWithOptions(catalog.Options{
+	cat, err := catalog.GenerateWithOptions(&catalog.Options{
 		ImagesDir:       cmd.String("images-dir"),
 		ReportsDir:      cmd.String("reports-dir"),
 		Registry:        cfg.Target.Registry,

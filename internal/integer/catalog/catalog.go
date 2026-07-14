@@ -78,7 +78,7 @@ type buildReport struct {
 // A non-empty reportsDir that does not exist is an error.
 // eolFetcher may be nil (EOL data falls back to YAML definitions).
 func Generate(imagesDir, reportsDir, registry string, pkgs []apkindex.Package, eolFetcher eol.Fetcher) (*Catalog, error) {
-	return GenerateWithOptions(Options{
+	return GenerateWithOptions(&Options{
 		ImagesDir:  imagesDir,
 		ReportsDir: reportsDir,
 		Registry:   registry,
@@ -88,7 +88,7 @@ func Generate(imagesDir, reportsDir, registry string, pkgs []apkindex.Package, e
 }
 
 // GenerateWithOptions rejects reports that do not match ExpectedBatchID.
-func GenerateWithOptions(options Options) (*Catalog, error) {
+func GenerateWithOptions(options *Options) (*Catalog, error) {
 	if options.ReportsDir != "" {
 		if _, err := os.Stat(options.ReportsDir); err != nil {
 			return nil, fmt.Errorf("reports dir %q: %w", options.ReportsDir, err)

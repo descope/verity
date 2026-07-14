@@ -29,7 +29,7 @@ func TestGenerateWithOptions_rejects_stale_report_when_batch_mismatches(t *testi
 	require.NoError(t, os.WriteFile(reportPath, reportData, 0o644))
 
 	// When: the catalog is generated for the current nightly batch.
-	generated, err := catalog.GenerateWithOptions(catalog.Options{
+	generated, err := catalog.GenerateWithOptions(&catalog.Options{
 		ImagesDir:       imagesDir,
 		ReportsDir:      reportsDir,
 		Registry:        "ghcr.io/verity-org",
