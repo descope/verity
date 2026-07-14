@@ -1,0 +1,24 @@
+---
+import { getRootCatalogPaths, rootCatalogTarget } from "../lib/root-catalog-route.ts";
+
+export const getStaticPaths = getRootCatalogPaths;
+
+const target = rootCatalogTarget(Astro.params.name ?? "", import.meta.env.BASE_URL);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Image Catalog — Verity</title>
+    <meta http-equiv="refresh" content={`0;url=${target}`} />
+    <link rel="canonical" href={target} />
+  </head>
+  <body>
+    <p>Redirecting to <a href={target}>the image catalog entry</a>.</p>
+    <script is:inline define:vars={{ target }}>
+      window.location.replace(target);
+    </script>
+  </body>
+</html>
