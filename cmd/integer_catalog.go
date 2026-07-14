@@ -29,6 +29,10 @@ var integerCatalogCmd = &cli.Command{
 			Usage: "Path to checked-out reports directory (reports branch)",
 		},
 		&cli.StringFlag{
+			Name:  "expected-batch-id",
+			Usage: "Only accept reports produced by this nightly batch",
+		},
+		&cli.StringFlag{
 			Name:    "config",
 			Aliases: []string{"c"},
 			Usage:   "Path to integer.yaml",
@@ -79,13 +83,14 @@ func runIntegerCatalog(_ context.Context, cmd *cli.Command) error {
 		eolFetcher = eol.NewClient()
 	}
 
-	cat, err := catalog.Generate(
-		cmd.String("images-dir"),
-		cmd.String("reports-dir"),
-		cfg.Target.Registry,
-		pkgs,
-		eolFetcher,
-	)
+	cat, err := catalog.GenerateWithOptions(catalog.Options{
+		ImagesDir:       cmd.String("images-dir"),
+		ReportsDir:      cmd.String("reports-dir"),
+		Registry:        cfg.Target.Registry,
+		Packages:        pkgs,
+		EOLFetcher:      eolFetcher,
+		ExpectedBatchID: cmd.String("expected-batch-id"),
+	})
 	if err != nil {
 		return fmt.Errorf("generating catalog: %w", err)
 	}
