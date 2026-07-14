@@ -47,6 +47,11 @@ SUPPORTED_GITHUB_TAGS: Final = {
     "REL_${{vars.mangled-package-version}}",
 }
 
+WORKFLOW_IMAGE_PATTERN: Final = re.compile(
+    r"(?P<image>[A-Za-z0-9.-]+(?:\/[A-Za-z0-9._-]+)+):[^\s@]+@sha256:[a-f0-9]{64}"
+    r"|--driver-opt image=(?P<driver_image>[A-Za-z0-9._/-]+):[^\\\s]+"
+)
+
 
 def require(errors: list[str], condition: bool, message: str) -> None:
     if not condition:
@@ -55,6 +60,52 @@ def require(errors: list[str], condition: bool, message: str) -> None:
 
 def relative(path: Path) -> str:
     return path.relative_to(ROOT).as_posix()
+
+
+def has_directly_preceding_marker(text: str, offset: int, marker: str) -> bool:
+    preceding_lines = text[:offset].rstrip().splitlines()
+    return bool(preceding_lines) and marker in preceding_lines[-1]
+
+
+def workflow_image_name(match: re.Match[str]) -> str:
+    image = match.group("image") or match.group("driver_image")
+    if image is None:
+        raise RuntimeError("workflow image match contains no image name")
+    return image
+
+
+def self_test() -> None:
+    errors: list[str] = []
+    marker = (
+        "# renovate: datasource=github-tags depName=example/project "
+        "versioning=semver-coerced"
+    )
+    misplaced = f'{marker}\nversions:\n  "1.2.3":\n    latest: true\n'
+    version_offset = misplaced.index('  "1.2.3"')
+    require(
+        errors,
+        not has_directly_preceding_marker(misplaced, version_offset, marker),
+        "misplaced latest marker accepted",
+    )
+
+    paired = f'versions:\n  {marker}\n  "1.2.3":\n    latest: true\n'
+    paired_offset = paired.index('  "1.2.3"')
+    require(
+        errors,
+        has_directly_preceding_marker(paired, paired_offset, marker),
+        "paired latest marker rejected",
+    )
+
+    workflow = "image: ghcr.io/example/tool:1.2.3@sha256:" + "a" * 64
+    match = WORKFLOW_IMAGE_PATTERN.search(workflow)
+    require(
+        errors,
+        match is not None
+        and workflow_image_name(match) == "ghcr.io/example/tool",
+        "workflow digest pin not detected",
+    )
+    if errors:
+        raise AssertionError("; ".join(errors))
 
 
 def validate_config(errors: list[str]) -> None:
@@ -167,7 +218,7 @@ def validate_image_catalog(errors: list[str]) -> None:
         )
         require(
             errors,
-            marker in text,
+            has_directly_preceding_marker(text, latest_match.start(), marker),
             f"{relative(path)}: source-maintained latest version lacks Renovate marker",
         )
 
@@ -184,23 +235,29 @@ def validate_image_catalog(errors: list[str]) -> None:
 
 
 def validate_workflow_images(errors: list[str]) -> None:
-    image_pattern = re.compile(r"--driver-opt image=([A-Za-z0-9._/-]+):[^\\\s]+")
     for path in sorted((ROOT / ".github/workflows").glob("*.yaml")):
         lines = path.read_text().splitlines()
         for index, line in enumerate(lines):
-            match = image_pattern.search(line)
+            match = WORKFLOW_IMAGE_PATTERN.search(line)
             if match is None:
                 continue
-            marker = f"# renovate: datasource=docker depName={match.group(1)}"
             preceding = lines[max(0, index - 8) : index]
+            image = workflow_image_name(match)
+            marker = f"# renovate: datasource=docker depName={image}"
+            has_marker = (
+                any(marker in candidate for candidate in preceding)
+                if match.group("driver_image") is not None
+                else any("# renovate: datasource=docker depName=" in candidate for candidate in preceding)
+            )
             require(
                 errors,
-                any(marker in candidate for candidate in preceding),
+                has_marker,
                 f"{relative(path)}:{index + 1}: image pin lacks {marker}",
             )
 
 
 def main() -> int:
+    self_test()
     errors: list[str] = []
     validate_config(errors)
     validate_recipes(errors)

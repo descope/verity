@@ -94,8 +94,16 @@ def main() -> None:
     )
     require(
         "batch_id: ${{ github.run_id }}-${{ github.run_attempt }}" in integer_orchestrator
-        and "concurrency:" in integer_orchestrator,
+        and "concurrency:" in integer_orchestrator
+        and 'github.event_name }}" = "schedule"' in integer_orchestrator
+        and "PLAN_ARGS+=(--force)" in integer_orchestrator,
         "Integer orchestrator must serialize batch reports and pass their freshness identifier to children",
+    )
+    require(
+        "permissions:\n  contents: read" in integer_orchestrator
+        and "build:\n" in integer_orchestrator
+        and "      packages: write" in integer_orchestrator,
+        "Integer publishing permissions must be scoped to the reusable build job",
     )
     require(
         "bash .github/scripts/wait-for-workflows.sh patch-image.yaml" in chart_gen
