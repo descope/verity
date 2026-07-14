@@ -15,37 +15,63 @@ This repository uses Renovate to automatically update dependencies and trigger t
 - Patch updates auto-merge
 - Minor/major updates require review
 
-### 3. Docker Images in Workflows
+### 3. Docker Images in Workflows and Compose
 
-Custom managers track the BuildKit references that carry the required
-metadata:
+Custom regex managers track Docker references embedded in workflow shell
+blocks, including both digest pins and `docker buildx --driver-opt image=...`
+tags. Renovate's built-in `docker-compose` manager is restricted to the root
+`docker-compose.yaml`; `images/docker-compose.yaml` is an Integer catalog entry,
+not a Compose file.
 
-- The mirrored `buildx-stable-1` digest consumed by `orchestrator.yaml` /
-  `patch-image.yaml` — picked up by the `customManagers` regex rule which
-  matches lines with a preceding `# renovate: datasource=docker depName=...`
-  comment and a `...:TAG@sha256:...` pin.
-- The `moby/buildkit:v0.29.0` image in `docker-compose.yaml` — picked up
-  automatically by Renovate's built-in `docker-compose` manager.
+Every workflow shell reference must have a preceding
+`# renovate: datasource=docker depName=...` marker. The coverage validator
+rejects unannotated `--driver-opt image=...` pins.
 
-Not currently tracked:
+### 4. Bespoke Integer Packages
 
-- The `--driver-opt image=moby/buildkit:…` pin in `pr-test.yaml`. It lives
-  inside a shell command, has no digest, and has no `# renovate:` marker, so
-  the regex custom manager doesn't match it. Bump it by hand when needed, or
-  add a `# renovate:`-annotated digest pin if you want it auto-managed.
+Custom managers extract every externally maintained recipe version under
+`packages/bespoke/`:
 
-### 4. Tool Versions (mise.toml)
+- GitHub tag-based recipes, including OpenSSL and Linkerd tag prefixes
+- PostgreSQL `REL_X_Y` tags through a custom GitHub-tags datasource
+- Airflow and embedded Python pins through PyPI
+- embedded Go module remediation pins through the Go datasource
+- HAProxy release tags
 
-Custom manager tracks:
+When an image's `latest: true` key is the exact version of a bespoke GitHub
+recipe, the image key carries the same Renovate dependency annotation. Renovate
+therefore updates the recipe and its consuming image definition on the same
+branch.
 
-- Go version
-- golangci-lint version
+Recipe updates require Dependency Dashboard approval because package bumps may
+also require expected-commit, checksum, vendored dependency, epoch, or
+`packages/upstream.lock.json` maintenance before they are buildable.
+
+The two locally versioned recipes with no external release source are
+deliberately excluded: `logstash-env2yaml` and
+`verity-opensearch-dashboards-config`.
+
+### 5. Integer Image Version Streams
+
+The `versions:` keys in `images/*.yaml` are a set of Wolfi package streams, not
+a single dependency value. Renovate must not replace every older stream with
+the newest one. The daily `integer-sync.yaml` workflow runs
+`verity integer sync --apply` against Wolfi APKINDEX and opens or updates a PR
+that adds newly published streams while preserving supported older streams.
+Each PR is capped at 20 changed image definitions to keep Integer build and
+Trivy validation bounded; subsequent runs advance after the current batch is
+merged.
+
+### 6. Tool Versions (mise.toml)
+
+The built-in mise manager tracks all tool pins in `mise.toml`.
 
 ## Scheduling
 
-- Runs before 4am UTC on Mondays
+- Renovate runs without a repository schedule restriction
 - Security updates run immediately
 - Max 3 concurrent PRs to avoid overwhelming CI
+- Integer package-stream discovery runs daily at 01:30 UTC
 
 ## Auto-merge
 
@@ -119,10 +145,15 @@ renovate-config-validator .github/renovate.json
 # https://app.renovatebot.com/config-validator
 ```
 
-Dry-run:
+Validate effective extraction locally:
 
 ```bash
-LOG_LEVEL=debug renovate --dry-run --platform=github your-org/verity
+RENOVATE_PLATFORM=local \
+RENOVATE_DRY_RUN=extract \
+RENOVATE_REQUIRE_CONFIG=required \
+renovate
+
+python3 .github/scripts/validate-renovate-coverage.py
 ```
 
 ## Customization

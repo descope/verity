@@ -7,9 +7,11 @@
     "npm",
     "mise",
     "docker-compose",
-    "helmv3"
+    "helmv3",
+    "custom.regex"
   ],
   "labels": ["dependencies"],
+  "ignorePaths": ["images/docker-compose.yaml"],
   "rangeStrategy": "pin",
   "separateMajorMinor": true,
   "separateMultipleMajor": true,
@@ -21,20 +23,141 @@
       "/^\\.github/actions/[^/]+/action\\.ya?ml$/"
     ]
   },
+  "docker-compose": {
+    "managerFilePatterns": ["/^docker-compose\\.ya?ml$/"]
+  },
   "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Annotated dependencies",
+      "managerFilePatterns": ["/^(?:images|packages)/(?:.*\\/)?[^/]+\\.ya?ml$/"],
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\s+versioning=(?<versioning>\\S+)\\n\\s*(?:version:\\s*[\\\"']?|[\\\"']?)(?<currentValue>[\\w.+-]+)"
+      ],
+      "datasourceTemplate": "{{{datasource}}}",
+      "depNameTemplate": "{{{depName}}}",
+      "versioningTemplate": "{{{versioning}}}"
+    },
+    {
+      "customType": "regex",
+      "description": "Bespoke GitHub package releases",
+      "managerFilePatterns": ["/^packages/bespoke/(?:locked/)?[^/]+\\.ya?ml$/"],
+      "matchStrings": [
+        "package:\\n\\s+name:\\s*[^\\n]+\\n\\s+version:\\s*[\\\"']?(?<currentValue>[\\w.+-]+)[\\\"']?[\\s\\S]*?repository:\\s*https://github\\.com/(?<depName>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\\.git)?\\s*\\n\\s+tag:\\s*v?\\$\\{\\{package\\.version\\}\\}",
+        "package:\\n\\s+name:\\s*[^\\n]+\\n\\s+version:\\s*[\\\"']?(?<currentValue>[\\w.+-]+)[\\\"']?[\\s\\S]*?tag:\\s*v?\\$\\{\\{package\\.version\\}\\}\\s*\\n\\s+expected-commit:\\s*[^\\n]+\\n\\s+repository:\\s*https://github\\.com/(?<depName>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\\.git)?"
+      ],
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^v?(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "description": "Bespoke prefixed GitHub package releases",
+      "managerFilePatterns": ["/^packages/bespoke/openssl-provider-fips\\.yaml$/"],
+      "matchStrings": [
+        "package:\\n\\s+name:\\s*[^\\n]+\\n\\s+version:\\s*[\\\"']?(?<currentValue>[\\w.+-]+)[\\\"']?[\\s\\S]*?repository:\\s*https://github\\.com/(?<depName>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\\.git)?\\s*\\n\\s+tag:\\s*openssl-\\$\\{\\{package\\.version\\}\\}"
+      ],
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^openssl-(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "description": "PostgreSQL package releases",
+      "managerFilePatterns": ["/^packages/bespoke/postgresql-(?:14|15)\\.yaml$/"],
+      "matchStrings": [
+        "package:\\n\\s+name:\\s*[^\\n]+\\n\\s+version:\\s*[\\\"']?(?<currentValue>[\\w.+-]+)[\\\"']?"
+      ],
+      "depNameTemplate": "postgres/postgres",
+      "datasourceTemplate": "custom.postgresql-tags",
+      "versioningTemplate": "semver-coerced"
+    },
+    {
+      "customType": "regex",
+      "description": "Airflow package release",
+      "managerFilePatterns": ["/^packages/bespoke/airflow-3\\.yaml$/"],
+      "matchStrings": [
+        "package:\\n\\s+name:\\s*airflow-3\\n\\s+version:\\s*[\\\"']?(?<currentValue>[\\w.+-]+)[\\\"']?"
+      ],
+      "depNameTemplate": "apache-airflow",
+      "datasourceTemplate": "pypi",
+      "versioningTemplate": "pep440"
+    },
+    {
+      "customType": "regex",
+      "description": "HAProxy package releases",
+      "managerFilePatterns": ["/^packages/bespoke/haproxy-3\\.[01]\\.yaml$/"],
+      "matchStrings": [
+        "package:\\n\\s+name:\\s*[^\\n]+\\n\\s+version:\\s*[\\\"']?(?<currentValue>[\\w.+-]+)[\\\"']?"
+      ],
+      "depNameTemplate": "haproxy/haproxy",
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^v?(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "description": "Linkerd edge package releases",
+      "managerFilePatterns": ["/^packages/bespoke/linkerd2-cli-25\\.yaml$/"],
+      "matchStrings": [
+        "package:\\n\\s+name:\\s*linkerd2-cli\\n\\s+version:\\s*[\\\"']?(?<currentValue>[\\w.+-]+)[\\\"']?"
+      ],
+      "depNameTemplate": "linkerd/linkerd2",
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^edge-(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "description": "Python packages embedded in bespoke recipes",
+      "managerFilePatterns": ["/^packages/bespoke/(?:.*\\/)?[^/]+\\.ya?ml$/"],
+      "matchStrings": [
+        "[\\\"'](?<depName>[A-Za-z0-9_.-]+)==(?<currentValue>[0-9][A-Za-z0-9_.+-]*)[\\\"']"
+      ],
+      "datasourceTemplate": "pypi",
+      "versioningTemplate": "pep440"
+    },
+    {
+      "customType": "regex",
+      "description": "Go modules embedded in bespoke recipes",
+      "managerFilePatterns": ["/^packages/bespoke/(?:.*\\/)?[^/]+\\.ya?ml$/"],
+      "matchStrings": [
+        "(?<depName>(?:github\\.com|golang\\.org|go\\.opentelemetry\\.io|go\\.mongodb\\.org)/[A-Za-z0-9_./-]+)@v(?<currentValue>[0-9][A-Za-z0-9_.+-]*)"
+      ],
+      "datasourceTemplate": "go",
+      "versioningTemplate": "semver"
+    },
     {
       "customType": "regex",
       "description": "Docker image digest pins in workflow env/run blocks",
       "managerFilePatterns": ["/^\\.github/workflows/[^/]+\\.ya?ml$/"],
       "matchStrings": [
-        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\n.*?:\\s*\\S+?:(?<currentValue>[\\w.-]+)@(?<currentDigest>sha256:[a-f0-9]+)",
-        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\n[^\\n]+\\s\\S+?:(?<currentValue>[\\w.-]+)@(?<currentDigest>sha256:[a-f0-9]+)"
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\n[^\\n]*?:(?<currentValue>[\\w.-]+)@(?<currentDigest>sha256:[a-f0-9]+)"
+      ],
+      "datasourceTemplate": "{{{datasource}}}",
+      "depNameTemplate": "{{{depName}}}",
+      "versioningTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "Docker image tags in workflow run blocks",
+      "managerFilePatterns": ["/^\\.github/workflows/[^/]+\\.ya?ml$/"],
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\n(?:[^\\n]*\\n){0,8}?[^\\n]*?image=[^\\s:]+:(?<currentValue>[\\w.-]+)"
       ],
       "datasourceTemplate": "{{{datasource}}}",
       "depNameTemplate": "{{{depName}}}",
       "versioningTemplate": "docker"
     }
   ],
+  "customDatasources": {
+    "postgresql-tags": {
+      "defaultRegistryUrlTemplate": "https://api.github.com/repos/postgres/postgres/tags?per_page=100",
+      "transformTemplates": [
+        "{\"releases\": $[name ~> /^REL_[0-9]+_[0-9]+$/].{\"version\": $replace($substringAfter(name, \"REL_\"), /_/, \".\")}}"
+      ]
+    }
+  },
   "packageRules": [
     {
       "description": "Go dependencies",
@@ -77,10 +200,21 @@
     {
       "description": "Infrastructure images (BuildKit, registry)",
       "matchManagers": ["custom.regex", "docker-compose"],
+      "matchFileNames": [".github/workflows/**", "docker-compose.yaml"],
       "labels": ["infrastructure", "dependencies"],
       "groupName": "infrastructure images",
       "semanticCommitType": "chore",
       "semanticCommitScope": "ci"
+    },
+    {
+      "description": "Bespoke package sources and embedded dependencies",
+      "matchManagers": ["custom.regex"],
+      "matchFileNames": ["packages/bespoke/**"],
+      "labels": ["integer", "dependencies"],
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "deps",
+      "automerge": false,
+      "dependencyDashboardApproval": true
     },
     {
       "description": "Helm chart dependencies — one PR per chart (no groupName) so chart-integration tests exactly the bumped chart and a failure only blocks that chart's update",
