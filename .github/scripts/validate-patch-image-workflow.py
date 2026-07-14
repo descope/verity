@@ -18,8 +18,28 @@ def self_test() -> None:
         "commented workflow commands must not satisfy guards",
     )
     require(
+        "validate-metrics-json_test.sh" not in uncomment_yaml(
+            "run: # bash .github/scripts/validate-metrics-json_test.sh"
+        ),
+        "inline YAML comments must not satisfy guards",
+    )
+    require(
         named_step_body("steps:\n", "Upload metrics artifact") is None,
         "missing workflow steps must return a controlled result",
+    )
+    bounded_step = named_step_body(
+        """      - name: Upload metrics artifact
+        with:
+          retention-days: 1
+      - name: Later step
+        with:
+          retention-days: 7
+""",
+        "Upload metrics artifact",
+    )
+    require(
+        bounded_step is not None and "retention-days: 7" not in bounded_step,
+        "step lookup must stop at the next sibling step",
     )
     archive = """  archive-metrics:
     secrets:
@@ -35,6 +55,15 @@ def self_test() -> None:
         ),
         "additional archive secrets must be rejected",
     )
+    for top_level in (
+        "permissions:\n  actions: write\n",
+        "permissions: write-all\n",
+        "permissions: read-all\n",
+    ):
+        require(
+            top_level_grants_actions(top_level),
+            "top-level Actions permission forms must be detected",
+        )
 
 
 def require(condition: bool, message: str) -> None:
@@ -44,16 +73,53 @@ def require(condition: bool, message: str) -> None:
 
 
 def uncomment_yaml(text: str) -> str:
-    return "\n".join(
-        line for line in text.splitlines() if not line.lstrip().startswith("#")
-    )
+    lines: list[str] = []
+    for line in text.splitlines():
+        single_quoted = False
+        double_quoted = False
+        comment_at: int | None = None
+        for index, character in enumerate(line):
+            if character == "'" and not double_quoted:
+                single_quoted = not single_quoted
+            elif character == '"' and not single_quoted:
+                double_quoted = not double_quoted
+            elif (
+                character == "#"
+                and not single_quoted
+                and not double_quoted
+                and (index == 0 or line[index - 1].isspace())
+            ):
+                comment_at = index
+                break
+        active = line if comment_at is None else line[:comment_at]
+        if active.strip():
+            lines.append(active.rstrip())
+    return "\n".join(lines)
 
 
 def named_step_body(text: str, step_name: str) -> str | None:
-    parts = text.rsplit(f"- name: {step_name}", 1)
-    if len(parts) != 2:
+    lines = text.splitlines()
+    start = next(
+        (
+            index
+            for index, line in enumerate(lines)
+            if line.lstrip() == f"- name: {step_name}"
+        ),
+        None,
+    )
+    if start is None:
         return None
-    return parts[1]
+    indent = len(lines[start]) - len(lines[start].lstrip())
+    end = len(lines)
+    for index in range(start + 1, len(lines)):
+        line = lines[index]
+        if (
+            len(line) - len(line.lstrip()) == indent
+            and line.lstrip().startswith("- name:")
+        ):
+            end = index
+            break
+    return "\n".join(lines[start:end])
 
 
 def has_only_archive_token(job: str) -> bool:
@@ -63,6 +129,17 @@ def has_only_archive_token(job: str) -> bool:
     return secret_lines == [
         "archive-token: ${{ secrets.GITHUB_TOKEN }}"
     ] and "secrets: inherit" not in job
+
+
+def top_level_grants_actions(text: str) -> bool:
+    for line in uncomment_yaml(text).splitlines():
+        stripped = line.strip()
+        if "actions:" in stripped or stripped in {
+            "permissions: read-all",
+            "permissions: write-all",
+        }:
+            return True
+    return False
 
 
 def job_body(text: str, job: str) -> str:
@@ -148,7 +225,7 @@ def main() -> None:
     )
     top_level = uncommented.split("jobs:", 1)[0]
     require(
-        "actions: read" not in top_level
+        not top_level_grants_actions(top_level)
         and "permissions:\n      contents: write\n      actions: read" in archive,
         "artifact read access must be scoped to the archive job",
     )
