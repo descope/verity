@@ -46,6 +46,7 @@ lint-workflows:
 	@which actionlint > /dev/null || (echo "actionlint not found. Run: make install-tools" && exit 1)
 	actionlint
 	python3 .github/scripts/validate-patch-image-workflow.py
+	bash .github/scripts/validate-metrics-json_test.sh
 	python3 .github/scripts/validate-integer-build-image-workflow.py
 	python3 .github/scripts/validate-chart-integration-workflow.py
 	python3 .github/scripts/validate-nightly-workflows.py

@@ -150,5 +150,5 @@ All fields marked nullable may be null when the upstream step was skipped or fai
 
 ## Producer / Consumer
 
-- **Producer**: `.github/workflows/patch-image.yaml` (final consolidate step), via `metrics-finalize.yaml` (workflow_run trigger)
+- **Producer**: `.github/workflows/patch-image.yaml` (final consolidate step), via the reusable `metrics-finalize.yaml` workflow
 - **Consumer**: `verity metrics` subcommand (Phase 4); Honeycomb dataset `verity-ci` (live observability via inline `otel-cli` spans, separate from this archive)
