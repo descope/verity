@@ -36,6 +36,9 @@ func ResolveSpec(imagesDir, image, version, imageType string) (Spec, error) {
 	if !ok {
 		return Spec{}, fmt.Errorf("%w: image %q type %q", errImageTypeNotFound, image, imageType)
 	}
+	if tmpl.Melange == nil {
+		return Spec{}, nil
+	}
 	if meta, ok := def.Versions[version]; len(def.Versions) > 0 && !ok {
 		return Spec{}, fmt.Errorf("%w: image %q version %q", errImageVersionNotFound, image, version)
 	} else if ok && slices.Contains(meta.SkipTypes, imageType) {

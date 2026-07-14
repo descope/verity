@@ -44,10 +44,11 @@ jobs:
           ref: main
 
       - name: Wait for nightly producers
+        id: wait-producers
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WAIT_BRANCH: main
-        run: bash .github/scripts/wait-for-workflows.sh patch-image.yaml integer-build-image.yaml chart-gen.yaml
+        run: bash .github/scripts/wait-for-workflows.sh patch-image.yaml integer-orchestrator.yaml chart-gen.yaml
 
       - name: Checkout reports branch
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -146,6 +147,7 @@ jobs:
           ./verity integer catalog \
             --images-dir images \
             --reports-dir reports-branch/reports \
+            --expected-batch-id "${{ steps.wait-producers.outputs.integer_orchestrator_batch_id }}" \
             --output integer-catalog.json
 
           cp integer-catalog.json site/src/data/integer-catalog.json

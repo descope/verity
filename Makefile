@@ -49,6 +49,7 @@ lint-workflows:
 	python3 .github/scripts/validate-integer-build-image-workflow.py
 	python3 .github/scripts/validate-chart-integration-workflow.py
 	python3 .github/scripts/validate-nightly-workflows.py
+	python3 .github/scripts/validate-renovate-coverage.py
 	bash .github/scripts/validate-wait-for-workflows.sh
 	bash .github/scripts/validate-retry-helpers.sh
 
@@ -60,7 +61,7 @@ lint-yaml:
 # Lint shell scripts
 lint-shell:
 	@which shellcheck > /dev/null || (echo "shellcheck not found. Run: make install-tools" && exit 1)
-	shellcheck .github/scripts/*.sh scripts/*.sh
+	find .github/scripts scripts -maxdepth 1 -type f -name '*.sh' -print0 | xargs -0 shellcheck
 
 # Lint markdown files
 lint-markdown:
