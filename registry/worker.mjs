@@ -33,7 +33,7 @@ export default {
     try {
       const token = await anonymousPullToken(`${GHCR_ORGANIZATION}/${route.aliasRepository}`);
       const upstream = await fetch(`${GHCR}/v2/${GHCR_ORGANIZATION}/${route.aliasRepository}${route.suffix}${url.search}`, {
-        method: request.method === "HEAD" ? "GET" : request.method,
+        method: request.method,
         headers: upstreamRequestHeaders(request.headers, token),
         redirect: "manual",
         cf: { cacheTtl: 0, cacheEverything: false },

@@ -55,7 +55,7 @@ test("worker proxies alias manifests with a namespaced GHCR token", async () => 
   }
 });
 
-test("worker synthesizes a bodyless HEAD response from an upstream manifest GET", async () => {
+test("worker forwards HEAD upstream and returns a bodyless manifest response", async () => {
   const fetch = globalThis.fetch;
   const calls = [];
   globalThis.fetch = async (input, init = {}) => {
@@ -73,7 +73,7 @@ test("worker synthesizes a bodyless HEAD response from an upstream manifest GET"
 
     assert.equal(response.status, 200);
     assert.equal(await response.text(), "");
-    assert.equal(calls[1].init.method, "GET");
+    assert.equal(calls[1].init.method, "HEAD");
     assert.equal(response.headers.get("Docker-Content-Digest"), "sha256:test");
   } finally {
     globalThis.fetch = fetch;
