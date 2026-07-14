@@ -54,6 +54,20 @@ def self_test() -> None:
         bounded_step is not None and "retention-days: 7" not in bounded_step,
         "step lookup must stop at the next sibling step",
     )
+    unnamed_sibling = named_step_body(
+        """      - name: Upload metrics artifact
+        with:
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          retention-days: 1
+""",
+        "Upload metrics artifact",
+    )
+    require(
+        unnamed_sibling is not None and "retention-days: 1" not in unnamed_sibling,
+        "step lookup must stop at unnamed sibling steps",
+    )
     require(
         named_step_body(
             """      - name: Upload metrics artifact
@@ -84,8 +98,11 @@ def self_test() -> None:
     )
     for top_level in (
         "permissions:\n  actions: write\n",
+        'permissions:\n  "actions": read\n',
+        "permissions:\n  'actions': write\n",
         "permissions: write-all\n",
         "permissions: read-all\n",
+        '"permissions": "write-all"\n',
     ):
         require(
             top_level_grants_actions(top_level),

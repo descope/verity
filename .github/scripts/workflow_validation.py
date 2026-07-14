@@ -48,9 +48,10 @@ def named_step_body(text: str, step_name: str) -> str | None:
     end = len(lines)
     for index in range(start + 1, len(lines)):
         line = lines[index]
+        stripped = line.lstrip()
         if (
-            len(line) - len(line.lstrip()) == indent
-            and line.lstrip().startswith("- name:")
+            len(line) - len(stripped) == indent
+            and (stripped == "-" or stripped.startswith("- "))
         ):
             end = index
             break
@@ -69,9 +70,14 @@ def has_only_archive_token(job: str) -> bool:
 def top_level_grants_actions(text: str) -> bool:
     for line in uncomment_yaml(text).splitlines():
         stripped = line.strip()
-        if "actions:" in stripped or stripped in {
-            "permissions: read-all",
-            "permissions: write-all",
-        }:
+        key, separator, value = stripped.partition(":")
+        if not separator:
+            continue
+        normalized_key = key.strip().strip("'\"")
+        normalized_value = value.strip().strip("'\"")
+        if normalized_key == "actions" or (
+            normalized_key == "permissions"
+            and normalized_value in {"read-all", "write-all"}
+        ):
             return True
     return False
