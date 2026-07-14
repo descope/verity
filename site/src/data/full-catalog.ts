@@ -1,4 +1,4 @@
-export const REGISTRY = "ghcr.io/verity-org";
+export const REGISTRY = "verity.supply";
 
 export type ImageSource = "copa" | "integer";
 

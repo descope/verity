@@ -33,13 +33,13 @@ export const GET: APIRoute = ({ site }) => {
 
   const content = `# Verity — Security-Patched Container Images
 
-> Self-maintaining registry of security-patched container images. Scans, patches, signs, and publishes drop-in replacements to GitHub Container Registry.
+> Self-maintaining registry of security-patched container images. Scans, patches, signs, and publishes drop-in replacements to \`verity.supply\`.
 
 ## What Is Verity?
 
 Container images accumulate CVEs daily. Upstream maintainers patch on their own schedule — if at all. Verity eliminates that trade-off by continuously scanning container images, patching them in-place using [Copa](https://github.com/project-copacetic/copacetic), and publishing signed, attested replacements.
 
-**Registry**: \`ghcr.io/verity-org\`
+**Registry**: \`verity.supply\`
 **Pipeline**: Runs daily at 02:00 UTC via GitHub Actions
 **Signing**: cosign keyless (Sigstore OIDC) + SLSA L3 provenance + CycloneDX SBOM
 
@@ -48,12 +48,12 @@ Container images accumulate CVEs daily. Upstream maintainers patch on their own 
 Replace your image reference:
 
 \`\`\`bash
-docker pull ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
+docker pull verity.supply/prometheus/prometheus:v3.9.1-patched
 \`\`\`
 
 \`\`\`yaml
 # Kubernetes
-image: ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
+image: verity.supply/prometheus/prometheus:v3.9.1-patched
 \`\`\`
 
 ## Catalog Summary
@@ -68,7 +68,7 @@ ${categorySummary}
 2. **Scan** — Trivy detects known CVEs
 3. **Patch** — Copa fixes OS packages in-place (no rebuild)
 4. **Sign** — cosign + SLSA L3 + CycloneDX SBOM attestations
-5. **Publish** — Pushed to \`ghcr.io/verity-org\`
+5. **Publish** — Pushed to \`verity.supply\`
 
 ## Supply Chain Attestations
 

@@ -10,7 +10,7 @@ import { getIntegerImage } from "../../data/integer-catalog.ts";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import type { IntegerImage, IntegerVariant, IntegerVersion, SiteImage } from "../../lib/catalog.ts";
 import { getAllImages } from "../../lib/catalog.ts";
-import { extractVersionFromRef, patchedRefToName } from "../../lib/refs.ts";
+import { extractVersionFromRef, patchedRefToName, toPublicRef } from "../../lib/refs.ts";
 
 interface IntegerDataWithRegistry extends IntegerImage {
   registry: string;
@@ -109,7 +109,7 @@ export function getStaticPaths() {
 const { image, category, scanData, allScanData, integerData, hardenedEquivalent } = Astro.props;
 const base = import.meta.env.BASE_URL;
 const pullRef = scanData?.patchedRef
-  ? stripTag(scanData.patchedRef)
+  ? toPublicRef(stripTag(scanData.patchedRef))
   : `${REGISTRY}/${image.source === "integer" ? (image.integerName ?? image.name) : upstreamPath(image)}`;
 const dockerPull = `docker pull ${pullRef}`;
 
@@ -271,8 +271,10 @@ const hasFips =
                     )}
                   </div>
                   <code class="text-xs text-verity-text-muted break-all">
-                    {defaultVariant?.ref ??
-                      `${integerData.registry || REGISTRY}/${image.integerName ?? image.name}:${version.version}`}
+                    {toPublicRef(
+                      defaultVariant?.ref ??
+                        `${integerData.registry || REGISTRY}/${image.integerName ?? image.name}:${version.version}`
+                    )}
                   </code>
                   {version.variants.map((variant) => (
                     <div class="flex flex-wrap items-center gap-1 mt-1.5">
@@ -282,7 +284,9 @@ const hasFips =
                         </span>
                       )}
                       {variant.tags.map((tag) => {
-                        const fullRef = `${integerData.registry || REGISTRY}/${image.integerName ?? image.name}:${tag}`;
+                        const fullRef = toPublicRef(
+                          `${integerData.registry || REGISTRY}/${image.integerName ?? image.name}:${tag}`
+                        );
                         return (
                           <button
                             class="tag-copy-btn text-[10px] px-1.5 py-0.5 rounded bg-verity-void border border-verity-border text-verity-text-muted font-mono hover:border-verity-nucleus hover:text-verity-nucleus transition-colors cursor-pointer"

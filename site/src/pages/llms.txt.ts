@@ -8,7 +8,7 @@ export const GET: APIRoute = ({ site }) => {
 
   const content = `# Verity
 
-> Self-maintaining registry of security-patched container images. Verity continuously scans container images for CVEs, patches them in-place using Copa (no Dockerfile rebuild required), signs with cosign/Sigstore keyless OIDC, attests with SLSA L3 build provenance and CycloneDX SBOMs, and publishes signed drop-in replacements to GitHub Container Registry at ghcr.io/verity-org.
+> Self-maintaining registry of security-patched container images. Verity continuously scans container images for CVEs, patches them in-place using Copa (no Dockerfile rebuild required), signs with cosign/Sigstore keyless OIDC, attests with SLSA L3 build provenance and CycloneDX SBOMs, and publishes signed drop-in replacements to \`verity.supply\`.
 
 Verity covers ${totalImages} container images across ${totalCategories} categories: languages & build tools, web servers & proxies, databases & caching, messaging & streaming, Kubernetes & orchestration, service mesh & networking, monitoring & observability, logging, CI/CD & GitOps, security & identity, policy & compliance, cert management, data & ML, and base & utilities.
 
@@ -18,7 +18,7 @@ The patching pipeline runs daily at 02:00 UTC via GitHub Actions. Every publishe
 
 Replace your image reference — that's it:
 \`\`\`
-docker pull ghcr.io/verity-org/prometheus/prometheus:v3.9.1-patched
+docker pull verity.supply/prometheus/prometheus:v3.9.1-patched
 \`\`\`
 
 ## Documentation

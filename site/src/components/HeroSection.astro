@@ -2,6 +2,7 @@
 import { copaCount, integerCount, totalCategories, totalImages } from "../data/full-catalog.ts";
 import { catalog } from "../lib/catalog.ts";
 import { getChartsCatalog } from "../lib/charts.ts";
+import { toPublicRef } from "../lib/refs.ts";
 import CopyButton from "./CopyButton.astro";
 
 const base = import.meta.env.BASE_URL;
@@ -11,7 +12,9 @@ const chartCount = chartsCatalog.charts.length;
 const exampleImage =
   catalog.images.find((img) => img.beforeVulns.total - img.afterVulns.total > 0) ??
   catalog.images.at(0);
-const exampleRef = exampleImage?.patchedRef ?? "ghcr.io/verity-org/prometheus/prometheus:v3.9.1";
+const exampleRef = toPublicRef(
+  exampleImage?.patchedRef ?? "ghcr.io/verity-org/prometheus/prometheus:v3.9.1"
+);
 const pullCmd = `docker pull ${exampleRef}`;
 
 const pipelineSteps = [
@@ -53,7 +56,7 @@ const pipelineSteps = [
         >Copa</a
       > — no Dockerfile rebuild — and publishes signed, attested, drop-in replacements to <code
         class="font-[var(--font-code)] bg-verity-surface border border-verity-border rounded-sm px-1.5 py-0.5 text-[13px] text-verity-nucleus"
-        >ghcr.io/verity-org</code
+        >verity.supply</code
       >.
     </p>
 
@@ -222,7 +225,7 @@ const pipelineSteps = [
         <div>
           <span class="text-verity-text">Publish</span>
           <span class="text-verity-text-muted"> — pushed to </span>
-          <code class="text-verity-text-primary text-xs">ghcr.io/verity-org</code>
+          <code class="text-verity-text-primary text-xs">verity.supply</code>
         </div>
       </div>
       <div class="mt-4 pt-3 border-t border-verity-border text-xs text-verity-text-muted">

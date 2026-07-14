@@ -184,7 +184,7 @@ gh attestation verify \\
 1. **Discover** — Container images enumerated from \`values.yaml\`
 2. **Scan** — Trivy scans each image for OS-level vulnerabilities
 3. **Patch** — Copa patches fixable CVEs in-place on ephemeral runners
-4. **Push** — Patched images pushed to GHCR
+4. **Push** — Patched images pushed to GHCR and exposed for pulls through \`verity.supply\`
 5. **Sign** — Cosign signs via keyless OIDC; signatures logged in Rekor
 6. **Attest** — SLSA provenance, CycloneDX SBOM, and vulnerability reports attached
 
