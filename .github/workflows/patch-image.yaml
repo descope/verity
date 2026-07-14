@@ -577,6 +577,22 @@ jobs:
             echo "FINAL_REPO=${FINAL_REPO}"
           } >> "$GITHUB_ENV"
 
+      - name: Resolve target manifest
+        id: target
+        if: ${{ !cancelled() && inputs.is-pr == false }}
+        env:
+          IMAGE_NAME: ${{ inputs.image-name }}
+          SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
+          TARGET_REGISTRY: ${{ inputs.target-registry }}
+        run: |
+          set -euo pipefail
+          FINAL_TAG="${TARGET_REGISTRY}/${IMAGE_NAME}:${SOURCE_TAG}"
+          DIGEST=$(crane digest "$FINAL_TAG")
+          {
+            echo "digest=${DIGEST}"
+            echo "final-tag=${FINAL_TAG}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Sign manifest with cosign
         id: cosign-sign
         if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false
@@ -663,7 +679,7 @@ jobs:
             --name "patch-image.finalize" \
             --service verity-ci \
             --kind internal \
-            --attrs "image=${{ inputs.image-name }},source_tag=${{ needs.scan.outputs.source-tag }},manifest_digest=${{ steps.push.outputs.digest }},final_tag=${{ steps.push.outputs.final-tag }},final_repo=${{ steps.push.outputs.final-repo }},post_scan_vuln_count=${{ steps.postscan.outputs.vuln-count }},rekor_url=${{ steps.cosign-sign.outputs.rekor-url }},attestation_id=${{ steps.attest.outputs.attestation-id }},attestation_bundle_path=${{ steps.attest.outputs.bundle-path }},deployment.environment=verity-prod"
+            --attrs "image=${{ inputs.image-name }},source_tag=${{ needs.scan.outputs.source-tag }},manifest_digest=${{ steps.target.outputs.digest }},final_tag=${{ steps.target.outputs.final-tag }},final_repo=${{ steps.push.outputs.final-repo }},post_scan_vuln_count=${{ steps.postscan.outputs.vuln-count }},rekor_url=${{ steps.cosign-sign.outputs.rekor-url }},attestation_id=${{ steps.attest.outputs.attestation-id }},attestation_bundle_path=${{ steps.attest.outputs.bundle-path }},deployment.environment=verity-prod"
 
       - name: Push reports to reports branch
         id: push-reports
@@ -800,10 +816,12 @@ jobs:
           UPLOAD_PR_SCAN_OUTCOME: ${{ steps.upload-pr-scan.outcome }}
           PL_DOWNLOAD_OUTCOME: ${{ steps.pl-download.outcome }}
           PL_MERGE_OUTCOME: ${{ steps.pl-merged.outcome }}
+          TARGET_REF: ${{ steps.target.outputs.final-tag }}
+          MANIFEST_DIGEST: ${{ steps.target.outputs.digest }}
         run: |
           set -euo pipefail
           OUT="metrics-${SAFE_NAME}-${SOURCE_TAG}.json"
-          STARTED_AT=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq '.run_started_at' 2>/dev/null || true)
+          STARTED_AT=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq '.run_started_at')
           FINALIZE_CONCLUSION="success"
           for outcome in \
             "$HARDEN_OUTCOME" \
@@ -830,6 +848,9 @@ jobs:
               FINALIZE_CONCLUSION="failure"
             fi
           done
+          if [ -z "$TARGET_REF" ] || [ -z "$MANIFEST_DIGEST" ]; then
+            FINALIZE_CONCLUSION="failure"
+          fi
 
           SEVERITIES_BEFORE=$(jq -c '
             {CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNKNOWN: 0} +
@@ -854,8 +875,8 @@ jobs:
             --arg conclusion "${FINALIZE_CONCLUSION}" \
             --arg image_name "${{ inputs.image-name }}" \
             --arg source_tag "${SOURCE_TAG}" \
-            --arg target_ref "${{ steps.push.outputs.final-tag }}" \
-            --arg manifest_digest "${{ steps.push.outputs.digest }}" \
+            --arg target_ref "$TARGET_REF" \
+            --arg manifest_digest "$MANIFEST_DIGEST" \
             --argjson vuln_before "${VULN_BEFORE:-0}" \
             --argjson vuln_after "${VULN_AFTER:-0}" \
             --argjson sev_before "$SEVERITIES_BEFORE" \
@@ -908,7 +929,7 @@ jobs:
         with:
           name: metrics-${{ needs.scan.outputs.safe-name }}-${{ needs.scan.outputs.source-tag }}
           path: ${{ steps.metrics-json.outputs.filename }}
-          retention-days: 1
+          retention-days: 7
           if-no-files-found: error
 
   # ── Job 4: Metrics on Failure ─────────────────────────────────────
@@ -942,7 +963,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          STARTED_AT=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq '.run_started_at' 2>/dev/null || echo "")
+          STARTED_AT=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq '.run_started_at')
           echo "value=${STARTED_AT}" >> "$GITHUB_OUTPUT"
 
       - name: Build minimal failure metrics JSON
@@ -998,5 +1019,22 @@ jobs:
         with:
           name: metrics-${{ needs.scan.outputs.safe-name }}-${{ needs.scan.outputs.source-tag }}
           path: ${{ steps.metrics-json.outputs.filename }}
-          retention-days: 1
+          retention-days: 7
           if-no-files-found: error
+
+  # Call the archive workflow directly. Runs dispatched by GITHUB_TOKEN do not
+  # emit a downstream workflow_run event, but nested reusable workflows remain
+  # part of this run and can consume its completed metrics artifact.
+  archive-metrics:
+    name: Archive Metrics
+    needs: [scan, patch, finalize, metrics-on-failure]
+    if: ${{ always() && !cancelled() && inputs.is-pr != true && needs.scan.outputs.needs-patch == 'true' }}
+    permissions:
+      contents: write
+      actions: read
+    uses: ./.github/workflows/metrics-finalize.yaml
+    with:
+      run-id: ${{ github.run_id }}
+      run-attempt: ${{ github.run_attempt }}
+    secrets:
+      archive-token: ${{ secrets.GITHUB_TOKEN }}

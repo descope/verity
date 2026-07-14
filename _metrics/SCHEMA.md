@@ -93,7 +93,7 @@ _metrics/
 | `schema_version` | string | No | Schema version, currently "v1" |
 | `run.id` | integer | No | GitHub Actions workflow run ID |
 | `run.attempt` | integer | No | Run attempt number (1, 2, ...) |
-| `run.started_at` | string (ISO-8601) | Yes | Workflow start timestamp; empty string when the GitHub API lookup failed |
+| `run.started_at` | string (ISO-8601) | No | Workflow start timestamp; metrics production fails if it cannot be resolved |
 | `run.ended_at` | string (ISO-8601) | No | Workflow end timestamp |
 | `run.conclusion` | string | No | One of: success, failure, cancelled, skipped |
 | `image.name` | string | No | Full image name (e.g., "nginx") |
@@ -150,5 +150,5 @@ All fields marked nullable may be null when the upstream step was skipped or fai
 
 ## Producer / Consumer
 
-- **Producer**: `.github/workflows/patch-image.yaml` (final consolidate step), via `metrics-finalize.yaml` (workflow_run trigger)
+- **Producer**: `.github/workflows/patch-image.yaml` (final consolidate step), via the reusable `metrics-finalize.yaml` workflow
 - **Consumer**: `verity metrics` subcommand (Phase 4); Honeycomb dataset `verity-ci` (live observability via inline `otel-cli` spans, separate from this archive)
