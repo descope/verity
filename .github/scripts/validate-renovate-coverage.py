@@ -36,6 +36,8 @@ SPECIAL_RECIPE_SOURCES: Final = {
     "packages/bespoke/airflow-3.yaml",
     "packages/bespoke/haproxy-3.0.yaml",
     "packages/bespoke/haproxy-3.1.yaml",
+    "packages/bespoke/haproxy-3.2.yaml",
+    "packages/bespoke/haproxy-3.3.yaml",
     "packages/bespoke/linkerd2-cli-25.yaml",
 }
 SUPPORTED_GITHUB_TAGS: Final = {
