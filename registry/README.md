@@ -36,6 +36,10 @@ No secrets or environment variables are required. The Worker requests only
 anonymous, repository-scoped pull tokens from GHCR and never forwards a client
 `Authorization` header upstream.
 
+Cloudflare security controls must allow OCI clients on `/v2/*`. A WAF or bot
+rule that challenges Docker's manifest `HEAD` requests blocks the request
+before it reaches this Worker.
+
 ## Verification
 
 Run the unit tests and syntax check locally:
@@ -55,9 +59,10 @@ After deployment, verify an alias through an OCI client:
 docker pull verity.supply/caddy:latest
 ```
 
-Cosign and GitHub attestation tooling should work through the alias when they
-use manifest and OCI referrer requests. If a tool only follows GitHub's
-attestation API, use the canonical image reference instead:
+The Worker exposes the manifest, legacy cosign signature-tag, and OCI-referrer
+surfaces used by signature and attestation tooling. Verification also requires
+that the image has an associated signature or attestation. If a tool only
+follows GitHub's attestation API, use the canonical image reference instead:
 
 ```bash
 gh attestation verify oci://ghcr.io/verity-org/caddy:latest --owner verity-org
