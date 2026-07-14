@@ -1,39 +1,23 @@
 import type { APIRoute } from "astro";
-import {
-  copaCount,
-  fullCatalog,
-  integerCount,
-  totalCategories,
-  totalImages,
-} from "../data/full-catalog.ts";
+import { copaCount, integerCount, totalCategories, totalImages } from "../data/full-catalog.ts";
 import { getChartsCatalog } from "../lib/charts.ts";
+import { renderCategoryRows } from "../lib/machine-docs.ts";
 
-export const GET: APIRoute = ({ site }) => {
-  const base = import.meta.env.BASE_URL;
-  const origin = site?.origin ?? "https://verity.supply";
-  const prefix = `${origin}${base}`;
+export function renderIndexMarkdown(prefix: string): string {
+  const chartCount = getChartsCatalog().charts.length;
+  const categoryRows = renderCategoryRows();
 
-  const chartsCatalog = getChartsCatalog();
-  const chartCount = chartsCatalog.charts.length;
-
-  const categorySummary = fullCatalog
-    .map((cat) => {
-      const copaImgs = cat.images.filter((i) => i.source === "copa").length;
-      const wolfiImgs = cat.images.filter((i) => i.source === "integer").length;
-      const parts: string[] = [];
-      if (wolfiImgs > 0) {
-        parts.push(`${wolfiImgs} Wolfi`);
-      }
-      if (copaImgs > 0) {
-        parts.push(`${copaImgs} Copa`);
-      }
-      return `- **${cat.label}** — ${cat.images.length} images (${parts.join(", ")})`;
-    })
-    .join("\n");
-
-  const content = `# Verity — Security-Patched Container Images
+  return `# Verity — Security-Patched Container Images
 
 > Self-maintaining registry of security-patched container images. Scans, patches, signs, and publishes drop-in replacements to \`verity.supply\`.
+
+scope: overview
+total_images: ${totalImages}
+total_categories: ${totalCategories}
+copa_images: ${copaCount}
+wolfi_images: ${integerCount}
+helm_charts: ${chartCount}
+full_reference: ${prefix}llms-full.txt
 
 ## What Is Verity?
 
@@ -60,7 +44,8 @@ image: verity.supply/prometheus/prometheus:v3.9.1-patched
 
 ${totalImages} images across ${totalCategories} categories — ${copaCount} Copa-patched upstream images, ${integerCount} Wolfi-based hardened images, ${chartCount} Helm wrapper charts.
 
-${categorySummary}
+categories[${totalCategories}]{category,total,copa,wolfi}:
+${categoryRows}
 
 ## How It Works
 
@@ -74,16 +59,24 @@ ${categorySummary}
 
 Every image carries: cosign signature, SLSA L3 build provenance, CycloneDX SBOM, Trivy vulnerability report, and Rekor transparency log entry.
 
-## More Information
+## Next Actions
 
+- [Browse the live catalog](${prefix}) — Search images and inspect current vulnerability data
 - [Complete LLM Reference](${prefix}llms-full.txt) — Everything in one file
 - [Supply Chain Compliance](${prefix}compliance.md) — Framework mappings (SLSA, FedRAMP, SOC 2, ISO 27001, OWASP)
 - [Helm Charts](${prefix}charts/index.md) — Pre-patched wrapper Helm charts
 - [Experimental APK Repository](${prefix}apk/index.md) — Pending package repository metadata, install flow, trust model, and supported arches
 - [GitHub Repository](https://github.com/verity-org/verity) — Source code and issues
 `;
+}
 
-  return new Response(content.trim() + "\n", {
+export const GET: APIRoute = ({ site }) => {
+  const base = import.meta.env.BASE_URL;
+  const origin = site?.origin ?? "https://verity.supply";
+  const prefix = `${origin}${base}`;
+  const content = renderIndexMarkdown(prefix);
+
+  return new Response(`${content.trim()}\n`, {
     headers: {
       "Content-Type": "text/markdown; charset=utf-8",
       "Cache-Control": "public, max-age=3600",
