@@ -79,3 +79,27 @@ func TestValidateRejectsVersionScopedMelangeForUndefinedType(t *testing.T) {
 	// Then: the invalid type reference is rejected with a typed error.
 	require.ErrorIs(t, err, config.ErrMelangeTypeNotFound)
 }
+
+func TestValidateRejectsUnsafeVersionScopedMelangeKey(t *testing.T) {
+	// Given: a scoped version key that would escape a directory after placeholder substitution.
+	def := &config.ImageDef{
+		Name:     "postgres",
+		Upstream: config.Upstream{Package: "postgresql-{{version}}"},
+		Types: map[string]config.TypeTemplate{
+			"default": {Base: "wolfi-base"},
+		},
+		Versions: map[string]config.VersionMeta{
+			"../14": {
+				Melange: map[string]*config.MelangeSpec{
+					"default": {Bespoke: config.StringList{"postgresql-{{version}}.yaml"}},
+				},
+			},
+		},
+	}
+
+	// When: the image definition is validated.
+	err := config.Validate(def)
+
+	// Then: the unsafe key is rejected before any path substitution.
+	require.ErrorIs(t, err, config.ErrInvalidMelangeVersion)
+}

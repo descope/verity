@@ -1,5 +1,14 @@
 package config
 
+import "regexp"
+
+var melangeVersionPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]*$`)
+
+// ValidMelangeVersion reports whether a version is safe for Melange placeholder substitution.
+func ValidMelangeVersion(version string) bool {
+	return melangeVersionPattern.MatchString(version)
+}
+
 // MelangeFor returns the Melange configuration for one image version and type.
 // An exact version-scoped entry takes precedence over the shared type template.
 func (d *ImageDef) MelangeFor(version, typeName string) *MelangeSpec {

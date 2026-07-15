@@ -16,18 +16,35 @@ var (
 )
 
 type versionedMelangeSpec struct {
-	version string
-	spec    *intconfig.MelangeSpec
+	version  string
+	versions []string
+	spec     *intconfig.MelangeSpec
 }
 
-func (s versionedMelangeSpec) resolveBespokeFiles(def *intconfig.ImageDef, typeName, bespokeFile string) ([]string, error) {
+func (s versionedMelangeSpec) resolveBespokeFiles(bespokeFile string) ([]string, error) {
 	if s.version != "" {
 		return []string{strings.ReplaceAll(bespokeFile, "{{version}}", s.version)}, nil
 	}
-	return resolveBespokeFiles(def, typeName, bespokeFile)
+	if !strings.Contains(bespokeFile, "{{version}}") {
+		return []string{bespokeFile}, nil
+	}
+	if len(s.versions) == 0 {
+		return nil, errMissingDeclaredVersionType
+	}
+	resolved := make([]string, 0, len(s.versions))
+	seen := make(map[string]struct{}, len(s.versions))
+	for _, version := range s.versions {
+		name := strings.ReplaceAll(bespokeFile, "{{version}}", version)
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		seen[name] = struct{}{}
+		resolved = append(resolved, name)
+	}
+	return resolved, nil
 }
 
-func (s versionedMelangeSpec) packageMatcher(def *intconfig.ImageDef, typeName string, packages []string) func(string) bool {
+func (s versionedMelangeSpec) packageMatcher(packages []string) func(string) bool {
 	if s.version != "" {
 		return func(pkgName string) bool {
 			for _, pkg := range packages {
@@ -39,15 +56,25 @@ func (s versionedMelangeSpec) packageMatcher(def *intconfig.ImageDef, typeName s
 		}
 	}
 	return func(pkgName string) bool {
-		return tmplPackageMatchesBespoke(def, typeName, packages, pkgName)
+		for _, pkg := range packages {
+			if apkPackageName(pkg) == pkgName {
+				return true
+			}
+			if !strings.Contains(pkg, "{{version}}") {
+				continue
+			}
+			for _, version := range s.versions {
+				if apkPackageName(strings.ReplaceAll(pkg, "{{version}}", version)) == pkgName {
+					return true
+				}
+			}
+		}
+		return false
 	}
 }
 
 func melangeSpecsForType(def *intconfig.ImageDef, typeName string) []versionedMelangeSpec {
 	selected := []versionedMelangeSpec{}
-	if tmpl, ok := def.Types[typeName]; ok && tmpl.Melange != nil {
-		selected = append(selected, versionedMelangeSpec{spec: tmpl.Melange})
-	}
 	versions := make([]string, 0, len(def.Versions))
 	for version, meta := range def.Versions {
 		if !slices.Contains(meta.SkipTypes, typeName) {
@@ -55,6 +82,17 @@ func melangeSpecsForType(def *intconfig.ImageDef, typeName string) []versionedMe
 		}
 	}
 	apkindex.SortVersions(versions)
+	if tmpl, ok := def.Types[typeName]; ok && tmpl.Melange != nil {
+		sharedVersions := make([]string, 0, len(versions))
+		for _, version := range versions {
+			if def.MelangeFor(version, typeName) == tmpl.Melange {
+				sharedVersions = append(sharedVersions, version)
+			}
+		}
+		if len(def.Versions) == 0 || len(sharedVersions) > 0 {
+			selected = append(selected, versionedMelangeSpec{versions: sharedVersions, spec: tmpl.Melange})
+		}
+	}
 	for _, version := range versions {
 		if spec, configured := def.Versions[version].Melange[typeName]; configured && spec != nil {
 			selected = append(selected, versionedMelangeSpec{version: version, spec: spec})
@@ -63,37 +101,7 @@ func melangeSpecsForType(def *intconfig.ImageDef, typeName string) []versionedMe
 	return selected
 }
 
-func resolveBespokeFiles(def *intconfig.ImageDef, typeName, bespokeFile string) ([]string, error) {
-	if !strings.Contains(bespokeFile, "{{version}}") {
-		return []string{bespokeFile}, nil
-	}
-
-	versions := make([]string, 0, len(def.Versions))
-	for version, meta := range def.Versions {
-		if slices.Contains(meta.SkipTypes, typeName) {
-			continue
-		}
-		versions = append(versions, version)
-	}
-	if len(versions) == 0 {
-		return nil, fmt.Errorf("%w: %q", errMissingDeclaredVersionType, typeName)
-	}
-
-	apkindex.SortVersions(versions)
-	resolved := make([]string, 0, len(versions))
-	seen := make(map[string]struct{}, len(versions))
-	for _, version := range versions {
-		name := strings.ReplaceAll(bespokeFile, "{{version}}", version)
-		if _, ok := seen[name]; ok {
-			continue
-		}
-		seen[name] = struct{}{}
-		resolved = append(resolved, name)
-	}
-	return resolved, nil
-}
-
-func validateBespokePackage(path string, matches func(string) bool) error {
+func validateBespokePackage(path string, packages []string, matches func(string) bool) error {
 	pkgName, err := readBespokePackageName(path)
 	if err != nil {
 		return err
@@ -102,7 +110,7 @@ func validateBespokePackage(path string, matches func(string) bool) error {
 		return errMissingBespokePackageName
 	}
 	if !matches(pkgName) {
-		return fmt.Errorf("%w: %q", errBespokePackageMismatch, pkgName)
+		return fmt.Errorf("%w %q; apko packages %v (apko will fail with 'not in indexes' at publish time)", errBespokePackageMismatch, pkgName, packages)
 	}
 	return nil
 }

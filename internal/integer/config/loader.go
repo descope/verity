@@ -52,6 +52,9 @@ var (
 
 	// ErrMelangeTypeNotFound is returned when a version scopes Melange configuration to an undefined image type.
 	ErrMelangeTypeNotFound = errors.New("melange: version-scoped type is not defined")
+
+	// ErrInvalidMelangeVersion is returned when a version-scoped Melange key is unsafe for placeholder substitution.
+	ErrInvalidMelangeVersion = errors.New("melange: invalid version scope")
 )
 
 // LoadConfig loads the global integer.yaml configuration file.
@@ -108,6 +111,9 @@ func Validate(def *ImageDef) error {
 		}
 	}
 	for version, meta := range def.Versions {
+		if len(meta.Melange) > 0 && !ValidMelangeVersion(version) {
+			return fmt.Errorf("image %q version %q: %w", def.Name, version, ErrInvalidMelangeVersion)
+		}
 		for typeName, melangeSpec := range meta.Melange {
 			tmpl, ok := def.Types[typeName]
 			if !ok {

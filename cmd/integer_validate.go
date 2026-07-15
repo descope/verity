@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
-	"strings"
 
 	"github.com/urfave/cli/v3"
 	"gopkg.in/yaml.v3"
@@ -176,9 +174,9 @@ func validateBespokeRefs(def *intconfig.ImageDef, defPath, bespokeDir string, re
 	for typeName := range def.Types {
 		tmpl := def.Types[typeName]
 		for _, selected := range melangeSpecsForType(def, typeName) {
-			matchesPackage := selected.packageMatcher(def, typeName, tmpl.Packages)
+			matchesPackage := selected.packageMatcher(tmpl.Packages)
 			for _, bespokeFile := range selected.spec.Bespoke {
-				resolvedFiles, rerr := selected.resolveBespokeFiles(def, typeName, bespokeFile)
+				resolvedFiles, rerr := selected.resolveBespokeFiles(bespokeFile)
 				if rerr != nil {
 					fmt.Fprintf(os.Stderr, "FAIL %s type %q: bespoke %s: %v\n",
 						defPath, typeName, bespokeFile, rerr)
@@ -194,7 +192,7 @@ func validateBespokeRefs(def *intconfig.ImageDef, defPath, bespokeDir string, re
 						continue
 					}
 
-					if err := validateBespokePackage(filepath.Join(bespokeDir, resolvedFile), matchesPackage); err != nil {
+					if err := validateBespokePackage(filepath.Join(bespokeDir, resolvedFile), tmpl.Packages, matchesPackage); err != nil {
 						fmt.Fprintf(os.Stderr, "FAIL %s type %q: bespoke %s: %v\n",
 							defPath, typeName, resolvedFile, err)
 						failures++
@@ -213,26 +211,6 @@ func validateBespokeRefs(def *intconfig.ImageDef, defPath, bespokeDir string, re
 	}
 
 	return failures
-}
-
-func tmplPackageMatchesBespoke(def *intconfig.ImageDef, typeName string, packages []string, pkgName string) bool {
-	for _, pkg := range packages {
-		if apkPackageName(pkg) == pkgName {
-			return true
-		}
-		if !strings.Contains(pkg, "{{version}}") {
-			continue
-		}
-		for version, meta := range def.Versions {
-			if slices.Contains(meta.SkipTypes, typeName) {
-				continue
-			}
-			if apkPackageName(strings.ReplaceAll(pkg, "{{version}}", version)) == pkgName {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func apkPackageName(pkg string) string {
