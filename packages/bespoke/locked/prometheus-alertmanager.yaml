@@ -1,13 +1,16 @@
 package:
   name: prometheus-alertmanager
-  version: "0.31.1"
-  epoch: 1 # GHSA-9h8m-3fm2-qjrq
+  version: "0.33.1"
+  epoch: 2 # CVE-2026-41178, CVE-2026-42505
   description: Prometheus Alertmanager
   copyright:
     - license: Apache-2.0
   resources:
-    cpu: "3"
+    cpu: "2"
     memory: 9Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
 
 environment:
   contents:
@@ -17,31 +20,105 @@ environment:
       - busybox
       - ca-certificates-bundle
       - curl
-      - go
-      - nodejs<21
-      - npm
-
-var-transforms:
-  - from: ${{package.version}}
-    match: ^(\d+).*
-    replace: $1
-    to: major-version
+      - go-1.26
 
 pipeline:
   - uses: git-checkout
     with:
       repository: https://github.com/prometheus/alertmanager
       tag: v${{package.version}}
-      expected-commit: 7a639ba087d6e877038cabfdaa645230f79001b8
+      expected-commit: 2c8da51e03f3dbbed24f9711ca2d76aab4eef9c5
 
   - uses: go/bump
     with:
       deps: |-
-        go.opentelemetry.io/otel/sdk@v1.40.0
+        go.opentelemetry.io/otel@v1.44.0
+        go.opentelemetry.io/otel/metric@v1.44.0
+        go.opentelemetry.io/otel/trace@v1.44.0
+        go.opentelemetry.io/otel/sdk@v1.44.0
 
   - runs: |
       sed -i '/_ "net\/http\/pprof"/d' ui/web.go
       git diff
+
+  # Alertmanager 0.32.0 introduced a Vite/Elm UI build that can hang in
+  # melange's isolated builder while Elm contacts package.elm-lang.org.
+  # Recover only the architecture-independent compiled UI assets from the
+  # checksummed upstream release; the shipped binaries are still built from
+  # the immutable source commit above.
+  - name: Recover prebuilt UI dist from upstream binary
+    runs: |
+      set -eu
+      case "$(uname -m)" in
+        x86_64)  ARCH=amd64; SHA=93d802cba6a8d27239d747ce117df7648d326ab67394e32247540b030e9842ba ;;
+        aarch64) ARCH=arm64; SHA=50b32a346c3c29da411643dfa84990440e8fd03800380d7e664f22a863b7a0cf ;;
+        *) echo "unsupported arch: $(uname -m)"; exit 1 ;;
+      esac
+      cd /tmp
+      TGZ="alertmanager-${{package.version}}.linux-${ARCH}.tar.gz"
+      curl -fsSL -o "${TGZ}" "https://github.com/prometheus/alertmanager/releases/download/v${{package.version}}/${TGZ}"
+      echo "${SHA}  ${TGZ}" | sha256sum -c -
+      tar -xzf "${TGZ}"
+      AM="/tmp/alertmanager-${{package.version}}.linux-${ARCH}/alertmanager"
+
+      cat > /tmp/am.yml <<'YAML'
+      route: { receiver: devnull }
+      receivers: [{ name: devnull }]
+      YAML
+      mkdir -p /tmp/am-data
+      "${AM}" --config.file=/tmp/am.yml --storage.path=/tmp/am-data \
+              --web.listen-address=127.0.0.1:9094 --cluster.listen-address="" \
+              > /tmp/am.log 2>&1 &
+      AMPID=$!
+      trap 'kill "${AMPID}" 2>/dev/null || true; wait "${AMPID}" 2>/dev/null || true' EXIT INT TERM
+      for _ in $(seq 1 30); do
+        curl -sf http://127.0.0.1:9094/-/ready >/dev/null 2>&1 && break
+        sleep 1
+      done
+
+      cd /home/build
+      DIST=ui/app/dist
+      mkdir -p "${DIST}/assets"
+
+      curl -sf http://127.0.0.1:9094/ -o /tmp/index.plain
+      URLS="/ /favicon.ico"
+      for u in $(grep -oE '/?assets/[A-Za-z0-9._-]+' /tmp/index.plain | sed 's,^/\?,/,' | sort -u); do
+        URLS="${URLS} ${u}"
+      done
+      for u in ${URLS}; do
+        case "${u}" in
+          *.css)
+            curl -sf "http://127.0.0.1:9094${u}" -o /tmp/style.css
+            for f in $(grep -oE 'url\(\./[A-Za-z0-9._-]+\.(woff2?|ttf|eot|svg)' /tmp/style.css | sed -E 's,url\(\./,,' | sort -u); do
+              URLS="${URLS} /assets/${f}"
+            done
+            ;;
+        esac
+      done
+
+      # ui/web.go serves woff/woff2 plain and the other embedded assets from
+      # their precompressed .gz/.br files.
+      for u in $(echo "${URLS}" | tr ' ' '\n' | sort -u); do
+        [ -n "${u}" ] || continue
+        if [ "${u}" = "/" ]; then out="${DIST}/index.html"; else out="${DIST}${u}"; fi
+        mkdir -p "$(dirname "${out}")"
+        case "${out##*.}" in
+          woff|woff2)
+            curl -sf -H 'Accept-Encoding: identity' "http://127.0.0.1:9094${u}" -o "${out}"
+            ;;
+          *)
+            curl -sf -H 'Accept-Encoding: gzip' "http://127.0.0.1:9094${u}" -o "${out}.gz"
+            curl -sf -H 'Accept-Encoding: br' "http://127.0.0.1:9094${u}" -o "${out}.br"
+            ;;
+        esac
+      done
+
+      test -s "${DIST}/index.html.gz" || { echo "FATAL: ${DIST}/index.html.gz empty/missing"; exit 1; }
+      test -s "${DIST}/favicon.ico.gz" || { echo "FATAL: ${DIST}/favicon.ico.gz empty/missing"; exit 1; }
+      js_count=$(find "${DIST}/assets" -name '*.js.gz' -type f | wc -l)
+      [ "${js_count}" -ge 1 ] || { echo "FATAL: no .js.gz assets recovered under ${DIST}/assets"; exit 1; }
+
+      sed -i 's/^build: ui-elm common-build/build: common-build/' Makefile
 
   - runs: |
       make build
@@ -50,8 +127,6 @@ pipeline:
       install -Dm755 amtool "${{targets.destdir}}"/usr/bin/amtool
       install -Dm755 alertmanager "${{targets.destdir}}"/usr/bin/alertmanager
       install -Dm644 examples/ha/alertmanager.yml "${{targets.destdir}}"/etc/alertmanager/alertmanager.yml
-
-  - uses: strip
 
 update:
   enabled: true
@@ -64,6 +139,7 @@ test:
     contents:
       packages:
         - curl
+        - wait-for-it
   pipeline:
     - runs: |
         alertmanager --version
@@ -72,15 +148,16 @@ test:
         amtool --help
     - name: Functional tests
       runs: |
+        set -euo pipefail
         # Start alertmanager with test config
         alertmanager \
-          --config.file=test-alertmanager-config.yaml \
+          --config.file=/etc/alertmanager/alertmanager.yml \
           --storage.path=alertmanager \
           --web.listen-address=127.0.0.1:9093 \
           --cluster.listen-address="" \
           --log.level=debug > /dev/null 2>&1 &
         AM_PID=$!
-        sleep 5
+        wait-for-it 127.0.0.1:9093 -t 30
 
         # Test health endpoints
         curl -s http://127.0.0.1:9093/-/ready || exit 1
@@ -92,7 +169,7 @@ test:
           http://127.0.0.1:9093/api/v2/alerts
 
         # Verify alert exists
-        curl -s http://127.0.0.1:9093/api/v2/alerts | grep -q "TestAlertFromMelangeTest"
+        curl -s http://127.0.0.1:9093/api/v2/alerts | grep -F "TestAlertFromMelangeTest"
 
         # Create a silence for our test alert
         SILENCE_ID=$(curl -s -XPOST -H "Content-Type: application/json" \
@@ -100,4 +177,4 @@ test:
           http://127.0.0.1:9093/api/v2/silences | grep -o '"silenceID":"[^"]*"' | cut -d'"' -f4)
 
         # Verify silence exists
-        curl -s http://127.0.0.1:9093/api/v2/silences | grep -q "$SILENCE_ID"
+        curl -s http://127.0.0.1:9093/api/v2/silences | grep -F "$SILENCE_ID"
