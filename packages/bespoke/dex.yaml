@@ -1,0 +1,134 @@
+package:
+  name: dex
+  version: "2.45.1"
+  # Direct revision r15 includes the approved fixed dependency revisions.
+  epoch: 15
+  description: OpenID Connect identity and OAuth 2.0 provider with pluggable connectors
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+  resources:
+    cpu: "4"
+    memory: 8Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  # Adapted from wolfi-dev/os@e3f029ef29e67d4d8d9f041b1ae994719d96161f.
+  - uses: fetch
+    with:
+      uri: https://github.com/dexidp/dex/archive/11d2eeb52b42e1980e14cb91e69dd9e3faab2076.tar.gz
+      expected-sha256: 18bf92e8ccbf53e86814c2beb39b7d59f28fb07c84639e9f47a9bb5ea764e0b9
+
+  - uses: go/bump
+    with:
+      deps: |-
+        golang.org/x/net@v0.55.0
+        google.golang.org/grpc@v1.79.3
+        github.com/russellhaering/goxmldsig@v1.6.0
+        github.com/go-jose/go-jose/v4@v4.1.4
+        github.com/Azure/go-ntlmssp@v0.1.1
+        go.opentelemetry.io/otel@v1.41.0
+        golang.org/x/crypto@v0.52.0
+      tidy: false
+
+  - uses: go/bump
+    with:
+      deps: |-
+        golang.org/x/net@v0.55.0
+        google.golang.org/grpc@v1.79.3
+        github.com/go-jose/go-jose/v4@v4.1.4
+        golang.org/x/crypto@v0.52.0
+      modroot: examples
+      tidy: false
+
+  - uses: go/bump
+    with:
+      deps: |-
+        golang.org/x/net@v0.55.0
+        google.golang.org/grpc@v1.79.3
+        golang.org/x/crypto@v0.52.0
+      modroot: api/v2
+      tidy: false
+
+  - uses: go/build
+    with:
+      packages: ./cmd/dex
+      output: dex
+      go-package: go-1.26
+      ldflags: |
+        -w
+        -X main.version=v${{package.version}}
+        -extldflags "-static"
+
+  - runs: |
+      install -d \
+        "${{targets.destdir}}/etc/dex" \
+        "${{targets.destdir}}/srv/dex"
+      cp -R web "${{targets.destdir}}/srv/dex/"
+      install -Dm644 config.docker.yaml "${{targets.destdir}}/etc/dex/config.docker.yaml"
+      install -Dm644 LICENSE "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+      "${{targets.destdir}}/usr/bin/dex" version | grep -F "v${{package.version}}"
+      "${{targets.destdir}}/usr/bin/dex" --help >/dev/null
+
+      cat > smoke.yaml <<'EOF'
+      issuer: http://127.0.0.1:15556/dex
+      storage:
+        type: memory
+      web:
+        http: 127.0.0.1:15556
+      connectors:
+        - type: mockCallback
+          id: mock
+          name: Example
+      EOF
+      "${{targets.destdir}}/usr/bin/dex" serve smoke.yaml >dex-smoke.log 2>&1 &
+      pid=$!
+      trap 'kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true' EXIT
+      for attempt in $(seq 1 30); do
+        if wget -qO- http://127.0.0.1:15556/dex/healthz | grep -Fq "Health check passed"; then
+          exit 0
+        fi
+        if ! kill -0 "$pid" 2>/dev/null; then
+          cat dex-smoke.log
+          exit 1
+        fi
+        sleep 1
+      done
+      cat dex-smoke.log
+      exit 1
+
+test:
+  pipeline:
+    - uses: test/tw/ver-check
+      with:
+        bins: dex
+        version: v${{package.version}}
+        version-flag: version
+    - uses: test/tw/help-check
+      with:
+        bins: dex
+    - runs: |
+        test -f /etc/dex/config.docker.yaml
+        test -d /srv/dex/web
+        test -f /usr/share/licenses/${{package.name}}/LICENSE
+
+update:
+  enabled: true
+  github:
+    identifier: dexidp/dex
+    strip-prefix: v
+    tag-filter: v
