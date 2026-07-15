@@ -1,0 +1,119 @@
+package:
+  name: distribution
+  version: "3.1.1"
+  # Direct revision r7 supersedes the vulnerable public r4 package.
+  epoch: 7
+  description: The toolkit to pack, ship, store, and deliver container content
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    provides:
+      - ${{package.name}}-compat=${{package.full-version}}
+    runtime:
+      - merged-bin
+      - wolfi-baselayout
+  resources:
+    cpu: "3"
+    memory: 6Gi
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  # Adapted from wolfi-dev/os@572ee9ed3e434cc0991a8b6967873896381e76b8.
+  - uses: git-checkout
+    with:
+      repository: https://github.com/distribution/distribution
+      tag: v${{package.version}}
+      expected-commit: 9a8d98b679740cd514aa7e7d84d23d442a5ef54c
+
+  - uses: go/bump
+    with:
+      deps: |-
+        golang.org/x/net@v0.55.0
+        golang.org/x/crypto@v0.51.0
+
+  - uses: go/build
+    with:
+      packages: ./cmd/registry
+      output: registry
+      go-package: go-1.26
+      vendor: true
+      ldflags: |
+        -X github.com/distribution/distribution/v3/version.version=v${{package.version}}
+        -X github.com/distribution/distribution/v3/version.revision=$(git rev-parse --short HEAD)
+        -X github.com/distribution/distribution/v3/version.mainpkg=github.com/distribution/distribution/v3
+
+  - runs: |
+      install -d \
+        "${{targets.contextdir}}/etc/docker/registry" \
+        "${{targets.contextdir}}/etc/distribution" \
+        "${{targets.contextdir}}/var/lib/db/sbom" \
+        "${{targets.contextdir}}/var/lib/registry"
+      chmod 0755 \
+        "${{targets.contextdir}}/var" \
+        "${{targets.contextdir}}/var/lib" \
+        "${{targets.contextdir}}/var/lib/db" \
+        "${{targets.contextdir}}/var/lib/registry"
+      chmod 0777 "${{targets.contextdir}}/var/lib/db/sbom"
+      cat > "${{targets.contextdir}}/etc/docker/registry/config.yml" <<'EOF'
+      version: 0.1
+
+      log:
+        level: debug
+        fields:
+          service: registry
+          environment: development
+
+      storage:
+        delete:
+          enabled: true
+        cache:
+          blobdescriptor: inmemory
+        filesystem:
+          rootdirectory: /var/lib/registry
+        "tag":
+          concurrencylimit: 5
+
+      http:
+        addr: :5000
+        debug:
+          addr: :5001
+          prometheus:
+            enabled: true
+            path: /metrics
+
+      health:
+        storagedriver:
+          enabled: true
+          interval: 10s
+          threshold: 3
+      EOF
+      cp \
+        "${{targets.contextdir}}/etc/docker/registry/config.yml" \
+        "${{targets.contextdir}}/etc/distribution/config.yml"
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  pipeline:
+    - runs: |
+        registry --version | grep -F "v${{package.version}}"
+        ! registry --version | grep -F "+unknown"
+        registry --help >/dev/null
+        test -s /etc/docker/registry/config.yml
+        test -s /etc/distribution/config.yml
+        test -d /var/lib/registry
+        grep -F "Apache License" "/usr/share/licenses/${{package.name}}/LICENSE"
+
+update:
+  enabled: true
+  github:
+    identifier: distribution/distribution
+    strip-prefix: v
