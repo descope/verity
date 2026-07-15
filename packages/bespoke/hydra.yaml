@@ -1,0 +1,107 @@
+package:
+  name: hydra
+  # renovate: datasource=github-tags depName=ory/hydra versioning=semver-coerced
+  version: "26.2.0"
+  # Direct revision r16 includes the fixes first published in r12 and r16.
+  epoch: 16
+  description: OpenID Certified OAuth 2.0 Server and OpenID Connect Provider
+  copyright:
+    - license: Apache-2.0
+  resources:
+    cpu: "5"
+    memory: 8Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26
+
+pipeline:
+  # Adapted from wolfi-dev/os@0c73a9cad82af43a57378c3a0da356f9a8c4a740.
+  - uses: fetch
+    with:
+      uri: https://github.com/ory/hydra/archive/0b84568fffccf151dc5e6c7955fdfb738555bf4b.tar.gz
+      expected-sha256: 7ceaae3299780959e8390925732629931f63f20300464d2822d49628eeb3332e
+
+  - uses: go/bump
+    with:
+      deps: |-
+        github.com/go-jose/go-jose/v3@v3.0.5
+        github.com/jackc/pgx/v5@v5.9.2
+        go.opentelemetry.io/otel@v1.44.0
+        go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp@v1.44.0
+        go.opentelemetry.io/otel/metric@v1.44.0
+        go.opentelemetry.io/otel/sdk@v1.44.0
+        go.opentelemetry.io/otel/trace@v1.44.0
+        golang.org/x/crypto@v0.51.0
+        golang.org/x/net@v0.55.0
+        golang.org/x/text@v0.37.0
+      modroot: .
+
+  - uses: go/bump
+    with:
+      deps: |-
+        github.com/go-jose/go-jose/v3@v3.0.5
+        github.com/jackc/pgx/v5@v5.9.2
+        go.opentelemetry.io/otel@v1.44.0
+        go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp@v1.44.0
+        go.opentelemetry.io/otel/metric@v1.44.0
+        go.opentelemetry.io/otel/sdk@v1.44.0
+        go.opentelemetry.io/otel/trace@v1.44.0
+        golang.org/x/crypto@v0.51.0
+        golang.org/x/net@v0.55.0
+        golang.org/x/text@v0.37.0
+      modroot: oryx
+
+  - uses: go/build
+    with:
+      packages: .
+      output: hydra
+      ldflags: |
+        -X 'github.com/ory/hydra/v2/driver/config.Version=v${{package.version}}'
+        -X 'github.com/ory/hydra/v2/driver/config.Date=$(TZ=UTC date -u -d "@$SOURCE_DATE_EPOCH" "+%Y-%m-%dT%H:%M:%SZ")'
+        -X 'github.com/ory/hydra/v2/driver/config.Commit=0b84568fffccf151dc5e6c7955fdfb738555bf4b'
+      tags: sqlite,json1,hsm
+      go-package: go-1.26
+
+  - runs: |
+      "${{targets.destdir}}/usr/bin/hydra" version | grep -F "${{package.version}}"
+      install -Dm644 LICENSE "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  environment:
+    environment:
+      DSN: memory
+    contents:
+      packages:
+        - curl
+  pipeline:
+    - runs: |
+        /usr/bin/hydra version | grep -F "${{package.version}}"
+        /usr/bin/hydra help >/dev/null
+        /usr/bin/hydra migrate sql up -e --yes
+        apk info --who-owns /usr/bin/hydra \
+          | grep -F "${{package.name}}-${{package.full-version}}"
+        grep -F "Apache License" "/usr/share/licenses/${{package.name}}/LICENSE"
+    - name: Start server and test
+      uses: test/daemon-check-output
+      with:
+        start: /usr/bin/hydra serve all --dev
+        timeout: "30"
+        expected_output: |
+          DSN is memory
+          running migration
+          networks applied successfully
+          client applied successfully
+          Thank you for using Ory Hydra
+        post: |
+          curl -s http://localhost:4444/health/alive
+
+update:
+  enabled: true
+  ignore-regex-patterns:
+    - rc*
+    - pre*
+  github:
+    identifier: ory/hydra
+    strip-prefix: v
