@@ -1,0 +1,121 @@
+package:
+  name: jaeger-2-all-in-one
+  # renovate: datasource=github-tags depName=jaegertracing/jaeger versioning=semver-coerced
+  version: "2.17.0"
+  # Direct revision r8 carries every approved fix through GHSA-wf45-q9ch-q8gh.
+  epoch: 8
+  description: Jaeger distributed tracing all-in-one service
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+  resources:
+    cpu: "6"
+    memory: 16Gi
+  test-resources:
+    cpu: "2"
+    memory: 4Gi
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go-1.26
+      - node-gyp
+      - nodejs-24
+      - npm
+
+pipeline:
+  # Adapted from wolfi-dev/os@63a28690a65cf1d91d381afd8769218aab2c59cf.
+  - uses: fetch
+    with:
+      uri: https://github.com/jaegertracing/jaeger/archive/b5be18b10053a087a9bb272a1d9a0c71bcaac2c7.tar.gz
+      expected-sha256: 63d2d9c495dd0151dcd15475e200e08e4bccffb1b3e454a7333bd950c2b5b542
+
+  - runs: mkdir -p idl jaeger-ui
+
+  - uses: fetch
+    working-directory: idl
+    with:
+      uri: https://github.com/jaegertracing/jaeger-idl/archive/be495f74ce4fbb68c722dbb8e1cbb6461b052aec.tar.gz
+      expected-sha256: 1617359592a041a34844e08acf7e06140c41a1b1236e2cc5952805ae415b6f35
+
+  - uses: fetch
+    working-directory: jaeger-ui
+    with:
+      uri: https://github.com/jaegertracing/jaeger-ui/archive/4e887dcec50fb9f7b675fb4619ea8e3fb4c0447f.tar.gz
+      expected-sha256: 1bba3a51884f3f94ab8b79fbbcc719f9aa77bd3baead4fd9c9c919bfa034098e
+
+  - uses: go/bump
+    with:
+      deps: |-
+        go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp@v0.19.0
+        go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp@v1.43.0
+        go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp@v1.43.0
+        go.opentelemetry.io/otel/sdk@v1.43.0
+        github.com/prometheus/prometheus@v0.311.3
+        github.com/apache/thrift@v0.23.0
+
+  - runs: |
+      rm -rf cmd/jaeger/internal/extension/jaegerquery/internal/ui/actual/*
+      npm install --prefix jaeger-ui/ --ignore-scripts --no-audit --no-fund
+      cd jaeger-ui
+      npm run --workspace @jaegertracing/plexus prepublishOnly
+      cd packages/jaeger-ui
+      npm run build
+
+  - runs: |
+      cp -r jaeger-ui/packages/jaeger-ui/build/* \
+        cmd/jaeger/internal/extension/jaegerquery/internal/ui/actual
+      find cmd/jaeger/internal/extension/jaegerquery/internal/ui/actual \
+        -type f | grep -v .gitignore | xargs gzip --no-name
+      touch -t "$(date -r jaeger-ui/packages/jaeger-ui/build/index.html '+%Y%m%d%H%M.%S')" \
+        cmd/jaeger/internal/extension/jaegerquery/internal/ui/actual/index.html.gz
+
+  - uses: go/build
+    with:
+      packages: ./cmd/jaeger
+      output: all-in-one
+      go-package: go-1.26
+      ldflags: |
+        -X github.com/jaegertracing/jaeger/internal/version.latestVersion=v${{package.version}}
+        -X github.com/jaegertracing/jaeger/internal/version.commitSHA=b5be18b10053a087a9bb272a1d9a0c71bcaac2c7
+        -X github.com/jaegertracing/jaeger/internal/version.date=2026-03-30T15:11:26Z
+
+  - runs: |
+      install -Dm644 cmd/jaeger/sampling-strategies.json \
+        "${{targets.destdir}}/etc/jaeger/sampling_strategies.json"
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  environment:
+    contents:
+      packages:
+        - wget
+  pipeline:
+    - uses: test/tw/help-check
+      with:
+        bins: all-in-one
+    - runs: |
+        all-in-one version | grep -F "v${{package.version}}"
+        grep -F "Apache License" \
+          "/usr/share/licenses/${{package.name}}/LICENSE"
+        test -f /etc/jaeger/sampling_strategies.json
+    - uses: test/daemon-check-output
+      with:
+        start: env JAEGER_LISTEN_HOST=127.0.0.1 all-in-one
+        timeout: 60
+        expected_output: Everything is ready
+        post: |
+          wget -qO- http://127.0.0.1:13133/status \
+            | grep -Eq '"healthy"[[:space:]]*:[[:space:]]*true'
+
+update:
+  enabled: true
+  github:
+    identifier: jaegertracing/jaeger
+    strip-prefix: v
+    tag-filter: v2
