@@ -1,0 +1,66 @@
+package:
+  name: karpenter-1.11
+  # renovate: datasource=github-tags depName=aws/karpenter-provider-aws versioning=semver-coerced
+  version: "1.11.1"
+  # Direct revision r7 supersedes the vulnerable public 1.11.1-r0 package.
+  epoch: 7
+  description: Karpenter is a Kubernetes Node Autoscaler built for flexibility, performance, and simplicity.
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    provides:
+      - karpenter=${{package.full-version}}
+      - karpenter-provider-aws=${{package.full-version}}
+  resources:
+    cpu: "8"
+    memory: 16Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26
+
+pipeline:
+  # Adapted from wolfi-dev/os@2c0385b38bd6869a0e928363916e7a7148a1acaf.
+  - uses: fetch
+    with:
+      uri: https://github.com/aws/karpenter-provider-aws/archive/77c161351fbad4f23fae329412de22f1045ccb42.tar.gz
+      expected-sha256: 73ee8d8865e0bddbe963923172c894212c4775063c5bebdfea7535ec2e6812c7
+
+  - uses: go/build
+    with:
+      go-package: go-1.26
+      packages: ./cmd/controller
+      output: controller
+      ldflags: -X=sigs.k8s.io/karpenter/pkg/operator.Version=${{package.version}}
+
+  - runs: |
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  environment:
+    contents:
+      packages:
+        - go-1.26
+    environment:
+      SYSTEM_NAMESPACE: default
+      KUBERNETES_SERVICE_HOST: "127.0.0.1"
+      KUBERNETES_SERVICE_PORT: "32764"
+  pipeline:
+    - runs: |
+        /usr/bin/controller --help >/dev/null
+        go version -m /usr/bin/controller \
+          | grep -F "github.com/aws/karpenter-provider-aws"
+        strings /usr/bin/controller | grep -F -m1 "${{package.version}}"
+        apk info --who-owns /usr/bin/controller \
+          | grep -F "${{package.name}}-${{package.full-version}}"
+        grep -F "Apache License" \
+          "/usr/share/licenses/${{package.name}}/LICENSE"
+
+update:
+  enabled: true
+  github:
+    identifier: aws/karpenter-provider-aws
+    tag-filter-prefix: v1.11.
+    strip-prefix: v
