@@ -1,0 +1,65 @@
+package:
+  name: azure-workload-identity-webhook
+  version: "1.6.0"
+  # Revision r4 is the approved fixed release for CVE-2026-41178 and CVE-2026-42505.
+  epoch: 4
+  description: Mutating webhook for Azure Workload Identity
+  copyright:
+    - license: MIT
+  resources:
+    cpu: "3"
+    memory: 6Gi
+  test-resources:
+    cpu: "1"
+    memory: 2Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  # Adapted from wolfi-dev/os@d4ac7483f8a1b1977429dd9f8ad51c2f83be0599.
+  - uses: git-checkout
+    with:
+      repository: https://github.com/Azure/azure-workload-identity
+      tag: v${{package.version}}
+      expected-commit: 04d01a2fc7f5024290a38f6ccaf69561cf70455d
+
+  - uses: go/build
+    with:
+      packages: ./cmd/webhook
+      output: manager
+      go-package: go-1.26
+      ldflags: |-
+        -X github.com/Azure/azure-workload-identity/pkg/version.BuildVersion=v${{package.version}}
+        -X github.com/Azure/azure-workload-identity/pkg/version.BuildTime=$(date -u -d "@$SOURCE_DATE_EPOCH" +%Y-%m-%d-%H:%M)
+        -X github.com/Azure/azure-workload-identity/pkg/version.Vcs=04d01a2fc7f5024290a38f6ccaf69561cf70455d
+        -X github.com/Azure/azure-workload-identity/pkg/webhook.ProxyImageVersion=v${{package.version}}
+        -X github.com/Azure/azure-workload-identity/pkg/webhook.ProxyImageRegistry=mcr.microsoft.com/oss/azure/workload-identity
+
+  - runs: |
+      install -Dm644 LICENSE "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+update:
+  enabled: true
+  github:
+    identifier: Azure/azure-workload-identity
+    strip-prefix: v
+    use-tag: true
+
+test:
+  pipeline:
+    - uses: test/tw/help-check
+      with:
+        bins: manager
+    - name: Verify embedded release metadata
+      runs: |
+        manager --version | grep -F '"buildVersion":"v${{package.version}}"'
+        manager --version | grep -F '"gitCommit":"04d01a2fc7f5024290a38f6ccaf69561cf70455d"'
+    - name: Verify packaged license
+      runs: |
+        test -s "/usr/share/licenses/${{package.name}}/LICENSE"
+        grep -F "MIT License" "/usr/share/licenses/${{package.name}}/LICENSE"
