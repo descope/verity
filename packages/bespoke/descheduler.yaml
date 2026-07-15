@@ -1,0 +1,69 @@
+package:
+  name: descheduler
+  version: "0.36.0"
+  # Direct revision r6 includes fixes published in r5 and r6.
+  epoch: 6
+  description: Descheduler for Kubernetes
+  copyright:
+    - license: Apache-2.0
+  resources:
+    cpu: "2"
+    memory: 6Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  # Adapted from wolfi-dev/os@90987ee0b29e578acc95eeb1f7efdae35d30d569.
+  - uses: git-checkout
+    with:
+      repository: https://github.com/kubernetes-sigs/descheduler
+      tag: v${{package.version}}
+      expected-commit: 8005cdf78391e2c071cfa653c462dfefc2de8856
+
+  - uses: go/bump
+    with:
+      deps: |-
+        golang.org/x/net@v0.55.0
+
+  - uses: go/build
+    with:
+      packages: ./cmd/descheduler
+      output: descheduler
+      go-package: go-1.26
+      ldflags: |
+        -X sigs.k8s.io/descheduler/pkg/version.version=${{package.version}}
+        -X sigs.k8s.io/descheduler/pkg/version.gitsha1=$(git rev-parse HEAD)
+        -X sigs.k8s.io/descheduler/pkg/version.buildDate=$(date -u -d "@$SOURCE_DATE_EPOCH" +"%Y-%m-%dT%H:%M:%SZ")
+        -X sigs.k8s.io/descheduler/pkg/version.gitbranch=$(git rev-parse --abbrev-ref HEAD)
+
+  - runs: |
+      "${{targets.destdir}}/usr/bin/descheduler" version | grep -F "GitVersion:${{package.version}}"
+      "${{targets.destdir}}/usr/bin/descheduler" --help >/dev/null
+      install -Dm644 LICENSE "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  pipeline:
+    - uses: test/tw/ver-check
+      with:
+        bins: descheduler
+        version: ${{package.version}}
+        version-flag: version
+    - uses: test/tw/help-check
+      with:
+        bins: descheduler
+
+update:
+  enabled: true
+  github:
+    identifier: kubernetes-sigs/descheduler
+    strip-prefix: v
+  ignore-regex-patterns:
+    - descheduler-helm-chart-.*
