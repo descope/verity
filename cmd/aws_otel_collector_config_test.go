@@ -50,6 +50,9 @@ func Test_AWSOTelCollector_recipe_pins_fixed_source_revision(t *testing.T) {
         - ${{package.name}}
         - ${{package.name}}-healthcheck
 `)
+	require.Contains(t, text, `        COLLECTOR_PID=$!
+        trap 'kill "$COLLECTOR_PID" 2>/dev/null || true; wait "$COLLECTOR_PID" 2>/dev/null || true' EXIT
+`)
 }
 
 func Test_AWSOTelCollector_resolves_fixed_local_package(t *testing.T) {

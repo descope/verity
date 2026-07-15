@@ -109,6 +109,7 @@ test:
         set -euo pipefail
         awscollector --config=/etc/otel-config.yaml > collector.log 2>&1 &
         COLLECTOR_PID=$!
+        trap 'kill "$COLLECTOR_PID" 2>/dev/null || true; wait "$COLLECTOR_PID" 2>/dev/null || true' EXIT
         sleep 3
 
         grep -F "Starting aws-otel-collector" collector.log
