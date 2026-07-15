@@ -34,14 +34,16 @@ def main() -> None:
         "PR Test must expose a stable aggregate gate for branch protection",
     )
     require(
-        '["amd64", "arm64"][] as $arch' not in workflow,
-        "Integer dual-architecture coverage must not multiply matrices beyond GitHub's 256-job limit",
+        workflow.count('["amd64", "arm64"][] as $arch') == 2
+        and workflow.count("runs-on: ${{ matrix.runner }}") == 2
+        and workflow.count("ubuntu-24.04-arm") >= 2,
+        "Integer build and smoke matrices must place each architecture on its native runner",
     )
     require(
-        workflow.count("for package_arch in x86_64 aarch64; do") == 2
-        and workflow.count('--arch "$package_arch"') == 2
-        and workflow.count("for arch in amd64 arm64; do") >= 4,
-        "Every Integer build and smoke leg must build its architecture-specific package and image",
+        "for package_arch in x86_64 aarch64; do" not in workflow
+        and workflow.count('--arch "$INTEGER_PACKAGE_ARCH"') >= 3
+        and workflow.count("for arch in amd64 arm64; do") == 1,
+        "Every Integer matrix leg must build only its native package and image architecture",
     )
     require(
         workflow.count('docker load --input "$tar_path"') == 2
@@ -51,8 +53,8 @@ def main() -> None:
         "Every Integer build and smoke leg must verify the loaded runtime architecture",
     )
     require(
-        workflow.count("name: Set up QEMU for dual-architecture verification") == 2,
-        "Both Integer jobs must register arm64 binfmt before aarch64 package builds",
+        "docker/setup-qemu-action" not in workflow,
+        "Integer PR jobs must not compile aarch64 packages through QEMU",
     )
     require(
         workflow.count('--fail-on-severity "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"') == 2,
@@ -72,14 +74,16 @@ def main() -> None:
     )
     require(
         '[ "$image" = linkerd ] && [ "$version" = 25 ] && [ "$type" = default ]' in workflow
-        and "matrix.arch" not in workflow,
-        "The Linkerd dual-architecture pinning canary must run once without standing in for the global arm64 gate",
+        and "--staged" in workflow
+        and '--arch "$INTEGER_PACKAGE_ARCH"' in workflow,
+        "The Linkerd pinning canary must retain staged package coverage on each native architecture",
     )
     require(
         workflow.count("group_by((.key / 16 | floor))") == 2
+        and workflow.count('["amd64", "arm64"][] as $arch') == 2
         and "expected-matrix" in workflow
         and "expected-smoke-matrix" in workflow,
-        "Affected Integer entries must be batched below GitHub's 256-job matrix limit without losing aggregate expectations",
+        "Affected Integer entries must remain bounded to 32 native architecture batches without losing aggregate expectations",
     )
 
 
