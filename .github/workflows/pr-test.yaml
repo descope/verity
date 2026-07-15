@@ -129,13 +129,15 @@ jobs:
 
   # ── Integer smoke test ────────────────────────────────────────────────
   integer-smoke-test:
-    name: "Integer smoke batch ${{ matrix.batch_id }}"
+    name: "Integer smoke batch ${{ matrix.batch_id }} (${{ matrix.arch }})"
     needs: [changes, detect-changed-images]
     if: needs.changes.outputs.integer == 'true' && needs.detect-changed-images.outputs.has-changes == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     env:
       INTEGER_ENTRIES: ${{ toJson(matrix.entries) }}
       INTEGER_BATCH_ID: ${{ matrix.batch_id }}
+      INTEGER_ARCH: ${{ matrix.arch }}
+      INTEGER_PACKAGE_ARCH: ${{ matrix.package_arch }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.detect-changed-images.outputs.smoke-matrix) }}
@@ -166,14 +168,7 @@ jobs:
       - name: Build verity CLI
         run: go build -o verity .
 
-      - name: Set up QEMU for dual-architecture verification
-        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
-        with:
-          # renovate: datasource=docker depName=tonistiigi/binfmt
-          image: docker.io/tonistiigi/binfmt:latest@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0
-          platforms: arm64
-
-      - name: Build and verify dual-architecture Integer smoke batch
+      - name: Build and verify native-architecture Integer smoke batch
         run: |
           mkdir -p integer-security
           while IFS= read -r entry; do
@@ -184,55 +179,62 @@ jobs:
             report_dir="trivy-reports/${safe_image}-${version}-${type}"
             mkdir -p "$report_dir"
 
-            for package_arch in x86_64 aarch64; do
+            echo "::group::Melange ${image}:${version}-${type} (${INTEGER_PACKAGE_ARCH})"
+            started=$SECONDS
+            if timeout --signal=TERM --kill-after=1m 30m \
               ./verity integer melange build \
                 --image "$image" \
                 --version "$version" \
                 --type "$type" \
-                --arch "$package_arch"
-            done
+                --arch "$INTEGER_PACKAGE_ARCH"; then
+              echo "Melange ${image}:${version}-${type} (${INTEGER_PACKAGE_ARCH}) completed in $((SECONDS - started))s"
+            else
+              rc=$?
+              echo "::error::Melange ${image}:${version}-${type} (${INTEGER_PACKAGE_ARCH}) failed after $((SECONDS - started))s with exit ${rc}"
+              exit "$rc"
+            fi
+            echo "::endgroup::"
 
-            for arch in amd64 arm64; do
-              tar_path="image-${safe_image}-${version}-${type}-${arch}.tar"
-              ./verity integer build \
-                --image "$image" \
-                --version "$version" \
-                --type "$type" \
-                --output "$tar_path" \
-                --arch "$arch" \
-                --fail-on-severity "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+            arch="$INTEGER_ARCH"
+            tar_path="image-${safe_image}-${version}-${type}-${arch}.tar"
+            ./verity integer build \
+              --image "$image" \
+              --version "$version" \
+              --type "$type" \
+              --output "$tar_path" \
+              --arch "$arch" \
+              --fail-on-severity "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
 
-              load_output=$(docker load --input "$tar_path")
-              echo "$load_output"
-              loaded_ref=$(awk -F': ' '/^Loaded image: / {print $2}' <<< "$load_output" | tail -1)
-              if [ -z "$loaded_ref" ]; then
-                echo "::error::docker load did not report an image reference for ${arch}"
-                exit 1
-              fi
-              runtime_arch=$(docker image inspect "$loaded_ref" --format '{{.Architecture}}')
-              if [ "$runtime_arch" != "$arch" ]; then
-                echo "::error::runtime architecture mismatch: expected ${arch}, got ${runtime_arch}"
-                exit 1
-              fi
+            load_output=$(docker load --input "$tar_path")
+            echo "$load_output"
+            loaded_ref=$(awk -F': ' '/^Loaded image: / {print $2}' <<< "$load_output" | tail -1)
+            if [ -z "$loaded_ref" ]; then
+              echo "::error::docker load did not report an image reference for ${arch}"
+              exit 1
+            fi
+            runtime_arch=$(docker image inspect "$loaded_ref" --format '{{.Architecture}}')
+            if [ "$runtime_arch" != "$arch" ]; then
+              echo "::error::runtime architecture mismatch: expected ${arch}, got ${runtime_arch}"
+              exit 1
+            fi
 
-              trivy image \
-                --exit-code 1 \
-                --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
-                --vuln-type os,library \
-                --format json \
-                --output "${report_dir}/${arch}.json" \
-                --input "$tar_path"
-              total=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' "${report_dir}/${arch}.json")
-              echo "${image}:${version}-${type} ${arch}: Total vulnerabilities: ${total}"
-              touch "integer-security/smoke-${safe_image}-${version}-${type}-${arch}.passed"
-              rm -f "$tar_path"
-            done
+            trivy image \
+              --exit-code 1 \
+              --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
+              --vuln-type os,library \
+              --format json \
+              --output "${report_dir}/${arch}.json" \
+              --input "$tar_path"
+            total=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' "${report_dir}/${arch}.json")
+            echo "${image}:${version}-${type} ${arch}: Total vulnerabilities: ${total}"
+            touch "integer-security/smoke-${safe_image}-${version}-${type}-${arch}.passed"
+            rm -f "$tar_path"
           done < <(jq -c '.[]' <<< "$INTEGER_ENTRIES")
 
       - name: Upload Integer security completion
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: "integer-security-smoke-batch-${{ matrix.batch_id }}"
+          name: "integer-security-smoke-batch-${{ matrix.batch_id }}-${{ matrix.arch }}"
           path: integer-security/*.passed
           retention-days: 7
 
@@ -240,7 +242,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: "trivy-smoke-batch-${{ matrix.batch_id }}-amd64-arm64"
+          name: "trivy-smoke-batch-${{ matrix.batch_id }}-${{ matrix.arch }}"
           path: trivy-reports/**/*.json
           retention-days: 7
 
@@ -312,8 +314,8 @@ jobs:
 
           expected_matrix=$(jq -c '.matrix' ci-plan.json)
           expected_smoke_matrix=$(jq -c '.smokeMatrix' ci-plan.json)
-          matrix=$(jq -c '[.matrix.include | to_entries | group_by((.key / 16 | floor))[] | {batch_id: (.[0].key / 16 | floor), entries: map(.value)}] | {include: .}' ci-plan.json)
-          smoke_matrix=$(jq -c '[.smokeMatrix.include | to_entries | group_by((.key / 16 | floor))[] | {batch_id: (.[0].key / 16 | floor), entries: map(.value)}] | {include: .}' ci-plan.json)
+          matrix=$(jq -c '[.matrix.include | to_entries | group_by((.key / 16 | floor))[] | {batch_id: (.[0].key / 16 | floor), entries: map(.value)} as $batch | ["amd64", "arm64"][] as $arch | $batch + {arch: $arch, package_arch: (if $arch == "amd64" then "x86_64" else "aarch64" end), runner: (if $arch == "amd64" then "ubuntu-latest" else "ubuntu-24.04-arm" end)}] | {include: .}' ci-plan.json)
+          smoke_matrix=$(jq -c '[.smokeMatrix.include | to_entries | group_by((.key / 16 | floor))[] | {batch_id: (.[0].key / 16 | floor), entries: map(.value)} as $batch | ["amd64", "arm64"][] as $arch | $batch + {arch: $arch, package_arch: (if $arch == "amd64" then "x86_64" else "aarch64" end), runner: (if $arch == "amd64" then "ubuntu-latest" else "ubuntu-24.04-arm" end)}] | {include: .}' ci-plan.json)
           has_changes=$(jq -r '.hasChanges' ci-plan.json)
           count=$(jq '.include | length' <<< "$expected_matrix")
           batch_count=$(jq '.include | length' <<< "$matrix")
@@ -328,13 +330,15 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   integer-build-changed:
-    name: "Integer build batch ${{ matrix.batch_id }}"
+    name: "Integer build batch ${{ matrix.batch_id }} (${{ matrix.arch }})"
     needs: [changes, detect-changed-images]
     if: needs.changes.outputs.integer == 'true' && needs.detect-changed-images.outputs.has-changes == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     env:
       INTEGER_ENTRIES: ${{ toJson(matrix.entries) }}
       INTEGER_BATCH_ID: ${{ matrix.batch_id }}
+      INTEGER_ARCH: ${{ matrix.arch }}
+      INTEGER_PACKAGE_ARCH: ${{ matrix.package_arch }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.detect-changed-images.outputs.matrix) }}
@@ -365,14 +369,7 @@ jobs:
       - name: Build verity CLI
         run: go build -o verity .
 
-      - name: Set up QEMU for dual-architecture verification
-        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
-        with:
-          # renovate: datasource=docker depName=tonistiigi/binfmt
-          image: docker.io/tonistiigi/binfmt:latest@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0
-          platforms: arm64
-
-      - name: Build and verify dual-architecture Integer batch
+      - name: Build and verify native-architecture Integer batch
         run: |
           mkdir -p integer-security
           while IFS= read -r entry; do
@@ -383,94 +380,105 @@ jobs:
             report_dir="trivy-reports/${safe_image}-${version}-${type}"
             mkdir -p "$report_dir"
 
-            for package_arch in x86_64 aarch64; do
+            echo "::group::Melange ${image}:${version}-${type} (${INTEGER_PACKAGE_ARCH})"
+            started=$SECONDS
+            if timeout --signal=TERM --kill-after=1m 30m \
               ./verity integer melange build \
                 --image "$image" \
                 --version "$version" \
                 --type "$type" \
-                --arch "$package_arch"
-            done
+                --arch "$INTEGER_PACKAGE_ARCH"; then
+              echo "Melange ${image}:${version}-${type} (${INTEGER_PACKAGE_ARCH}) completed in $((SECONDS - started))s"
+            else
+              rc=$?
+              echo "::error::Melange ${image}:${version}-${type} (${INTEGER_PACKAGE_ARCH}) failed after $((SECONDS - started))s with exit ${rc}"
+              exit "$rc"
+            fi
+            echo "::endgroup::"
 
             if [ "$image" = linkerd ] && [ "$version" = 25 ] && [ "$type" = default ]; then
-              ./verity integer melange build \
-                --image "$image" \
-                --version "$version" \
-                --type "$type" \
-                --arch aarch64 \
-                --staged
+              if timeout --signal=TERM --kill-after=1m 30m \
+                ./verity integer melange build \
+                  --image "$image" \
+                  --version "$version" \
+                  --type "$type" \
+                  --arch "$INTEGER_PACKAGE_ARCH" \
+                  --staged; then
+                echo "Staged Melange canary completed for ${INTEGER_PACKAGE_ARCH}"
+              else
+                rc=$?
+                echo "::error::staged Melange canary failed for ${INTEGER_PACKAGE_ARCH} with exit ${rc}"
+                exit "$rc"
+              fi
 
               ./verity integer discover --apkindex-url "" --gen-dir ./pin-config-gen
               config="pin-config-gen/${image}/${version}/${type}.apko.yaml"
               ./verity integer melange pin-config \
                 --config "$config" \
                 --repository packages/repo \
-                --arch x86_64 \
-                --arch aarch64
+                --arch "$INTEGER_PACKAGE_ARCH"
               grep -Eq 'linkerd2-cli=[^ ,]+@local' "$config"
 
-              for arch in amd64 arm64; do
-                canary_image="pin-config-${arch}.tar"
-                canary_report="pin-config-${arch}.json"
-                apko build \
-                  --arch "$arch" \
-                  --repository-append "@local packages/repo" \
-                  --keyring-append melange-work/melange.rsa.pub \
-                  "$config" \
-                  integer:pin-config-canary \
-                  "$canary_image"
-                trivy image \
-                  --exit-code 1 \
-                  --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
-                  --vuln-type os,library \
-                  --format json \
-                  --output "$canary_report" \
-                  --input "$canary_image"
-                total=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' "$canary_report")
-                echo "Pin-config canary ${arch}: Total vulnerabilities: ${total}"
-              done
-            fi
-
-            for arch in amd64 arm64; do
-              tar_path="image-${safe_image}-${version}-${type}-${arch}.tar"
-              ./verity integer build \
-                --image "$image" \
-                --version "$version" \
-                --type "$type" \
-                --output "$tar_path" \
-                --arch "$arch" \
-                --fail-on-severity "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
-
-              load_output=$(docker load --input "$tar_path")
-              echo "$load_output"
-              loaded_ref=$(awk -F': ' '/^Loaded image: / {print $2}' <<< "$load_output" | tail -1)
-              if [ -z "$loaded_ref" ]; then
-                echo "::error::docker load did not report an image reference for ${arch}"
-                exit 1
-              fi
-              runtime_arch=$(docker image inspect "$loaded_ref" --format '{{.Architecture}}')
-              if [ "$runtime_arch" != "$arch" ]; then
-                echo "::error::runtime architecture mismatch: expected ${arch}, got ${runtime_arch}"
-                exit 1
-              fi
-
+              canary_image="pin-config-${INTEGER_ARCH}.tar"
+              canary_report="pin-config-${INTEGER_ARCH}.json"
+              apko build \
+                --arch "$INTEGER_ARCH" \
+                --repository-append "@local packages/repo" \
+                --keyring-append melange-work/melange.rsa.pub \
+                "$config" \
+                integer:pin-config-canary \
+                "$canary_image"
               trivy image \
                 --exit-code 1 \
                 --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
                 --vuln-type os,library \
                 --format json \
-                --output "${report_dir}/${arch}.json" \
-                --input "$tar_path"
-              total=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' "${report_dir}/${arch}.json")
-              echo "${image}:${version}-${type} ${arch}: Total vulnerabilities: ${total}"
-              touch "integer-security/build-${safe_image}-${version}-${type}-${arch}.passed"
-              rm -f "$tar_path"
-            done
+                --output "$canary_report" \
+                --input "$canary_image"
+              total=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' "$canary_report")
+              echo "Pin-config canary ${INTEGER_ARCH}: Total vulnerabilities: ${total}"
+            fi
+
+            arch="$INTEGER_ARCH"
+            tar_path="image-${safe_image}-${version}-${type}-${arch}.tar"
+            ./verity integer build \
+              --image "$image" \
+              --version "$version" \
+              --type "$type" \
+              --output "$tar_path" \
+              --arch "$arch" \
+              --fail-on-severity "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+
+            load_output=$(docker load --input "$tar_path")
+            echo "$load_output"
+            loaded_ref=$(awk -F': ' '/^Loaded image: / {print $2}' <<< "$load_output" | tail -1)
+            if [ -z "$loaded_ref" ]; then
+              echo "::error::docker load did not report an image reference for ${arch}"
+              exit 1
+            fi
+            runtime_arch=$(docker image inspect "$loaded_ref" --format '{{.Architecture}}')
+            if [ "$runtime_arch" != "$arch" ]; then
+              echo "::error::runtime architecture mismatch: expected ${arch}, got ${runtime_arch}"
+              exit 1
+            fi
+
+            trivy image \
+              --exit-code 1 \
+              --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
+              --vuln-type os,library \
+              --format json \
+              --output "${report_dir}/${arch}.json" \
+              --input "$tar_path"
+            total=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' "${report_dir}/${arch}.json")
+            echo "${image}:${version}-${type} ${arch}: Total vulnerabilities: ${total}"
+            touch "integer-security/build-${safe_image}-${version}-${type}-${arch}.passed"
+            rm -f "$tar_path"
           done < <(jq -c '.[]' <<< "$INTEGER_ENTRIES")
 
       - name: Upload Integer security completion
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: "integer-security-build-batch-${{ matrix.batch_id }}"
+          name: "integer-security-build-batch-${{ matrix.batch_id }}-${{ matrix.arch }}"
           path: integer-security/*.passed
           retention-days: 7
 
@@ -478,7 +486,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: "trivy-build-batch-${{ matrix.batch_id }}-amd64-arm64"
+          name: "trivy-build-batch-${{ matrix.batch_id }}-${{ matrix.arch }}"
           path: trivy-reports/**/*.json
           retention-days: 7
 

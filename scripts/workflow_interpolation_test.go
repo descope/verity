@@ -73,8 +73,8 @@ func TestPRWorkflowUsesDistinctIntegerReportArtifactNames(t *testing.T) {
 			owners[name] = jobName + "/" + step.Name
 		}
 	}
-	require.Contains(t, owners, "trivy-smoke-batch-${{ matrix.batch_id }}-amd64-arm64")
-	require.Contains(t, owners, "trivy-build-batch-${{ matrix.batch_id }}-amd64-arm64")
+	require.Contains(t, owners, "trivy-smoke-batch-${{ matrix.batch_id }}-${{ matrix.arch }}")
+	require.Contains(t, owners, "trivy-build-batch-${{ matrix.batch_id }}-${{ matrix.arch }}")
 }
 
 func TestPRWorkflowDiffsBespokeLockForSelectiveImagePlanning(t *testing.T) {
@@ -122,33 +122,28 @@ func TestPRWorkflowExercisesProductionPinningOnLinkerdCanary(t *testing.T) {
 		Uses string            `yaml:"uses"`
 		With map[string]string `yaml:"with"`
 	}
-	qemu := batch
-	qemuIndex, batchIndex := -1, -1
+	batchIndex := -1
 	for index, step := range workflow.Jobs["integer-build-changed"].Steps {
-		switch step.Name {
-		case "Set up QEMU for dual-architecture verification":
-			qemu = step
-			qemuIndex = index
-		case "Build and verify dual-architecture Integer batch":
+		if step.Name == "Build and verify native-architecture Integer batch" {
 			batch = step
 			batchIndex = index
 		}
 	}
 
-	// Then: QEMU is ready before every aarch64 package build, while only
-	// Linkerd runs the production package-pinning canary inside the batch.
-	require.Equal(t, "Set up QEMU for dual-architecture verification", qemu.Name)
-	assert.Equal(t, "docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8", qemu.Uses)
-	assert.Equal(t, "docker.io/tonistiigi/binfmt:latest@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0", qemu.With["image"])
-	assert.Equal(t, "arm64", qemu.With["platforms"])
-	assert.Less(t, qemuIndex, batchIndex)
-	require.Equal(t, "Build and verify dual-architecture Integer batch", batch.Name)
+	// Then: each architecture uses its native runner and only Linkerd runs
+	// the production package-pinning canary inside the batch.
+	assert.NotContains(t, string(data), "docker/setup-qemu-action")
+	assert.Contains(t, string(data), "ubuntu-24.04-arm")
+	assert.NotEqual(t, -1, batchIndex)
+	require.Equal(t, "Build and verify native-architecture Integer batch", batch.Name)
+	assert.NotContains(t, batch.Run, `for package_arch in x86_64 aarch64; do`)
+	assert.Contains(t, batch.Run, `timeout --signal=TERM --kill-after=1m 30m`)
+	assert.Contains(t, batch.Run, `--arch "$INTEGER_PACKAGE_ARCH"`)
 	assert.Contains(t, batch.Run, `[ "$image" = linkerd ] && [ "$version" = 25 ] && [ "$type" = default ]`)
-	assert.Contains(t, batch.Run, `--arch aarch64`)
 	assert.Contains(t, batch.Run, `--staged`)
 	assert.Contains(t, batch.Run, `./verity integer melange pin-config`)
 	assert.Contains(t, batch.Run, `--repository packages/repo`)
-	assert.Contains(t, batch.Run, `--arch x86_64`)
+	assert.Contains(t, batch.Run, `--arch "$INTEGER_PACKAGE_ARCH"`)
 	assert.Contains(t, batch.Run, `apko build`)
 	assert.Contains(t, batch.Run, `--repository-append "@local packages/repo"`)
 	assert.Contains(t, batch.Run, `trivy image`)
@@ -173,24 +168,25 @@ func TestPRWorkflowRequiresDualArchitectureIntegerSecurityCompletion(t *testing.
 
 	// Then: every selected image entry executes both architectures without
 	// multiplying the matrix beyond GitHub's 256-job limit.
-	assert.NotContains(t, workflow, `["amd64", "arm64"][] as $arch`)
+	assert.Equal(t, 2, strings.Count(workflow, `["amd64", "arm64"][] as $arch`))
 	assert.Equal(t, 2, strings.Count(workflow, `group_by((.key / 16 | floor))`))
 	assert.Contains(t, workflow, `expected-matrix=${expected_matrix}`)
 	assert.Contains(t, workflow, `expected-smoke-matrix=${expected_smoke_matrix}`)
-	assert.Equal(t, 2, strings.Count(workflow, `for package_arch in x86_64 aarch64; do`))
-	assert.Equal(t, 2, strings.Count(workflow, `--arch "$package_arch"`))
-	assert.GreaterOrEqual(t, strings.Count(workflow, `for arch in amd64 arm64; do`), 4)
+	assert.NotContains(t, workflow, `for package_arch in x86_64 aarch64; do`)
+	assert.Equal(t, 2, strings.Count(workflow, `runs-on: ${{ matrix.runner }}`))
+	assert.GreaterOrEqual(t, strings.Count(workflow, `ubuntu-24.04-arm`), 2)
+	assert.Equal(t, 1, strings.Count(workflow, `for arch in amd64 arm64; do`))
 	assert.Equal(t, 2, strings.Count(workflow, `docker load --input "$tar_path"`))
 	assert.Equal(t, 2, strings.Count(workflow, `docker image inspect "$loaded_ref"`))
 	assert.Equal(t, 2, strings.Count(workflow, `docker load did not report an image reference`))
 	assert.Equal(t, 2, strings.Count(workflow, `runtime architecture mismatch`))
-	assert.Equal(t, 2, strings.Count(workflow, `name: Set up QEMU for dual-architecture verification`))
+	assert.NotContains(t, workflow, `name: Set up QEMU for dual-architecture verification`)
 
 	// And: reports and completion evidence cannot collide across architectures.
-	assert.Contains(t, workflow, `trivy-smoke-batch-${{ matrix.batch_id }}-amd64-arm64`)
-	assert.Contains(t, workflow, `trivy-build-batch-${{ matrix.batch_id }}-amd64-arm64`)
-	assert.Contains(t, workflow, `integer-security-smoke-batch-${{ matrix.batch_id }}`)
-	assert.Contains(t, workflow, `integer-security-build-batch-${{ matrix.batch_id }}`)
+	assert.Contains(t, workflow, `trivy-smoke-batch-${{ matrix.batch_id }}-${{ matrix.arch }}`)
+	assert.Contains(t, workflow, `trivy-build-batch-${{ matrix.batch_id }}-${{ matrix.arch }}`)
+	assert.Contains(t, workflow, `integer-security-smoke-batch-${{ matrix.batch_id }}-${{ matrix.arch }}`)
+	assert.Contains(t, workflow, `integer-security-build-batch-${{ matrix.batch_id }}-${{ matrix.arch }}`)
 
 	// And: the required aggregate verifies every expected marker, so an absent,
 	// skipped, cancelled, or failed arm64 leg cannot be reported as success.
