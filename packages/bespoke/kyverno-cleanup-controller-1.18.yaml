@@ -1,6 +1,6 @@
 package:
   name: kyverno-cleanup-controller-1.18
-  version: "1.18.1"
+  version: "1.18.2"
   epoch: 99
   description: "Kyverno cleanup controller rebuilt from source"
   copyright:
@@ -26,6 +26,7 @@ pipeline:
     with:
       repository: https://github.com/kyverno/kyverno
       tag: v${{package.version}}
+      expected-commit: 945ac9ce8546ea6cd51370f24b615148c577da5e
   - runs: |
       mkdir -p "${{targets.contextdir}}/usr/bin"
       go build -trimpath -ldflags='-s -w' -o "${{targets.contextdir}}/usr/bin/cleanup-controller" ./cmd/cleanup-controller
