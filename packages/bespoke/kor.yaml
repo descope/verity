@@ -1,0 +1,62 @@
+package:
+  name: kor
+  # renovate: datasource=github-tags depName=yonahd/kor versioning=semver-coerced
+  version: "0.6.8"
+  # Direct revision r8 rebuilds the fixed source with the remediated Go toolchain.
+  epoch: 8
+  description: A Golang tool to discover unused Kubernetes resources
+  copyright:
+    - license: MIT
+  resources:
+    cpu: "2"
+    memory: 5Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26
+
+pipeline:
+  # Adapted from wolfi-dev/os@86f2c8a880f339829deb63a993f563382356221e.
+  - uses: fetch
+    with:
+      uri: https://github.com/yonahd/kor/archive/d6986c937ce72d331fef965c1b103fab69b4ea93.tar.gz
+      expected-sha256: dce84e8a1d5de7311a5ddf3bd31c443f177f3ea96d182757fd4190e5b484bdfa
+
+  - uses: go/bump
+    with:
+      deps: golang.org/x/net@v0.55.0
+
+  - uses: go/build
+    with:
+      modroot: .
+      packages: .
+      output: kor
+      go-package: go-1.26
+      ldflags: |
+        -X github.com/yonahd/kor/pkg/utils.Version=${{package.version}}
+
+  - runs: |
+      "${{targets.destdir}}/usr/bin/kor" version \
+        | grep -F "kor version: v${{package.version}}"
+      "${{targets.destdir}}/usr/bin/kor" --help >/dev/null
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  pipeline:
+    - runs: |
+        /usr/bin/kor version | grep -F "kor version: v${{package.version}}"
+        /usr/bin/kor --help >/dev/null
+        apk info --who-owns /usr/bin/kor \
+          | grep -F "${{package.name}}-${{package.full-version}}"
+        grep -F "MIT License" \
+          "/usr/share/licenses/${{package.name}}/LICENSE"
+
+update:
+  enabled: true
+  github:
+    identifier: yonahd/kor
+    strip-prefix: v
+  ignore-regex-patterns:
+    - ^kor-.*
