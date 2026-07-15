@@ -20,10 +20,11 @@ environment:
 
 pipeline:
   # Adapted from wolfi-dev/os@05cef2f5b5b59f8a0352fb018248c65bcc3fc2e2.
-  - uses: fetch
+  - uses: git-checkout
     with:
-      uri: https://github.com/aws-controllers-k8s/s3-controller/archive/refs/tags/v${{package.version}}.tar.gz
-      expected-sha256: 28ceade153f536c77c9b80dcd24a9a54fae879d60c6b4108565726ce7f0bab8c
+      repository: https://github.com/aws-controllers-k8s/s3-controller.git
+      tag: v${{package.version}}
+      expected-commit: cba55a118f7ee122c2da08f3d4148d79ac953972
 
   - uses: go/build
     with:
@@ -39,6 +40,13 @@ pipeline:
       mkdir -p ${{targets.contextdir}}
       cp LICENSE ${{targets.contextdir}}/
       cp ATTRIBUTION.md ${{targets.contextdir}}/
+
+update:
+  enabled: true
+  github:
+    identifier: aws-controllers-k8s/s3-controller
+    strip-prefix: v
+    use-tag: true
 
 test:
   environment:

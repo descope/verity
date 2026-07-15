@@ -39,13 +39,17 @@ func Test_AWSS3Controller_recipe_pins_fixed_source_revision(t *testing.T) {
 	require.Contains(t, text, "version: \"1.8.1\"")
 	require.Contains(t, text, "epoch: 0")
 	require.Contains(t, text, "license: Apache-2.0")
-	require.Contains(t, text, "uri: https://github.com/aws-controllers-k8s/s3-controller/archive/refs/tags/v${{package.version}}.tar.gz")
-	require.Contains(t, text, "expected-sha256: 28ceade153f536c77c9b80dcd24a9a54fae879d60c6b4108565726ce7f0bab8c")
+	require.Contains(t, text, "repository: https://github.com/aws-controllers-k8s/s3-controller.git")
+	require.Contains(t, text, "tag: v${{package.version}}")
+	require.Contains(t, text, "expected-commit: cba55a118f7ee122c2da08f3d4148d79ac953972")
 	require.Contains(t, text, "go-package: go-1.26")
 	require.Contains(t, text, "github.com/aws-controllers-k8s/s3-controller/pkg/version.GitVersion")
 	require.Contains(t, text, "github.com/aws-controllers-k8s/s3-controller/pkg/version.GitCommit")
 	require.Contains(t, text, "github.com/aws-controllers-k8s/s3-controller/pkg/version.BuildDate")
 	require.Contains(t, text, "cba55a118f7ee122c2da08f3d4148d79ac953972")
+	require.Contains(t, text, "identifier: aws-controllers-k8s/s3-controller")
+	require.Contains(t, text, "strip-prefix: v")
+	require.Contains(t, text, "use-tag: true")
 }
 
 func Test_AWSS3Controller_resolves_fixed_local_package(t *testing.T) {
