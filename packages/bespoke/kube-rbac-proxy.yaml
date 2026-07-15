@@ -1,0 +1,62 @@
+package:
+  name: kube-rbac-proxy
+  # renovate: datasource=github-tags depName=kube-rbac-proxy/kube-rbac-proxy versioning=semver-coerced
+  version: "0.22.1"
+  # Direct revision r1 rebuilds the fixed v0.22.1 source.
+  epoch: 1
+  description: Kubernetes RBAC authorizing HTTP proxy for a single upstream
+  copyright:
+    - license: Apache-2.0
+  resources:
+    cpu: "2"
+    memory: 6Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  # Adapted from wolfi-dev/os@832715bf59583579564b2fe393aba0a6b466fb85.
+  # v0.22.1 resolves to a67fc47c9e13db72e64b3cf0a369de4350e1c59b.
+  - uses: fetch
+    with:
+      uri: https://github.com/kube-rbac-proxy/kube-rbac-proxy/archive/refs/tags/v${{package.version}}.tar.gz
+      expected-sha256: f8c6d4bc140ae04f20d6d0fedb077e8c233b72bab681500d32cc07c65208c41a
+
+  - uses: go/build
+    with:
+      go-package: go-1.26
+      packages: ./cmd/kube-rbac-proxy
+      output: kube-rbac-proxy
+      ldflags: -X k8s.io/component-base/version.gitVersion=v${{package.version}}
+
+  - runs: |
+      "${{targets.destdir}}/usr/bin/kube-rbac-proxy" --version \
+        | grep -F "v${{package.version}}"
+      "${{targets.destdir}}/usr/bin/kube-rbac-proxy" --help >/dev/null
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  pipeline:
+    - runs: |
+        kube-rbac-proxy --version | grep -F "v${{package.version}}"
+        kube-rbac-proxy --help >/dev/null
+        apk info --who-owns /usr/bin/kube-rbac-proxy \
+          | grep -F "${{package.name}}-${{package.full-version}}"
+        apk info --license kube-rbac-proxy | grep -F "Apache-2.0"
+        grep -F "Apache License" \
+          "/usr/share/licenses/${{package.name}}/LICENSE"
+
+update:
+  enabled: true
+  github:
+    identifier: kube-rbac-proxy/kube-rbac-proxy
+    strip-prefix: v
+    tag-filter: v
