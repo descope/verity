@@ -43,5 +43,6 @@ func Test_ArgoRollouts_recipe_pins_fixed_source_revision(t *testing.T) {
 	require.Contains(t, text, "expected-commit: 838d4e792be666ec11bd0c80331e0c5511b5010e")
 	require.Contains(t, text, "go-1.26=1.26.5-r1")
 	require.Contains(t, text, "go.opentelemetry.io/otel@v1.44.0")
+	require.Contains(t, text, "go.opentelemetry.io/otel/metric@v1.44.0")
 	require.Contains(t, text, "go.opentelemetry.io/otel/trace@v1.44.0")
 }
