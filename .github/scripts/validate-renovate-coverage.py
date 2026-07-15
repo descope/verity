@@ -36,6 +36,7 @@ LOCAL_RECIPE_VERSIONS: Final = {
 SPECIAL_RECIPE_SOURCES: Final = {
     "packages/bespoke/airflow-3.yaml",
     "packages/bespoke/dex.yaml",
+    "packages/bespoke/external-secrets-operator.yaml",
     "packages/bespoke/haproxy-3.0.yaml",
     "packages/bespoke/haproxy-3.1.yaml",
     "packages/bespoke/haproxy-3.2.yaml",
