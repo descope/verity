@@ -18,7 +18,7 @@ type integerPRChanges struct {
 
 type integerPRSelection struct {
 	imageNames map[string]struct{}
-	variants   map[integerVariant]struct{}
+	variants   integerVariantImpacts
 }
 
 var apkindexFetch = apkindex.Fetch
@@ -115,7 +115,7 @@ func resolveIntegerPRSelection(opts *IntegerPROptions, images []intdiscovery.Dis
 	}
 	selection := integerPRSelection{
 		imageNames: imageNames,
-		variants:   map[integerVariant]struct{}{},
+		variants:   integerVariantImpacts{},
 	}
 	if changes.allImages {
 		return selection, nil
@@ -132,7 +132,7 @@ func resolveIntegerPRSelection(opts *IntegerPROptions, images []intdiscovery.Dis
 			return integerPRSelection{}, fmt.Errorf("resolve package-pinning canaries: %w", err)
 		}
 		for variant := range canaries {
-			selection.variants[variant] = struct{}{}
+			selection.variants[variant] = integerImpactShared
 		}
 	}
 	return selection, nil
