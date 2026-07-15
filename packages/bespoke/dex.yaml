@@ -73,16 +73,6 @@ pipeline:
         -X main.version=v${{package.version}}
         -extldflags "-static"
 
-  - uses: go/build
-    with:
-      packages: ./cmd/docker-entrypoint
-      output: docker-entrypoint
-      go-package: go-1.26
-      ldflags: |
-        -w
-        -X main.version=v${{package.version}}
-        -extldflags "-static"
-
   - runs: |
       install -d \
         "${{targets.destdir}}/etc/dex" \
@@ -132,7 +122,6 @@ test:
       with:
         bins: dex
     - runs: |
-        test -x /usr/bin/docker-entrypoint
         test -f /etc/dex/config.docker.yaml
         test -d /srv/dex/web
         test -f /usr/share/licenses/${{package.name}}/LICENSE

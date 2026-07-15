@@ -47,7 +47,8 @@ func Test_Dex_recipe_pins_fixed_source_revision(t *testing.T) {
 	require.Contains(t, text, "go-package: go-1.26")
 	require.Contains(t, text, "packages: ./cmd/dex")
 	require.Contains(t, text, "output: dex")
-	require.Contains(t, text, "usr/bin/docker-entrypoint")
+	require.NotContains(t, text, "./cmd/docker-entrypoint")
+	require.NotContains(t, text, "usr/bin/docker-entrypoint")
 	require.Contains(t, text, "usr/share/licenses/${{package.name}}/LICENSE")
 	require.NotContains(t, text, "\"${{targets.destdir}}/var/dex\"")
 }
