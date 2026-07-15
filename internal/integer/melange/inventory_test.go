@@ -48,18 +48,20 @@ func TestEveryMelangeUpstreamConsumerHasLockedRecipe(t *testing.T) {
 			return loadErr
 		}
 		for typeName, imageType := range def.Types {
-			if imageType.Melange == nil || imageType.Melange.Upstream == "" {
-				continue
-			}
 			if len(def.Versions) == 0 {
-				requireLockedConsumer(t, lock, def.Name, typeName, "latest", imageType.Melange)
+				if imageType.Melange != nil && imageType.Melange.Upstream != "" {
+					requireLockedConsumer(t, lock, def.Name, typeName, "latest", imageType.Melange)
+				}
 				continue
 			}
 			for version, metadata := range def.Versions {
 				if slices.Contains(metadata.SkipTypes, typeName) {
 					continue
 				}
-				requireLockedConsumer(t, lock, def.Name, typeName, version, imageType.Melange)
+				configSpec := def.MelangeFor(version, typeName)
+				if configSpec != nil && configSpec.Upstream != "" {
+					requireLockedConsumer(t, lock, def.Name, typeName, version, configSpec)
+				}
 			}
 		}
 		return nil

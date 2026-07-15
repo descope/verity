@@ -32,11 +32,12 @@ func ResolveSpec(imagesDir, image, version, imageType string) (Spec, error) {
 	if err != nil {
 		return Spec{}, fmt.Errorf("load image %q: %w", image, err)
 	}
-	tmpl, ok := def.Types[imageType]
+	_, ok := def.Types[imageType]
 	if !ok {
 		return Spec{}, fmt.Errorf("%w: image %q type %q", errImageTypeNotFound, image, imageType)
 	}
-	if tmpl.Melange == nil {
+	configSpec := def.MelangeFor(version, imageType)
+	if configSpec == nil {
 		return Spec{}, nil
 	}
 	if meta, ok := def.Versions[version]; len(def.Versions) > 0 && !ok {
@@ -44,7 +45,7 @@ func ResolveSpec(imagesDir, image, version, imageType string) (Spec, error) {
 	} else if ok && slices.Contains(meta.SkipTypes, imageType) {
 		return Spec{}, fmt.Errorf("%w: image %q version %q type %q", errImageTypeSkipped, image, version, imageType)
 	}
-	return ResolveConfigSpec(tmpl.Melange, version)
+	return ResolveConfigSpec(configSpec, version)
 }
 
 func ResolveConfigSpec(input *intconfig.MelangeSpec, version string) (Spec, error) {

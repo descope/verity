@@ -110,7 +110,7 @@ func integerImpactVariants(imagesDir string, imgs []intdiscovery.DiscoveredImage
 			}
 			definitions[definitionFile] = def
 		}
-		configSpec := def.Types[img.Type].Melange
+		configSpec := def.MelangeFor(img.Version, img.Type)
 		if configSpec == nil {
 			continue
 		}
@@ -163,7 +163,7 @@ func integerConstrainedMelangeVariants(imagesDir string, imgs []intdiscovery.Dis
 			definitions[definitionFile] = def
 		}
 		template := def.Types[img.Type]
-		if template.Melange == nil {
+		if def.MelangeFor(img.Version, img.Type) == nil {
 			continue
 		}
 		for _, packageSpec := range template.Packages {

@@ -119,6 +119,38 @@ versions:
 	assert.Equal(t, plan.Matrix.Include, plan.SmokeMatrix.Include)
 }
 
+func TestPlanIntegerPRRecipeImpactSelectsOnlyVersionScopedConsumers(t *testing.T) {
+	// Given: one bespoke recipe is scoped to only version 14 of the default type.
+	root := setupIntegerPlanRepo(t)
+	writeTestFile(t, filepath.Join(root, "images", "scoped-postgres.yaml"), `
+name: scoped-postgres
+description: scoped postgres
+upstream:
+  package: scoped-postgres-{{version}}
+types:
+  default:
+    base: wolfi-base
+    packages: ["scoped-postgres-{{version}}"]
+versions:
+  "14":
+    melange:
+      default:
+        bespoke: scoped-postgres-14.yaml
+  "16": {}
+`)
+	writeTestFile(t, filepath.Join(root, "packages", "bespoke", "scoped-postgres-14.yaml"), "pipeline: []\n")
+
+	// When: the scoped recipe changes.
+	plan, err := PlanIntegerPR(integerPlanOptions(root, "packages/bespoke/scoped-postgres-14.yaml"))
+
+	// Then: only the configured version is rebuilt and smoke-tested.
+	require.NoError(t, err)
+	require.True(t, plan.HasChanges)
+	want := []map[string]string{{"image": "scoped-postgres", "version": "14", "type": "default"}}
+	assert.Equal(t, want, plan.Matrix.Include)
+	assert.Equal(t, want, plan.SmokeMatrix.Include)
+}
+
 func TestPlanIntegerPRChangedDefinitionUsesDiscoveredName(t *testing.T) {
 	// Given: a nested definition whose file path and declared name differ.
 	root := setupIntegerPlanRepo(t)
