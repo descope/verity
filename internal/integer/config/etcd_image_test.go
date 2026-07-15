@@ -35,7 +35,9 @@ func TestEtcd36DefaultUsesApprovedBespokePackage(t *testing.T) {
 			} `yaml:"copyright"`
 		} `yaml:"package"`
 		Pipeline []struct {
+			Name string `yaml:"name"`
 			Uses string `yaml:"uses"`
+			Runs string `yaml:"runs"`
 			With struct {
 				ExpectedCommit string `yaml:"expected-commit"`
 				Deps           string `yaml:"deps"`
@@ -71,7 +73,7 @@ func TestEtcd36DefaultUsesApprovedBespokePackage(t *testing.T) {
 	require.Len(t, recipe.Package.Copyright, 1)
 	require.Equal(t, "Apache-2.0", recipe.Package.Copyright[0].License)
 
-	var checkoutCommit string
+	var checkoutCommit, runtimeSmoke string
 	bumpedModules := make(map[string]string)
 	for _, step := range recipe.Pipeline {
 		switch step.Uses {
@@ -80,12 +82,20 @@ func TestEtcd36DefaultUsesApprovedBespokePackage(t *testing.T) {
 		case "go/bump":
 			bumpedModules[step.With.ModRoot] = step.With.Deps
 		}
+		if step.Name == "Smoke built etcd runtime" {
+			runtimeSmoke = step.Runs
+		}
 	}
 	require.Equal(t, "b0f9ef190952e6e66a778513097a02ee41220727", checkoutCommit)
 	require.Len(t, bumpedModules, 4)
 	for _, modRoot := range []string{"", "tests", "server", "etcdutl"} {
 		require.Contains(t, bumpedModules[modRoot], "go.opentelemetry.io/otel/sdk@v1.44.0")
 	}
+	require.Contains(t, runtimeSmoke, `ETCD_BIN="${{targets.destdir}}/usr/bin/etcd"`)
+	require.Contains(t, runtimeSmoke, `"$ETCD_BIN" --version`)
+	require.Contains(t, runtimeSmoke, `endpoint health`)
+	require.Contains(t, runtimeSmoke, `put verity-smoke "Hello, etcd"`)
+	require.Contains(t, runtimeSmoke, `get verity-smoke --print-value-only`)
 
 	locked := lock.Packages["etcd"]
 	require.Equal(t, "etcd-3.6.yaml", locked.File)
