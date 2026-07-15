@@ -43,7 +43,7 @@ SPECIAL_RECIPE_SOURCES: Final = {
     "packages/bespoke/haproxy-3.2.yaml",
     "packages/bespoke/haproxy-3.3.yaml",
     "packages/bespoke/hydra.yaml", "packages/bespoke/jaeger-2-all-in-one.yaml", "packages/bespoke/karpenter-1.11.yaml",
-    "packages/bespoke/kube-bench.yaml", "packages/bespoke/linkerd2-cli-25.yaml",
+    "packages/bespoke/kube-bench.yaml", "packages/bespoke/kube-rbac-proxy.yaml", "packages/bespoke/linkerd2-cli-25.yaml",
 }
 SUPPORTED_GITHUB_TAGS: Final = {
     "${{package.version}}",
