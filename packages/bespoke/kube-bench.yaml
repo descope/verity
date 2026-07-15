@@ -1,0 +1,94 @@
+package:
+  name: kube-bench
+  # renovate: datasource=github-tags depName=aquasecurity/kube-bench versioning=semver-coerced
+  version: "0.15.0"
+  # Direct revision r15 rebuilds r12 with the fixed Go toolchain.
+  epoch: 15
+  description: Checks whether Kubernetes is deployed according to security best practices as defined in the CIS Kubernetes Benchmark
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - bash
+      - busybox
+      - coreutils
+      - findutils
+      - jq
+      - kubectl
+      - procps
+      - systemd
+  resources:
+    cpu: "2"
+    memory: 6Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  # Adapted from wolfi-dev/os@f27a9a5190075207acb9d5244fa982b58423e812.
+  - uses: fetch
+    with:
+      uri: https://github.com/aquasecurity/kube-bench/archive/8a7204d42f0bea44db453c545db052c29f58a9cc.tar.gz
+      expected-sha256: 47dd0f0c95134c103bbd1dae7ccf4295fc343f0ebb6ba9aac1184a2c781a5e58
+
+  - uses: go/bump
+    with:
+      deps: |-
+        github.com/jackc/pgx/v5@v5.9.2
+        golang.org/x/net@v0.55.0
+
+  - uses: go/build
+    with:
+      packages: .
+      output: kube-bench
+      go-package: go-1.26
+      ldflags: |
+        -X github.com/aquasecurity/kube-bench/cmd.cfgDir=/etc/kube-bench/cfg
+        -X github.com/aquasecurity/kube-bench/cmd.KubeBenchVersion=v${{package.version}}
+
+  - runs: |
+      "${{targets.destdir}}/usr/bin/kube-bench" version | grep -F "${{package.version}}"
+      "${{targets.destdir}}/usr/bin/kube-bench" --help >/dev/null
+      install -Dm644 LICENSE "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+subpackages:
+  - name: "kube-bench-configs"
+    description: Configuration files for kube-bench
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.subpkgdir}}/etc/kube-bench/cfg"
+          cp -rv ./cfg/* "${{targets.subpkgdir}}/etc/kube-bench/cfg"
+    test:
+      pipeline:
+        - runs: |
+            stat /etc/kube-bench/cfg
+            stat /etc/kube-bench/cfg/eks-1.1.0
+
+test:
+  environment:
+    contents:
+      packages:
+        - kube-bench-configs
+  pipeline:
+    - runs: |
+        kube-bench version | grep -F "${{package.version}}"
+        kube-bench --help >/dev/null
+        kube-bench run --help | grep -F "target"
+        stat /etc/kube-bench/cfg/eks-1.1.0
+        apk info --who-owns /usr/bin/kube-bench \
+          | grep -F "${{package.name}}-${{package.full-version}}"
+        grep -F "Apache License" "/usr/share/licenses/${{package.name}}/LICENSE"
+
+update:
+  enabled: true
+  github:
+    identifier: aquasecurity/kube-bench
+    strip-prefix: v
+    tag-filter: v
