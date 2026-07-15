@@ -1,0 +1,42 @@
+package:
+  name: authservice
+  version: "1.1.7"
+  # Revision r2 is the approved fixed release for CVE-2026-42505.
+  epoch: 2
+  description: Move OIDC token acquisition out of application code and into the Istio mesh
+  copyright:
+    - license: Apache-2.0
+  resources:
+    cpu: "2"
+    memory: 6Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/istio-ecosystem/authservice
+      tag: v${{package.version}}
+      expected-commit: 9d868a5a9b93b49eeba72f4852164798fc794a1d
+
+  - uses: go/build
+    with:
+      go-package: go-1.26
+      packages: ./cmd
+      output: authservice
+      ldflags: |
+        -X github.com/tetratelabs/run/pkg/version.build=v${{package.version}}-0-g$(git rev-parse --short HEAD)-main
+
+test:
+  pipeline:
+    - runs: |
+        authservice --help
+        [ "$(authservice --version)" = "authservice v${{package.version}}" ]
