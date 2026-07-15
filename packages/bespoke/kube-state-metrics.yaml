@@ -1,0 +1,74 @@
+package:
+  name: kube-state-metrics
+  version: "2.19.1"
+  # Direct revision r2 replaces vulnerable 2.19.0-r4 with the approved fixed release.
+  epoch: 2
+  description: Add-on agent to generate and expose cluster-level metrics
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - merged-usrsbin
+      - tzdata
+      - wolfi-baselayout
+  resources:
+    cpu: "2"
+    memory: 5Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  # Adapted from wolfi-dev/os@3c2a196ecb89848f52929d91659461a5edd8764c.
+  - uses: fetch
+    with:
+      uri: https://github.com/kubernetes/kube-state-metrics/archive/45e1513e95beaaa2f2df92af9958cd9837bb66ab.tar.gz
+      expected-sha256: cbe6345fe3b927d0c8f7732eca5d14af300f928511d09548181d437210f99ca7
+
+  - uses: go/build
+    with:
+      packages: .
+      output: kube-state-metrics
+      go-package: go-1.26
+      ldflags: |
+        -X github.com/prometheus/common/version.Version=${{package.version}}
+        -X github.com/prometheus/common/version.Revision=45e1513e95beaaa2f2df92af9958cd9837bb66ab
+        -X github.com/prometheus/common/version.Branch=v${{package.version}}
+        -X github.com/prometheus/common/version.BuildUser=verity
+        -X github.com/prometheus/common/version.BuildDate=2026-06-11T18:22:59Z
+
+  - runs: |
+      "${{targets.destdir}}/usr/bin/kube-state-metrics" version \
+        | grep -F "${{package.version}}"
+      "${{targets.destdir}}/usr/bin/kube-state-metrics" --help >/dev/null
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  environment:
+    contents:
+      packages:
+        - apk-tools
+        - busybox
+  pipeline:
+    - runs: |
+        kube-state-metrics version | grep -F "${{package.version}}"
+        kube-state-metrics --help >/dev/null
+        apk info --who-owns /usr/bin/kube-state-metrics \
+          | grep -F "${{package.name}}-${{package.full-version}}"
+        grep -F "Apache License" \
+          "/usr/share/licenses/${{package.name}}/LICENSE"
+
+update:
+  enabled: true
+  github:
+    identifier: kubernetes/kube-state-metrics
+    strip-prefix: v
+    tag-filter: v
