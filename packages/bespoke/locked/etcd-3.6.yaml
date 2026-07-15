@@ -80,6 +80,42 @@ pipeline:
       ldflags: "-X go.etcd.io/etcd/api/v3/version.GitSHA=$(git rev-parse HEAD) -X go.etcd.io/etcd/server/v3/version.Version=${{package.version}}"
       extra-args: "-buildvcs=false"
 
+  - name: Smoke built etcd runtime
+    runs: |
+      set -euo pipefail
+      ETCD_BIN="${{targets.destdir}}/usr/bin/etcd"
+      ETCDCTL_BIN="${{targets.destdir}}/usr/bin/etcdctl"
+      ENDPOINT="http://127.0.0.1:12379"
+      PEER_ENDPOINT="http://127.0.0.1:12380"
+      DATA_DIR=$(mktemp -d)
+
+      "$ETCD_BIN" --version | grep -F "etcd Version: ${{package.version}}"
+      "$ETCD_BIN" \
+        --name default \
+        --data-dir "$DATA_DIR" \
+        --listen-client-urls "$ENDPOINT" \
+        --advertise-client-urls "$ENDPOINT" \
+        --listen-peer-urls "$PEER_ENDPOINT" \
+        --initial-advertise-peer-urls "$PEER_ENDPOINT" \
+        --initial-cluster "default=$PEER_ENDPOINT" \
+        > etcd-smoke.log 2>&1 &
+      ETCD_PID=$!
+      trap 'kill "$ETCD_PID" 2>/dev/null || true; wait "$ETCD_PID" 2>/dev/null || true; rm -rf "$DATA_DIR"' EXIT
+
+      for attempt in $(seq 1 30); do
+        if "$ETCDCTL_BIN" --endpoints="$ENDPOINT" endpoint health; then
+          break
+        fi
+        if ! kill -0 "$ETCD_PID" 2>/dev/null || [ "$attempt" -eq 30 ]; then
+          cat etcd-smoke.log
+          exit 1
+        fi
+        sleep 1
+      done
+
+      "$ETCDCTL_BIN" --endpoints="$ENDPOINT" put verity-smoke "Hello, etcd"
+      test "$("$ETCDCTL_BIN" --endpoints="$ENDPOINT" get verity-smoke --print-value-only)" = "Hello, etcd"
+
   - runs: |
       mkdir -p "${{targets.contextdir}}"/var/lib/${{package.name}} \
                "${{targets.contextdir}}"/var/lib/db/sbom
