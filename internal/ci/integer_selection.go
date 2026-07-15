@@ -16,23 +16,17 @@ func selectIntegerPRImages(imgs []intdiscovery.DiscoveredImage, changedImages ma
 	buildSet := map[integerVariant]intdiscovery.DiscoveredImage{}
 	smokeSet := map[integerVariant]intdiscovery.DiscoveredImage{}
 	latest := map[integerImageType]intdiscovery.DiscoveredImage{}
-	impactedImageTypes := map[integerImageType]struct{}{}
-	for variant := range impactedVariants {
-		impactedImageTypes[integerImageType{image: variant.image, imageType: variant.imageType}] = struct{}{}
-	}
 	for _, img := range imgs {
 		variant := variantForImage(&img)
 		imageType := integerImageType{image: img.Name, imageType: img.Type}
 		_, imageChanged := changedImages[img.Name]
 		impactScope, variantImpacted := impactedVariants[variant]
-		_, imageTypeImpacted := impactedImageTypes[imageType]
-		familyChanged := imageChanged && !imageTypeImpacted
-		if !all && !familyChanged && !variantImpacted {
+		if !all && !imageChanged && !variantImpacted {
 			continue
 		}
 
 		smokeSet[variant] = img
-		if !all && !familyChanged && impactScope == integerImpactVersion {
+		if !all && !imageChanged && impactScope == integerImpactVersion {
 			buildSet[variant] = img
 			continue
 		}

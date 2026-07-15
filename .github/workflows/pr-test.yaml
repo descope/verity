@@ -292,10 +292,21 @@ jobs:
         run: |
           git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
           git show "${BASE_SHA}":packages/upstream.lock.json > "$RUNNER_TEMP/base-upstream.lock.json" 2>/dev/null || printf '{"packages":{},"pipeline_files":{}}\n' > "$RUNNER_TEMP/base-upstream.lock.json"
+          mkdir -p "$RUNNER_TEMP/base-images"
+          while IFS= read -r file; do
+            case "$file" in
+              images/*.yaml)
+                relative="${file#images/}"
+                mkdir -p "$RUNNER_TEMP/base-images/$(dirname "$relative")"
+                git show "${BASE_SHA}:${file}" > "$RUNNER_TEMP/base-images/$relative" 2>/dev/null || rm -f "$RUNNER_TEMP/base-images/$relative"
+                ;;
+            esac
+          done < changed-files.txt
           ./verity ci plan \
             --kind integer-pr \
             --changed-files changed-files.txt \
             --base-upstream-lock "$RUNNER_TEMP/base-upstream.lock.json" \
+            --base-images-dir "$RUNNER_TEMP/base-images" \
             --gen-dir "$RUNNER_TEMP/integer-gen" \
             > ci-plan.json
 

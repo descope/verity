@@ -2,6 +2,7 @@ package ci
 
 import (
 	"fmt"
+	"maps"
 	"os"
 
 	"github.com/verity-org/verity/internal/integer/apkindex"
@@ -10,10 +11,11 @@ import (
 )
 
 type integerPRChanges struct {
-	definitions    map[string]struct{}
-	impact         integerInputImpact
-	allImages      bool
-	pinningTooling bool
+	definitions        map[string]struct{}
+	definitionVariants integerVariantImpacts
+	impact             integerInputImpact
+	allImages          bool
+	pinningTooling     bool
 }
 
 type integerPRSelection struct {
@@ -54,12 +56,20 @@ func PlanIntegerPR(opts *IntegerPROptions) (Plan, error) {
 }
 
 func loadIntegerPRChanges(opts *IntegerPROptions) (integerPRChanges, error) {
-	definitions, allImages := changedIntegerDefinitions(opts.ChangedFiles)
+	definitions, definitionVariants, allImages, err := changedIntegerDefinitions(
+		opts.ChangedFiles,
+		defaultString(opts.ImagesDir, "images"),
+		opts.BaseImagesDir,
+	)
+	if err != nil {
+		return integerPRChanges{}, fmt.Errorf("classify changed image definitions: %w", err)
+	}
 	changes := integerPRChanges{
-		definitions:    definitions,
-		impact:         newIntegerInputImpact(),
-		allImages:      allImages,
-		pinningTooling: integerPinningToolingChanged(opts.ChangedFiles),
+		definitions:        definitions,
+		definitionVariants: definitionVariants,
+		impact:             newIntegerInputImpact(),
+		allImages:          allImages,
+		pinningTooling:     integerPinningToolingChanged(opts.ChangedFiles),
 	}
 	if allImages {
 		return changes, nil
@@ -78,7 +88,7 @@ func loadIntegerPRChanges(opts *IntegerPROptions) (integerPRChanges, error) {
 }
 
 func (c integerPRChanges) empty() bool {
-	return !c.allImages && len(c.definitions) == 0 && c.impact.empty() && !c.pinningTooling
+	return !c.allImages && len(c.definitions) == 0 && len(c.definitionVariants) == 0 && c.impact.empty() && !c.pinningTooling
 }
 
 func discoverIntegerPRImages(opts *IntegerPROptions) ([]intdiscovery.DiscoveredImage, error) {
@@ -126,6 +136,7 @@ func resolveIntegerPRSelection(opts *IntegerPROptions, images []intdiscovery.Dis
 			return integerPRSelection{}, fmt.Errorf("resolve affected bespoke variants: %w", err)
 		}
 	}
+	maps.Copy(selection.variants, changes.definitionVariants)
 	if changes.pinningTooling {
 		canaries, err := integerConstrainedMelangeVariants(imagesDir, images)
 		if err != nil {
