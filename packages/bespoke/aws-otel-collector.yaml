@@ -1,0 +1,148 @@
+package:
+  name: aws-otel-collector
+  version: "0.48.0"
+  # Revision r7 includes the r6 OpenTelemetry remediation and rebuilds with
+  # the fixed Go toolchain for CVE-2026-42505.
+  epoch: 7
+  description: AWS distro for OpenTelemetry Collector
+  copyright:
+    - license: Apache-2.0
+  resources:
+    cpu: "10"
+    memory: 16Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+pipeline:
+  # Adapted from wolfi-dev/os@05cef2f5b5b59f8a0352fb018248c65bcc3fc2e2.
+  - uses: git-checkout
+    with:
+      expected-commit: 4454fb1af28b47947f59e522d5ed874d27dcc621
+      repository: https://github.com/aws-observability/aws-otel-collector
+      tag: v${{package.version}}
+
+  - uses: go/bump
+    with:
+      deps: |-
+        github.com/antchfx/xpath@v1.3.6
+        github.com/apache/thrift@v0.23.0
+        go.opentelemetry.io/otel/sdk@v1.44.0
+        go.opentelemetry.io/otel@v1.44.0
+        go.opentelemetry.io/otel/trace@v1.44.0
+        go.opentelemetry.io/otel/metric@v1.44.0
+        google.golang.org/grpc@v1.79.3
+        golang.org/x/net@v0.55.0
+        golang.org/x/sys@v0.45.0
+      modroot: .
+      tidy: false
+
+  - uses: go/build
+    with:
+      packages: ./cmd/awscollector
+      output: awscollector
+      ldflags: |
+        -X github.com/aws-observability/aws-otel-collector/tools/version.GitHash=$(git rev-parse HEAD)
+        -X github.com/aws-observability/aws-otel-collector/tools/version.Version=${{package.version}}
+        -X github.com/aws-observability/aws-otel-collector/tools/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+      go-package: go-1.26
+
+  - runs: |
+      # Copies the default config.
+      # https://github.com/aws-observability/aws-otel-collector/blob/main/cmd/awscollector/Dockerfile#L101
+      mkdir -p ${{targets.destdir}}/etc
+      cp config.yaml ${{targets.destdir}}/etc/otel-config.yaml
+
+      # Copy all the example configs for different AWS services (ECS, EKS, App Runner)
+      # https://github.com/aws-observability/aws-otel-collector/blob/main/cmd/awscollector/Dockerfile#L92
+      cp -r config/* ${{targets.destdir}}/etc/
+
+subpackages:
+  - name: ${{package.name}}-healthcheck
+    description: Health check utility for AWS OTel Collector
+    pipeline:
+      - uses: go/build
+        with:
+          packages: ./cmd/healthcheck
+          output: healthcheck
+          ldflags: |
+            -X github.com/aws-observability/aws-otel-collector/tools/version.GitHash=$(git rev-parse HEAD)
+            -X github.com/aws-observability/aws-otel-collector/tools/version.Version=${{package.version}}
+            -X github.com/aws-observability/aws-otel-collector/tools/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    test:
+      pipeline:
+        - name: Test healthcheck binary exists
+          runs: |
+            healthcheck --help
+            /usr/bin/healthcheck --help
+
+  - name: ${{package.name}}-compat
+    pipeline:
+      - runs: |
+          mkdir -p ${{targets.contextdir}}/
+          ln -sf /usr/bin/awscollector ${{targets.contextdir}}/awscollector
+          ln -sf /usr/bin/healthcheck ${{targets.contextdir}}/healthcheck
+    test:
+      environment:
+        contents:
+          packages:
+            - ${{package.name}}
+            - ${{package.name}}-healthcheck
+      pipeline:
+        - uses: test/tw/ver-check
+          with:
+            bins: /awscollector
+            version: ${{package.version}}
+        - name: Test root-level symlinks
+          runs: |
+            /healthcheck --help
+
+test:
+  environment:
+    contents:
+      packages:
+        - ${{package.name}}-healthcheck
+        - wget
+    environment:
+      AWS_REGION: us-east-1
+  pipeline:
+    - uses: test/tw/ver-check
+      with:
+        bins: awscollector
+        version: ${{package.version}}
+    - name: Verify default config exists
+      runs: |
+        test -f /etc/otel-config.yaml
+        test -f /etc/ecs/ecs-default-config.yaml
+        test -f /etc/eks/prometheus/config-all.yaml
+        test -f /etc/apprunner/apprunner-default-config.yaml
+    - name: Start collector and test functionality
+      runs: |
+        set -euo pipefail
+        awscollector --config=/etc/otel-config.yaml > collector.log 2>&1 &
+        COLLECTOR_PID=$!
+        sleep 3
+
+        grep -F "Starting aws-otel-collector" collector.log
+        grep -F "Starting GRPC server" collector.log
+        grep -F "Starting HTTP server" collector.log
+        grep -F "X-Ray" collector.log
+        grep -F "Extension started" collector.log
+        grep -F "Health Check state change" collector.log
+
+        HEALTH_JSON=$(wget -qO- http://localhost:13133/)
+        echo "$HEALTH_JSON" | grep -F '"status":"Server available"'
+        echo "$HEALTH_JSON" | grep -F '"upSince":'
+
+        healthcheck -port 13133
+
+update:
+  enabled: true
+  github:
+    identifier: aws-observability/aws-otel-collector
+    strip-prefix: v
+
+environment:
+  contents:
+    packages:
+      - go-1.26
