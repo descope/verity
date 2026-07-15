@@ -1,0 +1,43 @@
+package:
+  name: aws-load-balancer-controller
+  version: "3.4.1"
+  # Revision r1 is the approved fixed release for the default v2 image stream.
+  epoch: 1
+  description: A Kubernetes controller for Elastic Load Balancers
+  copyright:
+    - license: Apache-2.0
+  resources:
+    cpu: "2"
+    memory: 8Gi
+
+environment:
+  contents:
+    packages:
+      - bash
+      - build-base
+      - busybox
+      - ca-certificates-bundle
+      - go-1.26
+
+pipeline:
+  # Adapted from wolfi-dev/os@05cef2f5b5b59f8a0352fb018248c65bcc3fc2e2.
+  - uses: git-checkout
+    with:
+      repository: https://github.com/kubernetes-sigs/aws-load-balancer-controller
+      tag: v${{package.version}}
+      expected-commit: bc8331031ce97cc33d0bc0f85ab696c73942570a
+
+  - runs: |
+      VERSION_PKG=sigs.k8s.io/aws-load-balancer-controller/pkg/version
+      GIT_VERSION=$(git describe --tags --dirty --always) && \
+      GIT_COMMIT=$(git rev-parse HEAD) && \
+      BUILD_DATE=$(date -d@"${SOURCE_DATE_EPOCH}" +%Y-%m-%dT%H:%M:%S%z) && \
+      GOOS=$(go env GOOS) GOARCH=$(go env GOARCH) GO111MODULE=on \
+      CGO_CPPFLAGS="-D_FORTIFY_SOURCE=2" \
+      CGO_LDFLAGS="-Wl,-z,relro,-z,now" \
+      go build -buildmode=pie -tags 'osusergo,netgo,static_build' \
+        -ldflags="-linkmode=external -extldflags '-static-pie' -X ${VERSION_PKG}.GitVersion=${GIT_VERSION} -X ${VERSION_PKG}.GitCommit=${GIT_COMMIT} -X ${VERSION_PKG}.BuildDate=${BUILD_DATE}" \
+        -mod=readonly -a -o /home/build/out/controller main.go
+
+  - runs: |
+      install -Dm755 /home/build/out/controller "${{targets.destdir}}"/usr/bin/controller
