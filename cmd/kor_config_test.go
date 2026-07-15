@@ -39,6 +39,7 @@ func Test_KOR_recipe_pins_fixed_source_revision(t *testing.T) {
 	require.Contains(t, text, "version: \"0.6.8\"")
 	require.Contains(t, text, "epoch: 8")
 	require.Contains(t, text, "license: MIT")
+	require.NotContains(t, text, "renovate: datasource=github-tags depName=yonahd/kor")
 	require.Contains(t, text, "Adapted from wolfi-dev/os@86f2c8a880f339829deb63a993f563382356221e")
 	require.Contains(t, text, "d6986c937ce72d331fef965c1b103fab69b4ea93.tar.gz")
 	require.Contains(t, text, "expected-sha256: dce84e8a1d5de7311a5ddf3bd31c443f177f3ea96d182757fd4190e5b484bdfa")
