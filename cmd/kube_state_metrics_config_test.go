@@ -37,6 +37,7 @@ func Test_KubeStateMetrics_recipe_pins_fixed_source_revision(t *testing.T) {
 
 	// Then: approved revision r2 rebuilds immutable Apache-2.0 v2.19.1 source with the fixed toolchain.
 	require.Contains(t, text, "name: kube-state-metrics")
+	require.Contains(t, text, "# renovate: datasource=github-tags depName=kubernetes/kube-state-metrics versioning=semver-coerced")
 	require.Contains(t, text, "version: \"2.19.1\"")
 	require.Contains(t, text, "epoch: 2")
 	require.Contains(t, text, "license: Apache-2.0")
