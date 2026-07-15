@@ -34,24 +34,22 @@ func Test_AWSOTelCollector_recipe_pins_fixed_source_revision(t *testing.T) {
 
 	// When: its package, source, dependency, and license metadata are inspected.
 
-	// Then: revision r7 is rebuilt from immutable Apache-2.0 source with both approved fixes.
+	// Then: the fixed r0 release is rebuilt from immutable Apache-2.0 source.
 	require.Contains(t, text, "name: aws-otel-collector")
-	require.Contains(t, text, "version: \"0.48.0\"")
-	require.Contains(t, text, "epoch: 7")
+	require.Contains(t, text, "version: \"0.49.0\"")
+	require.Contains(t, text, "epoch: 0")
 	require.Contains(t, text, "license: Apache-2.0")
 	require.Contains(t, text, "repository: https://github.com/aws-observability/aws-otel-collector")
 	require.Contains(t, text, "tag: v${{package.version}}")
-	require.Contains(t, text, "expected-commit: 4454fb1af28b47947f59e522d5ed874d27dcc621")
-	require.Contains(t, text, "uses: go/bump")
-	require.NotContains(t, text, "uses: bump")
-	require.Contains(t, text, "modroot: .")
-	require.NotContains(t, text, "modroot: |-")
-	require.Contains(t, text, "go.opentelemetry.io/otel/sdk@v1.44.0")
-	require.Contains(t, text, "go.opentelemetry.io/otel@v1.44.0")
-	require.Contains(t, text, "go.opentelemetry.io/otel/trace@v1.44.0")
-	require.Contains(t, text, "go.opentelemetry.io/otel/metric@v1.44.0")
+	require.Contains(t, text, "expected-commit: 0771477f9db2879afad3ae3ff7811b5264a151a8")
 	require.Contains(t, text, "go-package: go-1.26")
 	require.Contains(t, text, "bins: awscollector")
+	require.Contains(t, text, `  - name: ${{package.name}}-compat
+    dependencies:
+      runtime:
+        - ${{package.name}}
+        - ${{package.name}}-healthcheck
+`)
 }
 
 func Test_AWSOTelCollector_resolves_fixed_local_package(t *testing.T) {
@@ -63,10 +61,10 @@ func Test_AWSOTelCollector_resolves_fixed_local_package(t *testing.T) {
 	// When: local Melange artifacts are pinned for the image build.
 	err = pinLocalPackageVersions(&tmpl, "0", []apkindex.Package{{
 		Name:    "aws-otel-collector",
-		Version: "0.48.0-r7",
+		Version: "0.49.0-r0",
 	}})
 
 	// Then: apko can only select the fixed locally built revision.
 	require.NoError(t, err)
-	require.Equal(t, []string{"aws-otel-collector=0.48.0-r7@local"}, tmpl.Packages)
+	require.Equal(t, []string{"aws-otel-collector=0.49.0-r0@local"}, tmpl.Packages)
 }
