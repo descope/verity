@@ -52,6 +52,8 @@ func Test_Hydra_recipe_pins_fixed_source_revision(t *testing.T) {
 	require.Contains(t, text, "/usr/bin/hydra version")
 	require.Contains(t, text, "apk info --who-owns /usr/bin/hydra")
 	require.Contains(t, text, "usr/share/licenses/${{package.name}}/LICENSE")
+	require.Contains(t, text, "curl --fail-with-body --silent --show-error http://localhost:4444/health/alive")
+	require.NotContains(t, text, "curl -s http://localhost:4444/health/alive")
 }
 
 func Test_Hydra_resolves_fixed_local_package(t *testing.T) {
