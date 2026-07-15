@@ -58,6 +58,7 @@ func Test_Jaeger_recipe_pins_fixed_source_revision(t *testing.T) {
 	require.Contains(t, text, "npm install --prefix jaeger-ui/ --ignore-scripts --no-audit --no-fund")
 	require.Contains(t, text, "npm run --workspace @jaegertracing/plexus prepublishOnly")
 	require.NotContains(t, text, "npm install --prefix jaeger-ui/\n")
+	require.NotContains(t, text, "resolutions.react-icons")
 	require.Contains(t, text, "start: env JAEGER_LISTEN_HOST=127.0.0.1 all-in-one")
 	require.Contains(t, text, "all-in-one version")
 	require.Contains(t, text, "http://127.0.0.1:13133/status")
