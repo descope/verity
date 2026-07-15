@@ -1,0 +1,84 @@
+package:
+  name: filebrowser
+  # renovate: datasource=github-tags depName=filebrowser/filebrowser versioning=semver-coerced
+  version: "2.63.18"
+  # Direct revision r1 supersedes the vulnerable public 2.63.14-r0 package.
+  epoch: 1
+  description: Web File Browser
+  copyright:
+    - license: Apache-2.0
+  resources:
+    cpu: "1"
+    memory: 8Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+environment:
+  contents:
+    packages:
+      - ca-certificates-bundle
+      - go-1.26
+      - nodejs-${{vars.node-version}}
+      - pnpm
+  environment:
+    CGO_ENABLED: "0"
+
+vars:
+  node-version: 24
+
+pipeline:
+  # Adapted from wolfi-dev/os@6993e8258528d998f90581d5f9f97cbfdbe17c3f.
+  - uses: fetch
+    with:
+      uri: https://github.com/filebrowser/filebrowser/archive/refs/tags/v${{package.version}}.tar.gz
+      expected-sha256: b665942fa4adb882498e89f09ef90f4690de4f22de043453c28e201c812060c5
+
+  - name: install frontend dependencies
+    working-directory: frontend
+    pipeline:
+      - runs: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+  - uses: go/build
+    with:
+      go-package: go-1.26
+      modroot: .
+      packages: .
+      ldflags: |
+        -X github.com/filebrowser/filebrowser/v2/version.Version=${{package.version}}
+        -X github.com/filebrowser/filebrowser/v2/version.CommitSHA=fe7efb2e6afe66774cd86a5b0a03033bd514d0c0
+      output: ${{package.name}}
+
+  - runs: |
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  environment:
+    contents:
+      packages:
+        - curl
+  pipeline:
+    - runs: |
+        filebrowser version \
+          | grep -F "File Browser v${{package.version}}/fe7efb2e6afe66774cd86a5b0a03033bd514d0c0"
+        filebrowser --help >/dev/null
+        grep -F "Apache License" \
+          "/usr/share/licenses/${{package.name}}/LICENSE"
+    - uses: test/daemon-check-output
+      with:
+        setup: mkdir -p /tmp/filebrowser-root
+        start: filebrowser --noauth --address 127.0.0.1 --port 8080 --root /tmp/filebrowser-root --database /tmp/filebrowser.db
+        timeout: 60
+        expected_output: Listening on
+        post: |
+          wait-for-it -t 10 --strict localhost:8080 -- echo "Server is up"
+          curl -sf http://localhost:8080/health | grep -F "OK"
+
+update:
+  enabled: true
+  github:
+    identifier: filebrowser/filebrowser
+    strip-prefix: v
