@@ -24,6 +24,12 @@ func Test_Distribution_uses_pinned_bespoke_package(t *testing.T) {
 	require.Equal(t, "distribution.yaml", tmpl.Melange.Bespoke.First())
 	require.Equal(t, []string{"distribution"}, tmpl.Packages)
 	require.Equal(t, "/usr/bin/registry serve /etc/docker/registry/config.yml", tmpl.Entrypoint)
+	require.Len(t, tmpl.Paths, 1)
+	require.Equal(t, "/var/lib/registry", tmpl.Paths[0].Path)
+	require.Equal(t, "directory", tmpl.Paths[0].Type)
+	require.Equal(t, 65532, tmpl.Paths[0].UID)
+	require.Equal(t, 65532, tmpl.Paths[0].GID)
+	require.Equal(t, "0o755", tmpl.Paths[0].Permissions)
 }
 
 func Test_Distribution_recipe_pins_fixed_source_revision(t *testing.T) {
