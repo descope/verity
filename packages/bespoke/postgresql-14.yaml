@@ -1,10 +1,10 @@
 package:
   name: postgresql-14
-  version: "14.20"
-  epoch: 2
+  version: "14.23"
+  epoch: 0
   description: A sophisticated object-relational DBMS
   copyright:
-    - license: BSD-3-Clause
+    - license: PostgreSQL
   dependencies:
     provides:
       - postgresql=${{package.full-version}}
@@ -41,7 +41,6 @@ environment:
       - tzdata
       - util-linux-dev
       - zlib-dev
-      - zstd-dev
 
 var-transforms:
   - from: ${{package.name}}
@@ -56,7 +55,7 @@ var-transforms:
 pipeline:
   - uses: git-checkout
     with:
-      expected-commit: 9ad034be354da9af1cea76836a9e576c110d1ff3
+      expected-commit: 4e1a23c0ea0be0214c6806baa212886cee8f14a6
       repository: https://github.com/postgres/postgres
       tag: REL_${{vars.mangled-package-version}}
   - runs: |
@@ -96,7 +95,6 @@ pipeline:
         --with-libxslt \
         --with-icu \
         --with-lz4 \
-        --with-zstd \
         --with-gssapi \
         --with-ldap \
         --with-llvm \

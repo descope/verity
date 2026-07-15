@@ -103,6 +103,49 @@ versions:
 	}
 }
 
+func TestResolveSpecUsesBespokePostgreSQLRecipesForDefaultStreams(t *testing.T) {
+	// Given: the repository PostgreSQL image definition.
+	paths := repositoryTestPaths(t)
+	tests := []struct {
+		version string
+		want    Spec
+	}{
+		{version: "14", want: Spec{Bespoke: []string{"postgresql-14.yaml"}}},
+		{version: "15", want: Spec{Bespoke: []string{"postgresql-15.yaml"}}},
+		{version: "16", want: Spec{}},
+		{version: "17", want: Spec{}},
+		{version: "18", want: Spec{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.version, func(t *testing.T) {
+			// When: the default stream's package build is resolved.
+			got, err := ResolveSpec(paths.ImagesDir, "postgres", tt.version, "default")
+
+			// Then: only PostgreSQL 14 and 15 select their matching local recipe.
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestResolveSpecPreservesBespokePostgreSQLFIPSRecipes(t *testing.T) {
+	// Given: the repository PostgreSQL image definition.
+	paths := repositoryTestPaths(t)
+	want := Spec{Bespoke: []string{"openssl-provider-fips.yaml", "postgresql-14.yaml", "postgresql-15.yaml"}}
+
+	for _, version := range []string{"14", "15"} {
+		t.Run(version, func(t *testing.T) {
+			// When: the existing FIPS stream's package build is resolved.
+			got, err := ResolveSpec(paths.ImagesDir, "postgres", version, "fips")
+
+			// Then: its recipe set and ordering remain unchanged.
+			require.NoError(t, err)
+			assert.Equal(t, want, got)
+		})
+	}
+}
+
 func TestResolveSpecReturnsEmptyForAutoDiscoveredStandardVersion(t *testing.T) {
 	// Given: a standard image whose APKINDEX-discovered version is newer than
 	// the explicitly curated versions map.

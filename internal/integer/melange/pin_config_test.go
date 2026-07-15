@@ -48,15 +48,17 @@ func TestPinConfigPackagesPinsLocalVersionsAcrossArchitectures(t *testing.T) {
 }
 
 func TestPinConfigPackagesPinsLocalDependencyClosure(t *testing.T) {
-	// Given: the configured package depends on local subpackages in both architecture indexes.
+	// Given: the configured PostgreSQL server and client depend on local subpackages in both architecture indexes.
 	root := t.TempDir()
 	configPath := filepath.Join(root, "config.apko.yaml")
 	repositoryDir := filepath.Join(root, "repo")
-	writeTestFile(t, configPath, "contents:\n  packages: [postgresql-15, bash]\n")
-	index := "P:postgresql-15\nV:15.14-r0\no:postgresql-15\nD:postgresql-15-base=15.14-r0 tzdata\n\n" +
-		"P:postgresql-15-base\nV:15.14-r0\no:postgresql-15\nD:so:libpq.so.5\n\n" +
-		"P:libpq-14\nV:14.20-r2\no:postgresql-14\np:so:libpq.so.5\n\n" +
-		"P:libpq-15\nV:15.14-r0\no:postgresql-15\np:so:libpq.so.5\n\n"
+	writeTestFile(t, configPath, "contents:\n  packages: [postgresql-15, postgresql-15-client, bash]\n")
+	index := "P:postgresql-15\nV:15.18-r0\no:postgresql-15\nD:postgresql-15-base=15.18-r0 libpq-15=15.18-r0 tzdata\n\n" +
+		"P:postgresql-15-client\nV:15.18-r0\no:postgresql-15\nD:postgresql-15-client-base=15.18-r0 libpq-15=15.18-r0\n\n" +
+		"P:postgresql-15-client-base\nV:15.18-r0\no:postgresql-15\n\n" +
+		"P:postgresql-15-base\nV:15.18-r0\no:postgresql-15\nD:so:libpq.so.5\n\n" +
+		"P:libpq-14\nV:14.23-r0\no:postgresql-14\np:so:libpq.so.5\n\n" +
+		"P:libpq-15\nV:15.18-r0\no:postgresql-15\np:so:libpq.so.5\n\n"
 	writeAPKIndexArchive(t, filepath.Join(repositoryDir, "x86_64", "APKINDEX.tar.gz"), index)
 	writeAPKIndexArchive(t, filepath.Join(repositoryDir, "aarch64", "APKINDEX.tar.gz"), index)
 
@@ -71,10 +73,12 @@ func TestPinConfigPackagesPinsLocalDependencyClosure(t *testing.T) {
 	// Then: the root and every local dependency select the tagged repository exactly once.
 	require.NoError(t, err)
 	assert.Equal(t, []string{
-		"postgresql-15=15.14-r0@local",
+		"postgresql-15=15.18-r0@local",
+		"postgresql-15-client=15.18-r0@local",
 		"bash",
-		"postgresql-15-base=15.14-r0@local",
-		"libpq-15=15.14-r0@local",
+		"postgresql-15-base=15.18-r0@local",
+		"libpq-15=15.18-r0@local",
+		"postgresql-15-client-base=15.18-r0@local",
 	}, readConfigPackages(t, configPath))
 }
 
