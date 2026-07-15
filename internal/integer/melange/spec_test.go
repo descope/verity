@@ -59,6 +59,50 @@ versions:
 	assert.False(t, spec.Needed())
 }
 
+func TestResolveSpecScopesMelangeByVersion(t *testing.T) {
+	// Given: only PostgreSQL 14 and 15 declare bespoke recipes for the default type.
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "images", "postgres.yaml"), `
+name: postgres
+description: postgres
+upstream:
+  package: postgresql-{{version}}
+types:
+  default:
+    base: wolfi-base
+    packages: ["postgresql-{{version}}"]
+versions:
+  "14":
+    melange:
+      default:
+        bespoke: postgresql-14.yaml
+  "15":
+    melange:
+      default:
+        bespoke: postgresql-15.yaml
+  "16": {}
+`)
+
+	tests := []struct {
+		version string
+		want    Spec
+	}{
+		{version: "14", want: Spec{Bespoke: []string{"postgresql-14.yaml"}}},
+		{version: "15", want: Spec{Bespoke: []string{"postgresql-15.yaml"}}},
+		{version: "16", want: Spec{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.version, func(t *testing.T) {
+			// When: the default type's Melange input is resolved for one stream.
+			got, err := ResolveSpec(filepath.Join(root, "images"), "postgres", tt.version, "default")
+
+			// Then: only that stream's scoped recipe is selected.
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestResolveSpecReturnsEmptyForAutoDiscoveredStandardVersion(t *testing.T) {
 	// Given: a standard image whose APKINDEX-discovered version is newer than
 	// the explicitly curated versions map.

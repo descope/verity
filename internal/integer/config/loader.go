@@ -49,6 +49,12 @@ var (
 
 	// ErrMelangePathTraversal is returned when a filename field contains a path separator or traversal sequence.
 	ErrMelangePathTraversal = errors.New("melange: filename fields must not contain path separators or traversal sequences")
+
+	// ErrMelangeTypeNotFound is returned when a version scopes Melange configuration to an undefined image type.
+	ErrMelangeTypeNotFound = errors.New("melange: version-scoped type is not defined")
+
+	// ErrInvalidMelangeVersion is returned when a version-scoped Melange key is unsafe for placeholder substitution.
+	ErrInvalidMelangeVersion = errors.New("melange: invalid version scope")
 )
 
 // LoadConfig loads the global integer.yaml configuration file.
@@ -102,6 +108,24 @@ func Validate(def *ImageDef) error {
 		}
 		if err := validateFIPSProfile(def.Name, typeName, &tmpl); err != nil {
 			return err
+		}
+	}
+	for version, meta := range def.Versions {
+		if len(meta.Melange) > 0 && !ValidMelangeVersion(version) {
+			return fmt.Errorf("image %q version %q: %w", def.Name, version, ErrInvalidMelangeVersion)
+		}
+		for typeName, melangeSpec := range meta.Melange {
+			tmpl, ok := def.Types[typeName]
+			if !ok {
+				return fmt.Errorf("image %q version %q type %q: %w", def.Name, version, typeName, ErrMelangeTypeNotFound)
+			}
+			if err := validateMelange(def.Name, typeName, melangeSpec); err != nil {
+				return fmt.Errorf("image %q version %q: %w", def.Name, version, err)
+			}
+			tmpl.Melange = melangeSpec
+			if err := validateFIPSProfile(def.Name, typeName, &tmpl); err != nil {
+				return fmt.Errorf("image %q version %q: %w", def.Name, version, err)
+			}
 		}
 	}
 	return nil

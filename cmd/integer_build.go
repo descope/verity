@@ -135,7 +135,7 @@ var integerBuildCmd = &cli.Command{
 		// — see ResolveStreamRenderVersion's doc for the design.
 		renderVersion := discovery.ResolveStreamRenderVersion(def, pkgs, version)
 		arch := cmd.String("arch")
-		melangeArtifacts, err := integerPrepareMelangeBuild(ctx, tmpl.Melange, renderVersion, arch)
+		melangeArtifacts, err := integerPrepareMelangeBuild(ctx, def.MelangeFor(version, typeName), renderVersion, arch)
 		if err != nil {
 			return fmt.Errorf("preparing melange build: %w", err)
 		}

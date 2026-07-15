@@ -164,6 +164,7 @@ func expandImage(def *config.ImageDef, imagesDir, registry string, pkgs []apkind
 				continue
 			}
 			tmpl := def.Types[typeName]
+			tmpl.Melange = def.MelangeFor(v, typeName)
 
 			// Resolve full version from APKINDEX for semver tag expansion. Use
 			// the aliased stem so semver cascade tags ("1.17", "1.17.5") still
@@ -251,7 +252,7 @@ func ShouldSkipType(def *config.ImageDef, version, typeName string) bool {
 	meta, ok := def.Versions[version]
 	if !ok {
 		// Auto-discovered version: skip types that require a melange build.
-		return exists && tmpl.Melange != nil
+		return exists && def.MelangeFor(version, typeName) != nil
 	}
 	return slices.Contains(meta.SkipTypes, typeName)
 }
