@@ -32,10 +32,11 @@ environment:
     CGO_ENABLED: "0"
 
 pipeline:
-  - uses: fetch
+  - uses: git-checkout
     with:
-      uri: https://github.com/argoproj/argo-rollouts/archive/838d4e792be666ec11bd0c80331e0c5511b5010e.tar.gz
-      expected-sha256: 9f0ab3e26904a1c02eb7051441b8ddba89e9cf342c297573edfe33e7d1f03603
+      repository: https://github.com/argoproj/argo-rollouts
+      tag: v${{package.version}}
+      expected-commit: 838d4e792be666ec11bd0c80331e0c5511b5010e
 
   - uses: go/bump
     with:
