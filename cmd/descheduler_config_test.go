@@ -47,6 +47,8 @@ func Test_Descheduler_recipe_pins_fixed_source_revision(t *testing.T) {
 	require.Contains(t, text, "golang.org/x/net@v0.55.0")
 	require.Contains(t, text, "go-package: go-1.26")
 	require.Contains(t, text, "packages: ./cmd/descheduler")
+	require.Contains(t, text, "\"${{targets.destdir}}/usr/bin/descheduler\" version")
+	require.Contains(t, text, "\"${{targets.destdir}}/usr/bin/descheduler\" --help")
 	require.Contains(t, text, "usr/share/licenses/${{package.name}}/LICENSE")
 }
 

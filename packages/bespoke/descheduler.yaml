@@ -45,6 +45,8 @@ pipeline:
         -X sigs.k8s.io/descheduler/pkg/version.gitbranch=$(git rev-parse --abbrev-ref HEAD)
 
   - runs: |
+      "${{targets.destdir}}/usr/bin/descheduler" version | grep -F "GitVersion:${{package.version}}"
+      "${{targets.destdir}}/usr/bin/descheduler" --help >/dev/null
       install -Dm644 LICENSE "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
 
 test:
