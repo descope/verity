@@ -1,0 +1,47 @@
+package:
+  name: aws-node-termination-handler
+  version: "1.25.6"
+  # Revision r13 includes the r12 OpenTelemetry remediation and rebuilds with
+  # the fixed Go toolchain for CVE-2026-42505.
+  epoch: 13
+  description: Gracefully handle EC2 instance shutdown within Kubernetes
+  copyright:
+    - license: Apache-2.0
+  resources:
+    cpu: "2"
+    memory: 6Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26
+
+pipeline:
+  # Adapted from wolfi-dev/os@5ee6c1d7bc3635d9e061dc08f1f7641512554b49.
+  - uses: git-checkout
+    with:
+      repository: https://github.com/aws/aws-node-termination-handler
+      tag: v${{package.version}}
+      expected-commit: 77ca841d1329504e981542775f78403feb114048
+
+  - uses: go/bump
+    with:
+      deps: |-
+        go.opentelemetry.io/otel/sdk@v1.44.0
+        go.opentelemetry.io/otel@v1.44.0
+        go.opentelemetry.io/otel/trace@v1.44.0
+        go.opentelemetry.io/otel/metric@v1.44.0
+        github.com/moby/spdystream@v0.5.1
+        golang.org/x/net@v0.55.0
+        golang.org/x/sys@v0.45.0
+
+  - uses: go/build
+    with:
+      go-package: go-1.26
+      output: node-termination-handler
+      packages: ./cmd/node-termination-handler.go
+      tags: nthlinux
+
+test:
+  pipeline:
+    - runs: node-termination-handler --help
