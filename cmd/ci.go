@@ -35,6 +35,7 @@ var ciPlanCommand = &cli.Command{
 		&cli.StringFlag{Name: "images-dir", Usage: "Path to images/", Value: "images"},
 		&cli.StringFlag{Name: "repo-root", Usage: "Repository root for bespoke package inputs", Value: "."},
 		&cli.StringFlag{Name: "base-upstream-lock", Usage: "Base bespoke lock for selective PR impact diffing"},
+		&cli.StringFlag{Name: "base-images-dir", Usage: "Base images directory for semantic definition impact"},
 		&cli.StringFlag{Name: "apkindex-url", Usage: "Wolfi APKINDEX URL; empty disables online discovery", Value: apkindex.DefaultAPKINDEXURL},
 		&cli.StringFlag{Name: "cache-dir", Usage: "APKINDEX cache dir"},
 		&cli.StringFlag{Name: "gen-dir", Usage: "Generated apko config directory"},
@@ -59,14 +60,15 @@ func runCIPlan(_ context.Context, cmd *cli.Command) error {
 	switch cmd.String("kind") {
 	case "integer-pr":
 		plan, err = ci.PlanIntegerPR(&ci.IntegerPROptions{
-			ChangedFiles: changed,
-			RepoRoot:     cmd.String("repo-root"),
-			BaseLockPath: cmd.String("base-upstream-lock"),
-			ConfigPath:   cmd.String("integer-config"),
-			ImagesDir:    cmd.String("images-dir"),
-			APKIndexURL:  cmd.String("apkindex-url"),
-			CacheDir:     cmd.String("cache-dir"),
-			GenDir:       cmd.String("gen-dir"),
+			ChangedFiles:  changed,
+			RepoRoot:      cmd.String("repo-root"),
+			BaseLockPath:  cmd.String("base-upstream-lock"),
+			BaseImagesDir: cmd.String("base-images-dir"),
+			ConfigPath:    cmd.String("integer-config"),
+			ImagesDir:     cmd.String("images-dir"),
+			APKIndexURL:   cmd.String("apkindex-url"),
+			CacheDir:      cmd.String("cache-dir"),
+			GenDir:        cmd.String("gen-dir"),
 		})
 	case "copa-pr":
 		plan, err = ci.PlanCopaPR(&ci.CopaPROptions{

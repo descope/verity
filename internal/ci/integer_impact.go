@@ -26,6 +26,15 @@ type integerVariant struct {
 	imageType string
 }
 
+type integerImpactScope uint8
+
+const (
+	integerImpactShared integerImpactScope = iota
+	integerImpactVersion
+)
+
+type integerVariantImpacts map[integerVariant]integerImpactScope
+
 type integerBuildLock struct {
 	Packages      map[string]integerBuildLockPackage `json:"packages"`
 	PipelineFiles map[string]string                  `json:"pipeline_files"`
@@ -93,9 +102,9 @@ func addLockedPathImpact(keys map[string]struct{}, changed string, lock integerB
 	return matched
 }
 
-func integerImpactVariants(imagesDir string, imgs []intdiscovery.DiscoveredImage, impact integerInputImpact) (map[integerVariant]struct{}, error) {
+func integerImpactVariants(imagesDir string, imgs []intdiscovery.DiscoveredImage, impact integerInputImpact) (integerVariantImpacts, error) {
 	definitions := map[string]*intconfig.ImageDef{}
-	variants := map[integerVariant]struct{}{}
+	variants := integerVariantImpacts{}
 	for _, img := range imgs {
 		definitionFile := img.DefinitionFile
 		if definitionFile == "" {
@@ -119,10 +128,19 @@ func integerImpactVariants(imagesDir string, imgs []intdiscovery.DiscoveredImage
 			return nil, fmt.Errorf("resolve %s:%s-%s: %w", img.Name, img.Version, img.Type, err)
 		}
 		if specConsumesImpact(spec, impact) {
-			variants[variantForImage(&img)] = struct{}{}
+			variants[variantForImage(&img)] = melangeImpactScope(def, img.Version, img.Type)
 		}
 	}
 	return variants, nil
+}
+
+func melangeImpactScope(def *intconfig.ImageDef, version, imageType string) integerImpactScope {
+	if meta, ok := def.Versions[version]; ok {
+		if _, configured := meta.Melange[imageType]; configured {
+			return integerImpactVersion
+		}
+	}
+	return integerImpactShared
 }
 
 func integerPinningToolingChanged(files []string) bool {
@@ -145,9 +163,9 @@ func integerPinningToolingChanged(files []string) bool {
 	return false
 }
 
-func integerConstrainedMelangeVariants(imagesDir string, imgs []intdiscovery.DiscoveredImage) (map[integerVariant]struct{}, error) {
+func integerConstrainedMelangeVariants(imagesDir string, imgs []intdiscovery.DiscoveredImage) (integerVariantImpacts, error) {
 	definitions := map[string]*intconfig.ImageDef{}
-	variants := map[integerVariant]struct{}{}
+	variants := integerVariantImpacts{}
 	for _, img := range imgs {
 		definitionFile := img.DefinitionFile
 		if definitionFile == "" {
@@ -168,7 +186,7 @@ func integerConstrainedMelangeVariants(imagesDir string, imgs []intdiscovery.Dis
 		}
 		for _, packageSpec := range template.Packages {
 			if apkindex.PackageName(packageSpec) != packageSpec {
-				variants[variantForImage(&img)] = struct{}{}
+				variants[variantForImage(&img)] = integerImpactShared
 				break
 			}
 		}
