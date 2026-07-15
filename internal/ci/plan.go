@@ -30,14 +30,15 @@ type Plan struct {
 }
 
 type IntegerPROptions struct {
-	ChangedFiles []string
-	RepoRoot     string
-	BaseLockPath string
-	ConfigPath   string
-	ImagesDir    string
-	APKIndexURL  string
-	CacheDir     string
-	GenDir       string
+	ChangedFiles  []string
+	RepoRoot      string
+	BaseLockPath  string
+	BaseImagesDir string
+	ConfigPath    string
+	ImagesDir     string
+	APKIndexURL   string
+	CacheDir      string
+	GenDir        string
 }
 
 type CopaPROptions struct {
