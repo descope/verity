@@ -219,6 +219,16 @@ jobs:
               echo "::endgroup::"
             fi
 
+            if [ "$image" = "sealed-secrets" ]; then
+              expected_version=$(yq -r '.package.version' \
+                melange-work/specs/sealed-secrets-0.yaml/build.yaml)
+              expected_full_version=$(yq -r '.package.version + "-r" + (.package.epoch | tostring)' \
+                melange-work/specs/sealed-secrets-0.yaml/build.yaml)
+              echo "::group::Sealed Secrets package test (${INTEGER_PACKAGE_ARCH})"
+              bash .github/scripts/test-sealed-secrets-package.sh "$INTEGER_PACKAGE_ARCH"
+              echo "::endgroup::"
+            fi
+
             arch="$INTEGER_ARCH"
             tar_path="image-${safe_image}-${version}-${type}-${arch}.tar"
             ./verity integer build \
@@ -290,6 +300,11 @@ jobs:
                   )
                 ' "$sbom"
               )
+            fi
+
+            if [ "$image" = "sealed-secrets" ]; then
+              bash .github/scripts/test-sealed-secrets-image.sh \
+                "$loaded_ref" "$expected_version" "$expected_full_version"
             fi
 
             trivy image \
