@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -111,7 +112,8 @@ func Test_Pushgateway_PR_smoke_verifies_runtime_and_provenance_natively(t *testi
 	// When: the Pushgateway-family native smoke gate is inspected.
 
 	// Then: PR CI runs package tests plus image health, metrics, SPDX, and strict Trivy validation.
-	require.Contains(t, text, "if [ \"$image\" = \"pushgateway\" ]; then")
+	const pushgatewayGate = "if [ \"$image\" = \"pushgateway\" ]; then"
+	require.GreaterOrEqual(t, strings.Count(text, pushgatewayGate), 4)
 	require.Contains(t, text, "melange test \\")
 	require.Contains(t, text, "--fail-on-severity \"UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL\"")
 	require.Contains(t, text, "/-/ready")
