@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -52,6 +53,7 @@ func Test_OpenBao_recipe_pins_fixed_source_revision(t *testing.T) {
 	require.Contains(t, text, "usr/share/licenses/${{package.name}}/LICENSE")
 	require.Contains(t, text, "${{targets.destdir}}/usr/bin/bao\" server -dev -dev-listen-address=127.0.0.1:18200")
 	require.Contains(t, text, "BAO_ADDR=http://127.0.0.1:18200")
+	require.Equal(t, 2, strings.Count(text, "curl --fail-with-body --silent --show-error"))
 	require.Contains(t, text, "apk info --license openbao")
 	require.Contains(t, text, "bao server -dev")
 	require.Contains(t, text, "bao status")
