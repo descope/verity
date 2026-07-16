@@ -1,0 +1,118 @@
+package:
+  name: thanos
+  # renovate: datasource=github-tags depName=thanos-io/thanos versioning=semver-coerced
+  version: "0.41.0"
+  # Direct revision r18 rebuilds immutable source with the current MongoDB and OpenTelemetry fixes.
+  epoch: 18
+  description: Highly available Prometheus setup with long term storage capabilities.
+  copyright:
+    - license: Apache-2.0
+  resources:
+    cpu: "10"
+    memory: 11Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  # Adapted from wolfi-dev/os@17a5c17c4c614f1e38d5b5199ba5e7810f0d3151.
+  - uses: fetch
+    with:
+      uri: https://github.com/thanos-io/thanos/archive/cb1396b916241f63fff75e4f5362ea65f18f2303.tar.gz
+      expected-sha256: 90ec49ab04298c9f4bfa2a08771f8d02cad6ef638baf74a1a00c5950151b53e1
+
+  - runs: |
+      go get \
+        github.com/go-jose/go-jose/v4@v4.1.4 \
+        go.mongodb.org/mongo-driver@v1.17.7 \
+        go.opentelemetry.io/otel@v1.44.0 \
+        go.opentelemetry.io/otel/metric@v1.44.0 \
+        go.opentelemetry.io/otel/trace@v1.44.0 \
+        go.opentelemetry.io/otel/sdk@v1.44.0 \
+        go.opentelemetry.io/otel/sdk/metric@v1.44.0 \
+        go.opentelemetry.io/otel/exporters/otlp/otlptrace@v1.44.0 \
+        go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc@v1.44.0 \
+        go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp@v1.44.0 \
+        golang.org/x/net@v0.55.0 \
+        golang.org/x/text@v0.37.0 \
+        golang.org/x/crypto@v0.52.0
+      go mod tidy
+
+      test "$(go list -m -f '{{.Version}}' go.mongodb.org/mongo-driver)" = v1.17.7
+      test "$(go list -m -f '{{.Version}}' go.opentelemetry.io/otel)" = v1.44.0
+      test "$(go list -m -f '{{.Version}}' go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp)" = v1.44.0
+
+  - uses: go/build
+    with:
+      packages: ./cmd/thanos
+      output: thanos
+      go-package: go-1.26
+      tags: netgo,slicelabels
+      ldflags: |
+        -X github.com/prometheus/common/version.Version=${{package.version}}
+        -X github.com/prometheus/common/version.Revision=cb1396b916241f63fff75e4f5362ea65f18f2303
+        -X github.com/prometheus/common/version.BuildDate=$(date -d @$SOURCE_DATE_EPOCH +%Y%m%d-%H:%M:%S)
+
+  - runs: |
+      "${{targets.destdir}}/usr/bin/thanos" --version 2>&1 \
+        | grep -F "version ${{package.version}}"
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  environment:
+    contents:
+      packages:
+        - curl
+  pipeline:
+    - runs: |
+        VERSION_OUTPUT=$(thanos --version 2>&1)
+        echo "$VERSION_OUTPUT" | grep "version ${{ package.version }}"
+        thanos --help
+        thanos query --help
+        thanos sidecar --help
+        thanos tools bucket verify --help
+        apk info --license thanos | grep -Fx Apache-2.0
+        apk info --who-owns /usr/bin/thanos | grep -F 'thanos-'
+        test -s /usr/share/licenses/thanos/LICENSE
+    - name: Validate thanos with local filesystem
+      uses: test/daemon-check-output
+      with:
+        setup: |
+          mkdir -p /tmp/bucket-test
+          echo "placeholder" > /tmp/bucket-test/obj1.txt
+
+          cat <<EOF > /tmp/filesystem.yaml
+          type: FILESYSTEM
+          config:
+            directory: /tmp/bucket-test
+          EOF
+        start: thanos tools bucket verify --objstore.config-file=/tmp/filesystem.yaml
+        timeout: 30
+        expected_output: |
+          started verifying issue
+          loading bucket configuration
+          verify task completed
+    - name: Launch Thanos Query
+      uses: test/daemon-check-output
+      with:
+        setup: |
+          mkdir -p /tmp/data
+        start: thanos query --http-address=127.0.0.1:19192 --log.level=debug
+        timeout: 30
+        expected_output: |
+          starting query node
+          changing probe status
+          listening for requests and metrics
+          Listening on
+        post: |
+          curl --fail-with-body --silent --show-error --retry 5 \
+            http://127.0.0.1:19192/-/healthy
+          echo "Thanos query is healthy"
