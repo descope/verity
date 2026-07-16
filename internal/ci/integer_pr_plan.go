@@ -44,7 +44,7 @@ func PlanIntegerPR(opts *IntegerPROptions) (Plan, error) {
 		return plan, err
 	}
 	builds, smokes := selectIntegerPRImages(images, selection.imageNames, selection.variants, changes.allImages)
-	if len(smokes) == 0 {
+	if len(builds) == 0 && len(smokes) == 0 {
 		return emptyIntegerPRPlan(), nil
 	}
 

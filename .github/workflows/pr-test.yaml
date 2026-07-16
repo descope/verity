@@ -131,7 +131,7 @@ jobs:
   integer-smoke-test:
     name: "Integer smoke batch ${{ matrix.batch_id }} (${{ matrix.arch }})"
     needs: [changes, detect-changed-images]
-    if: needs.changes.outputs.integer == 'true' && needs.detect-changed-images.outputs.has-changes == 'true'
+    if: needs.changes.outputs.integer == 'true' && needs.detect-changed-images.outputs.smoke-has-changes == 'true'
     runs-on: ${{ matrix.runner }}
     env:
       INTEGER_ENTRIES: ${{ toJson(matrix.entries) }}
@@ -164,6 +164,19 @@ jobs:
             ~/.cache/go-build
           key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
           restore-keys: go-${{ runner.os }}-
+
+      - name: Get Trivy cache key
+        id: trivy-cache-key
+        run: |
+          echo "date=$(date -u '+%Y-%m-%d-%H')" >> "$GITHUB_OUTPUT"
+          echo "version=$(trivy --version | awk 'NR == 1 { print $2 }')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Trivy database
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ steps.trivy-cache-key.outputs.version }}-${{ steps.trivy-cache-key.outputs.date }}
+          restore-keys: trivy-db-${{ steps.trivy-cache-key.outputs.version }}-
 
       - name: Build verity CLI
         run: go build -o verity .
@@ -332,6 +345,7 @@ jobs:
       expected-matrix: ${{ steps.detect.outputs.expected-matrix }}
       expected-smoke-matrix: ${{ steps.detect.outputs.expected-smoke-matrix }}
       has-changes: ${{ steps.detect.outputs.has-changes }}
+      smoke-has-changes: ${{ steps.detect.outputs.smoke-has-changes }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -392,8 +406,14 @@ jobs:
           smoke_matrix=$(jq -c '[.smokeMatrix.include | to_entries | group_by((.key / 16 | floor))[] | {batch_id: (.[0].key / 16 | floor), entries: map(.value)} as $batch | ["amd64", "arm64"][] as $arch | $batch + {arch: $arch, package_arch: (if $arch == "amd64" then "x86_64" else "aarch64" end), runner: (if $arch == "amd64" then "ubuntu-latest" else "ubuntu-24.04-arm" end)}] | {include: .}' ci-plan.json)
           has_changes=$(jq -r '.hasChanges' ci-plan.json)
           count=$(jq '.include | length' <<< "$expected_matrix")
+          smoke_count=$(jq '.include | length' <<< "$expected_smoke_matrix")
+          if [ "$smoke_count" -gt 0 ]; then
+            smoke_has_changes=true
+          else
+            smoke_has_changes=false
+          fi
           batch_count=$(jq '.include | length' <<< "$matrix")
-          echo "Matrix: ${count} image builds in ${batch_count} batches"
+          echo "Matrix: ${count} strict builds and ${smoke_count} smoke-only variants in ${batch_count} strict batches"
           echo "$matrix" | jq .
           {
             echo "matrix=${matrix}"
@@ -401,6 +421,7 @@ jobs:
             echo "expected-matrix=${expected_matrix}"
             echo "expected-smoke-matrix=${expected_smoke_matrix}"
             echo "has-changes=${has_changes}"
+            echo "smoke-has-changes=${smoke_has_changes}"
           } >> "$GITHUB_OUTPUT"
 
   integer-build-changed:
@@ -439,6 +460,19 @@ jobs:
             ~/.cache/go-build
           key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
           restore-keys: go-${{ runner.os }}-
+
+      - name: Get Trivy cache key
+        id: trivy-cache-key
+        run: |
+          echo "date=$(date -u '+%Y-%m-%d-%H')" >> "$GITHUB_OUTPUT"
+          echo "version=$(trivy --version | awk 'NR == 1 { print $2 }')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Trivy database
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ steps.trivy-cache-key.outputs.version }}-${{ steps.trivy-cache-key.outputs.date }}
+          restore-keys: trivy-db-${{ steps.trivy-cache-key.outputs.version }}-
 
       - name: Build verity CLI
         run: go build -o verity .
@@ -973,15 +1007,52 @@ jobs:
             done <<< "$entries"
           }
 
+          integer_matrix_entry_count() {
+            local matrix="$1"
+            local kind="$2"
+            local count
+            if ! count=$(jq -er '
+              if type == "object" and (.include | type) == "array" then
+                .include | length
+              else
+                error("expected an include array")
+              end
+            ' <<< "$matrix"); then
+              echo "::error::invalid expected Integer ${kind} matrix"
+              exit 1
+            fi
+            echo "$count"
+          }
+
+          require_result() {
+            local name="$1"
+            local result="$2"
+            local expected="$3"
+            if [ "$result" != "$expected" ]; then
+              echo "::error::${name} must be ${expected}: ${result}"
+              exit 1
+            fi
+          }
+
           require_success "changes" "$CHANGES_RESULT"
 
           if [ "$INTEGER" = "true" ]; then
             require_success "validate" "$VALIDATE_RESULT"
             require_success "detect-changed-images" "$DETECT_INTEGER_RESULT"
             if [ "$INTEGER_HAS_CHANGES" = "true" ]; then
-              require_success "integer-smoke-test" "$INTEGER_SMOKE_RESULT"
+              smoke_count=$(integer_matrix_entry_count "$EXPECTED_INTEGER_SMOKE_MATRIX" smoke)
+              build_count=$(integer_matrix_entry_count "$EXPECTED_INTEGER_MATRIX" build)
+              if [ "$smoke_count" -gt 0 ]; then
+                require_success "integer-smoke-test" "$INTEGER_SMOKE_RESULT"
+                require_integer_markers "$EXPECTED_INTEGER_SMOKE_MATRIX" smoke
+              else
+                require_result "integer-smoke-test" "$INTEGER_SMOKE_RESULT" skipped
+              fi
+              if [ "$build_count" -eq 0 ]; then
+                echo "::error::expected Integer build matrix must not be empty when changes are present"
+                exit 1
+              fi
               require_success "integer-build-changed" "$INTEGER_BUILD_RESULT"
-              require_integer_markers "$EXPECTED_INTEGER_SMOKE_MATRIX" smoke
               require_integer_markers "$EXPECTED_INTEGER_MATRIX" build
             else
               allow_success_or_skipped "integer-smoke-test" "$INTEGER_SMOKE_RESULT"
