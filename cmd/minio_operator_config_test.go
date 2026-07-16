@@ -50,6 +50,7 @@ func Test_MinioOperator_recipe_pins_fixed_source_revision(t *testing.T) {
 	require.Contains(t, text, "packages: ./cmd/operator")
 	require.Contains(t, text, "output: minio-operator")
 	require.Contains(t, text, "github.com/minio/operator/pkg.Version=${{package.full-version}}")
+	require.Contains(t, text, "github.com/minio/operator/pkg.ShortCommitID=6eee6a7c\n")
 	require.Contains(t, text, "usr/share/licenses/${{package.name}}/LICENSE")
 	require.Contains(t, text, "minio-operator --version")
 	require.Contains(t, text, "go version -m /usr/bin/minio-operator")
