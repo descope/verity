@@ -1,0 +1,99 @@
+package:
+  name: nfs-subdir-external-provisioner
+  # renovate: datasource=github-tags depName=kubernetes-sigs/nfs-subdir-external-provisioner versioning=semver-coerced
+  version: "4.0.18"
+  # Direct revision r44 replaces vulnerable public revision 4.0.18-r42.
+  epoch: 44
+  description: Dynamic sub-dir volume provisioner on a remote NFS server
+  copyright:
+    - license: Apache-2.0
+  resources:
+    cpu: "2"
+    memory: 5Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  # Adapted from wolfi-dev/os@5637ed9b389b64dbf9b76eaddcebfb09cce4e807.
+  # nfs-subdir-external-provisioner-4.0.18 resolves to c2a2d5d544781e3d3e4d7a7e2d21a8e64cf6d9d1.
+  - uses: fetch
+    with:
+      uri: https://github.com/kubernetes-sigs/nfs-subdir-external-provisioner/archive/c2a2d5d544781e3d3e4d7a7e2d21a8e64cf6d9d1.tar.gz
+      expected-sha256: 63a2b7adc859ec25e98b705aadc402f1fa8de4e9fa9f0baab4ac372768bcd9f3
+
+  - uses: go/bump
+    with:
+      deps: golang.org/x/crypto@v0.52.0
+      modroot: vendor/github.com/miekg/dns
+      tidy: false
+
+  - uses: go/bump
+    with:
+      deps: |-
+        golang.org/x/crypto@v0.52.0
+        golang.org/x/text@v0.37.0
+        gopkg.in/yaml.v3@v3.0.0-20220521103104-8f96da9f5d5e
+        google.golang.org/protobuf@v1.33.0
+        github.com/prometheus/client_golang@v1.11.1
+        github.com/golang/glog@v1.2.4
+        golang.org/x/oauth2@v0.27.0
+        golang.org/x/net@v0.55.0
+      replaces: github.com/prometheus/client_golang=github.com/prometheus/client_golang@v1.11.1
+
+  - uses: go/build
+    with:
+      packages: ./cmd/nfs-subdir-external-provisioner
+      output: nfs-subdir-external-provisioner
+      go-package: go-1.26
+      vendor: true
+
+  - runs: |
+      "${{targets.destdir}}/usr/bin/nfs-subdir-external-provisioner" --help >/dev/null
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  environment:
+    contents:
+      packages:
+        - apk-tools
+        - busybox
+        - go-1.26
+  pipeline:
+    - runs: |
+        nfs-subdir-external-provisioner --help >/dev/null
+        go version -m /usr/bin/nfs-subdir-external-provisioner \
+          | grep -F "go1.26"
+        go version -m /usr/bin/nfs-subdir-external-provisioner \
+          | grep -A1 -F "golang.org/x/crypto" \
+          | grep -F "v0.52.0"
+        go version -m /usr/bin/nfs-subdir-external-provisioner \
+          | grep -F "golang.org/x/net" \
+          | grep -F "v0.55.0"
+        apk info --who-owns /usr/bin/nfs-subdir-external-provisioner \
+          | grep -F "${{package.name}}-${{package.full-version}}"
+        apk info --license "${{package.name}}" | grep -F "Apache-2.0"
+        grep -F "Apache License" \
+          "/usr/share/licenses/${{package.name}}/LICENSE"
+        output="$(env \
+          NFS_SERVER=127.0.0.1 \
+          NFS_PATH=/exports \
+          PROVISIONER_NAME=test/nfs-provisioner \
+          KUBECONFIG=/nonexistent \
+          nfs-subdir-external-provisioner 2>&1 || true)"
+        printf '%s\n' "$output" | grep -F "Failed to create kubeconfig"
+
+update:
+  enabled: true
+  github:
+    identifier: kubernetes-sigs/nfs-subdir-external-provisioner
+    strip-prefix: nfs-subdir-external-provisioner-
+    tag-filter: nfs-subdir-external-provisioner-
