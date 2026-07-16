@@ -9,11 +9,13 @@ fi
 image_ref=$1
 version=$2
 full_version=$3
-container="integer-sealed-secrets-spdx-${RANDOM}"
+container=''
 sbom="${RUNNER_TEMP:-/tmp}/sealed-secrets-${full_version}.spdx.json"
 
 cleanup() {
-  docker rm --force "$container" >/dev/null 2>&1 || true
+  if [[ -n "$container" ]]; then
+    docker rm --force "$container" >/dev/null 2>&1 || true
+  fi
   rm -f "$sbom"
 }
 trap cleanup EXIT
@@ -23,7 +25,7 @@ docker run --rm --entrypoint /usr/bin/controller "$image_ref" --version \
 docker run --rm --entrypoint /usr/bin/controller "$image_ref" --help >/dev/null
 docker run --rm --entrypoint /usr/bin/kubeseal "$image_ref" --help >/dev/null
 
-docker create --name "$container" "$image_ref" >/dev/null
+container=$(docker create "$image_ref")
 # ca-certificates-bundle must be present at runtime even though the base also carries it.
 docker export "$container" \
   | tar -tf - \

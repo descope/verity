@@ -53,7 +53,9 @@ func Test_SealedSecrets_recipe_pins_controller_kubeseal_and_spdx_metadata(t *tes
 	require.Contains(t, text, "packages: ./cmd/kubeseal")
 	require.Contains(t, text, "output: kubeseal")
 	require.Contains(t, text, "name: ${{package.name}}-kubeseal")
+	require.Contains(t, text, "provides:\n        - kubeseal=${{package.full-version}}")
 	require.Contains(t, text, "install -Dm644 LICENSE")
 	require.Contains(t, text, "controller --version")
 	require.Contains(t, text, "kubeseal --help")
+	require.Contains(t, text, "apk info --provides \"${{package.name}}-kubeseal\"")
 }
