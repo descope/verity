@@ -1,0 +1,101 @@
+package:
+  name: grafana-mimir-3.0
+  version: "3.0.7"
+  # Direct revision r3 meets the latest fixed version reported for this stream.
+  epoch: 3
+  description: Horizontally scalable, highly available, multi-tenant long-term storage for Prometheus
+  copyright:
+    - license: AGPL-3.0-or-later
+  dependencies:
+    provides:
+      - grafana-mimir=${{package.full-version}}
+    runtime:
+      - ca-certificates-bundle
+  resources:
+    cpu: "4"
+    memory: 7Gi
+  test-resources:
+    cpu: "1"
+    memory: 2Gi
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - git
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  # Adapted from wolfi-dev/os@b137f48f69fd0d54416849cf09201ab5ff519562.
+  - uses: fetch
+    with:
+      uri: https://github.com/grafana/mimir/archive/c8a2454ab4fb93789a829890a63bc89107707114.tar.gz
+      expected-sha256: 9e108dbd5aaec06db4b1c7d7179016209926a854419bdc4b500d42e43e14371e
+
+  # The release tree pins an SSH URL for mimir-prometheus. Remove the
+  # checkout-specific rewrite before resolving modules over HTTPS.
+  - runs: rm -f .gitconfig
+
+  # Resolve the split OpenTelemetry modules as one graph. Sequential go get
+  # calls can incorrectly prefer the shorter go.opentelemetry.io/otel module.
+  - runs: |
+      rm -f go.sum
+      go mod edit \
+        -require=go.mongodb.org/mongo-driver@v1.17.9 \
+        -require=go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp@v0.20.0 \
+        -require=go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp@v1.44.0 \
+        -require=go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp@v1.44.0 \
+        -require=go.opentelemetry.io/otel/exporters/stdout/stdoutlog@v0.20.0 \
+        -require=go.opentelemetry.io/otel/exporters/stdout/stdoutmetric@v1.44.0 \
+        -require=go.opentelemetry.io/otel/exporters/stdout/stdouttrace@v1.44.0 \
+        -require=golang.org/x/crypto@v0.54.0 \
+        -require=golang.org/x/net@v0.57.0 \
+        -require=golang.org/x/term@v0.45.0 \
+        -require=golang.org/x/text@v0.40.0
+      go mod tidy
+      rm -rf vendor
+
+  - uses: go/build
+    with:
+      modroot: .
+      packages: ./cmd/mimir
+      output: grafana-mimir
+      go-package: go-1.26
+      ldflags: |
+        -X github.com/grafana/mimir/pkg/util/version.Branch=release-3.0
+        -X github.com/grafana/mimir/pkg/util/version.Revision=c8a2454ab4fb93789a829890a63bc89107707114
+        -X github.com/grafana/mimir/pkg/util/version.Version=${{package.version}}
+
+  - runs: |
+      "${{targets.destdir}}/usr/bin/grafana-mimir" -version | grep -F "${{package.version}}"
+      "${{targets.destdir}}/usr/bin/grafana-mimir" --version | grep -F "${{package.version}}"
+      install -Dm644 LICENSE "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  environment:
+    contents:
+      packages:
+        - apk-tools
+        - busybox
+  pipeline:
+    - runs: |
+        grafana-mimir -version | grep -F "${{package.version}}"
+        grafana-mimir --version | grep -F "${{package.version}}"
+        apk info --who-owns /usr/bin/grafana-mimir \
+          | grep -F "${{package.name}}-${{package.full-version}}"
+        grep -F "GNU AFFERO GENERAL PUBLIC LICENSE" \
+          "/usr/share/licenses/${{package.name}}/LICENSE"
+
+update:
+  enabled: true
+  ignore-regex-patterns:
+    - distributed
+    - weekly
+  github:
+    identifier: grafana/mimir
+    strip-prefix: mimir-
+    use-tag: true
+    tag-filter-prefix: mimir-3.0
