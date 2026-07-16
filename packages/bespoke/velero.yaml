@@ -1,0 +1,80 @@
+package:
+  name: velero
+  # renovate: datasource=github-tags depName=velero-io/velero versioning=semver-coerced
+  version: "1.18.2"
+  # r1 rebuilds the latest compatible release with OpenTelemetry 1.44.0,
+  # fixing CVE-2026-41178 (GHSA-5wrp-cwcj-q835).
+  epoch: 1
+  description: Backup and migrate Kubernetes applications and their persistent volumes
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - restic
+      - tzdata
+  resources:
+    cpu: "6"
+    memory: 8Gi
+  test-resources:
+    cpu: "2"
+    memory: 2Gi
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  # Adapted from wolfi-dev/os@080b7b160597fec7f7bfec73b8f281bb55c17117.
+  - uses: git-checkout
+    with:
+      repository: https://github.com/velero-io/velero
+      tag: v${{package.version}}
+      expected-commit: c253c7fe37d78c9b7e55c68544f7c5b2608712d8
+
+  - uses: go/bump
+    with:
+      deps: |-
+        go.opentelemetry.io/otel@v1.44.0
+        go.opentelemetry.io/otel/metric@v1.44.0
+        go.opentelemetry.io/otel/sdk@v1.44.0
+        go.opentelemetry.io/otel/sdk/metric@v1.44.0
+        go.opentelemetry.io/otel/trace@v1.44.0
+
+  - uses: go/build
+    with:
+      packages: ./cmd/velero
+      output: velero
+      go-package: go-1.26
+      ldflags: >-
+        -X main.version=v${{package.version}}
+        -X github.com/vmware-tanzu/velero/pkg/buildinfo.Version=v${{package.version}}
+
+  - runs: |
+      "${{targets.destdir}}/usr/bin/velero" version --client-only 2>&1 \
+        | grep -F "v${{package.version}}"
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  pipeline:
+    - runs: |
+        velero version --client-only 2>&1 | grep -F "v${{package.version}}"
+        velero --help >/dev/null
+        velero backup create --help >/dev/null
+        velero install --help >/dev/null
+        velero completion bash > /tmp/velero-completion.bash
+        grep -F "velero" /tmp/velero-completion.bash
+        apk info --license velero | grep -Fx Apache-2.0
+        apk info --who-owns /usr/bin/velero | grep -F 'velero-'
+        test -s /usr/share/licenses/${{package.name}}/LICENSE
+
+update:
+  enabled: true
+  github:
+    identifier: velero-io/velero
+    strip-prefix: v
+    use-tag: true
