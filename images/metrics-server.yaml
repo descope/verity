@@ -8,12 +8,10 @@ types:
     base: wolfi-base
     packages: ["metrics-server"]
     entrypoint: /usr/bin/metrics-server
+    melange:
+      bespoke: metrics-server.yaml
 
 versions:
+  # The explicit 0.8 stream is retired: Wolfi has no 0.8.x revision fixing
+  # CVE-2026-42151, while the broad 0 stream now builds fixed v0.9.0.
   "0": {}
-  # Maintained minor stream — verity-org/verity#310 (Wave 1 of #308) pins
-  # the wrapper chart at `tag: "0.8"`, so this stream needs to keep
-  # publishing across Wolfi minor bumps rather than relying on the
-  # semver cascade alias from the `0` build (which disappears the moment
-  # Wolfi advances metrics-server to 0.9.x).
-  "0.8": {}

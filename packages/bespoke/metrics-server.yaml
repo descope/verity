@@ -1,0 +1,60 @@
+package:
+  name: metrics-server
+  version: "0.9.0"
+  epoch: 0
+  description: Scalable and efficient source of container resource metrics for Kubernetes built-in autoscaling pipelines
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+  resources:
+    cpu: "4"
+    memory: 8Gi
+
+environment:
+  contents:
+    packages:
+      - build-base
+      - busybox
+      - ca-certificates-bundle
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  # v0.9.0 is the first upstream release whose Wolfi security record fixes
+  # CVE-2026-42151. The tag resolves to this immutable commit.
+  - uses: fetch
+    with:
+      uri: https://github.com/kubernetes-sigs/metrics-server/archive/2a7c4b2c7d46552ff47f4aeaa3a735c582587ecd.tar.gz
+      expected-sha256: 7c3dc479484fca306297221058bf55f5d4620305b4041e729dfb497386a621fa
+
+  - runs: |
+      GIT_TAG=v${{package.version}} \
+      GIT_COMMIT=2a7c4b2c7d46552ff47f4aeaa3a735c582587ecd \
+      BUILD_DATE=2026-07-13T10:38:03Z \
+        make metrics-server ARCH="$(go env GOARCH)"
+      install -Dm755 metrics-server "${{targets.destdir}}/usr/bin/metrics-server"
+      install -Dm644 LICENSE "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+      "${{targets.destdir}}/usr/bin/metrics-server" --version | grep -F "v${{package.version}}"
+      "${{targets.destdir}}/usr/bin/metrics-server" --help >/dev/null
+      go version -m "${{targets.destdir}}/usr/bin/metrics-server" | grep -F $'github.com/prometheus/prometheus\tv0.313.0'
+      go version -m "${{targets.destdir}}/usr/bin/metrics-server" | grep -F $'go.opentelemetry.io/otel\tv1.44.0'
+
+  - uses: strip
+
+test:
+  pipeline:
+    - runs: |
+        metrics-server --version | grep -F "v${{package.version}}"
+        metrics-server --help >/dev/null
+        test -f /usr/share/licenses/${{package.name}}/LICENSE
+
+update:
+  enabled: true
+  github:
+    identifier: kubernetes-sigs/metrics-server
+    strip-prefix: v
+    tag-filter: v
