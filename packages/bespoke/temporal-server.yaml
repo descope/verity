@@ -1,0 +1,87 @@
+package:
+  name: temporal-server
+  # renovate: datasource=github-tags depName=temporalio/temporal versioning=semver-coerced
+  version: "1.31.2"
+  # r1 rebuilds the immutable 1.31.2 source with OpenTelemetry 1.44.0,
+  # fixing CVE-2026-41178 (GHSA-5wrp-cwcj-q835).
+  epoch: 1
+  description: Temporal durable execution server
+  copyright:
+    - license: MIT
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+  resources:
+    cpu: "6"
+    memory: 16Gi
+  test-resources:
+    cpu: "2"
+    memory: 4Gi
+
+environment:
+  contents:
+    packages:
+      - build-base
+      - busybox
+      - ca-certificates-bundle
+      - go-1.26
+  environment:
+    CGO_ENABLED: "1"
+
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://github.com/temporalio/temporal/archive/19a774302c613da9adc4436ab14278ccdca8e0a5.tar.gz
+      expected-sha256: e034c4ff9ef8ae7d4a326bddb9f6793bee6255285cc19f9b58874d8ee21eb3e8
+
+  - uses: go/bump
+    with:
+      deps: |-
+        go.opentelemetry.io/otel@v1.44.0
+        go.opentelemetry.io/otel/metric@v1.44.0
+        go.opentelemetry.io/otel/sdk@v1.44.0
+        go.opentelemetry.io/otel/sdk/metric@v1.44.0
+        go.opentelemetry.io/otel/trace@v1.44.0
+
+  - uses: go/build
+    with:
+      go-package: go-1.26
+      packages: ./cmd/server
+      output: temporal-server
+      tags: disable_grpc_modules
+
+  - runs: |
+      install -Dm644 config/development-sqlite.yaml \
+        "${{targets.destdir}}/etc/temporal/config/development-sqlite.yaml"
+      install -Dm644 config/dynamicconfig/development-sql.yaml \
+        "${{targets.destdir}}/etc/temporal/config/dynamicconfig/development-sql.yaml"
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+  pipeline:
+    - runs: |
+        temporal-server --help >/dev/null
+        test -f /etc/temporal/config/development-sqlite.yaml
+        test -f /etc/temporal/config/dynamicconfig/development-sql.yaml
+        grep -F "The MIT License" \
+          "/usr/share/licenses/${{package.name}}/LICENSE"
+    - uses: test/daemon-check-output
+      with:
+        setup: |
+          ln -sfn /etc/temporal/config config
+        start: /usr/bin/temporal-server --config-file /etc/temporal/config/development-sqlite.yaml --allow-no-auth start
+        timeout: 90
+        expected_output: Frontend is now healthy
+        post: |
+          wait-for-it -t 30 --strict 127.0.0.1:7233 -- echo "Temporal frontend is up"
+
+update:
+  enabled: true
+  github:
+    identifier: temporalio/temporal
+    strip-prefix: v
