@@ -176,6 +176,85 @@ jobs:
             melange-work/specs/trivy.yaml/build.yaml \
             trivy
 
+      - name: Test rclone package natively (${{ matrix.arch }})
+        if: inputs.image == 'rclone'
+        env:
+          BUILD_ARCH: ${{ matrix.arch }}
+        run: bash .github/scripts/test-rclone-package.sh "$BUILD_ARCH"
+
+      - name: Test rclone image natively (${{ matrix.arch }})
+        if: inputs.image == 'rclone'
+        env:
+          BUILD_ARCH: ${{ matrix.arch }}
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TYPE: ${{ inputs.type }}
+        run: |
+          case "$BUILD_ARCH" in
+            x86_64) IMAGE_ARCH=amd64 ;;
+            aarch64) IMAGE_ARCH=arm64 ;;
+            *) echo "Unsupported rclone architecture: $BUILD_ARCH" >&2; exit 1 ;;
+          esac
+
+          image_tar="rclone-$IMAGE_ARCH.tar"
+          image_ref="integer:local-$IMAGE_ARCH"
+          container="integer-rclone-$IMAGE_ARCH-proof"
+          smoke=$(mktemp -d)
+          sbom="/tmp/rclone-$IMAGE_ARCH.spdx.json"
+          cleanup() {
+            docker rm --force "$container" >/dev/null 2>&1 || true
+            docker image rm "$image_ref" >/dev/null 2>&1 || true
+            rm -rf "$image_tar" "$smoke" "$sbom"
+          }
+          trap cleanup EXIT
+
+          ./verity integer build \
+            --image "$INPUT_IMAGE" \
+            --version "$INPUT_VERSION" \
+            --type "$INPUT_TYPE" \
+            --arch "$IMAGE_ARCH" \
+            --fail-on-severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
+            --output "$image_tar"
+
+          docker load --input "$image_tar"
+          docker run --rm "$image_ref" --version \
+            | grep -E '^rclone v?1.74.4$'
+
+          mkdir -p "$smoke/source" "$smoke/destination"
+          chmod 0755 "$smoke" "$smoke/source"
+          chmod 0777 "$smoke/destination"
+          printf '%s\n' 'verity rclone image checksum smoke' \
+            >"$smoke/source/payload.txt"
+          (
+            cd "$smoke/source"
+            sha256sum payload.txt >../payload.sha256
+          )
+          docker run --rm --volume "$smoke:/work" "$image_ref" \
+            copy /work/source /work/destination
+          docker run --rm --volume "$smoke:/work" "$image_ref" \
+            check --checksum /work/source /work/destination
+          (
+            cd "$smoke/destination"
+            sha256sum --check ../payload.sha256
+          )
+
+          docker image inspect "$image_ref" \
+            --format '{{.Architecture}} {{.Os}}' \
+            | grep -Fx "$IMAGE_ARCH linux"
+          docker create --name "$container" "$image_ref" --version >/dev/null
+          docker cp \
+            "$container:/var/lib/db/sbom/rclone-1.74.4-r0.spdx.json" \
+            "$sbom"
+          jq -e '
+            .spdxVersion == "SPDX-2.3"
+            and any(
+              .packages[];
+              .name == "rclone"
+              and .versionInfo == "1.74.4-r0"
+              and .licenseDeclared == "MIT"
+            )
+          ' "$sbom"
+
       - name: Test Weaviate package natively (${{ matrix.arch }})
         if: inputs.image == 'weaviate'
         env:
