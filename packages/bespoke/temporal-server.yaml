@@ -29,10 +29,11 @@ environment:
     CGO_ENABLED: "1"
 
 pipeline:
-  - uses: fetch
+  - uses: git-checkout
     with:
-      uri: https://github.com/temporalio/temporal/archive/19a774302c613da9adc4436ab14278ccdca8e0a5.tar.gz
-      expected-sha256: e034c4ff9ef8ae7d4a326bddb9f6793bee6255285cc19f9b58874d8ee21eb3e8
+      repository: https://github.com/temporalio/temporal
+      tag: v${{package.version}}
+      expected-commit: 19a774302c613da9adc4436ab14278ccdca8e0a5
 
   - uses: go/bump
     with:
