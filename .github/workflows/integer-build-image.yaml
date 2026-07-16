@@ -267,6 +267,12 @@ jobs:
             )
           ' "$sbom"
 
+      - name: Test Step CA package natively (${{ matrix.arch }})
+        if: inputs.image == 'step-ca'
+        env:
+          BUILD_ARCH: ${{ matrix.arch }}
+        run: bash .github/scripts/test-step-ca-package.sh "$BUILD_ARCH"
+
       - name: Upload arch packages
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

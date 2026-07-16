@@ -1,0 +1,137 @@
+# Adapted from wolfi-dev/os@b9dcc7dc733fd3100bfd7974ea0725188abe18b2
+# (step-ca 0.30.2-r10).
+package:
+  name: step-ca
+  # renovate: datasource=github-tags depName=smallstep/certificates versioning=semver-coerced
+  version: "0.30.2"
+  # r12 fixes CVE-2026-39883, r13 fixes CVE-2026-41178, and r15 rebuilds
+  # with Go 1.26.5 for CVE-2026-42505.
+  epoch: 15
+  description: A private certificate authority (X.509 & SSH) and ACME server
+  copyright:
+    # Upstream LICENSE at the pinned source commit is Apache License 2.0.
+    - license: Apache-2.0
+  resources:
+    cpu: "3"
+    memory: 8Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26=1.26.5-r1
+      - pcsc-lite-dev
+      - step
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/smallstep/certificates
+      tag: v${{package.version}}
+      expected-commit: 6e8ec61405239cf3f37b2bbf260a587b7d2e4e31
+
+  - uses: go/bump
+    with:
+      deps: |-
+        github.com/go-jose/go-jose/v3@v3.0.5
+        github.com/go-jose/go-jose/v4@v4.1.4
+        github.com/jackc/pgx/v5@v5.9.2
+        go.opentelemetry.io/otel@v1.44.0
+        go.opentelemetry.io/otel/metric@v1.44.0
+        go.opentelemetry.io/otel/sdk@v1.44.0
+        go.opentelemetry.io/otel/sdk/metric@v1.44.0
+        go.opentelemetry.io/otel/trace@v1.44.0
+        golang.org/x/crypto@v0.52.0
+        golang.org/x/net@v0.55.0
+
+  - name: Verify the complete fixed module graph
+    runs: |
+      for module in \
+        go.opentelemetry.io/otel \
+        go.opentelemetry.io/otel/metric \
+        go.opentelemetry.io/otel/sdk \
+        go.opentelemetry.io/otel/sdk/metric \
+        go.opentelemetry.io/otel/trace; do
+        go list -m all \
+          | awk -v module="$module" \
+            '$1 == module && $2 == "v1.44.0" { found = 1 } END { exit !found }'
+      done
+
+  - uses: go/build
+    with:
+      modroot: .
+      packages: ./cmd/step-ca
+      output: step-ca
+      go-package: go-1.26
+      ldflags: |
+        -X main.Version=${{package.version}}
+        -X main.BuildTime=$(date -u -d "@$SOURCE_DATE_EPOCH" +"%Y-%m-%dT%H:%M:%SZ")
+
+  - name: Verify linked OpenTelemetry modules and install license
+    runs: |
+      "${{targets.destdir}}/usr/bin/step-ca" --version \
+        | grep -F "${{package.version}}"
+      "${{targets.destdir}}/usr/bin/step-ca" --help >/dev/null
+      go version -m "${{targets.destdir}}/usr/bin/step-ca" \
+        | grep -E 'go1\.26\.([5-9]|[1-9][0-9])'
+      for module in \
+        go.opentelemetry.io/otel \
+        go.opentelemetry.io/otel/metric \
+        go.opentelemetry.io/otel/trace; do
+        go version -m "${{targets.destdir}}/usr/bin/step-ca" \
+          | grep -E "${module}[[:space:]]+v1.44.0"
+      done
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  environment:
+    contents:
+      packages:
+        - apk-tools
+        - jq
+        - step
+        - wait-for-it
+  pipeline:
+    - name: Validate runtime, package ownership, and Apache provenance
+      runs: |
+        step-ca --version | grep -F "${{package.version}}"
+        step-ca --help >/dev/null
+        apk info --who-owns /usr/bin/step-ca \
+          | grep -F "${{package.name}}-${{package.full-version}}"
+        apk info --license step-ca | grep -Fx "Apache-2.0"
+        grep -F "Apache License" \
+          "/usr/share/licenses/${{package.name}}/LICENSE"
+        sbom="/var/lib/db/sbom/${{package.name}}-${{package.full-version}}.spdx.json"
+        test -s "$sbom"
+        jq -e '
+          .packages[]
+          | select(.name == "step-ca" and .versionInfo == "${{package.full-version}}")
+          | .licenseDeclared == "Apache-2.0"
+        ' "$sbom"
+    - name: Initialize and exercise a representative CA
+      uses: test/daemon-check-output
+      with:
+        setup: |
+          echo $RANDOM > password.txt
+          step ca init --name "Example Inc." \
+            --dns localhost \
+            --address 127.0.0.1:8443 \
+            --provisioner=bob@example.com \
+            --password-file=password.txt 2>&1 | grep -vi root
+        start: "step-ca $(step path)/config/ca.json --password-file password.txt"
+        timeout: 30
+        expected_output: |
+          Serving HTTPS
+        post: |
+          wait-for-it -t 10 --strict localhost:8443 -- echo "Server is up"
+          step ca health | grep -qi "ok"
+
+update:
+  enabled: true
+  github:
+    identifier: smallstep/certificates
+    strip-prefix: v
+    use-tag: true
