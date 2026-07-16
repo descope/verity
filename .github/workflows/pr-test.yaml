@@ -240,11 +240,7 @@ jobs:
               (
                 container="integer-weaviate-${arch}-pr-smoke"
                 sbom="${RUNNER_TEMP}/weaviate-${arch}.spdx.json"
-                cleanup() {
-                  docker rm --force "$container" >/dev/null 2>&1 || true
-                  rm -f "$sbom"
-                }
-                trap cleanup EXIT
+                trap 'docker rm --force "$container" >/dev/null 2>&1 || true; rm -f "$sbom"' EXIT
 
                 docker run --detach --rm --name "$container" \
                   --publish 127.0.0.1::8080 \
