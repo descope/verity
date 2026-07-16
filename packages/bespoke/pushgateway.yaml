@@ -1,0 +1,120 @@
+package:
+  name: prometheus-pushgateway
+  # renovate: datasource=github-tags depName=prometheus/pushgateway versioning=semver-coerced
+  version: "1.11.3"
+  # r2 rebuilds the latest immutable release with its fixed Prometheus v3.11.3
+  # dependency for CVE-2026-42151 and CVE-2026-42154. Trivy marks r2 fixed.
+  epoch: 2
+  description: Push acceptor for ephemeral and batch jobs
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - merged-usrsbin
+      - wolfi-baselayout
+  resources:
+    cpu: "4"
+    memory: 7Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+    GOTOOLCHAIN: local
+
+pipeline:
+  # Adapted from wolfi-dev/os@c18151bd0f768439d4e969ec5472e6844f33cc70.
+  - uses: git-checkout
+    with:
+      repository: https://github.com/prometheus/pushgateway
+      tag: v${{package.version}}
+      expected-commit: e803ebd81be5867ff17a21205030611fa033af13
+
+  - uses: go/build
+    with:
+      packages: .
+      output: prometheus-pushgateway
+      go-package: go-1.26
+      ldflags: |-
+        -X github.com/prometheus/common/version.Version=${{package.version}}
+        -X github.com/prometheus/common/version.Revision=e803ebd81be5867ff17a21205030611fa033af13
+        -X github.com/prometheus/common/version.Branch=HEAD
+        -X github.com/prometheus/common/version.BuildUser=reproducible@reproducible
+        -X github.com/prometheus/common/version.BuildDate=$(date -u -d "@$SOURCE_DATE_EPOCH" +%Y-%m-%d-%H:%M)
+
+  - runs: |
+      binary="${{targets.destdir}}/usr/bin/prometheus-pushgateway"
+      "$binary" --version 2>&1 | grep -F "version ${{package.version}}"
+      go version -m "$binary" \
+        | grep -E 'github.com/prometheus/prometheus[[:space:]]+v0.311.3'
+      ln -sf /usr/bin/prometheus-pushgateway \
+        "${{targets.destdir}}/usr/bin/pushgateway"
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  environment:
+    contents:
+      packages:
+        - apk-tools
+        - curl
+        - go-1.26
+        - jq
+  pipeline:
+    - name: Validate runtime, fixed dependency, and Apache-2.0 provenance
+      runs: |
+        pushgateway --version 2>&1 | grep -F "version ${{package.version}}"
+        pushgateway --help >/dev/null
+        test "$(readlink /usr/bin/pushgateway)" = "/usr/bin/prometheus-pushgateway"
+        go version -m /usr/bin/prometheus-pushgateway \
+          | grep -E 'github.com/prometheus/prometheus[[:space:]]+v0.311.3'
+        apk info --who-owns /usr/bin/prometheus-pushgateway \
+          | grep -F "${{package.name}}-${{package.full-version}}"
+        apk info --license prometheus-pushgateway | grep -Fx Apache-2.0
+        test -s "/usr/share/licenses/${{package.name}}/LICENSE"
+        sbom="/var/lib/db/sbom/${{package.name}}-${{package.full-version}}.spdx.json"
+        test -s "$sbom"
+        jq -e --arg full_version "${{package.full-version}}" '
+          .spdxVersion == "SPDX-2.3"
+          and any(
+            .packages[];
+            .name == "prometheus-pushgateway"
+            and .versionInfo == $full_version
+            and .licenseDeclared == "Apache-2.0"
+          )
+        ' "$sbom"
+    - name: Validate Pushgateway health and metrics push/read behavior
+      uses: test/daemon-check-output
+      with:
+        start: pushgateway --web.listen-address=0.0.0.0:9091
+        timeout: 30
+        expected_output: |
+          msg="starting pushgateway"
+          msg="Listening on"
+        post: |
+          curl --fail-with-body --silent --show-error \
+            http://127.0.0.1:9091/-/ready \
+            | grep -Fx OK
+          cat <<'EOF' | curl --fail-with-body --silent --show-error \
+            --data-binary @- \
+            http://127.0.0.1:9091/metrics/job/integer_pushgateway_smoke
+          # HELP integer_pushgateway_smoke Integer Pushgateway smoke metric.
+          # TYPE integer_pushgateway_smoke gauge
+          integer_pushgateway_smoke 7
+          EOF
+          curl --fail-with-body --silent --show-error \
+            http://127.0.0.1:9091/metrics \
+            | grep -F 'integer_pushgateway_smoke{instance="",job="integer_pushgateway_smoke"} 7'
+
+update:
+  enabled: true
+  github:
+    identifier: prometheus/pushgateway
+    strip-prefix: v
+    tag-filter: v
+    use-tag: true
