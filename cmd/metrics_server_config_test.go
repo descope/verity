@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -50,7 +51,14 @@ func Test_MetricsServer_recipe_pins_clean_upstream_release(t *testing.T) {
 	require.Contains(t, text, "GIT_COMMIT=2a7c4b2c7d46552ff47f4aeaa3a735c582587ecd")
 	require.Contains(t, text, "github.com/prometheus/prometheus\\tv0.313.0")
 	require.Contains(t, text, "go.opentelemetry.io/otel\\tv1.44.0")
-	require.Contains(t, text, "metrics-server --version")
+	testSection := strings.Index(text, "\ntest:\n")
+	versionSmoke := strings.Index(text, `"${{targets.destdir}}/usr/bin/metrics-server" --version`)
+	helpSmoke := strings.Index(text, `"${{targets.destdir}}/usr/bin/metrics-server" --help`)
+	require.NotEqual(t, -1, testSection)
+	require.NotEqual(t, -1, versionSmoke)
+	require.NotEqual(t, -1, helpSmoke)
+	require.Less(t, versionSmoke, testSection, "version smoke must run during the native build")
+	require.Less(t, helpSmoke, testSection, "help smoke must run during the native build")
 	require.Contains(t, text, "usr/share/licenses/${{package.name}}/LICENSE")
 }
 

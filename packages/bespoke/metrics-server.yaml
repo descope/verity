@@ -38,6 +38,8 @@ pipeline:
       install -Dm755 metrics-server "${{targets.destdir}}/usr/bin/metrics-server"
       install -Dm644 LICENSE "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
 
+      "${{targets.destdir}}/usr/bin/metrics-server" --version | grep -F "v${{package.version}}"
+      "${{targets.destdir}}/usr/bin/metrics-server" --help >/dev/null
       go version -m "${{targets.destdir}}/usr/bin/metrics-server" | grep -F $'github.com/prometheus/prometheus\tv0.313.0'
       go version -m "${{targets.destdir}}/usr/bin/metrics-server" | grep -F $'go.opentelemetry.io/otel\tv1.44.0'
 
