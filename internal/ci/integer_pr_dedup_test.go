@@ -34,31 +34,14 @@ func TestPlanIntegerPRStrictBuildVariantsAreExcludedFromSmokeCoverage(t *testing
 	}
 	assert.ElementsMatch(t, strict, plan.Matrix.Include)
 	assert.ElementsMatch(t, smokeOnly, plan.SmokeMatrix.Include)
-	assert.Empty(t, matrixOverlap(plan.Matrix.Include, plan.SmokeMatrix.Include))
-	assert.ElementsMatch(t, matrixUnion(strict, smokeOnly), matrixUnion(plan.Matrix.Include, plan.SmokeMatrix.Include))
-}
-
-func matrixOverlap(left, right []map[string]string) []map[string]string {
-	rightVariants := make(map[string]struct{}, len(right))
-	for _, entry := range right {
-		rightVariants[matrixVariantKey(entry)] = struct{}{}
+	for _, entry := range plan.Matrix.Include {
+		assert.NotContains(t, plan.SmokeMatrix.Include, entry)
 	}
-	overlap := make([]map[string]string, 0)
-	for _, entry := range left {
-		if _, ok := rightVariants[matrixVariantKey(entry)]; ok {
-			overlap = append(overlap, entry)
-		}
-	}
-	return overlap
-}
-
-func matrixUnion(left, right []map[string]string) []map[string]string {
-	union := make([]map[string]string, 0, len(left)+len(right))
-	union = append(union, left...)
-	union = append(union, right...)
-	return union
-}
-
-func matrixVariantKey(entry map[string]string) string {
-	return entry["image"] + "\x00" + entry["version"] + "\x00" + entry["type"]
+	expectedCoverage := make([]map[string]string, 0, len(strict)+len(smokeOnly))
+	expectedCoverage = append(expectedCoverage, strict...)
+	expectedCoverage = append(expectedCoverage, smokeOnly...)
+	actualCoverage := make([]map[string]string, 0, len(plan.Matrix.Include)+len(plan.SmokeMatrix.Include))
+	actualCoverage = append(actualCoverage, plan.Matrix.Include...)
+	actualCoverage = append(actualCoverage, plan.SmokeMatrix.Include...)
+	assert.ElementsMatch(t, expectedCoverage, actualCoverage)
 }
