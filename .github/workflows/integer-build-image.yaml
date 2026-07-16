@@ -176,6 +176,103 @@ jobs:
             melange-work/specs/trivy.yaml/build.yaml \
             trivy
 
+      - name: Test Pushgateway package natively (${{ matrix.arch }})
+        if: inputs.image == 'pushgateway'
+        env:
+          BUILD_ARCH: ${{ matrix.arch }}
+        run: |
+          melange test \
+            --arch "$BUILD_ARCH" \
+            --repository-append "${GITHUB_WORKSPACE}/packages/repo" \
+            --repository-append https://packages.wolfi.dev/os \
+            --keyring-append "${GITHUB_WORKSPACE}/melange-work/melange.rsa.pub" \
+            --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub \
+            --pipeline-dirs melange-work/pipelines \
+            --runner docker \
+            melange-work/specs/pushgateway.yaml/build.yaml \
+            prometheus-pushgateway
+
+      - name: Test Pushgateway image natively (${{ matrix.arch }})
+        if: inputs.image == 'pushgateway'
+        env:
+          BUILD_ARCH: ${{ matrix.arch }}
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TYPE: ${{ inputs.type }}
+        run: |
+          case "$BUILD_ARCH" in
+            x86_64) IMAGE_ARCH=amd64 ;;
+            aarch64) IMAGE_ARCH=arm64 ;;
+            *) echo "Unsupported Pushgateway architecture: $BUILD_ARCH" >&2; exit 1 ;;
+          esac
+
+          expected_version=$(yq -r '.package.version' \
+            melange-work/specs/pushgateway.yaml/build.yaml)
+          expected_full_version=$(yq -r '.package.version + "-r" + (.package.epoch | tostring)' \
+            melange-work/specs/pushgateway.yaml/build.yaml)
+          image_tar="pushgateway-$IMAGE_ARCH.tar"
+          image_ref="integer:local-$IMAGE_ARCH"
+          container="integer-pushgateway-$IMAGE_ARCH-proof"
+          sbom="/tmp/pushgateway-$IMAGE_ARCH.spdx.json"
+          cleanup() {
+            docker rm --force "$container" >/dev/null 2>&1 || true
+            docker image rm "$image_ref" >/dev/null 2>&1 || true
+            rm -f "$image_tar" "$sbom"
+          }
+          trap cleanup EXIT
+
+          ./verity integer build \
+            --image "$INPUT_IMAGE" \
+            --version "$INPUT_VERSION" \
+            --type "$INPUT_TYPE" \
+            --arch "$IMAGE_ARCH" \
+            --fail-on-severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
+            --output "$image_tar"
+
+          docker load --input "$image_tar"
+          docker run --detach --rm --name "$container" \
+            --publish 127.0.0.1::9091 \
+            "$image_ref" --web.listen-address=0.0.0.0:9091
+
+          host_port=$(docker port "$container" 9091/tcp | awk -F: 'END {print $NF}')
+          test -n "$host_port"
+          ready=false
+          for _ in $(seq 1 90); do
+            if curl -fsS "http://127.0.0.1:$host_port/-/ready" | grep -Fxq OK; then
+              ready=true
+              break
+            fi
+            docker inspect --format '{{.State.Running}}' "$container" | grep -Fx true
+            sleep 1
+          done
+          test "$ready" = true
+          curl -fsS "http://127.0.0.1:$host_port/metrics" \
+            | grep -E "pushgateway_build_info\\{.*version=\"$expected_version\""
+          printf '%s\n' \
+            '# HELP integer_pushgateway_smoke Integer Pushgateway smoke metric.' \
+            '# TYPE integer_pushgateway_smoke gauge' \
+            'integer_pushgateway_smoke 7' \
+            | curl -fsS --data-binary @- \
+              "http://127.0.0.1:$host_port/metrics/job/integer_pushgateway_smoke"
+          curl -fsS "http://127.0.0.1:$host_port/metrics" \
+            | grep -F 'integer_pushgateway_smoke{instance="",job="integer_pushgateway_smoke"} 7'
+          docker image inspect "$image_ref" \
+            --format '{{.Architecture}} {{.Os}} {{.Config.User}}' \
+            | grep -Fx "$IMAGE_ARCH linux 65532"
+
+          docker cp \
+            "$container:/var/lib/db/sbom/prometheus-pushgateway-${expected_full_version}.spdx.json" \
+            "$sbom"
+          jq -e --arg full_version "$expected_full_version" '
+            .spdxVersion == "SPDX-2.3"
+            and any(
+              .packages[];
+              .name == "prometheus-pushgateway"
+              and .versionInfo == $full_version
+              and .licenseDeclared == "Apache-2.0"
+            )
+          ' "$sbom"
+
       - name: Test Weaviate package natively (${{ matrix.arch }})
         if: inputs.image == 'weaviate'
         env:

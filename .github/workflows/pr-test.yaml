@@ -208,6 +208,24 @@ jobs:
             fi
             echo "::endgroup::"
 
+            if [ "$image" = "pushgateway" ]; then
+              expected_version=$(yq -r '.package.version' \
+                melange-work/specs/pushgateway.yaml/build.yaml)
+              expected_full_version=$(yq -r '.package.version + "-r" + (.package.epoch | tostring)' \
+                melange-work/specs/pushgateway.yaml/build.yaml)
+              timeout --signal=TERM --kill-after=1m 5m \
+                melange test \
+                  --arch "$INTEGER_PACKAGE_ARCH" \
+                  --repository-append "${GITHUB_WORKSPACE}/packages/repo" \
+                  --repository-append https://packages.wolfi.dev/os \
+                  --keyring-append "${GITHUB_WORKSPACE}/melange-work/melange.rsa.pub" \
+                  --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub \
+                  --pipeline-dirs melange-work/pipelines \
+                  --runner docker \
+                  melange-work/specs/pushgateway.yaml/build.yaml \
+                  prometheus-pushgateway
+            fi
+
             if [ "$image" = "weaviate" ]; then
               expected_version=$(yq -r '.package.version' \
                 melange-work/specs/weaviate.yaml/build.yaml)
@@ -266,6 +284,55 @@ jobs:
             if [ "$runtime_arch" != "$arch" ]; then
               echo "::error::runtime architecture mismatch: expected ${arch}, got ${runtime_arch}"
               exit 1
+            fi
+
+            if [ "$image" = "pushgateway" ]; then
+              (
+                container="integer-pushgateway-${arch}-pr-smoke"
+                sbom="${RUNNER_TEMP}/pushgateway-${arch}.spdx.json"
+                trap 'docker rm --force "$container" >/dev/null 2>&1 || true; rm -f "$sbom"' EXIT
+
+                docker run --detach --rm --name "$container" \
+                  --publish 127.0.0.1::9091 \
+                  "$loaded_ref" --web.listen-address=0.0.0.0:9091
+
+                host_port=$(docker port "$container" 9091/tcp | awk -F: 'END {print $NF}')
+                test -n "$host_port"
+                ready=false
+                for _ in $(seq 1 90); do
+                  if curl -fsS "http://127.0.0.1:$host_port/-/ready" | grep -Fxq OK; then
+                    ready=true
+                    break
+                  fi
+                  docker inspect --format '{{.State.Running}}' "$container" | grep -Fx true
+                  sleep 1
+                done
+                test "$ready" = true
+                curl -fsS "http://127.0.0.1:$host_port/metrics" \
+                  | grep -E "pushgateway_build_info\\{.*version=\"$expected_version\""
+                printf '%s\n' \
+                  '# HELP integer_pushgateway_smoke Integer Pushgateway smoke metric.' \
+                  '# TYPE integer_pushgateway_smoke gauge' \
+                  'integer_pushgateway_smoke 7' \
+                  | curl -fsS --data-binary @- \
+                    "http://127.0.0.1:$host_port/metrics/job/integer_pushgateway_smoke"
+                curl -fsS "http://127.0.0.1:$host_port/metrics" \
+                  | grep -F 'integer_pushgateway_smoke{instance="",job="integer_pushgateway_smoke"} 7'
+                test "$runtime_user" = 65532
+
+                docker cp \
+                  "$container:/var/lib/db/sbom/prometheus-pushgateway-${expected_full_version}.spdx.json" \
+                  "$sbom"
+                jq -e --arg full_version "$expected_full_version" '
+                  .spdxVersion == "SPDX-2.3"
+                  and any(
+                    .packages[];
+                    .name == "prometheus-pushgateway"
+                    and .versionInfo == $full_version
+                    and .licenseDeclared == "Apache-2.0"
+                  )
+                ' "$sbom"
+              )
             fi
 
             if [ "$image" = "weaviate" ]; then
@@ -519,6 +586,24 @@ jobs:
             fi
             echo "::endgroup::"
 
+            if [ "$image" = "pushgateway" ]; then
+              expected_version=$(yq -r '.package.version' \
+                melange-work/specs/pushgateway.yaml/build.yaml)
+              expected_full_version=$(yq -r '.package.version + "-r" + (.package.epoch | tostring)' \
+                melange-work/specs/pushgateway.yaml/build.yaml)
+              timeout --signal=TERM --kill-after=1m 5m \
+                melange test \
+                  --arch "$INTEGER_PACKAGE_ARCH" \
+                  --repository-append "${GITHUB_WORKSPACE}/packages/repo" \
+                  --repository-append https://packages.wolfi.dev/os \
+                  --keyring-append "${GITHUB_WORKSPACE}/melange-work/melange.rsa.pub" \
+                  --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub \
+                  --pipeline-dirs melange-work/pipelines \
+                  --runner docker \
+                  melange-work/specs/pushgateway.yaml/build.yaml \
+                  prometheus-pushgateway
+            fi
+
             if [ "$image" = linkerd ] && [ "$version" = 25 ] && [ "$type" = default ]; then
               if timeout --signal=TERM --kill-after=1m 30m \
                 ./verity integer melange build \
@@ -583,6 +668,54 @@ jobs:
             if [ "$runtime_arch" != "$arch" ]; then
               echo "::error::runtime architecture mismatch: expected ${arch}, got ${runtime_arch}"
               exit 1
+            fi
+
+            if [ "$image" = "pushgateway" ]; then
+              (
+                container="integer-pushgateway-${arch}-pr-build"
+                sbom="${RUNNER_TEMP}/pushgateway-${arch}.spdx.json"
+                trap 'docker rm --force "$container" >/dev/null 2>&1 || true; rm -f "$sbom"' EXIT
+
+                docker run --detach --rm --name "$container" \
+                  --publish 127.0.0.1::9091 \
+                  "$loaded_ref" --web.listen-address=0.0.0.0:9091
+
+                host_port=$(docker port "$container" 9091/tcp | awk -F: 'END {print $NF}')
+                test -n "$host_port"
+                ready=false
+                for _ in $(seq 1 90); do
+                  if curl -fsS "http://127.0.0.1:$host_port/-/ready" | grep -Fxq OK; then
+                    ready=true
+                    break
+                  fi
+                  docker inspect --format '{{.State.Running}}' "$container" | grep -Fx true
+                  sleep 1
+                done
+                test "$ready" = true
+                curl -fsS "http://127.0.0.1:$host_port/metrics" \
+                  | grep -E "pushgateway_build_info\\{.*version=\"$expected_version\""
+                printf '%s\n' \
+                  '# HELP integer_pushgateway_smoke Integer Pushgateway smoke metric.' \
+                  '# TYPE integer_pushgateway_smoke gauge' \
+                  'integer_pushgateway_smoke 7' \
+                  | curl -fsS --data-binary @- \
+                    "http://127.0.0.1:$host_port/metrics/job/integer_pushgateway_smoke"
+                curl -fsS "http://127.0.0.1:$host_port/metrics" \
+                  | grep -F 'integer_pushgateway_smoke{instance="",job="integer_pushgateway_smoke"} 7'
+
+                docker cp \
+                  "$container:/var/lib/db/sbom/prometheus-pushgateway-${expected_full_version}.spdx.json" \
+                  "$sbom"
+                jq -e --arg full_version "$expected_full_version" '
+                  .spdxVersion == "SPDX-2.3"
+                  and any(
+                    .packages[];
+                    .name == "prometheus-pushgateway"
+                    and .versionInfo == $full_version
+                    and .licenseDeclared == "Apache-2.0"
+                  )
+                ' "$sbom"
+              )
             fi
 
             trivy image \
