@@ -1,0 +1,98 @@
+package:
+  name: trufflehog
+  # renovate: datasource=github-tags depName=trufflesecurity/trufflehog versioning=semver-coerced
+  version: "3.95.9"
+  # r1 rebuilds the latest immutable release with the MongoDB driver fixes for
+  # CVE-2026-2303 (GHSA-cp6g-7hqx-qxhp).
+  epoch: 1
+  description: Find, verify, and analyze leaked credentials
+  copyright:
+    # Upstream identifies the pinned source as AGPL-3.0 in README and LICENSE.
+    - license: AGPL-3.0
+  dependencies:
+    runtime:
+      - bash
+      - binutils
+      - ca-certificates
+      - cpio
+      - git
+      - openssh-client
+      - rpm2cpio
+  resources:
+    cpu: "3"
+    memory: 8Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/trufflesecurity/trufflehog
+      tag: v${{package.version}}
+      expected-commit: 27b0417c16317ca9a472a9a8092acce143b49c55
+
+  - uses: go/bump
+    with:
+      deps: go.mongodb.org/mongo-driver@v1.17.7
+
+  - uses: go/build
+    with:
+      packages: .
+      output: trufflehog
+      go-package: go-1.26
+      ldflags: -X github.com/trufflesecurity/trufflehog/v3/pkg/version.BuildVersion=${{package.version}}
+
+  - runs: |
+      "${{targets.destdir}}/usr/bin/trufflehog" --version \
+        | grep -F "trufflehog ${{package.version}}"
+      "${{targets.destdir}}/usr/bin/trufflehog" --help >/dev/null
+      go version -m "${{targets.destdir}}/usr/bin/trufflehog" \
+        | grep -E 'go.mongodb.org/mongo-driver[[:space:]]+v1.17.7'
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  environment:
+    contents:
+      packages:
+        - apk-tools
+        - jq
+  pipeline:
+    - name: Validate runtime, package ownership, and AGPL provenance
+      runs: |
+        trufflehog --version | grep -F "trufflehog ${{package.version}}"
+        trufflehog --help >/dev/null
+        apk info --who-owns /usr/bin/trufflehog \
+          | grep -F "${{package.name}}-${{package.full-version}}"
+        apk info --license trufflehog | grep -Fx "AGPL-3.0"
+        grep -F "GNU AFFERO GENERAL PUBLIC LICENSE" \
+          "/usr/share/licenses/${{package.name}}/LICENSE"
+        sbom="/var/lib/db/sbom/${{package.name}}-${{package.full-version}}.spdx.json"
+        test -s "$sbom"
+        jq -e '
+          .packages[]
+          | select(.name == "trufflehog" and .versionInfo == "3.95.9-r1")
+          | .licenseDeclared == "AGPL-3.0"
+        ' "$sbom"
+    - name: Scan a representative local filesystem
+      runs: |
+        mkdir -p /tmp/trufflehog-scan
+        printf '%s\n' 'demo-password-1234' > /tmp/trufflehog-scan/credentials.txt
+        trufflehog filesystem /tmp/trufflehog-scan \
+          --no-update --results=verified,unknown 2>&1 \
+          | grep -F "finished scanning"
+
+update:
+  enabled: true
+  github:
+    identifier: trufflesecurity/trufflehog
+    strip-prefix: v
+    use-tag: true
