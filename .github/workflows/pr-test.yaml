@@ -195,6 +195,12 @@ jobs:
             fi
             echo "::endgroup::"
 
+            if [ "$image" = "step-ca" ]; then
+              echo "::group::Step CA package test (${INTEGER_PACKAGE_ARCH})"
+              bash .github/scripts/test-step-ca-package.sh "$INTEGER_PACKAGE_ARCH"
+              echo "::endgroup::"
+            fi
+
             arch="$INTEGER_ARCH"
             tar_path="image-${safe_image}-${version}-${type}-${arch}.tar"
             ./verity integer build \
