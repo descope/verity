@@ -1,0 +1,114 @@
+package:
+  name: victoriametrics
+  # renovate: datasource=github-tags depName=VictoriaMetrics/VictoriaMetrics versioning=semver-coerced
+  version: "1.147.0"
+  # r2 rebuilds the latest compatible release with Go 1.26.5 or newer,
+  # fixing CVE-2026-42505 (GO-2026-5856) in crypto/tls.
+  epoch: 2
+  description: Fast, cost-effective, and scalable monitoring solution and time-series database
+  copyright:
+    - license: Apache-2.0
+  resources:
+    cpu: "4"
+    memory: 8Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26
+      - nodejs-22
+      - npm
+  environment:
+    CGO_ENABLED: "0"
+    GOTOOLCHAIN: local
+
+pipeline:
+  # Adapted from wolfi-dev/os@448782c863407612dc8e71620583dfaa89ab8f3f.
+  - uses: git-checkout
+    with:
+      repository: https://github.com/VictoriaMetrics/VictoriaMetrics
+      tag: v${{package.version}}
+      expected-commit: 3ac6505d7ff2c02b1c7878d92525e7b681e9cadc
+
+  - runs: |
+      cp docs/victoriametrics/MetricsQL.md \
+        app/vmui/packages/vmui/src/assets/MetricsQL.md
+
+  - working-directory: app/vmui/packages/vmui
+    runs: |
+      npm ci
+      npm run build
+
+  - runs: |
+      rm -rf app/vmselect/vmui/*
+      mv app/vmui/packages/vmui/build/* app/vmselect/vmui/
+
+  - uses: go/build
+    with:
+      packages: ./app/victoria-metrics
+      output: victoria-metrics
+      go-package: go-1.26
+      ldflags: >-
+        -X github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=victoria-metrics-${{package.version}}-$(date -u -d "@${SOURCE_DATE_EPOCH:-$(date +%s)}" "+%Y-%m-%dT%H:%M:%SZ")-$(git rev-parse HEAD)
+
+  - runs: |
+      "${{targets.destdir}}/usr/bin/victoria-metrics" --version 2>&1 \
+        | grep -F "victoria-metrics-${{package.version}}"
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  environment:
+    contents:
+      packages:
+        - apk-tools
+        - curl
+        - go-1.26
+  pipeline:
+    - runs: |
+        victoria-metrics --version 2>&1 \
+          | grep -F "victoria-metrics-${{package.version}}"
+        victoria-metrics --help >/dev/null
+        go version -m /usr/bin/victoria-metrics | tee /tmp/victoria-metrics-build-info
+        grep -Eq 'go1\.26\.([5-9]|[1-9][0-9]+)' /tmp/victoria-metrics-build-info
+        apk info --license victoriametrics | grep -Fx Apache-2.0
+        apk info --who-owns /usr/bin/victoria-metrics | grep -F 'victoriametrics-'
+        test -s /usr/share/licenses/${{package.name}}/LICENSE
+    - name: Validate VictoriaMetrics health, ingestion, and query APIs
+      uses: test/daemon-check-output
+      with:
+        setup: |
+          mkdir -p /tmp/victoria-metrics-data
+        start: >-
+          victoria-metrics
+          -storageDataPath=/tmp/victoria-metrics-data
+          -httpListenAddr=127.0.0.1:8428
+          -search.latencyOffset=0
+        expected_output: started server at http://127.0.0.1:8428/
+        post: |
+          endpoint=http://127.0.0.1:8428
+          curl --fail-with-body --silent --show-error "$endpoint/health" \
+            | grep -Fx OK
+          timestamp=$(date +%s)
+          curl --fail-with-body --silent --show-error \
+            --data "integer_victoriametrics_smoke{source=\"integer\"} 7 $timestamp" \
+            "$endpoint/api/v1/import/prometheus"
+          curl --fail-with-body --silent --show-error \
+            "$endpoint/internal/force_flush" >/dev/null
+          query=$(curl --fail-with-body --silent --show-error \
+            --data-urlencode 'query=integer_victoriametrics_smoke' \
+            --data-urlencode "time=$timestamp" \
+            "$endpoint/prometheus/api/v1/query")
+          echo "$query" | grep -F '"status":"success"'
+          echo "$query" | grep -F '"__name__":"integer_victoriametrics_smoke"'
+          echo "$query" | grep -F '"7"'
+
+update:
+  enabled: true
+  github:
+    identifier: VictoriaMetrics/VictoriaMetrics
+    strip-prefix: v
+    use-tag: true
