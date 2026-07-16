@@ -273,6 +273,52 @@ jobs:
           BUILD_ARCH: ${{ matrix.arch }}
         run: bash .github/scripts/test-step-ca-package.sh "$BUILD_ARCH"
 
+      - name: Test Sealed Secrets package natively (${{ matrix.arch }})
+        if: inputs.image == 'sealed-secrets'
+        env:
+          BUILD_ARCH: ${{ matrix.arch }}
+        run: bash .github/scripts/test-sealed-secrets-package.sh "$BUILD_ARCH"
+
+      - name: Test Sealed Secrets image natively (${{ matrix.arch }})
+        if: inputs.image == 'sealed-secrets'
+        env:
+          BUILD_ARCH: ${{ matrix.arch }}
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TYPE: ${{ inputs.type }}
+        run: |
+          case "$BUILD_ARCH" in
+            x86_64) IMAGE_ARCH=amd64 ;;
+            aarch64) IMAGE_ARCH=arm64 ;;
+            *) echo "Unsupported Sealed Secrets architecture: $BUILD_ARCH" >&2; exit 1 ;;
+          esac
+
+          expected_version=$(yq -r '.package.version' \
+            melange-work/specs/sealed-secrets-0.yaml/build.yaml)
+          expected_full_version=$(yq -r '.package.version + "-r" + (.package.epoch | tostring)' \
+            melange-work/specs/sealed-secrets-0.yaml/build.yaml)
+          image_tar="sealed-secrets-$IMAGE_ARCH.tar"
+          image_ref="integer:local-$IMAGE_ARCH"
+          cleanup() {
+            docker image rm "$image_ref" >/dev/null 2>&1 || true
+            rm -f "$image_tar"
+          }
+          trap cleanup EXIT
+
+          ./verity integer build \
+            --image "$INPUT_IMAGE" \
+            --version "$INPUT_VERSION" \
+            --type "$INPUT_TYPE" \
+            --arch "$IMAGE_ARCH" \
+            --fail-on-severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
+            --output "$image_tar"
+
+          docker load --input "$image_tar"
+          docker image inspect "$image_ref" --format '{{.Architecture}}' \
+            | grep -Fx "$IMAGE_ARCH"
+          bash .github/scripts/test-sealed-secrets-image.sh \
+            "$image_ref" "$expected_version" "$expected_full_version"
+
       - name: Upload arch packages
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
