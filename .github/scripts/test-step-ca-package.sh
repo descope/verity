@@ -16,6 +16,7 @@ case "$arch" in
 esac
 
 workspace=${GITHUB_WORKSPACE:-$(pwd)}
+cd "$workspace"
 timeout --signal=TERM --kill-after=1m 30m melange test \
   --arch "$arch" \
   --repository-append "$workspace/packages/repo" \

@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -102,6 +103,10 @@ func Test_StepCA_runs_package_smoke_in_native_dual_arch_workflows(t *testing.T) 
 	require.Contains(t, scriptText, "timeout --signal=TERM --kill-after=1m 30m melange test")
 	require.Contains(t, scriptText, "--pipeline-dirs melange-work/pipelines")
 	require.Contains(t, scriptText, "melange-work/specs/step-ca.yaml/build.yaml")
+	workingDirectoryIndex := strings.Index(scriptText, "cd \"$workspace\"")
+	testCommandIndex := strings.Index(scriptText, "timeout --signal=TERM --kill-after=1m 30m melange test")
+	require.NotEqual(t, -1, workingDirectoryIndex)
+	require.Less(t, workingDirectoryIndex, testCommandIndex)
 	require.Contains(t, buildText, "Test Step CA package natively (${{ matrix.arch }})")
 	require.Contains(t, buildText, "if: inputs.image == 'step-ca'")
 	require.Contains(t, buildText, "bash .github/scripts/test-step-ca-package.sh \"$BUILD_ARCH\"")
