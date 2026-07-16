@@ -22,7 +22,7 @@ REQUIRED_CUSTOM_MANAGERS: Final = {
     "Dex package releases",
     "PostgreSQL package releases",
     "Airflow package release",
-    "HAProxy package releases", "Grafana Mimir 3.0 package releases", "Grafana Mimir 3.1 package releases",
+    "HAProxy package releases",
     "Linkerd edge package releases",
     "Python packages embedded in bespoke recipes",
     "Go modules embedded in bespoke recipes",

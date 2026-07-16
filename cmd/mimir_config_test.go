@@ -30,6 +30,18 @@ func Test_Mimir_uses_stream_scoped_bespoke_packages(t *testing.T) {
 	require.True(t, def.Versions["3.1"].Latest)
 }
 
+func Test_Mimir_renovate_does_not_update_version_without_source_pins(t *testing.T) {
+	// Given: the repository's Renovate custom-manager configuration.
+	config, err := os.ReadFile(filepath.Join("..", ".github", "renovate.json"))
+	require.NoError(t, err)
+
+	// When: Mimir-specific update rules are inspected.
+	text := string(config)
+
+	// Then: Renovate cannot change the package version without its coupled commit and checksum pins.
+	require.NotContains(t, text, "grafana-mimir-3")
+}
+
 func Test_Mimir_recipes_pin_fixed_sources(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -80,7 +92,7 @@ func Test_Mimir_recipes_pin_fixed_sources(t *testing.T) {
 			require.Contains(t, text, "Adapted from wolfi-dev/os@"+tt.baseline)
 			require.Contains(t, text, tt.commit+".tar.gz")
 			require.Contains(t, text, "expected-sha256: "+tt.checksum)
-			require.Contains(t, text, "      - git\n")
+			require.Regexp(t, `(?m)^\s*-\s+git\s*$`, text)
 			require.Contains(t, text, "golang.org/x/net@v0.57.0")
 			require.Contains(t, text, "golang.org/x/text@v0.40.0")
 			require.Contains(t, text, "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp@v1.44.0")
