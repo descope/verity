@@ -1,0 +1,95 @@
+package:
+  name: pluto
+  # renovate: datasource=github-tags depName=FairwindsOps/pluto versioning=semver-coerced
+  version: "5.24.0"
+  # Direct revision r9 rebuilds with patched Go 1.26 for CVE-2026-42505.
+  epoch: 9
+  description: A CLI tool to discover deprecated Kubernetes apiVersions
+  copyright:
+    - license: Apache-2.0
+  resources:
+    cpu: "2"
+    memory: 5Gi
+  test-resources:
+    cpu: "1"
+    memory: 2Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  # Adapted from wolfi-dev/os@3c0cdd0d7d4d2933e3aa3cae7bde1c87319a9151.
+  # v5.24.0 resolves to dd5ec8cccce5e42dfe8054b8250baa35546056a0.
+  - uses: fetch
+    with:
+      uri: https://github.com/FairwindsOps/pluto/archive/dd5ec8cccce5e42dfe8054b8250baa35546056a0.tar.gz
+      expected-sha256: 3abb9e72670f7466157b225ccdf68004122b4cefa54d9b7a9af687bb810cffc2
+
+  - runs: |
+      go get golang.org/x/net@v0.55.0
+      go mod tidy
+
+  - uses: go/build
+    with:
+      packages: ./cmd/pluto/main.go
+      output: pluto
+      go-package: go-1.26
+      ldflags: |-
+        -X main.version=${{package.version}}
+        -X main.commit=dd5ec8cccce5e42dfe8054b8250baa35546056a0
+
+  - runs: |
+      "${{targets.destdir}}/usr/bin/pluto" version \
+        | grep -F "${{package.version}}"
+      "${{targets.destdir}}/usr/bin/pluto" --help >/dev/null
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  environment:
+    contents:
+      packages:
+        - apk-tools
+        - busybox
+        - jq
+  pipeline:
+    - runs: |
+        pluto version | grep -F "${{package.version}}"
+        pluto --help >/dev/null
+        pluto completion bash > /tmp/pluto-completion.bash
+        test -s /tmp/pluto-completion.bash
+        cat > /tmp/deprecated.yaml <<'EOF'
+        apiVersion: apps/v1beta1
+        kind: Deployment
+        metadata:
+          name: deprecated-deployment
+        spec:
+          template:
+            spec:
+              containers:
+                - name: nginx
+                  image: nginx
+        EOF
+        set +e
+        pluto detect /tmp/deprecated.yaml --output json > /tmp/pluto-output.json
+        status=$?
+        set -e
+        test "$status" -eq 3
+        jq -e '.items[] | select(.deprecated == true)' /tmp/pluto-output.json
+        apk info --who-owns /usr/bin/pluto \
+          | grep -F "${{package.name}}-${{package.full-version}}"
+        apk info --license pluto | grep -F "Apache-2.0"
+        grep -F "Apache License" \
+          "/usr/share/licenses/${{package.name}}/LICENSE"
+
+update:
+  enabled: true
+  github:
+    identifier: FairwindsOps/pluto
+    strip-prefix: v
+    use-tag: true
+    tag-filter: v
