@@ -121,3 +121,27 @@ func Test_Weaviate_CI_tests_image_natively(t *testing.T) {
 	require.Contains(t, text, "weaviate-1.38.4-r1.spdx.json")
 	require.Contains(t, text, "licenseDeclared == \"BSD-3-Clause\"")
 }
+
+func Test_Weaviate_PR_smoke_tests_runtime_and_provenance_natively(t *testing.T) {
+	// Given: the pull-request smoke workflow used by both architecture runners.
+	workflow, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "pr-test.yaml"))
+	require.NoError(t, err)
+	text := string(workflow)
+
+	// When: the Weaviate-family native smoke gate is inspected.
+
+	// Then: PR CI runs package tests plus bounded image health and SPDX validation.
+	require.Contains(t, text, "if [ \"$image\" = \"weaviate\" ]; then")
+	require.Contains(t, text, "expected_version=$(yq -r '.package.version'")
+	require.Contains(t, text, "expected_full_version=$(yq -r '.package.version + \"-r\" + (.package.epoch | tostring)'")
+	require.Contains(t, text, "melange test \\")
+	require.Contains(t, text, "/v1/.well-known/ready")
+	require.Contains(t, text, "jq -e --arg version \"$expected_version\"")
+	require.Contains(t, text, ".version == $version")
+	require.Contains(t, text, "docker exec \"$container\" id -u | grep -Fx 65532")
+	require.Contains(t, text, "weaviate-${expected_full_version}.spdx.json")
+	require.Contains(t, text, "--arg full_version \"$expected_full_version\"")
+	require.Contains(t, text, ".spdxVersion == \"SPDX-2.3\"")
+	require.Contains(t, text, ".versionInfo == $full_version")
+	require.Contains(t, text, "licenseDeclared == \"BSD-3-Clause\"")
+}
