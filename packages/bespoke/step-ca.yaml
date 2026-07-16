@@ -108,7 +108,7 @@ test:
         test -s "$sbom"
         jq -e '
           .packages[]
-          | select(.name == "step-ca" and .versionInfo == "0.30.2-r15")
+          | select(.name == "step-ca" and .versionInfo == "${{package.full-version}}")
           | .licenseDeclared == "Apache-2.0"
         ' "$sbom"
     - name: Initialize and exercise a representative CA

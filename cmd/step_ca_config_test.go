@@ -62,6 +62,8 @@ func Test_StepCA_recipe_pins_fixed_source_runtime_and_provenance(t *testing.T) {
 	require.Contains(t, text, "apk info --license step-ca")
 	require.Contains(t, text, "usr/share/licenses/${{package.name}}/LICENSE")
 	require.Contains(t, text, "spdx.json")
+	require.Contains(t, text, ".versionInfo == \"${{package.full-version}}\"")
+	require.NotContains(t, text, ".versionInfo == \"0.30.2-r15\"")
 	require.Contains(t, text, "licenseDeclared == \"Apache-2.0\"")
 }
 
@@ -82,23 +84,27 @@ func Test_StepCA_resolves_only_fixed_local_package(t *testing.T) {
 }
 
 func Test_StepCA_runs_package_smoke_in_native_dual_arch_workflows(t *testing.T) {
-	// Given: the reusable image workflow and pull-request smoke workflow.
+	// Given: the shared package-test script, reusable image workflow, and pull-request smoke workflow.
+	testScript, err := os.ReadFile(filepath.Join("..", ".github", "scripts", "test-step-ca-package.sh"))
+	require.NoError(t, err)
 	buildWorkflow, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "integer-build-image.yaml"))
 	require.NoError(t, err)
 	prWorkflow, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "pr-test.yaml"))
 	require.NoError(t, err)
 
 	// When: their Step CA package-test gates are inspected.
+	scriptText := string(testScript)
 	buildText := string(buildWorkflow)
 	prText := string(prWorkflow)
 
-	// Then: both native architecture paths execute the checked-in Melange test pipeline.
+	// Then: both native architecture paths call one bounded checked-in Melange test entrypoint.
+	require.Contains(t, scriptText, "case \"$arch\" in")
+	require.Contains(t, scriptText, "timeout --signal=TERM --kill-after=1m 30m melange test")
+	require.Contains(t, scriptText, "--pipeline-dirs melange-work/pipelines")
+	require.Contains(t, scriptText, "melange-work/specs/step-ca.yaml/build.yaml")
 	require.Contains(t, buildText, "Test Step CA package natively (${{ matrix.arch }})")
 	require.Contains(t, buildText, "if: inputs.image == 'step-ca'")
-	require.Contains(t, buildText, "melange-work/specs/step-ca.yaml/build.yaml")
-	require.Contains(t, buildText, "--pipeline-dirs melange-work/pipelines")
+	require.Contains(t, buildText, "bash .github/scripts/test-step-ca-package.sh \"$BUILD_ARCH\"")
 	require.Contains(t, prText, "if [ \"$image\" = \"step-ca\" ]; then")
-	require.Contains(t, prText, "--arch \"$INTEGER_PACKAGE_ARCH\"")
-	require.Contains(t, prText, "melange-work/specs/step-ca.yaml/build.yaml")
-	require.Contains(t, prText, "--pipeline-dirs melange-work/pipelines")
+	require.Contains(t, prText, "bash .github/scripts/test-step-ca-package.sh \"$INTEGER_PACKAGE_ARCH\"")
 }
