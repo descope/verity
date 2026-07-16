@@ -119,9 +119,9 @@ test:
           "/usr/share/licenses/${{package.name}}/LICENSE"
         sbom="/var/lib/db/sbom/${{package.name}}-${{package.full-version}}.spdx.json"
         test -s "$sbom"
-        jq -e '
+        jq -e --arg full_version "${{package.full-version}}" '
           .packages[]
-          | select(.name == "weaviate" and .versionInfo == "1.38.4-r1")
+          | select(.name == "weaviate" and .versionInfo == $full_version)
           | .licenseDeclared == "BSD-3-Clause"
         ' "$sbom"
     - uses: test/daemon-check-output
@@ -143,7 +143,8 @@ test:
           done
           test "$ready" = true
           curl -fsS -o /tmp/weaviate-meta http://127.0.0.1:8080/v1/meta
-          jq -e '.version == "1.38.4"' /tmp/weaviate-meta
+          jq -e --arg version "${{package.version}}" \
+            '.version == $version' /tmp/weaviate-meta
 
 update:
   enabled: true

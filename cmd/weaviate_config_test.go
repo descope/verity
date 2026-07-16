@@ -63,11 +63,14 @@ func Test_Weaviate_recipe_pins_immutable_fixed_source(t *testing.T) {
 	require.Contains(t, text, "curl -fsS")
 	require.Contains(t, text, "well-known/ready")
 	require.Contains(t, text, "/v1/meta")
-	require.Contains(t, text, ".version == \"1.38.4\"")
+	require.Contains(t, text, "--arg version \"${{package.version}}\"")
+	require.Contains(t, text, ".version == $version")
 	require.Contains(t, text, "apk info --who-owns /usr/bin/weaviate")
 	require.Contains(t, text, "apk info --license weaviate")
 	require.Contains(t, text, "usr/share/licenses/${{package.name}}/LICENSE")
 	require.Contains(t, text, "spdx.json")
+	require.Contains(t, text, "--arg full_version \"${{package.full-version}}\"")
+	require.Contains(t, text, ".versionInfo == $full_version")
 	require.Contains(t, text, "licenseDeclared == \"BSD-3-Clause\"")
 }
 
