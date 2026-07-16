@@ -77,3 +77,23 @@ func Test_PgBouncer_resolves_fixed_local_package(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"pgbouncer=1.25.2-r0@local"}, tmpl.Packages)
 }
+
+func Test_PgBouncer_renovate_tracks_prefixed_release_tags(t *testing.T) {
+	// Given: the PgBouncer recipe and repository Renovate configuration.
+	recipe, err := os.ReadFile(filepath.Join("..", "packages", "bespoke", "pgbouncer.yaml"))
+	require.NoError(t, err)
+	renovate, err := os.ReadFile(filepath.Join("..", ".github", "renovate.json"))
+	require.NoError(t, err)
+
+	// When: the dependency annotation and dedicated release manager are inspected.
+	recipeText := string(recipe)
+	renovateText := string(renovate)
+
+	// Then: dotted package versions are compared with upstream pgbouncer_N_N_N release names.
+	require.Contains(t, recipeText, "# renovate: datasource=github-releases depName=pgbouncer/pgbouncer")
+	require.Contains(t, recipeText, "extractVersion=^pgbouncer_(?<version>.*)$")
+	require.Contains(t, renovateText, "\"description\": \"PgBouncer package releases\"")
+	require.Contains(t, renovateText, "\"datasourceTemplate\": \"github-releases\"")
+	require.Contains(t, renovateText, "\"extractVersionTemplate\": \"^pgbouncer_(?<version>.*)$\"")
+	require.Contains(t, renovateText, "[._]")
+}

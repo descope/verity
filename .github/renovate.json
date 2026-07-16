@@ -40,6 +40,18 @@
     },
     {
       "customType": "regex",
+      "description": "PgBouncer package releases",
+      "managerFilePatterns": ["/^packages/bespoke/pgbouncer\\.yaml$/"],
+      "matchStrings": [
+        "package:\\n\\s+name:\\s*pgbouncer\\n\\s+#\\s*renovate:[^\\n]+\\n\\s+version:\\s*[\\\"']?(?<currentValue>[\\w.+-]+)[\\\"']?"
+      ],
+      "depNameTemplate": "pgbouncer/pgbouncer",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "regex:^(?<major>\\d+)[._](?<minor>\\d+)[._](?<patch>\\d+)$",
+      "extractVersionTemplate": "^pgbouncer_(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
       "description": "Bespoke GitHub package releases",
       "managerFilePatterns": ["/^packages/bespoke/(?:locked/)?[^/]+\\.ya?ml$/"],
       "matchStrings": [

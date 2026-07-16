@@ -17,6 +17,7 @@ SYNC_WORKFLOW_PATH: Final = ROOT / ".github/workflows/integer-sync.yaml"
 
 REQUIRED_CUSTOM_MANAGERS: Final = {
     "Annotated dependencies",
+    "PgBouncer package releases",
     "Bespoke GitHub package releases",
     "Bespoke prefixed GitHub package releases",
     "Dex package releases",
