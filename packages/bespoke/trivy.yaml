@@ -1,0 +1,94 @@
+package:
+  name: trivy
+  # renovate: datasource=github-tags depName=aquasecurity/trivy versioning=semver-coerced
+  version: "0.72.0"
+  # Direct revision r4 rebuilds the newest release with every scanner-recorded dependency fix.
+  epoch: 4
+  description: Simple and comprehensive vulnerability scanner for containers
+  copyright:
+    - license: Apache-2.0
+  resources:
+    cpu: "8"
+    memory: 15Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  # v0.72.0 resolves to 8a32853686209a428179bb3a1688802b25691564.
+  - uses: git-checkout
+    with:
+      expected-commit: 8a32853686209a428179bb3a1688802b25691564
+      repository: https://github.com/aquasecurity/trivy
+      tag: v${{package.version}}
+
+  - runs: |
+      go get \
+        github.com/sigstore/cosign/v2@v2.6.3 \
+        github.com/sigstore/sigstore-go@v1.2.0 \
+        github.com/sigstore/timestamp-authority/v2@v2.1.2 \
+        go.opentelemetry.io/otel@v1.44.0 \
+        go.opentelemetry.io/otel/metric@v1.44.0 \
+        go.opentelemetry.io/otel/sdk@v1.44.0 \
+        go.opentelemetry.io/otel/trace@v1.44.0 \
+        golang.org/x/net@v0.56.0 \
+        golang.org/x/text@v0.39.0 \
+        oras.land/oras-go/v2@v2.6.2
+      go mod tidy
+
+  - uses: go/build
+    with:
+      experiments: jsonv2
+      packages: ./cmd/trivy
+      output: trivy
+      ldflags: -X github.com/aquasecurity/trivy/pkg/version/app.ver=${{package.version}}
+      go-package: go-1.26
+
+  - runs: |
+      mkdir -p "${{targets.destdir}}/contrib"
+      install -Dm644 contrib/*.tpl "${{targets.destdir}}/contrib/"
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  environment:
+    contents:
+      packages:
+        - apk-tools
+        - busybox
+        - jq
+        - trivy=${{package.full-version}}
+  pipeline:
+    - runs: |
+        trivy version | grep -F "Version: ${{package.version}}"
+        trivy version -f json | jq -e \
+          '.Version == "${{package.version}}"' >/dev/null
+        trivy --help >/dev/null
+        apk info --who-owns /usr/bin/trivy \
+          | grep -F "${{package.name}}-${{package.full-version}}"
+        apk info --license trivy | grep -F "Apache-2.0"
+        grep -F "Apache License" \
+          "/usr/share/licenses/${{package.name}}/LICENSE"
+    - runs: |
+        mkdir -p /tmp/trivy-config-smoke
+        printf '%s\n' \
+          'FROM alpine:3.18' \
+          'RUN apk add --no-cache curl' \
+          'CMD ["sh"]' \
+          >/tmp/trivy-config-smoke/Dockerfile
+        trivy config /tmp/trivy-config-smoke --format json \
+          | jq -e '.Results | length > 0' >/dev/null
+
+update:
+  enabled: true
+  github:
+    identifier: aquasecurity/trivy
+    strip-prefix: v
+    tag-filter: v
