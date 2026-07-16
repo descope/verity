@@ -268,6 +268,7 @@ jobs:
                 test "$ready" = true
                 curl -fsS "http://127.0.0.1:$host_port/v1/meta" \
                   | jq -e --arg version "$expected_version" '.version == $version'
+                # Inspect immutable image metadata; do not exec a second Weaviate process.
                 test "$runtime_user" = 65532
 
                 docker cp \
