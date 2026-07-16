@@ -230,7 +230,10 @@ jobs:
               echo "::error::docker load did not report an image reference for ${arch}"
               exit 1
             fi
-            runtime_arch=$(docker image inspect "$loaded_ref" --format '{{.Architecture}}')
+            runtime_metadata=$(docker image inspect "$loaded_ref" \
+              --format '{{.Architecture}} {{.Config.User}}')
+            runtime_arch=${runtime_metadata%% *}
+            runtime_user=${runtime_metadata#* }
             if [ "$runtime_arch" != "$arch" ]; then
               echo "::error::runtime architecture mismatch: expected ${arch}, got ${runtime_arch}"
               exit 1
@@ -265,8 +268,7 @@ jobs:
                 test "$ready" = true
                 curl -fsS "http://127.0.0.1:$host_port/v1/meta" \
                   | jq -e --arg version "$expected_version" '.version == $version'
-                docker image inspect "$loaded_ref" \
-                  --format '{{.Config.User}}' | grep -Fx 65532
+                test "$runtime_user" = 65532
 
                 docker cp \
                   "$container:/var/lib/db/sbom/weaviate-${expected_full_version}.spdx.json" \
