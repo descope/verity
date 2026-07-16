@@ -195,6 +195,21 @@ jobs:
             fi
             echo "::endgroup::"
 
+            if [ "$image" = "step-ca" ]; then
+              echo "::group::Step CA package test (${INTEGER_PACKAGE_ARCH})"
+              melange test \
+                --arch "$INTEGER_PACKAGE_ARCH" \
+                --repository-append "${GITHUB_WORKSPACE}/packages/repo" \
+                --repository-append https://packages.wolfi.dev/os \
+                --keyring-append "${GITHUB_WORKSPACE}/melange-work/melange.rsa.pub" \
+                --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub \
+                --runner docker \
+                --pipeline-dirs melange-work/pipelines \
+                melange-work/specs/step-ca.yaml/build.yaml \
+                step-ca
+              echo "::endgroup::"
+            fi
+
             arch="$INTEGER_ARCH"
             tar_path="image-${safe_image}-${version}-${type}-${arch}.tar"
             ./verity integer build \
