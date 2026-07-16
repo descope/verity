@@ -161,6 +161,21 @@ jobs:
             --arch "$BUILD_ARCH" \
             --staged
 
+      - name: Test Trivy package natively (${{ matrix.arch }})
+        if: inputs.image == 'trivy'
+        env:
+          BUILD_ARCH: ${{ matrix.arch }}
+        run: |
+          melange test \
+            --arch "$BUILD_ARCH" \
+            --repository-append "${GITHUB_WORKSPACE}/packages/repo" \
+            --repository-append https://packages.wolfi.dev/os \
+            --keyring-append "${GITHUB_WORKSPACE}/melange-work/melange.rsa.pub" \
+            --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub \
+            --runner docker \
+            melange-work/specs/trivy.yaml/build.yaml \
+            trivy
+
       - name: Upload arch packages
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -343,6 +358,11 @@ jobs:
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_TYPE: ${{ inputs.type }}
         run: |
+          if [ "$INPUT_IMAGE" = "trivy" ]; then
+            echo "Repository-pinned external scanner"
+            trivy --version
+          fi
+
           # The verity binary owns this gate (cmd/integer_build.go
           # integerTrivyGate) — it is unit-tested and cannot silently regress,
           # unlike inline workflow bash. Build the image LOCALLY and Trivy-scan
