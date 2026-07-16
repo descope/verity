@@ -1,0 +1,115 @@
+package:
+  name: openbao
+  # renovate: datasource=github-tags depName=openbao/openbao versioning=semver-coerced
+  version: "2.5.5"
+  # Direct revision r2 replaces the stale public Wolfi 2.5.4-r2 package.
+  epoch: 2
+  description: OpenBao manages, stores, and distributes sensitive data including secrets, certificates, and keys
+  copyright:
+    - license: MPL-2.0
+  resources:
+    cpu: "4"
+    memory: 12Gi
+  dependencies:
+    runtime:
+      - merged-bin
+      - wolfi-baselayout
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+vars:
+  # Node 25 removed util.isRegExp, which clean-css needs for the Ember build.
+  nodejs-version: 22
+
+environment:
+  environment:
+    HOME: /tmp
+    NODE_OPTIONS: "--max-old-space-size=16384"
+    XDG_CONFIG_HOME: /tmp/.config
+  contents:
+    packages:
+      - busybox
+      - curl
+      - go-1.26
+      - nodejs-${{vars.nodejs-version}}
+      - npm
+      - wait-for-it
+      - yarn
+
+pipeline:
+  # Adapted from wolfi-dev/os@bc7cfd54e91daae028cc3411d5c6f9b5fa8483ea.
+  # v2.5.5 resolves to 028992583c693c4de6350b8aa52ff85e30375a99.
+  - uses: fetch
+    with:
+      uri: https://github.com/openbao/openbao/archive/028992583c693c4de6350b8aa52ff85e30375a99.tar.gz
+      expected-sha256: 92372e664f9a03968e619023cf49cf7ac8fc954c3314b545e0e1af69038ab28e
+
+  - runs: |
+      export JOBS=1
+      make ember-dist
+
+  - uses: go/build
+    with:
+      tags: openbao,ui
+      packages: .
+      output: bao
+      go-package: go-1.26
+      ldflags: |
+        -X github.com/openbao/openbao/version.fullVersion=${{package.version}}
+        -X github.com/openbao/openbao/version.GitCommit=028992583c693c4de6350b8aa52ff85e30375a99
+        -X github.com/openbao/openbao/version.BuildDate='$(date -u -d "@$SOURCE_DATE_EPOCH" +"%Y-%m-%dT%H:%M:%SZ")'
+
+  - runs: |
+      "${{targets.destdir}}/usr/bin/bao" --version \
+        | grep -F "${{package.version}}"
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+      export BAO_ADDR=http://127.0.0.1:18200
+      "${{targets.destdir}}/usr/bin/bao" server -dev -dev-listen-address=127.0.0.1:18200 \
+        >/tmp/openbao-build.log 2>&1 &
+      BAO_SERVER=$!
+      trap 'kill "$BAO_SERVER" 2>/dev/null || true' EXIT
+      wait-for-it 127.0.0.1:18200 -t 30
+      "${{targets.destdir}}/usr/bin/bao" status
+      curl --fail-with-body --silent --show-error \
+        'http://127.0.0.1:18200/v1/sys/health'
+      kill "$BAO_SERVER"
+      wait "$BAO_SERVER" || true
+      trap - EXIT
+
+test:
+  environment:
+    contents:
+      packages:
+        - apk-tools
+        - curl
+        - wait-for-it
+    environment:
+      BAO_ADDR: http://127.0.0.1:8200
+  pipeline:
+    - runs: |
+        bao --version | grep -F "${{package.version}}"
+        apk info --who-owns /usr/bin/bao \
+          | grep -F "${{package.name}}-${{package.full-version}}"
+        apk info --license openbao | grep -F "MPL-2.0"
+        grep -F "Mozilla Public License, version 2.0" \
+          "/usr/share/licenses/${{package.name}}/LICENSE"
+    - name: Run a dev server and check basic health
+      runs: |
+        bao server -dev >/tmp/openbao.log 2>&1 &
+        BAO_SERVER=$!
+        trap 'kill "$BAO_SERVER" 2>/dev/null || true' EXIT
+        wait-for-it 127.0.0.1:8200 -t 30
+        bao status
+        curl --fail-with-body --silent --show-error \
+          'http://127.0.0.1:8200/v1/sys/health'
+        kill "$BAO_SERVER"
+        wait "$BAO_SERVER" || true
+        trap - EXIT
+
+update:
+  enabled: true
+  github:
+    identifier: openbao/openbao
+    strip-prefix: v
