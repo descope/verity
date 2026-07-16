@@ -265,7 +265,8 @@ jobs:
                 test "$ready" = true
                 curl -fsS "http://127.0.0.1:$host_port/v1/meta" \
                   | jq -e --arg version "$expected_version" '.version == $version'
-                docker exec "$container" id -u | grep -Fx 65532
+                docker image inspect "$loaded_ref" \
+                  --format '{{.Config.User}}' | grep -Fx 65532
 
                 docker cp \
                   "$container:/var/lib/db/sbom/weaviate-${expected_full_version}.spdx.json" \
