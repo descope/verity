@@ -195,6 +195,24 @@ jobs:
             fi
             echo "::endgroup::"
 
+            if [ "$image" = "weaviate" ]; then
+              expected_version=$(yq -r '.package.version' \
+                melange-work/specs/weaviate.yaml/build.yaml)
+              expected_full_version=$(yq -r '.package.version + "-r" + (.package.epoch | tostring)' \
+                melange-work/specs/weaviate.yaml/build.yaml)
+              timeout --signal=TERM --kill-after=1m 5m \
+                melange test \
+                  --arch "$INTEGER_PACKAGE_ARCH" \
+                  --repository-append "${GITHUB_WORKSPACE}/packages/repo" \
+                  --repository-append https://packages.wolfi.dev/os \
+                  --keyring-append "${GITHUB_WORKSPACE}/melange-work/melange.rsa.pub" \
+                  --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub \
+                  --pipeline-dirs melange-work/pipelines \
+                  --runner docker \
+                  melange-work/specs/weaviate.yaml/build.yaml \
+                  weaviate
+            fi
+
             if [ "$image" = "step-ca" ]; then
               echo "::group::Step CA package test (${INTEGER_PACKAGE_ARCH})"
               bash .github/scripts/test-step-ca-package.sh "$INTEGER_PACKAGE_ARCH"
@@ -218,10 +236,60 @@ jobs:
               echo "::error::docker load did not report an image reference for ${arch}"
               exit 1
             fi
-            runtime_arch=$(docker image inspect "$loaded_ref" --format '{{.Architecture}}')
+            runtime_metadata=$(docker image inspect "$loaded_ref" \
+              --format '{{.Architecture}} {{.Config.User}}')
+            runtime_arch=${runtime_metadata%% *}
+            runtime_user=${runtime_metadata#* }
             if [ "$runtime_arch" != "$arch" ]; then
               echo "::error::runtime architecture mismatch: expected ${arch}, got ${runtime_arch}"
               exit 1
+            fi
+
+            if [ "$image" = "weaviate" ]; then
+              (
+                container="integer-weaviate-${arch}-pr-smoke"
+                sbom="${RUNNER_TEMP}/weaviate-${arch}.spdx.json"
+                trap 'docker rm --force "$container" >/dev/null 2>&1 || true; rm -f "$sbom"' EXIT
+
+                docker run --detach --rm --name "$container" \
+                  --publish 127.0.0.1::8080 \
+                  --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=true \
+                  --env CLUSTER_HOSTNAME="$container" \
+                  --env DEFAULT_VECTORIZER_MODULE=none \
+                  --env DISABLE_TELEMETRY=true \
+                  --env PERSISTENCE_DATA_PATH=/var/lib/weaviate \
+                  "$loaded_ref" --host 0.0.0.0 --port 8080 --scheme http
+
+                host_port=$(docker port "$container" 8080/tcp | awk -F: 'END {print $NF}')
+                test -n "$host_port"
+                ready=false
+                for _ in $(seq 1 90); do
+                  if curl -fsS "http://127.0.0.1:$host_port/v1/.well-known/ready" >/dev/null; then
+                    ready=true
+                    break
+                  fi
+                  docker inspect --format '{{.State.Running}}' "$container" | grep -Fx true
+                  sleep 1
+                done
+                test "$ready" = true
+                curl -fsS "http://127.0.0.1:$host_port/v1/meta" \
+                  | jq -e --arg version "$expected_version" '.version == $version'
+                # Inspect immutable image metadata; do not exec a second Weaviate process.
+                test "$runtime_user" = 65532
+
+                docker cp \
+                  "$container:/var/lib/db/sbom/weaviate-${expected_full_version}.spdx.json" \
+                  "$sbom"
+                jq -e --arg full_version "$expected_full_version" '
+                  .spdxVersion == "SPDX-2.3"
+                  and any(
+                    .packages[];
+                    .name == "weaviate"
+                    and .versionInfo == $full_version
+                    and .licenseDeclared == "BSD-3-Clause"
+                  )
+                ' "$sbom"
+              )
             fi
 
             trivy image \

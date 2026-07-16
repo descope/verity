@@ -1,0 +1,155 @@
+package:
+  name: weaviate
+  # renovate: datasource=github-tags depName=weaviate/weaviate versioning=semver-coerced
+  version: "1.38.4"
+  # r1 rebuilds the latest immutable release with mongo-driver v1.17.7 for
+  # CVE-2026-2303, OpenTelemetry v1.44.0 for CVE-2026-41178, Go 1.26.5+ for
+  # CVE-2026-42505, and no unmaintained OpenPGP subtree for GO-2026-5932.
+  epoch: 1
+  description: Open source AI-native vector database
+  copyright:
+    # Upstream's pinned LICENSE is the BSD 3-Clause license.
+    - license: BSD-3-Clause
+  dependencies:
+    runtime:
+      - merged-bin
+      - wolfi-baselayout
+  resources:
+    cpu: "2"
+    memory: 9Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+environment:
+  contents:
+    packages:
+      - build-base
+      - go-1.26
+  environment:
+    CGO_ENABLED: "1"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/weaviate/weaviate
+      tag: v${{package.version}}
+      expected-commit: 6af189f84eed9fcc9ea24614ed0b52bcd6d01abb
+
+  - uses: go/bump
+    with:
+      deps: |-
+        go.mongodb.org/mongo-driver@v1.17.7
+        go.opentelemetry.io/otel@v1.44.0
+        go.opentelemetry.io/otel/exporters/otlp/otlptrace@v1.44.0
+        go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc@v1.44.0
+        go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp@v1.44.0
+        go.opentelemetry.io/otel/metric@v1.44.0
+        go.opentelemetry.io/otel/sdk@v1.44.0
+        go.opentelemetry.io/otel/sdk/metric@v1.44.0
+        go.opentelemetry.io/otel/trace@v1.44.0
+        golang.org/x/crypto@v0.54.0
+        golang.org/x/net@v0.57.0
+        golang.org/x/text@v0.40.0
+
+  - runs: |
+      # GO-2026-5932 has no fixed x/crypto release because the entire OpenPGP
+      # subtree is unmaintained. Build against an immutable local copy with
+      # that unused subtree physically absent instead of suppressing the scan.
+      go mod download golang.org/x/crypto@v0.54.0
+      xcrypto_dir="$(go env GOMODCACHE)/golang.org/x/crypto@v0.54.0"
+      cp -a "$xcrypto_dir" .verity-xcrypto
+      chmod -R u+w .verity-xcrypto
+      rm -rf .verity-xcrypto/openpgp
+      go mod edit -replace=golang.org/x/crypto=./.verity-xcrypto
+      go mod tidy
+
+      test ! -e .verity-xcrypto/openpgp
+      if go list -deps ./cmd/weaviate-server \
+        | grep -q '^golang.org/x/crypto/openpgp'; then
+        echo "Weaviate unexpectedly imports the removed OpenPGP package" >&2
+        exit 1
+      fi
+
+  - uses: go/build
+    with:
+      packages: ./cmd/weaviate-server
+      output: weaviate
+      go-package: go-1.26
+      tags: netgo,osusergo
+      ldflags: |-
+        -X github.com/weaviate/weaviate/usecases/build.Version=${{package.version}}
+        -X github.com/weaviate/weaviate/usecases/build.Revision=6af189f84eed9fcc9ea24614ed0b52bcd6d01abb
+        -X github.com/weaviate/weaviate/usecases/build.Branch=v${{package.version}}
+
+  - runs: |
+      binary="${{targets.destdir}}/usr/bin/weaviate"
+      "$binary" --help >/dev/null
+      go version "$binary" | grep -E 'go1\.26\.([5-9]|[1-9][0-9]+)'
+      go version -m "$binary" \
+        | grep -E 'go.mongodb.org/mongo-driver[[:space:]]+v1.17.7'
+      go version -m "$binary" \
+        | grep -E 'go.opentelemetry.io/otel[[:space:]]+v1.44.0'
+      go version -m "$binary" \
+        | grep -E 'go.opentelemetry.io/otel/sdk[[:space:]]+v1.44.0'
+      go version -m "$binary" \
+        | grep -E 'golang.org/x/crypto[[:space:]]+v0.54.0'
+      go version -m "$binary" \
+        | grep -E 'golang.org/x/net[[:space:]]+v0.57.0'
+      go version -m "$binary" \
+        | grep -E 'golang.org/x/text[[:space:]]+v0.40.0'
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  environment:
+    contents:
+      packages:
+        - apk-tools
+        - curl
+        - jq
+  pipeline:
+    - name: Validate runtime, package ownership, and BSD-3-Clause provenance
+      runs: |
+        weaviate --help >/dev/null
+        apk info --who-owns /usr/bin/weaviate \
+          | grep -F "${{package.name}}-${{package.full-version}}"
+        apk info --license weaviate | grep -Fx "BSD-3-Clause"
+        grep -F "Redistribution and use in source and binary forms" \
+          "/usr/share/licenses/${{package.name}}/LICENSE"
+        sbom="/var/lib/db/sbom/${{package.name}}-${{package.full-version}}.spdx.json"
+        test -s "$sbom"
+        jq -e --arg full_version "${{package.full-version}}" '
+          .packages[]
+          | select(.name == "weaviate" and .versionInfo == $full_version)
+          | .licenseDeclared == "BSD-3-Clause"
+        ' "$sbom"
+    - uses: test/daemon-check-output
+      with:
+        setup: |
+          mkdir -p /tmp/weaviate-data
+        start: env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=true CLUSTER_HOSTNAME=weaviate-test DEFAULT_VECTORIZER_MODULE=none DISABLE_TELEMETRY=true PERSISTENCE_DATA_PATH=/tmp/weaviate-data QUERY_DEFAULTS_LIMIT=25 /usr/bin/weaviate --host 127.0.0.1 --port 8080 --scheme http
+        timeout: 90
+        expected_output: Serving weaviate at http://127.0.0.1:8080
+        post: |
+          wait-for-it -t 30 --strict 127.0.0.1:8080 -- echo "Weaviate is up"
+          ready=false
+          for _ in $(seq 1 90); do
+            if curl -fsS -o /tmp/weaviate-ready http://127.0.0.1:8080/v1/.well-known/ready; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" = true
+          curl -fsS -o /tmp/weaviate-meta http://127.0.0.1:8080/v1/meta
+          jq -e --arg version "${{package.version}}" \
+            '.version == $version' /tmp/weaviate-meta
+
+update:
+  enabled: true
+  github:
+    identifier: weaviate/weaviate
+    strip-prefix: v
+    tag-filter: v
+    use-tag: true
