@@ -30,9 +30,11 @@ environment:
   contents:
     packages:
       - busybox
+      - curl
       - go-1.26
       - nodejs-${{vars.nodejs-version}}
       - npm
+      - wait-for-it
       - yarn
 
 pipeline:
@@ -63,6 +65,18 @@ pipeline:
         | grep -F "${{package.version}}"
       install -Dm644 LICENSE \
         "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+      export BAO_ADDR=http://127.0.0.1:18200
+      "${{targets.destdir}}/usr/bin/bao" server -dev -dev-listen-address=127.0.0.1:18200 \
+        >/tmp/openbao-build.log 2>&1 &
+      BAO_SERVER=$!
+      trap 'kill "$BAO_SERVER" 2>/dev/null || true' EXIT
+      wait-for-it 127.0.0.1:18200 -t 30
+      "${{targets.destdir}}/usr/bin/bao" status
+      curl --fail --silent --show-error \
+        'http://127.0.0.1:18200/v1/sys/health'
+      kill "$BAO_SERVER"
+      wait "$BAO_SERVER" || true
+      trap - EXIT
 
 test:
   environment:

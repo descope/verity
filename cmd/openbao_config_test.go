@@ -50,6 +50,8 @@ func Test_OpenBao_recipe_pins_fixed_source_revision(t *testing.T) {
 	require.Contains(t, text, "version.fullVersion=${{package.version}}")
 	require.Contains(t, text, "version.GitCommit=028992583c693c4de6350b8aa52ff85e30375a99")
 	require.Contains(t, text, "usr/share/licenses/${{package.name}}/LICENSE")
+	require.Contains(t, text, "${{targets.destdir}}/usr/bin/bao\" server -dev -dev-listen-address=127.0.0.1:18200")
+	require.Contains(t, text, "BAO_ADDR=http://127.0.0.1:18200")
 	require.Contains(t, text, "apk info --license openbao")
 	require.Contains(t, text, "bao server -dev")
 	require.Contains(t, text, "bao status")
