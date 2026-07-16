@@ -50,6 +50,7 @@ func Test_Tempo_recipe_pins_immutable_security_release(t *testing.T) {
 	require.Contains(t, text, "Adapted from wolfi-dev/os@1e46ec097ff71bd5eccd13fa97a014f530eeec42")
 	require.Contains(t, text, "8100f5a7b8f0986edf1fcd2ff6552d174b25ec18.tar.gz")
 	require.Contains(t, text, "expected-sha256: 9ad4c9c6e73b67ae32e00f282dc14d81f1b1eb9b49607c58803e3d663fe1e527")
+	require.Contains(t, text, "runtime:\n      - ca-certificates-bundle")
 	require.Contains(t, text, "go-package: go-1.26")
 	require.Contains(t, text, "uses: go/bump")
 	require.Contains(t, text, "go.opentelemetry.io/otel@v1.44.0")
