@@ -1,0 +1,138 @@
+# Adapted from wolfi-dev/os@cfc19ff702dda08c0d9fef924b0ccdf2009c2698
+# (rclone 1.74.3-r0).
+package:
+  name: rclone
+  # renovate: datasource=github-tags depName=rclone/rclone versioning=semver-coerced
+  version: "1.74.4"
+  # v1.74.4 supersedes public 1.74.3-r0, for which current Trivy data records
+  # fixed package revisions r3 (CVE-2026-41178), r4 (CVE-2026-33813), and r5
+  # (CVE-2026-46601, CVE-2026-46602, CVE-2026-46604). Build with the fixed
+  # OpenTelemetry 1.44.0 and x/image 0.43.0 module graph rather than relying
+  # only on the newer APK version to clear package-level advisories.
+  epoch: 0
+  description: Rsync for cloud storage
+  copyright:
+    # Upstream COPYING at the pinned source commit is the MIT license.
+    - license: MIT
+  dependencies:
+    runtime:
+      - ca-certificates
+      - fuse3
+      - tzdata
+  resources:
+    cpu: "2"
+    memory: 8Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26=1.26.5-r1
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/rclone/rclone
+      tag: v${{package.version}}
+      expected-commit: 5bc93a2a7ab0ebd0a11352bc4968eabeffb18027
+
+  - uses: go/bump
+    with:
+      deps: |-
+        go.opentelemetry.io/otel@v1.44.0
+        go.opentelemetry.io/otel/metric@v1.44.0
+        go.opentelemetry.io/otel/trace@v1.44.0
+        golang.org/x/image@v0.43.0
+
+  - runs: |
+      for module in \
+        go.opentelemetry.io/otel \
+        go.opentelemetry.io/otel/metric \
+        go.opentelemetry.io/otel/trace; do
+        go list -m all \
+          | awk -v module="$module" \
+            '$1 == module && $2 == "v1.44.0" { found = 1 } END { exit !found }'
+      done
+      go list -m all \
+        | awk '$1 == "golang.org/x/image" && $2 == "v0.43.0" { found = 1 } END { exit !found }'
+
+  - uses: go/build
+    with:
+      go-package: go-1.26
+      ldflags: -X github.com/rclone/rclone/fs.Version=${{package.version}}
+      packages: .
+      output: rclone
+
+  - runs: |
+      binary="${{targets.destdir}}/usr/bin/rclone"
+      "$binary" --version | grep -E '^rclone v?${{package.version}}$'
+      go version -m "$binary" \
+        | grep -E 'go.opentelemetry.io/otel[[:space:]]+v1.44.0'
+      go version -m "$binary" \
+        | grep -E 'go.opentelemetry.io/otel/metric[[:space:]]+v1.44.0'
+      go version -m "$binary" \
+        | grep -E 'go.opentelemetry.io/otel/trace[[:space:]]+v1.44.0'
+      go version -m "$binary" \
+        | grep -E 'golang.org/x/image[[:space:]]+v0.43.0'
+      mkdir -p "${{targets.destdir}}/etc"
+      printf '%s\n' user_allow_other >"${{targets.destdir}}/etc/fuse.conf"
+      install -Dm644 COPYING \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/COPYING"
+
+test:
+  environment:
+    contents:
+      packages:
+        - apk-tools
+        - busybox
+        - coreutils
+        - jq
+        - rclone=${{package.full-version}}
+  pipeline:
+    - name: Validate runtime, package ownership, and MIT provenance
+      runs: |
+        rclone --version | grep -E '^rclone v?${{package.version}}$'
+        rclone --help >/dev/null
+        apk info --who-owns /usr/bin/rclone \
+          | grep -F "${{package.name}}-${{package.full-version}}"
+        apk info --license rclone | grep -Fx MIT
+        grep -F "Permission is hereby granted, free of charge" \
+          "/usr/share/licenses/${{package.name}}/COPYING"
+        sbom="/var/lib/db/sbom/${{package.name}}-${{package.full-version}}.spdx.json"
+        test -s "$sbom"
+        jq -e --arg full_version "${{package.full-version}}" '
+          .spdxVersion == "SPDX-2.3"
+          and any(
+            .packages[];
+            .name == "rclone"
+            and .versionInfo == $full_version
+            and .licenseDeclared == "MIT"
+          )
+        ' "$sbom"
+    - name: Copy and checksum representative local data
+      runs: |
+        mkdir -p /tmp/rclone-source /tmp/rclone-destination
+        printf '%s\n' 'verity rclone checksum smoke' \
+          >/tmp/rclone-source/payload.txt
+        (
+          cd /tmp/rclone-source
+          sha256sum payload.txt >../payload.sha256
+        )
+        rclone copy /tmp/rclone-source /tmp/rclone-destination
+        rclone check --checksum /tmp/rclone-source /tmp/rclone-destination
+        (
+          cd /tmp/rclone-destination
+          sha256sum --check ../payload.sha256
+        )
+
+update:
+  enabled: true
+  github:
+    identifier: rclone/rclone
+    strip-prefix: v
+    tag-filter: v
+    use-tag: true

@@ -244,6 +244,12 @@ jobs:
                   weaviate
             fi
 
+            if [ "$image" = "rclone" ]; then
+              echo "::group::rclone package test (${INTEGER_PACKAGE_ARCH})"
+              bash .github/scripts/test-rclone-package.sh "$INTEGER_PACKAGE_ARCH"
+              echo "::endgroup::"
+            fi
+
             if [ "$image" = "step-ca" ]; then
               echo "::group::Step CA package test (${INTEGER_PACKAGE_ARCH})"
               bash .github/scripts/test-step-ca-package.sh "$INTEGER_PACKAGE_ARCH"
@@ -284,6 +290,53 @@ jobs:
             if [ "$runtime_arch" != "$arch" ]; then
               echo "::error::runtime architecture mismatch: expected ${arch}, got ${runtime_arch}"
               exit 1
+            fi
+
+            if [ "$image" = "rclone" ]; then
+              (
+                rclone_version=$(yq -r '.package.version' \
+                  melange-work/specs/rclone.yaml/build.yaml)
+                rclone_full_version=$(yq -r '.package.version + "-r" + (.package.epoch | tostring)' \
+                  melange-work/specs/rclone.yaml/build.yaml)
+                container="integer-rclone-${arch}-pr-smoke"
+                smoke=$(mktemp -d)
+                sbom="${RUNNER_TEMP}/rclone-${arch}.spdx.json"
+                trap 'docker rm --force "$container" >/dev/null 2>&1 || true; rm -rf "$smoke" "$sbom"' EXIT
+
+                docker run --rm "$loaded_ref" --version \
+                  | grep -E "^rclone v?${rclone_version}$"
+                mkdir -p "$smoke/source" "$smoke/destination"
+                chmod 0755 "$smoke" "$smoke/source"
+                chmod 0777 "$smoke/destination"
+                printf '%s\n' 'verity rclone PR checksum smoke' \
+                  >"$smoke/source/payload.txt"
+                (
+                  cd "$smoke/source"
+                  sha256sum payload.txt >../payload.sha256
+                )
+                docker run --rm --volume "$smoke:/work" "$loaded_ref" \
+                  copy /work/source /work/destination
+                docker run --rm --volume "$smoke:/work" "$loaded_ref" \
+                  check --checksum /work/source /work/destination
+                (
+                  cd "$smoke/destination"
+                  sha256sum --check ../payload.sha256
+                )
+
+                docker create --name "$container" "$loaded_ref" --version >/dev/null
+                docker cp \
+                  "$container:/var/lib/db/sbom/rclone-${rclone_full_version}.spdx.json" \
+                  "$sbom"
+                jq -e --arg full_version "$rclone_full_version" '
+                  .spdxVersion == "SPDX-2.3"
+                  and any(
+                    .packages[];
+                    .name == "rclone"
+                    and .versionInfo == $full_version
+                    and .licenseDeclared == "MIT"
+                  )
+                ' "$sbom"
+              )
             fi
 
             if [ "$image" = "pushgateway" ]; then
