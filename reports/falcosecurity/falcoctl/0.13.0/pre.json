@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.72.0"
   },
-  "ReportID": "019f6464-ea98-7d4a-a845-c2fdfea879de",
-  "CreatedAt": "2026-07-15T06:09:23.096872486Z",
+  "ReportID": "019f6993-c708-75ab-b2ad-0c9309eb0ba3",
+  "CreatedAt": "2026-07-16T06:18:40.264373738Z",
   "ArtifactID": "sha256:23bbe9ea5556f1898e44bcf6d0190858bcbc4541be81184caa465eb8e37eefc6",
   "ArtifactName": "docker.io/falcosecurity/falcoctl:0.13.0",
   "ArtifactType": "container_image",
@@ -6286,7 +6286,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-41567"
           ],
           "PublishedDate": "2026-06-05T02:17:13.817Z",
-          "LastModifiedDate": "2026-07-10T12:16:49.067Z"
+          "LastModifiedDate": "2026-07-15T02:21:16.433Z"
         },
         {
           "VulnerabilityID": "CVE-2026-42306",
@@ -6414,7 +6414,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-33997"
           ],
           "PublishedDate": "2026-03-31T03:15:57.523Z",
-          "LastModifiedDate": "2026-06-30T03:18:49.05Z"
+          "LastModifiedDate": "2026-07-15T02:20:27.623Z"
         },
         {
           "VulnerabilityID": "CVE-2026-41568",
@@ -6542,21 +6542,29 @@
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
           },
           "Fingerprint": "sha256:3af69b1264c8fcce1001a50224921eb8821d420578e68167ffd8af348fbc714f",
-          "Title": "Fulcio has OIDC Discovery Redirect Following Allows SSRF and JWKS Substitution for Meta-Issuer Paths, with Kubernetes Service-Account Token Leakage",
-          "Description": "## Impact\n\nThree security vulnerabilities were identified in the OIDC Discovery client:\n\n1. **Blind Server-Side Request Forgery (SSRF) via Cross-Host Redirects**:\n   Fulcio uses an HTTP client to fetch OIDC discovery metadata (`/.well-known/openid-configuration`). Prior to this fix, if a configured issuer returned an HTTP redirect to a different host, the client followed it by default. This allowed a compromised or malicious issuer to redirect Fulcio's discovery requests to internal-only systems, resulting in blind SSRF.\n\n2. **JWKS Substitution and Cache Poisoning**:\n   Because cross-host redirects were permitted during OIDC discovery, an attacker could manipulate the discovery flow to return a malicious `jwks_uri` pointing to an attacker-controlled host. When Fulcio successfully initialized the provider and cached the resulting verifier in the verifier cache, it poisoned the cache with the attacker's verification keys. The attacker could then present signatures validated against the poisoned keys.\n\n3. **Kubernetes ServiceAccount Token Leakage**:\n   Fulcio mounts an in-cluster Kubernetes ServiceAccount token to authenticate OIDC discovery requests sent to the local control plane API server (`https://kubernetes.default.svc`).\n   * **Cross-Host Redirects \u0026 JWKS**: The token was previously attached globally by the transport, leaking it to third-party hosts if the issuer performed a redirect or if the `jwks_uri` pointed to a different domain.\n   * **Wildcard MetaIssuers**: If a wildcard `MetaIssuer` of type `kubernetes` (e.g., matching external EKS/GKE endpoints) was matched, and a local Kubernetes issuer was present in the config, the transport loaded and attached the local in-cluster ServiceAccount token to outbound requests sent to the external host.\n\n## Patches\n\nThe following mitigations have been applied:\n\n* **Blocked Cross-Host Redirects**: A custom callback is configured on all OIDC discovery HTTP clients to reject redirects that attempt to cross the original issuer's host boundary.\n* **Restricted Token Injection**: Updated the transport to only attach the ServiceAccount token when the outgoing request's host exactly matches the configured host of the issuer.\n* **Restricted Local Token Loading**: Constrained the loader to only load and wrap the transport with the local ServiceAccount token when the target issuer URL exactly matches the private local API server (`https://kubernetes.default.svc`).\n\n## Workarounds\n\nNone, upgrade to v1.8.6",
+          "Title": "github.com/sigstore/fulcio: Fulcio: Server-Side Request Forgery and Kubernetes ServiceAccount token leakage",
+          "Description": "A flaw was found in Fulcio's OpenID Connect (OIDC) Discovery client. This vulnerability allows a remote attacker to perform Server-Side Request Forgery (SSRF) by redirecting discovery requests to internal systems. Additionally, an attacker can manipulate the JSON Web Key Set (JWKS) Uniform Resource Identifier (URI) to poison the verifier cache with malicious keys, enabling the validation of attacker-controlled signatures. Furthermore, the flaw can lead to the leakage of Kubernetes ServiceAccount tokens to third-party hosts through cross-host redirects or misconfigured MetaIssuers, potentially exposing sensitive cluster credentials.",
           "Severity": "HIGH",
           "VendorSeverity": {
-            "ghsa": 3
+            "ghsa": 3,
+            "redhat": 2
           },
           "CVSS": {
             "ghsa": {
               "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:N",
               "V3Score": 8.7
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:L/A:N",
+              "V3Score": 6.5
             }
           },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-49478",
             "https://github.com/sigstore/fulcio",
-            "https://github.com/sigstore/fulcio/security/advisories/GHSA-f5mr-q85p-6hh6"
+            "https://github.com/sigstore/fulcio/security/advisories/GHSA-f5mr-q85p-6hh6",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-49478",
+            "https://www.cve.org/CVERecord?id=CVE-2026-49478"
           ]
         },
         {
@@ -6679,21 +6687,29 @@
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
           },
           "Fingerprint": "sha256:9a1b0983c3d7902e11b2f227a6330d2b7aeaf729653ea3e16f4eeee054f0c133",
-          "Title": "Sigstore Timestamp Authority has OOM due to unbounded metric label cardinality",
-          "Description": "### Impact\n\nAn unauthenticated remote attacker can trigger unbounded memory growth on the timestamp authority server.\n\nThis vulnerability exists because the global `wrapMetrics` middleware records the raw HTTP request path (`r.URL.Path`) and raw HTTP request method (`r.Method`) as Prometheus labels for latency and request count metric vectors. Since this middleware runs before standard routing occurs, it executes for all incoming requests, including those for unmatched paths (yielding 404 responses) or arbitrary request methods. The Prometheus library registers a new, permanent time-series entry for every distinct label combination. An attacker can continuously issue requests containing random paths (e.g., `/api/v1/timestamp/\u003cuuid\u003e`) or random HTTP methods to exhaust system memory.\n\n### Patches\n\nThis issue has been patched by limiting the metric label values to a strict allowlist of expected paths (`/ping`, `/api/v1/timestamp`, `/api/v1/timestamp/certchain`) and expected HTTP methods (`GET`, `POST`, `HEAD`, `OPTIONS`). Unrecognized paths or methods are normalized to a static string (`\"unrecognized\"`).\n\nUsers should update to version `v2.0.7` or later.\n\n### Workarounds\n\n1. Block or drop incoming requests with invalid HTTP methods or unknown request paths at a reverse proxy or load balancer before they reach the timestamp authority server.\n2. Configure rate-limiting on the public interface to prevent remote attackers from issuing millions of unique requests in a short duration.",
+          "Title": "timestamp-authority: Sigstore Timestamp Authority: Denial of Service via unbounded metric label cardinality",
+          "Description": "A flaw was found in Sigstore Timestamp Authority. An unauthenticated remote attacker can exploit this vulnerability by sending requests with arbitrary HTTP paths and methods. This leads to the creation of an excessive number of unique metric labels, causing unbounded memory growth and a denial of service (DoS) condition on the server. This issue is a type of Improper Restriction of Resource Consumption (CWE-770).",
           "Severity": "MEDIUM",
           "VendorSeverity": {
-            "ghsa": 2
+            "ghsa": 2,
+            "redhat": 2
           },
           "CVSS": {
             "ghsa": {
               "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 5.9
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 5.9
             }
           },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-49835",
             "https://github.com/sigstore/timestamp-authority",
-            "https://github.com/sigstore/timestamp-authority/security/advisories/GHSA-9c54-x2g4-v92j"
+            "https://github.com/sigstore/timestamp-authority/security/advisories/GHSA-9c54-x2g4-v92j",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-49835",
+            "https://www.cve.org/CVERecord?id=CVE-2026-49835"
           ]
         },
         {
@@ -6770,7 +6786,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-39828"
           ],
           "PublishedDate": "2026-05-22T04:16:22.19Z",
-          "LastModifiedDate": "2026-07-13T13:16:35.58Z"
+          "LastModifiedDate": "2026-07-15T02:20:48.28Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39829",
@@ -6846,23 +6862,24 @@
             "https://access.redhat.com/security/cve/CVE-2026-39829",
             "https://bugzilla.redhat.com/2480680",
             "https://bugzilla.redhat.com/2480681",
+            "https://bugzilla.redhat.com/2480684",
             "https://bugzilla.redhat.com/2480685",
-            "https://bugzilla.redhat.com/2480688",
-            "https://bugzilla.redhat.com/2480757",
-            "https://bugzilla.redhat.com/2480761",
-            "https://bugzilla.redhat.com/2493620",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2455470",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2480680",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480681",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2480684",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480685",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480688",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-34986",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2480757",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2480761",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2493620",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-25681",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-27136",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39829",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39830",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39832",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39835",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-42508",
-            "https://errata.almalinux.org/9/ALSA-2026-37123.html",
-            "https://errata.rockylinux.org/RLSA-2026:35833",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-57231",
+            "https://errata.almalinux.org/10/ALSA-2026-36199.html",
+            "https://errata.rockylinux.org/RLSA-2026:37123",
             "https://go.dev/cl/781641",
             "https://go.dev/cl/781661",
             "https://go.dev/issue/79565",
@@ -6875,7 +6892,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-39829"
           ],
           "PublishedDate": "2026-05-22T04:16:22.31Z",
-          "LastModifiedDate": "2026-07-13T13:16:35.87Z"
+          "LastModifiedDate": "2026-07-15T02:20:49.317Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39830",
@@ -6946,24 +6963,24 @@
             "https://access.redhat.com/errata/RHSA-2026:37296",
             "https://access.redhat.com/errata/RHSA-2026:37387",
             "https://access.redhat.com/security/cve/CVE-2026-39830",
-            "https://bugzilla.redhat.com/2445356",
-            "https://bugzilla.redhat.com/2456333",
-            "https://bugzilla.redhat.com/2456338",
-            "https://bugzilla.redhat.com/2456339",
+            "https://bugzilla.redhat.com/2480680",
             "https://bugzilla.redhat.com/2480681",
             "https://bugzilla.redhat.com/2480684",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2455470",
+            "https://bugzilla.redhat.com/2480685",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2445356",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2456333",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2456338",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2456339",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480681",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480684",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2480685",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2480688",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-34986",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-25679",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32280",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32281",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-32283",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39829",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39830",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39832",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-42508",
-            "https://errata.almalinux.org/9/ALSA-2026-29455.html",
-            "https://errata.rockylinux.org/RLSA-2026:35833",
+            "https://errata.almalinux.org/10/ALSA-2026-36199.html",
+            "https://errata.rockylinux.org/RLSA-2026:29455",
             "https://github.com/golang/crypto/commit/4e7a7384ecbc8d519f6f4c11b36fa9d761fc8946",
             "https://go.dev/cl/781640",
             "https://go.dev/cl/781664",
@@ -6980,7 +6997,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-39830"
           ],
           "PublishedDate": "2026-05-22T04:16:22.44Z",
-          "LastModifiedDate": "2026-07-13T13:16:36.18Z"
+          "LastModifiedDate": "2026-07-15T02:20:50.377Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39831",
@@ -7102,19 +7119,15 @@
             "https://access.redhat.com/errata/RHSA-2026:37410",
             "https://access.redhat.com/security/cve/CVE-2026-39832",
             "https://bugzilla.redhat.com/2480680",
+            "https://bugzilla.redhat.com/2480681",
+            "https://bugzilla.redhat.com/2480684",
             "https://bugzilla.redhat.com/2480685",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2455470",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2480681",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2480684",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2480680",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480685",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2480688",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-34986",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39829",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39830",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39832",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-42508",
-            "https://errata.almalinux.org/9/ALSA-2026-37410.html",
-            "https://errata.rockylinux.org/RLSA-2026:35833",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39835",
+            "https://errata.almalinux.org/10/ALSA-2026-36199.html",
+            "https://errata.rockylinux.org/RLSA-2026:37410",
             "https://github.com/golang/crypto/commit/e3d1254f1e7e60baa086142c46174bf6d8d0fe50",
             "https://go.dev/cl/778642",
             "https://go.dev/issue/79435",
@@ -7128,7 +7141,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-39832"
           ],
           "PublishedDate": "2026-05-22T04:16:22.663Z",
-          "LastModifiedDate": "2026-07-14T12:17:03.117Z"
+          "LastModifiedDate": "2026-07-15T02:20:51.43Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39835",
@@ -7199,15 +7212,15 @@
             "https://access.redhat.com/errata/RHSA-2026:38504",
             "https://access.redhat.com/security/cve/CVE-2026-39835",
             "https://bugzilla.redhat.com/2480680",
+            "https://bugzilla.redhat.com/2480681",
+            "https://bugzilla.redhat.com/2480684",
             "https://bugzilla.redhat.com/2480685",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2467822",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480680",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2493620",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-33811",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2480685",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39832",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39835",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-57231",
-            "https://errata.almalinux.org/9/ALSA-2026-37410.html",
-            "https://errata.rockylinux.org/RLSA-2026:38504",
+            "https://errata.almalinux.org/10/ALSA-2026-36199.html",
+            "https://errata.rockylinux.org/RLSA-2026:37410",
             "https://go.dev/cl/781660",
             "https://go.dev/issue/79563",
             "https://groups.google.com/g/golang-announce/c/a082jnz-LvI",
@@ -7219,7 +7232,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-39835"
           ],
           "PublishedDate": "2026-05-22T04:16:24.53Z",
-          "LastModifiedDate": "2026-07-13T13:16:36.483Z"
+          "LastModifiedDate": "2026-07-15T02:20:52.103Z"
         },
         {
           "VulnerabilityID": "CVE-2026-42508",
@@ -7289,18 +7302,22 @@
             "https://bugzilla.redhat.com/2480757",
             "https://bugzilla.redhat.com/2480761",
             "https://bugzilla.redhat.com/2493620",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2455470",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2480680",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480681",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2480684",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480685",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480688",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-34986",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2480757",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2480761",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2493620",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-25681",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-27136",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39829",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39830",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39832",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39835",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-42508",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-57231",
             "https://errata.almalinux.org/9/ALSA-2026-37123.html",
-            "https://errata.rockylinux.org/RLSA-2026:35833",
+            "https://errata.rockylinux.org/RLSA-2026:37123",
             "https://github.com/golang/crypto/commit/f717e29698a271c548239ed56bf5dd9516d6f7e8",
             "https://go.dev/cl/781220",
             "https://go.dev/issue/79568",
@@ -7315,7 +7332,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-42508"
           ],
           "PublishedDate": "2026-05-22T04:16:25.44Z",
-          "LastModifiedDate": "2026-07-10T12:16:53.217Z"
+          "LastModifiedDate": "2026-07-15T02:21:33.267Z"
         },
         {
           "VulnerabilityID": "CVE-2026-46595",
@@ -7392,7 +7409,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-46595"
           ],
           "PublishedDate": "2026-05-22T04:16:25.55Z",
-          "LastModifiedDate": "2026-07-14T12:17:10.39Z"
+          "LastModifiedDate": "2026-07-15T02:22:17.98Z"
         },
         {
           "VulnerabilityID": "CVE-2026-46597",
@@ -7748,18 +7765,16 @@
             }
           },
           "References": [
-            "https://access.redhat.com/errata/RHSA-2026:37123",
+            "https://access.redhat.com/errata/RHSA-2026:34357",
             "https://access.redhat.com/security/cve/CVE-2026-25681",
-            "https://bugzilla.redhat.com/2480680",
-            "https://bugzilla.redhat.com/2480681",
-            "https://bugzilla.redhat.com/2480685",
-            "https://bugzilla.redhat.com/2480688",
-            "https://bugzilla.redhat.com/2480757",
+            "https://bugzilla.redhat.com/2466505",
+            "https://bugzilla.redhat.com/2466507",
+            "https://bugzilla.redhat.com/2467822",
+            "https://bugzilla.redhat.com/2480756",
             "https://bugzilla.redhat.com/2480761",
-            "https://bugzilla.redhat.com/2493620",
+            "https://bugzilla.redhat.com/2484207",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480680",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480681",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2480684",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480685",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480688",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480757",
@@ -7768,13 +7783,12 @@
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-25681",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-27136",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39829",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39830",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39832",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39835",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-42508",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-57231",
-            "https://errata.almalinux.org/9/ALSA-2026-37123.html",
-            "https://errata.rockylinux.org/RLSA-2026:37072",
+            "https://errata.almalinux.org/10/ALSA-2026-34357.html",
+            "https://errata.rockylinux.org/RLSA-2026:37123",
             "https://go.dev/cl/781703",
             "https://go.dev/issue/79574",
             "https://groups.google.com/g/golang-announce/c/iI-mYSI0lu8",
@@ -7844,7 +7858,6 @@
             "https://bugzilla.redhat.com/2493620",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480680",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480681",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2480684",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480685",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480688",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480757",
@@ -7853,13 +7866,12 @@
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-25681",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-27136",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39829",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39830",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39832",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39835",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-42508",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-57231",
             "https://errata.almalinux.org/9/ALSA-2026-37123.html",
-            "https://errata.rockylinux.org/RLSA-2026:37072",
+            "https://errata.rockylinux.org/RLSA-2026:37123",
             "https://go.dev/cl/781685",
             "https://go.dev/issue/79575",
             "https://groups.google.com/g/golang-announce/c/iI-mYSI0lu8",
@@ -7963,18 +7975,21 @@
             "https://access.redhat.com/errata/RHSA-2026:37436",
             "https://access.redhat.com/errata/RHSA-2026:38995",
             "https://access.redhat.com/errata/RHSA-2026:39005",
+            "https://access.redhat.com/errata/RHSA-2026:39573",
             "https://access.redhat.com/security/cve/CVE-2026-39821",
             "https://bugzilla.redhat.com/2480756",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2480756",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2498152",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39821",
-            "https://errata.almalinux.org/9/ALSA-2026-37435.html",
-            "https://errata.rockylinux.org/RLSA-2026:35831",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39822",
+            "https://errata.almalinux.org/10/ALSA-2026-37436.html",
+            "https://errata.rockylinux.org/RLSA-2026:37435",
             "https://github.com/golang/go/issues/78760",
             "https://go.dev/cl/767220",
             "https://go.dev/issue/78760",
             "https://groups.google.com/g/golang-announce/c/iI-mYSI0lu8",
             "https://linux.oracle.com/cve/CVE-2026-39821.html",
-            "https://linux.oracle.com/errata/ELSA-2026-37435.html",
+            "https://linux.oracle.com/errata/ELSA-2026-38995.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-39821",
             "https://pkg.go.dev/vuln/GO-2026-5026",
             "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-39821.json",
@@ -7982,7 +7997,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-39821"
           ],
           "PublishedDate": "2026-05-22T16:16:20.41Z",
-          "LastModifiedDate": "2026-07-14T12:17:02.053Z"
+          "LastModifiedDate": "2026-07-15T12:17:33.85Z"
         },
         {
           "VulnerabilityID": "CVE-2026-25680",
@@ -8280,24 +8295,32 @@
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
           },
           "Fingerprint": "sha256:5aa3e858731f1b292980162809a4865da8df401e2ddfc485232587431321c0e5",
-          "Title": "oras-go blob upload vulnerable to credential forwarding via unvalidated Location header",
-          "Description": "## Summary\n\noras-go follows a registry-controlled `Location` header during the monolithic blob upload flow and reuses the `Authorization` header from the initial `POST` request for the subsequent `PUT` request. If a malicious registry returns a cross-host `Location`, oras-go can send the caller's credentials to an attacker-controlled endpoint.\n\n## Affected Versions\n\ntested: v2.6.0 (commit 03243809936cce826494b5506f724c6dc11115b1, as-of 2026-01-24)\nrange: unknown; likely affects earlier v2.x releases that include the same upload flow\n\n## Impact\n\nCredential leak to an attacker-controlled endpoint and client-side ssrf to a cross-host target.\n\n## Affected Component\n\n- `registry/remote/repository.go:878-916` (`blobStore.completePushAfterInitialPost`)\n\n## Reproduction\n\nAttachments include `poc.zip` with a local-only harness (no real registry required). It runs a fake registry server that returns a cross-host `Location` and a second server that records whether it received `Authorization`.\n\n```bash\nunzip -q -o poc.zip -d /tmp/poc\ncd /tmp/poc/poc-F-ORAS-LOCATION-UPLOAD-001\nmake canonical\nmake control\n```\n\n## Recommended Fix\n\n- validate `Location` before uploading (scheme + hostname + effective port) against the original request, or require an explicit opt-in allowlist for cross-host upload urls\n- never forward `Authorization` when the upload target changes host or scheme\n\n## references\n\n- security policy: https://github.com/oras-project/oras-go/security/policy\n- vulnerable code: `registry/remote/repository.go` (see `blobStore.completePushAfterInitialPost`)",
+          "Title": "oras-go: oras-go: Credential forwarding via unvalidated Location header during blob upload",
+          "Description": "A flaw was found in oras-go. During the monolithic blob upload process, oras-go reuses the Authorization header for subsequent requests, even if a malicious registry provides a cross-host Location header. This vulnerability allows an attacker-controlled endpoint to receive the caller's credentials, leading to information disclosure. Additionally, it can enable client-side Server-Side Request Forgery (SSRF) to a cross-host target.",
           "Severity": "HIGH",
           "VendorSeverity": {
-            "ghsa": 3
+            "ghsa": 3,
+            "redhat": 2
           },
           "CVSS": {
             "ghsa": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
               "V3Score": 7.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 5.9
             }
           },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-50151",
             "https://github.com/oras-project/oras-go",
             "https://github.com/oras-project/oras-go/commit/4683c46ef078091544f5f55fd25102f002806991",
             "https://github.com/oras-project/oras-go/pull/1152",
             "https://github.com/oras-project/oras-go/releases/tag/v2.6.1",
-            "https://github.com/oras-project/oras-go/security/advisories/GHSA-jxpm-75mh-9fp7"
+            "https://github.com/oras-project/oras-go/security/advisories/GHSA-jxpm-75mh-9fp7",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-50151",
+            "https://www.cve.org/CVERecord?id=CVE-2026-50151"
           ]
         },
         {
@@ -8325,22 +8348,30 @@
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
           },
           "Fingerprint": "sha256:dae05621db5cab0c0d6365db4be53d3867b8c8b6edbdac25c360f7ff43fbc1ca",
-          "Title": "`oras-go` tar extraction: Hardlink entry with relative Linkname escapes extract dir via process CWD resolution",
-          "Description": "### Root cause\n\nThe tar-extraction helper `ensureLinkPath` at [`content/file/utils.go:262-275`](https://github.com/oras-project/oras-go/blob/main/content/file/utils.go#L262-L275) validates that a hardlink's target resolves inside the extract base, but then returns the original unresolved `target` string back to the caller:\n\n```go\nfunc ensureLinkPath(baseAbs, baseRel, link, target string) (string, error) {\n    path := target\n    if !filepath.IsAbs(target) {\n        path = filepath.Join(filepath.Dir(link), target)  // resolved FOR VALIDATION\n    }\n    if _, err := resolveRelToBase(baseAbs, baseRel, path); err != nil {\n        return \"\", err\n    }\n    return target, nil   // \u003c-- returns the ORIGINAL target, not the validated path\n}\n```\n\nThe caller for `TypeLink` hardlinks then does:\n\n```go\ncase tar.TypeLink:\n    var target string\n    if target, err = ensureLinkPath(dirPath, dirName, filePath, header.Linkname); err == nil {\n        err = os.Link(target, filePath)\n    }\n```\n\n`os.Link(oldname, newname)` wraps the `link(2)` system call. From the `link(2)` man page:\n\n\u003e oldpath and newpath are interpreted relative to the current working directory of the calling process.\n\nSo when `target` (i.e., `header.Linkname`) is a **relative** path, `os.Link` resolves it against the process's **current working directory**, not against `filepath.Dir(link)` as the validation assumed.\n\n### Attack\n\nAn attacker who controls an OCI-compliant registry (or any artifact source the victim consumes via `oras pull`) crafts a tarball layer with:\n\n- A regular file: `payload.tar.gz/README.txt`.\n- A hardlink entry: `Typeflag=TypeLink`, `Name=payload.tar.gz/evil_cwd_link`, `Linkname=\"victim.secret\"` (relative).\n\nand marks the layer descriptor with `io.deis.oras.content.unpack: \"true\"` (a standard annotation that tells `oras-go` to auto-extract).\n\nWhen a victim runs `oras pull` (or any Go code using `content.File`), the extraction:\n\n1. Validates `payload.tar.gz/evil_cwd_link` — passes.\n2. Calls `ensureLinkPath(dirPath, \"payload.tar.gz\", filePath, \"victim.secret\")`:\n   - `path = filepath.Join(filepath.Dir(filePath), \"victim.secret\")` = `\u003cextract_base\u003e/payload.tar.gz/victim.secret` → inside base → **validation passes**.\n   - Returns `target = \"victim.secret\"` (NOT `path`).\n3. Calls `os.Link(\"victim.secret\", \"\u003cextract_base\u003e/payload.tar.gz/evil_cwd_link\")`.\n4. `link(2)` resolves relative `oldname=\"victim.secret\"` against process CWD → creates a hardlink inside the extract tree pointing to `\u003cinvoker_CWD\u003e/victim.secret`.\n\nThe resulting hardlink and the CWD file **share an inode** — reading one reads the other; writing to one writes to the other.\n\n---\n\n## Proof of Concept\n\nTested on Ubuntu 24.04.4 LTS with `oras` CLI v1.3.0 (SHA-256 `040e140304b7dbdd9b40dacd798e2303cea44ad84eeb210750afdf15f1dcf8b4`, downloaded from \u003chttps://github.com/oras-project/oras/releases/download/v1.3.0/oras_1.3.0_linux_amd64.tar.gz\u003e).\n\nReproduction script (standalone, ~50 lines) attached. Summary of key steps:\n\n```bash\n# 1. Place victim file in the future CWD.\nmkdir -p cwd-space extract\necho \"TOP SECRET FROM CWD\" \u003e cwd-space/victim.secret\n\n# 2. Craft malicious tarball with a TypeLink entry whose Linkname is RELATIVE.\npython3 -c '\nimport tarfile, io, os\nwith tarfile.open(\"cwd-space/payload.tar.gz\", \"w:gz\", format=tarfile.GNU_FORMAT) as t:\n    info = tarfile.TarInfo(name=\"payload.tar.gz/README.txt\")\n    c = b\"pulled from registry\"; info.size = len(c); info.mode = 0o644\n    info.uid = os.getuid(); info.gid = os.getgid()\n    t.addfile(info, io.BytesIO(c))\n\n    link = tarfile.TarInfo(name=\"payload.tar.gz/evil_cwd_link\")\n    link.type = tarfile.LNKTYPE\n    link.linkname = \"victim.secret\"   # RELATIVE\n    link.mode = 0o644; link.uid = os.getuid(); link.gid = os.getgid()\n    t.addfile(link)\n'\n\n# 3. Push to OCI layout, patch in the unpack annotation, pull from cwd-space.\n(cd cwd-space \u0026\u0026 oras push --oci-layout ../layout:v1 \\\n    payload.tar.gz:application/vnd.oci.image.layer.v1.tar+gzip)\n# ... patch layout/blobs/sha256/\u003cmanifest\u003e to add\n#     io.deis.oras.content.unpack: \"true\" on layers[0].annotations ...\n\n(cd cwd-space \u0026\u0026 oras pull --oci-layout ../layout:v1 --output ../extract)\n\n# 4. Observe inode sharing.\nstat -c '%i' extract/payload.tar.gz/evil_cwd_link   # → 6554160\nstat -c '%i' cwd-space/victim.secret                # → 6554160 (SAME)\ncat extract/payload.tar.gz/evil_cwd_link             # → \"TOP SECRET FROM CWD\"\n```\n\nObserved output:\n\n```\nevil_cwd_link (inside extract dir): inode=6554160\nvictim.secret  (in invoker CWD):    inode=6554160\n*** ESCAPE CONFIRMED ***\nReading through the extract-dir hardlink yields the CWD file contents:\nTOP SECRET FROM CWD\n```\n\nA library-level regression test is also provided (`poc_test.go`) that drops into `content/file/utils_test.go` and runs via `go test ./content/file/... -run TestPoC` — output shows identical inode match for consumers of the library API.\n\n---\n\n## Impact\n\n**Primary: arbitrary-CWD-file read primitive.** An attacker-controlled OCI artifact, when pulled by a victim using the `oras` CLI or any Go program using `oras-go/v2/content/file`, can create a hardlink inside the victim's extract tree pointing to an arbitrary file in the victim's process CWD (that the invoker UID is permitted to read). Reading the extract-tree hardlink yields that file's contents verbatim.\n\n**Secondary: inode-sharing tampering primitive.** Any tool that later modifies the extract-tree hardlink (write, chmod, truncate, etc.) modifies the CWD file through the shared inode. This violates the \"writes inside the extract dir are confined\" invariant that downstream tooling (CI systems, container-image builders, artifact scanners) typically depends on.\n\n**High-severity chains:**\n\n- **CI pipelines** where `oras pull` runs from a project workspace containing secrets/credentials (`.env`, `.git/config`, service-account tokens). The pulled artifact can hardlink those secrets into a location later archived/mounted/published.\n- **Container orchestration** where the extract dir is bind-mounted into a lower-trust container while the pull-invoker's CWD is higher-trust. Hardlinks created in the extract tree expose invoker-CWD files across the trust boundary.\n- **Kubernetes operators / Flux source-controller** using `oras-go` to fetch artifacts; their CWD is typically `/` or `/root` — very sensitive.\n- **Multi-tenant registry proxies** that use `oras-go` to fetch and re-serve artifacts; each proxy process has a CWD with configuration, keys, or per-tenant state.\n\n**Not affected:**\n\n- `oras push` (tarball creation side): `tarDirectory` in the same file explicitly skips hardlink generation (line 65 comment: `\"We don't support hard links and treat it as regular files\"`), so pushed content cannot trigger this on the server.\n- Symlink extraction path (`TypeSymlink`): `os.Symlink` stores the target string verbatim and does not CWD-resolve at creation time. The current `ensureLinkPath` return-of-`target` is correct for symlinks (the existing validation correctly models the symlink-follow path).\n\n### Attack-surface boundary (`fs.protected_hardlinks`)\n\nOn Linux with `fs.protected_hardlinks=1` (default on modern distros), `link(2)` additionally requires the linking user to have READ + WRITE permission on the source file (per `may_linkat()` in the kernel). Verified on Ubuntu 24.04: as non-root, `ln /etc/passwd /tmp/x` returns `EPERM`, and the same via the oras PoC path returns `link passwd /tmp/.../evil_passwd: operation not permitted`.\n\n**So the attacker cannot use this bug to read arbitrary root-owned files (e.g., `/etc/shadow`) when the victim invokes `oras pull` as a regular user.** The attack surface depends on the invocation context:\n\n| Invocation context | Reachable file classes |\n|---|---|\n| `oras pull` run by a regular user | Any file the user OWNS or has write access to in the process CWD: `.env`, `.git/config`, `.aws/credentials`, `~/.ssh/config`, project-local secrets, CI workspace files. |\n| `oras pull` run as root (systemd without `User=`, container entrypoint default root, Kubernetes operator) | **Every file on the host filesystem.** `/etc/shadow`, `/root/.ssh/id_rsa`, bind-mounted host paths, service private keys. |\n\nThe user-context attack surface alone is sufficient for supply-chain-grade impact: CI pipelines and developer machines routinely hold API keys, signing keys, and cloud credentials in user-owned files in the working directory. The root-context escalation makes the bug Critical in mainstream Kubernetes/GitOps tooling where oras-go is adopted for artifact distribution.\n\n---\n\n## Proposed fix\n\nChange `ensureLinkPath` to expose both the verbatim target (for symlinks) and the resolved absolute path (for hardlinks); have the `TypeLink` case use the resolved path.\n\n```go\n// Current behavior preserved for TypeSymlink. TypeLink switches to the resolved\n// path to avoid CWD-resolution mismatch at os.Link time.\nfunc ensureLinkPath(baseAbs, baseRel, link, target string) (symlinkTarget, hardlinkPath string, err error) {\n    path := target\n    if !filepath.IsAbs(target) {\n        path = filepath.Join(filepath.Dir(link), target)\n    }\n    if _, err = resolveRelToBase(baseAbs, baseRel, path); err != nil {\n        return \"\", \"\", err\n    }\n    return target, path, nil\n}\n```\n\n```go\ncase tar.TypeLink:\n    var absTarget string\n    if _, absTarget, err = ensureLinkPath(dirPath, dirName, filePath, header.Linkname); err == nil {\n        err = os.Link(absTarget, filePath)\n    }\ncase tar.TypeSymlink:\n    var symTarget string\n    symTarget, _, err = ensureLinkPath(dirPath, dirName, filePath, header.Linkname)\n    if err != nil { return err }\n    if err = os.Symlink(symTarget, filePath); err != nil { ... }\n```\n\n**Regression test to add:**\n\nExtend `Test_extractTarDirectory_HardLink` with a third sub-test that:\n1. Creates a sentinel file in the test's `t.TempDir()` (or an explicitly `os.Chdir`-entered directory) with a known name, e.g. `sentinel.txt`.\n2. Builds a tarball containing a `TypeLink` entry with `Linkname: \"sentinel.txt\"` (relative).\n3. Extracts.\n4. Asserts either `extractTarDirectory` returned an error, OR the resulting hardlink's inode does NOT match the sentinel's inode.",
+          "Title": "oras-go: Oras-go: Information disclosure and arbitrary file access via crafted tarball hardlinks",
+          "Description": "A flaw was found in oras-go, a Go library used for managing OCI (Open Container Initiative) artifacts. An attacker can exploit this vulnerability by providing a specially crafted tarball containing a malicious hardlink. When this tarball is extracted, the hardlink can be manipulated to point to files outside the intended extraction location, specifically within the victim's current working directory. This allows an attacker to read sensitive information from the system, and in some cases, could lead to unauthorized access to critical system files if the component is operating with elevated privileges.",
           "Severity": "HIGH",
           "VendorSeverity": {
-            "ghsa": 3
+            "ghsa": 3,
+            "redhat": 2
           },
           "CVSS": {
             "ghsa": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:N",
               "V3Score": 7.1
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:L/A:N",
+              "V3Score": 5.9
             }
           },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-50163",
             "https://github.com/oras-project/oras-go",
             "https://github.com/oras-project/oras-go/commit/b11f777f8d405c5023c4b307cfdc5068dfc3d406",
-            "https://github.com/oras-project/oras-go/security/advisories/GHSA-fxhp-mv3v-67qp"
+            "https://github.com/oras-project/oras-go/security/advisories/GHSA-fxhp-mv3v-67qp",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-50163",
+            "https://www.cve.org/CVERecord?id=CVE-2026-50163"
           ]
         },
         {
@@ -8465,23 +8496,31 @@
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
           },
           "Fingerprint": "sha256:2e5e2063c31344b2368a0d35e0ee6efd6c78bda2afd930ef233dc09c0a1cf68f",
-          "Title": "oras-go: Malicious registry can hijack Bearer token realm to exfiltrate credentials and refresh tokens",
-          "Description": "## Summary\n\noras-go's `auth.Client` follows the `realm` URL from a registry's `WWW-Authenticate: Bearer` challenge without validating its scheme or host. The `realm` field is server-controlled by design in the OCI/distribution spec — registries legitimately point token requests at a separate auth endpoint (e.g. Docker Hub's `registry-1.docker.io` -\u003e `auth.docker.io`), so cross-host realms on public DNS names are not in themselves a vulnerability. Two specific patterns, however, are never legitimate under any registry trust model and can be abused by a malicious or compromised registry (or a man-in-the-middle on a plaintext connection):\n\n1. **SSRF to internal networks.** A realm of `http://169.254.169.254/...` (AWS/Azure IMDS), `http://10.0.0.x/...` (RFC 1918), or `http://127.0.0.1/...` causes oras-go running on a cloud VM or corporate workstation to issue outbound HTTP requests from inside the user's trust boundary to an endpoint the user did not choose. The user's stored credentials are attached to those requests, but the principal harm is the network primitive — probing internal endpoints from the client. On IMDSv1 the response body is recoverable from log channels; on IMDSv2 the probe itself can still be used for service discovery.\n\n2. **TLS downgrade.** A registry contacted over `https://` can return a realm with an `http://` scheme, causing oras-go to send the user's credentials over plaintext to the token endpoint. This defeats the transport security the user chose when typing `https://`.\n\n## What is NOT claimed\n\nThis advisory does **not** claim that credential forwarding to an arbitrary public attacker host through a server-controlled realm is, on its own, a vulnerability. The distribution spec defines `realm` as a server-controlled field; a strict same-host or same-eTLD+1 enforcement would deviate from the spec and break legitimate split-host deployments. Operators who want defense-in-depth against cross-host realm forwarding can use the opt-in `Client.TrustedRealmHosts` allowlist (added separately).\n\n## Affected versions\n\n`oras.land/oras-go/v2 \u003c= v2.6.0`\n\n## Severity\n\nMedium. Network attack vector, low complexity, no privileges required, user interaction required (victim runs an oras command against the malicious or MITM'd registry), unchanged scope. Confidentiality impact is limited — IMDS probe responses can disclose information, and TLS downgrade exposes the realm request to passive observers — but the attacker does not obtain credentials beyond what the malicious endpoint already controls.\n\n## Affected code\n\n- `registry/remote/auth/client.go` — `Client.Do()` (bearer challenge handling)\n- `registry/remote/auth/client.go` — `Client.fetchBearerToken()` / `fetchDistributionToken` / `fetchOAuth2Token`\n\nThe `realm` parameter from `parseChallenge` is threaded through to `http.NewRequestWithContext` without scheme or host validation.\n\n## CWE\n\n- CWE-918: Server-Side Request Forgery (SSRF)\n- CWE-319: Cleartext Transmission of Sensitive Information\n\n## Patch\n\n`registry/remote/auth/client.go` now rejects realm URLs that:\n\n- use a scheme other than `http` or `https`\n- use `http` when the registry was contacted over `https` (TLS downgrade)\n- use an IP literal in a loopback, link-local, private, or unspecified range, unless the registry itself was reached at the same hostname (so loopback / in-cluster deployments are unaffected)\n\nCross-host realms on public DNS names continue to be accepted.\n\n## Credit\n\nReported by bugbunny.ai.",
+          "Title": "oras-go: oras-go: Information disclosure and TLS downgrade via malicious registry realm",
+          "Description": "A flaw was found in oras-go. The auth.Client in oras-go does not properly validate the scheme or host of the realm URL provided in a registry's WWW-Authenticate: Bearer challenge. A remote attacker, operating a malicious registry or performing a man-in-the-middle attack, could exploit this to perform Server-Side Request Forgery (SSRF) against internal networks, potentially disclosing sensitive information. Additionally, the flaw could lead to a Transport Layer Security (TLS) downgrade, causing user credentials to be sent over plaintext.",
           "Severity": "LOW",
           "VendorSeverity": {
-            "ghsa": 1
+            "ghsa": 1,
+            "redhat": 1
           },
           "CVSS": {
             "ghsa": {
               "V40Vector": "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:A/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N",
               "V40Score": 2.1
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:N/A:N",
+              "V3Score": 3.1
             }
           },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-48978",
             "https://github.com/oras-project/oras-go",
             "https://github.com/oras-project/oras-go/commit/7a9f4b0b9558821b0422152ebe21ae56930fe764",
             "https://github.com/oras-project/oras-go/releases/tag/v2.6.1",
-            "https://github.com/oras-project/oras-go/security/advisories/GHSA-xf85-363p-868w"
+            "https://github.com/oras-project/oras-go/security/advisories/GHSA-xf85-363p-868w",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-48978",
+            "https://www.cve.org/CVERecord?id=CVE-2026-48978"
           ]
         },
         {
@@ -8544,27 +8583,32 @@
             "https://access.redhat.com/errata/RHSA-2026:36797",
             "https://access.redhat.com/errata/RHSA-2026:38995",
             "https://access.redhat.com/errata/RHSA-2026:39005",
+            "https://access.redhat.com/errata/RHSA-2026:39573",
             "https://access.redhat.com/security/cve/CVE-2026-27145",
-            "https://bugzilla.redhat.com/2445356",
+            "https://bugzilla.redhat.com/2466505",
+            "https://bugzilla.redhat.com/2466507",
+            "https://bugzilla.redhat.com/2467822",
+            "https://bugzilla.redhat.com/2480756",
+            "https://bugzilla.redhat.com/2480761",
             "https://bugzilla.redhat.com/2484207",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2467822",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2445356",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2484207",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-25679",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-27145",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-33811",
-            "https://errata.almalinux.org/9/ALSA-2026-36317.html",
-            "https://errata.rockylinux.org/RLSA-2026:35832",
+            "https://errata.almalinux.org/10/ALSA-2026-34357.html",
+            "https://errata.rockylinux.org/RLSA-2026:36317",
             "https://go.dev/cl/783621",
             "https://go.dev/issue/79694",
             "https://groups.google.com/g/golang-announce/c/tKs3rmcBcKw",
             "https://linux.oracle.com/cve/CVE-2026-27145.html",
-            "https://linux.oracle.com/errata/ELSA-2026-36317.html",
+            "https://linux.oracle.com/errata/ELSA-2026-38995.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-27145",
             "https://pkg.go.dev/vuln/GO-2026-5037",
             "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-27145.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-27145"
           ],
           "PublishedDate": "2026-06-02T23:16:35.57Z",
-          "LastModifiedDate": "2026-07-14T12:16:57.193Z"
+          "LastModifiedDate": "2026-07-15T12:17:18.45Z"
         },
         {
           "VulnerabilityID": "CVE-2026-33811",
@@ -8648,28 +8692,29 @@
             "https://access.redhat.com/errata/RHSA-2026:36796",
             "https://access.redhat.com/errata/RHSA-2026:36797",
             "https://access.redhat.com/errata/RHSA-2026:38504",
+            "https://access.redhat.com/errata/RHSA-2026:39266",
+            "https://access.redhat.com/errata/RHSA-2026:39272",
+            "https://access.redhat.com/errata/RHSA-2026:39319",
+            "https://access.redhat.com/errata/RHSA-2026:39573",
+            "https://access.redhat.com/errata/RHSA-2026:39810",
             "https://access.redhat.com/security/cve/CVE-2026-33811",
             "https://bugzilla.redhat.com/2467822",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2467822",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2480680",
-            "https://bugzilla.redhat.com/show_bug.cgi?id=2493620",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-33811",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39835",
-            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-57231",
-            "https://errata.almalinux.org/9/ALSA-2026-36617.html",
-            "https://errata.rockylinux.org/RLSA-2026:38504",
+            "https://errata.almalinux.org/10/ALSA-2026-39272.html",
+            "https://errata.rockylinux.org/RLSA-2026:36617",
             "https://go.dev/cl/767860",
             "https://go.dev/issue/78803",
             "https://groups.google.com/g/golang-announce/c/qcCIEXso47M",
             "https://linux.oracle.com/cve/CVE-2026-33811.html",
-            "https://linux.oracle.com/errata/ELSA-2026-36617.html",
+            "https://linux.oracle.com/errata/ELSA-2026-39319.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-33811",
             "https://pkg.go.dev/vuln/GO-2026-4981",
             "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-33811.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-33811"
           ],
           "PublishedDate": "2026-05-07T20:16:42.77Z",
-          "LastModifiedDate": "2026-07-14T12:16:59.567Z"
+          "LastModifiedDate": "2026-07-15T12:17:28.947Z"
         },
         {
           "VulnerabilityID": "CVE-2026-33814",
@@ -8758,7 +8803,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-33814"
           ],
           "PublishedDate": "2026-05-07T20:16:42.88Z",
-          "LastModifiedDate": "2026-07-10T12:16:41.55Z"
+          "LastModifiedDate": "2026-07-15T02:20:18.21Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39820",
@@ -8839,7 +8884,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-39820"
           ],
           "PublishedDate": "2026-05-07T20:16:43.187Z",
-          "LastModifiedDate": "2026-07-14T12:17:01.753Z"
+          "LastModifiedDate": "2026-07-15T02:20:46.137Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39822",
@@ -8890,18 +8935,18 @@
             }
           },
           "References": [
-            "https://access.redhat.com/errata/RHSA-2026:38878",
+            "https://access.redhat.com/errata/RHSA-2026:38495",
             "https://access.redhat.com/security/cve/CVE-2026-39822",
             "https://bugzilla.redhat.com/2498152",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2498152",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39822",
-            "https://errata.almalinux.org/9/ALSA-2026-38878.html",
-            "https://errata.rockylinux.org/RLSA-2026:38495",
+            "https://errata.almalinux.org/10/ALSA-2026-38495.html",
+            "https://errata.rockylinux.org/RLSA-2026:38878",
             "https://go.dev/cl/797880",
             "https://go.dev/issue/79005",
             "https://groups.google.com/g/golang-announce/c/OrmQE_Yp5Sc",
             "https://linux.oracle.com/cve/CVE-2026-39822.html",
-            "https://linux.oracle.com/errata/ELSA-2026-38878.html",
+            "https://linux.oracle.com/errata/ELSA-2026-38995.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-39822",
             "https://pkg.go.dev/vuln/GO-2026-4970",
             "https://www.cve.org/CVERecord?id=CVE-2026-39822"
@@ -9041,7 +9086,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-42499"
           ],
           "PublishedDate": "2026-05-07T20:16:44.54Z",
-          "LastModifiedDate": "2026-07-14T12:17:05.91Z"
+          "LastModifiedDate": "2026-07-15T02:21:32.463Z"
         },
         {
           "VulnerabilityID": "CVE-2026-42504",
@@ -9389,13 +9434,15 @@
             }
           },
           "References": [
-            "https://access.redhat.com/errata/RHSA-2026:29981",
+            "https://access.redhat.com/errata/RHSA-2026:29980",
             "https://access.redhat.com/security/cve/CVE-2026-42507",
             "https://bugzilla.redhat.com/2484205",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2484205",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2484207",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-27145",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-42507",
-            "https://errata.almalinux.org/9/ALSA-2026-29981.html",
-            "https://errata.rockylinux.org/RLSA-2026:29980",
+            "https://errata.almalinux.org/10/ALSA-2026-29980.html",
+            "https://errata.rockylinux.org/RLSA-2026:29981",
             "https://go.dev/cl/777060",
             "https://go.dev/issue/79346",
             "https://groups.google.com/g/golang-announce/c/tKs3rmcBcKw",
