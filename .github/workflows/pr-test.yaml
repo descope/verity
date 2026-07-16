@@ -300,12 +300,12 @@ jobs:
                 test "$ready" = true
                 curl -fsS "http://127.0.0.1:$host_port/metrics" \
                   | grep -E "pushgateway_build_info\\{.*version=\"$expected_version\""
-                cat <<'EOF' | curl -fsS --data-binary @- \
-                  "http://127.0.0.1:$host_port/metrics/job/integer_pushgateway_smoke"
-                # HELP integer_pushgateway_smoke Integer Pushgateway smoke metric.
-                # TYPE integer_pushgateway_smoke gauge
-                integer_pushgateway_smoke 7
-                EOF
+                printf '%s\n' \
+                  '# HELP integer_pushgateway_smoke Integer Pushgateway smoke metric.' \
+                  '# TYPE integer_pushgateway_smoke gauge' \
+                  'integer_pushgateway_smoke 7' \
+                  | curl -fsS --data-binary @- \
+                    "http://127.0.0.1:$host_port/metrics/job/integer_pushgateway_smoke"
                 curl -fsS "http://127.0.0.1:$host_port/metrics" \
                   | grep -F 'integer_pushgateway_smoke{instance="",job="integer_pushgateway_smoke"} 7'
                 test "$runtime_user" = 65532

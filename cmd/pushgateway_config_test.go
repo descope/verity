@@ -97,6 +97,7 @@ func Test_Pushgateway_CI_verifies_package_and_image_natively(t *testing.T) {
 	require.Contains(t, text, "--fail-on-severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL")
 	require.Contains(t, text, "/-/ready")
 	require.Contains(t, text, "/metrics/job/integer_pushgateway_smoke")
+	require.Contains(t, text, "printf '%s\\n'")
 	require.Contains(t, text, "prometheus-pushgateway-${expected_full_version}.spdx.json")
 	require.Contains(t, text, "licenseDeclared == \"Apache-2.0\"")
 }
@@ -115,6 +116,7 @@ func Test_Pushgateway_PR_smoke_verifies_runtime_and_provenance_natively(t *testi
 	require.Contains(t, text, "--fail-on-severity \"UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL\"")
 	require.Contains(t, text, "/-/ready")
 	require.Contains(t, text, "/metrics/job/integer_pushgateway_smoke")
+	require.Contains(t, text, "printf '%s\\n'")
 	require.Contains(t, text, "prometheus-pushgateway-${expected_full_version}.spdx.json")
 	require.Contains(t, text, ".spdxVersion == \"SPDX-2.3\"")
 	require.Contains(t, text, "licenseDeclared == \"Apache-2.0\"")
