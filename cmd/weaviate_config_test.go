@@ -101,3 +101,20 @@ func Test_Weaviate_CI_tests_package_natively(t *testing.T) {
 	require.Contains(t, text, "--pipeline-dirs melange-work/pipelines")
 	require.Contains(t, text, "melange-work/specs/weaviate.yaml/build.yaml")
 }
+
+func Test_Weaviate_CI_tests_image_natively(t *testing.T) {
+	// Given: the Integer package workflow used by both architecture runners.
+	workflow, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "integer-build-image.yaml"))
+	require.NoError(t, err)
+	text := string(workflow)
+
+	// When: the Weaviate-family native image gate is inspected.
+
+	// Then: each native runner builds, scans, starts, and validates SPDX for its image.
+	require.Contains(t, text, "Test Weaviate image natively (${{ matrix.arch }})")
+	require.Contains(t, text, "--fail-on-severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL")
+	require.Contains(t, text, "docker run --detach --rm --name")
+	require.Contains(t, text, "/v1/.well-known/ready")
+	require.Contains(t, text, "weaviate-1.38.4-r1.spdx.json")
+	require.Contains(t, text, "licenseDeclared == \"BSD-3-Clause\"")
+}

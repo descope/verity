@@ -192,6 +192,81 @@ jobs:
             melange-work/specs/weaviate.yaml/build.yaml \
             weaviate
 
+      - name: Test Weaviate image natively (${{ matrix.arch }})
+        if: inputs.image == 'weaviate'
+        env:
+          BUILD_ARCH: ${{ matrix.arch }}
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TYPE: ${{ inputs.type }}
+        run: |
+          case "$BUILD_ARCH" in
+            x86_64) IMAGE_ARCH=amd64 ;;
+            aarch64) IMAGE_ARCH=arm64 ;;
+            *) echo "Unsupported Weaviate architecture: $BUILD_ARCH" >&2; exit 1 ;;
+          esac
+
+          image_tar="weaviate-$IMAGE_ARCH.tar"
+          image_ref="integer:local-$IMAGE_ARCH"
+          container="integer-weaviate-$IMAGE_ARCH-proof"
+          sbom="/tmp/weaviate-$IMAGE_ARCH.spdx.json"
+          cleanup() {
+            docker rm --force "$container" >/dev/null 2>&1 || true
+            docker image rm "$image_ref" >/dev/null 2>&1 || true
+            rm -f "$image_tar" "$sbom"
+          }
+          trap cleanup EXIT
+
+          ./verity integer build \
+            --image "$INPUT_IMAGE" \
+            --version "$INPUT_VERSION" \
+            --type "$INPUT_TYPE" \
+            --arch "$IMAGE_ARCH" \
+            --fail-on-severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
+            --output "$image_tar"
+
+          docker load --input "$image_tar"
+          docker run --detach --rm --name "$container" \
+            --publish 127.0.0.1::8080 \
+            --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=true \
+            --env CLUSTER_HOSTNAME="$container" \
+            --env DEFAULT_VECTORIZER_MODULE=none \
+            --env DISABLE_TELEMETRY=true \
+            --env PERSISTENCE_DATA_PATH=/var/lib/weaviate \
+            "$image_ref" --host 0.0.0.0 --port 8080 --scheme http
+
+          host_port=$(docker port "$container" 8080/tcp | awk -F: 'END {print $NF}')
+          test -n "$host_port"
+          ready=false
+          for _ in $(seq 1 90); do
+            if curl -fsS "http://127.0.0.1:$host_port/v1/.well-known/ready" >/dev/null; then
+              ready=true
+              break
+            fi
+            docker inspect --format '{{.State.Running}}' "$container" | grep -Fx true
+            sleep 1
+          done
+          test "$ready" = true
+          curl -fsS "http://127.0.0.1:$host_port/v1/meta" \
+            | jq -e '.version == "1.38.4"'
+          docker exec "$container" /usr/bin/weaviate --help >/dev/null
+          docker image inspect "$image_ref" \
+            --format '{{.Architecture}} {{.Os}} {{.Config.User}}' \
+            | grep -Fx "$IMAGE_ARCH linux 65532"
+
+          docker cp \
+            "$container:/var/lib/db/sbom/weaviate-1.38.4-r1.spdx.json" \
+            "$sbom"
+          jq -e '
+            .spdxVersion == "SPDX-2.3"
+            and any(
+              .packages[];
+              .name == "weaviate"
+              and .versionInfo == "1.38.4-r1"
+              and .licenseDeclared == "BSD-3-Clause"
+            )
+          ' "$sbom"
+
       - name: Upload arch packages
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
