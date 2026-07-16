@@ -97,12 +97,29 @@ func Test_Rclone_CI_tests_package_and_image_natively(t *testing.T) {
 	require.Contains(t, text, "if: inputs.image == 'rclone'")
 	require.Contains(t, text, "test-rclone-package.sh")
 	require.Contains(t, text, "--fail-on-severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL")
-	require.Contains(t, text, "^rclone v?1.74.4$")
+	require.Contains(t, text, "^rclone v?${rclone_version}$")
 	require.Contains(t, text, "copy /work/source /work/destination")
 	require.Contains(t, text, "check --checksum /work/source /work/destination")
 	require.Contains(t, text, "sha256sum --check")
-	require.Contains(t, text, "rclone-1.74.4-r0.spdx.json")
+	require.Contains(t, text, "rclone-${rclone_full_version}.spdx.json")
 	require.Contains(t, text, "licenseDeclared == \"MIT\"")
+}
+
+func Test_Rclone_native_image_proof_derives_package_version(t *testing.T) {
+	// Given: the native image proof maintained alongside the package recipe.
+	workflow, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "integer-build-image.yaml"))
+	require.NoError(t, err)
+	text := string(workflow)
+
+	// When: routine package version or epoch bumps change the generated SBOM name.
+
+	// Then: runtime and SPDX assertions follow the built recipe instead of a stale literal.
+	require.Contains(t, text, "rclone_version=$(yq -r '.package.version'")
+	require.Contains(t, text, "rclone_full_version=$(yq -r '.package.version + \"-r\"")
+	require.Contains(t, text, "--arg full_version \"$rclone_full_version\"")
+	require.Contains(t, text, ".versionInfo == $full_version")
+	require.NotContains(t, text, "rclone-1.74.4-r0.spdx.json")
+	require.NotContains(t, text, ".versionInfo == \"1.74.4-r0\"")
 }
 
 func Test_Rclone_PR_smoke_tests_runtime_copy_checksum_and_provenance_natively(t *testing.T) {

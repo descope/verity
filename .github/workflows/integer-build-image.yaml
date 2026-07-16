@@ -196,6 +196,11 @@ jobs:
             *) echo "Unsupported rclone architecture: $BUILD_ARCH" >&2; exit 1 ;;
           esac
 
+          rclone_version=$(yq -r '.package.version' \
+            melange-work/specs/rclone.yaml/build.yaml)
+          rclone_full_version=$(yq -r '.package.version + "-r" + (.package.epoch | tostring)' \
+            melange-work/specs/rclone.yaml/build.yaml)
+
           image_tar="rclone-$IMAGE_ARCH.tar"
           image_ref="integer:local-$IMAGE_ARCH"
           container="integer-rclone-$IMAGE_ARCH-proof"
@@ -218,7 +223,7 @@ jobs:
 
           docker load --input "$image_tar"
           docker run --rm "$image_ref" --version \
-            | grep -E '^rclone v?1.74.4$'
+            | grep -E "^rclone v?${rclone_version}$"
 
           mkdir -p "$smoke/source" "$smoke/destination"
           chmod 0755 "$smoke" "$smoke/source"
@@ -243,14 +248,14 @@ jobs:
             | grep -Fx "$IMAGE_ARCH linux"
           docker create --name "$container" "$image_ref" --version >/dev/null
           docker cp \
-            "$container:/var/lib/db/sbom/rclone-1.74.4-r0.spdx.json" \
+            "$container:/var/lib/db/sbom/rclone-${rclone_full_version}.spdx.json" \
             "$sbom"
-          jq -e '
+          jq -e --arg full_version "$rclone_full_version" '
             .spdxVersion == "SPDX-2.3"
             and any(
               .packages[];
               .name == "rclone"
-              and .versionInfo == "1.74.4-r0"
+              and .versionInfo == $full_version
               and .licenseDeclared == "MIT"
             )
           ' "$sbom"
