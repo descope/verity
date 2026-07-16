@@ -61,6 +61,19 @@ def main() -> None:
         "Every Integer image path must retain strict Trivy exit-code enforcement for every severity",
     )
     require(
+        workflow.count("name: Cache Trivy database") == 2
+        and workflow.count("path: ~/.cache/trivy") == 2
+        and workflow.count(
+            "key: trivy-db-${{ steps.trivy-cache-key.outputs.version }}-${{ steps.trivy-cache-key.outputs.date }}"
+        )
+        == 2
+        and workflow.count(
+            "restore-keys: trivy-db-${{ steps.trivy-cache-key.outputs.version }}-"
+        )
+        == 2,
+        "Integer build and smoke jobs must cache the Trivy database by pinned version and UTC date",
+    )
+    require(
         "--exit-code 0" not in workflow
         and workflow.count("--exit-code 1") >= 3,
         "Integer Trivy scans must fail closed and never run report-only",
@@ -71,6 +84,17 @@ def main() -> None:
         and "for arch in amd64 arm64; do" in workflow
         and "missing successful Integer ${kind} security leg" in workflow,
         "The required aggregate must reject any absent, skipped, cancelled, or failed architecture leg",
+    )
+    require(
+        'smoke_count=$(integer_matrix_entry_count "$EXPECTED_INTEGER_SMOKE_MATRIX" smoke)'
+        in workflow
+        and "needs.detect-changed-images.outputs.smoke-has-changes == 'true'"
+        in workflow
+        and 'require_result "integer-smoke-test" "$INTEGER_SMOKE_RESULT" skipped'
+        in workflow
+        and "expected Integer build matrix must not be empty when changes are present"
+        in workflow,
+        "The required aggregate must distinguish empty smoke-only coverage from mandatory strict builds",
     )
     require(
         '[ "$image" = linkerd ] && [ "$version" = 25 ] && [ "$type" = default ]' in workflow

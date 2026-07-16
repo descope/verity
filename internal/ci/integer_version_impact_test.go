@@ -31,7 +31,7 @@ func TestSelectIntegerPRImagesSharedDefinitionChangeRemainsFamilyWideWithScopedI
 
 	// Then: the shared definition change still fans out, regardless of the narrower recipe impact.
 	require.Equal(t, []string{"18"}, imageVersions(builds))
-	require.Equal(t, []string{"12", "13", "14", "15", "16", "17", "18"}, imageVersions(smokes))
+	require.Equal(t, []string{"12", "13", "14", "15", "16", "17"}, imageVersions(smokes))
 }
 
 func TestPlanIntegerPRSharedDefinitionChangeRemainsFamilyWideWithScopedRecipes(t *testing.T) {
@@ -45,20 +45,22 @@ func TestPlanIntegerPRSharedDefinitionChangeRemainsFamilyWideWithScopedRecipes(t
 	// When: planning through semantic base-versus-head definition impact.
 	plan, err := PlanIntegerPR(opts)
 
-	// Then: the shared definition edit keeps family-wide smoke and latest-build behavior.
+	// Then: the shared definition edit keeps family-wide coverage, with the
+	// latest strict build removed from the smoke-only matrix.
 	require.NoError(t, err)
 	require.Equal(t, []string{"18"}, matrixVersions(plan.Matrix))
-	require.Equal(t, []string{"12", "13", "14", "15", "16", "17", "18"}, matrixVersions(*plan.SmokeMatrix))
+	require.Equal(t, []string{"12", "13", "14", "15", "16", "17"}, matrixVersions(*plan.SmokeMatrix))
 }
 
-func TestPlanIntegerPRVersionScopedChangesSelectExactPackageBuildAndSmokeConsumers(t *testing.T) {
+func TestPlanIntegerPRVersionScopedChangesSelectExactStrictBuildConsumers(t *testing.T) {
 	// Given: versions 14 and 15 gain scoped recipes while discovery also finds stale 12/13 and latest 18.
 	opts := versionScopedPostgresPlanOptions(t)
 
 	// When: the definition and both scoped recipes change together.
 	plan, err := PlanIntegerPR(opts)
 
-	// Then: package, image build, and smoke gates receive exactly the changed consumers.
+	// Then: the strict matrix receives exactly the changed consumers and the
+	// smoke-only matrix does not duplicate them.
 	require.NoError(t, err)
 	require.True(t, plan.HasChanges)
 	want := []map[string]string{
@@ -66,7 +68,7 @@ func TestPlanIntegerPRVersionScopedChangesSelectExactPackageBuildAndSmokeConsume
 		{"image": "scoped-postgres", "version": "15", "type": "default"},
 	}
 	assert.Equal(t, want, plan.Matrix.Include)
-	assert.Equal(t, want, plan.SmokeMatrix.Include)
+	assert.Empty(t, plan.SmokeMatrix.Include)
 }
 
 func TestPlanIntegerPRVersionScopedChangesDoNotSubstituteUnrelatedVersions(t *testing.T) {

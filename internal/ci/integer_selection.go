@@ -38,6 +38,9 @@ func selectIntegerPRImages(imgs []intdiscovery.DiscoveredImage, changedImages ma
 	for _, img := range latest {
 		buildSet[variantForImage(&img)] = img
 	}
+	for variant := range buildSet {
+		delete(smokeSet, variant)
+	}
 	return sortedIntegerImages(buildSet), sortedIntegerImages(smokeSet)
 }
 

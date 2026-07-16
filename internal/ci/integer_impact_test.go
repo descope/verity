@@ -48,12 +48,12 @@ func TestPlanIntegerPRPinningToolingSelectsConstrainedMelangeCanary(t *testing.T
 			require.True(t, plan.HasChanges)
 			expected := []map[string]string{{"image": "linkerd", "version": "25", "type": "default"}}
 			assert.Equal(t, expected, plan.Matrix.Include)
-			assert.Equal(t, expected, plan.SmokeMatrix.Include)
+			assert.Empty(t, plan.SmokeMatrix.Include)
 		})
 	}
 }
 
-func TestPlanIntegerPRMelangeChangesBuildAndSmokeEveryConsumer(t *testing.T) {
+func TestPlanIntegerPRMelangeChangesBuildEveryConsumerAndSmokeOnlyNonBuildVariants(t *testing.T) {
 	root := setupIntegerPlanRepo(t)
 
 	tests := map[string]struct {
@@ -64,11 +64,11 @@ func TestPlanIntegerPRMelangeChangesBuildAndSmokeEveryConsumer(t *testing.T) {
 		builds       int
 		smokes       int
 	}{
-		"locked recipe":  {"packages/bespoke/locked/caddy.yaml", "caddy", "fips", "2", 1, 2},
-		"locked sidecar": {"packages/bespoke/locked/caddy/Caddyfile", "caddy", "fips", "2", 1, 2},
-		"override":       {"packages/overrides/fips.env", "caddy", "fips", "2", 1, 2},
-		"pipeline":       {"packages/pipelines/go/bump.yaml", "caddy", "fips", "2", 1, 2},
-		"other pipeline": {"packages/pipelines/test/ver-check.yaml", "cilium", "default", "1.19", 1, 1},
+		"locked recipe":  {"packages/bespoke/locked/caddy.yaml", "caddy", "fips", "2", 1, 1},
+		"locked sidecar": {"packages/bespoke/locked/caddy/Caddyfile", "caddy", "fips", "2", 1, 1},
+		"override":       {"packages/overrides/fips.env", "caddy", "fips", "2", 1, 1},
+		"pipeline":       {"packages/pipelines/go/bump.yaml", "caddy", "fips", "2", 1, 1},
+		"other pipeline": {"packages/pipelines/test/ver-check.yaml", "cilium", "default", "1.19", 1, 0},
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -116,7 +116,7 @@ versions:
 	require.NoError(t, err)
 	require.True(t, plan.HasChanges)
 	assert.Equal(t, []map[string]string{{"image": "renamed-image", "version": "latest", "type": "default"}}, plan.Matrix.Include)
-	assert.Equal(t, plan.Matrix.Include, plan.SmokeMatrix.Include)
+	assert.Empty(t, plan.SmokeMatrix.Include)
 }
 
 func TestPlanIntegerPRRecipeImpactSelectsOnlyVersionScopedConsumers(t *testing.T) {
@@ -143,12 +143,13 @@ versions:
 	// When: the scoped recipe changes.
 	plan, err := PlanIntegerPR(integerPlanOptions(root, "packages/bespoke/scoped-postgres-14.yaml"))
 
-	// Then: only the configured version is rebuilt and smoke-tested.
+	// Then: only the configured version receives strict coverage, without a
+	// duplicate smoke entry.
 	require.NoError(t, err)
 	require.True(t, plan.HasChanges)
 	want := []map[string]string{{"image": "scoped-postgres", "version": "14", "type": "default"}}
 	assert.Equal(t, want, plan.Matrix.Include)
-	assert.Equal(t, want, plan.SmokeMatrix.Include)
+	assert.Empty(t, plan.SmokeMatrix.Include)
 }
 
 func TestPlanIntegerPRChangedDefinitionUsesDiscoveredName(t *testing.T) {
@@ -174,7 +175,7 @@ versions:
 	require.NoError(t, err)
 	require.True(t, plan.HasChanges)
 	assert.Equal(t, []map[string]string{{"image": "renamed-image", "version": "latest", "type": "default"}}, plan.Matrix.Include)
-	assert.Equal(t, plan.Matrix.Include, plan.SmokeMatrix.Include)
+	assert.Empty(t, plan.SmokeMatrix.Include)
 }
 
 func TestPlanIntegerPRUnusedPipelineDoesNotSelectImages(t *testing.T) {
@@ -209,7 +210,7 @@ func TestPlanIntegerPRLockDiffSelectsOnlyChangedPackageConsumer(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, plan.HasChanges)
 	assert.Equal(t, []map[string]string{{"image": "cilium", "version": "1.19", "type": "default"}}, plan.Matrix.Include)
-	assert.Equal(t, plan.Matrix.Include, plan.SmokeMatrix.Include)
+	assert.Empty(t, plan.SmokeMatrix.Include)
 }
 
 func TestPlanIntegerPRLockChangeRequiresBaseForImpactDiff(t *testing.T) {
@@ -228,7 +229,10 @@ func TestPlanIntegerPRChangedImageAndPinningToolingIncludesCanary(t *testing.T) 
 		{"image": "node", "version": "22", "type": "default"},
 		{"image": "node", "version": "22", "type": "dev"},
 	}, plan.Matrix.Include)
-	assert.Len(t, plan.SmokeMatrix.Include, 5)
+	assert.ElementsMatch(t, []map[string]string{
+		{"image": "node", "version": "20", "type": "default"},
+		{"image": "node", "version": "20", "type": "dev"},
+	}, plan.SmokeMatrix.Include)
 }
 
 func TestPlanIntegerPRDirectBespokeRecipeSelectsConsumer(t *testing.T) {
@@ -253,7 +257,7 @@ versions:
 	require.NoError(t, err)
 	require.True(t, plan.HasChanges)
 	assert.Equal(t, []map[string]string{{"image": "custom", "version": "latest", "type": "default"}}, plan.Matrix.Include)
-	assert.Equal(t, plan.Matrix.Include, plan.SmokeMatrix.Include)
+	assert.Empty(t, plan.SmokeMatrix.Include)
 }
 
 func integerPlanOptions(root string, changed ...string) *IntegerPROptions {
