@@ -1,0 +1,132 @@
+package:
+  name: tempo-2.10
+  # renovate: datasource=github-releases depName=grafana/tempo versioning=semver-coerced
+  version: "2.10.7"
+  # Revision r3 carries the current Go toolchain and post-release OpenTelemetry security fix.
+  epoch: 3
+  description: Grafana Tempo distributed tracing backend
+  copyright:
+    - license: AGPL-3.0-only AND Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+    provides:
+      - tempo=${{package.full-version}}
+  resources:
+    cpu: "6"
+    memory: 12Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  # Adapted from wolfi-dev/os@1e46ec097ff71bd5eccd13fa97a014f530eeec42.
+  - uses: fetch
+    with:
+      uri: https://github.com/grafana/tempo/archive/8100f5a7b8f0986edf1fcd2ff6552d174b25ec18.tar.gz
+      expected-sha256: 9ad4c9c6e73b67ae32e00f282dc14d81f1b1eb9b49607c58803e3d663fe1e527
+
+  - uses: go/bump
+    with:
+      deps: |
+        go.opentelemetry.io/otel@v1.44.0
+        go.opentelemetry.io/otel/metric@v1.44.0
+        go.opentelemetry.io/otel/sdk@v1.44.0
+        go.opentelemetry.io/otel/trace@v1.44.0
+
+  - runs: |
+      grep -F "github.com/prometheus/prometheus v0.311.3" go.mod
+      grep -F "go.opentelemetry.io/otel v1.44.0" go.mod
+      go version
+
+  - uses: go/build
+    with:
+      go-package: go-1.26
+      packages: ./cmd/tempo
+      output: tempo
+      ldflags: |
+        -X main.Version=${{package.version}}
+        -X main.Revision=8100f5a7b8f0986edf1fcd2ff6552d174b25ec18
+        -X main.Branch=v${{package.version}}
+        -X github.com/prometheus/common/version.BuildUser=verity
+        -X github.com/prometheus/common/version.BuildDate=2026-06-12T16:10:34Z
+
+  - runs: |
+      "${{targets.destdir}}/usr/bin/tempo" --version \
+        | grep -F "${{package.version}}"
+      "${{targets.destdir}}/usr/bin/tempo" --help >/dev/null
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+      install -Dm644 LICENSING.md \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSING.md"
+      install -Dm644 operations/LICENSE_APACHE2 \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE_APACHE2"
+
+test:
+  environment:
+    contents:
+      packages:
+        - apk-tools
+        - busybox
+  pipeline:
+    - runs: |
+        tempo --version | grep -F "${{package.version}}"
+        tempo --help >/dev/null
+        apk info --who-owns /usr/bin/tempo \
+          | grep -F "${{package.name}}-${{package.full-version}}"
+        apk info --license "${{package.name}}" \
+          | grep -F "AGPL-3.0-only AND Apache-2.0"
+        grep -F "GNU AFFERO GENERAL PUBLIC LICENSE" \
+          "/usr/share/licenses/${{package.name}}/LICENSE"
+        grep -F "The default license for this project is [AGPL-3.0-only]" \
+          "/usr/share/licenses/${{package.name}}/LICENSING.md"
+        grep -F "Apache License" \
+          "/usr/share/licenses/${{package.name}}/LICENSE_APACHE2"
+
+        cat >tempo.yaml <<'EOF'
+        auth_enabled: false
+        server:
+          http_listen_address: 127.0.0.1
+          http_listen_port: 3200
+        distributor:
+          receivers:
+            jaeger:
+              protocols:
+                thrift_compact:
+        storage:
+          trace:
+            backend: local
+            local:
+              path: /tmp/tempo/traces
+        EOF
+
+        tempo start -config.file=tempo.yaml >/tmp/tempo.log 2>&1 &
+        pid=$!
+        trap 'kill "$pid" 2>/dev/null || true' EXIT
+        for attempt in $(seq 1 200); do
+          if wget -q -O- http://127.0.0.1:3200/ready \
+            | grep -Fq ready; then
+            break
+          fi
+          sleep 0.1
+        done
+        wget -q -O- http://127.0.0.1:3200/ready | grep -Fq ready
+        kill -TERM "$pid"
+        wait "$pid"
+        trap - EXIT
+
+update:
+  enabled: true
+  github:
+    identifier: grafana/tempo
+    strip-prefix: v
+    tag-filter-prefix: v2.10.
