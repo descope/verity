@@ -1,0 +1,73 @@
+package:
+  name: kube-vip
+  # renovate: datasource=github-tags depName=kube-vip/kube-vip versioning=semver-coerced
+  version: "1.2.1"
+  # Direct revision r2 includes the fixes published through r2.
+  epoch: 2
+  description: Kubernetes Control Plane Virtual IP and Load-Balancer
+  copyright:
+    - license: Apache-2.0
+  resources:
+    cpu: "2"
+    memory: 6Gi
+  test-resources:
+    cpu: "1"
+    memory: 1Gi
+
+environment:
+  contents:
+    packages:
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  # Adapted from wolfi-dev/os@05cef2f5b5b59f8a0352fb018248c65bcc3fc2e2.
+  # v1.2.1 resolves to 4708b07343dd9209f9b56cfa52dc53a85d8d3166.
+  - uses: fetch
+    with:
+      uri: https://github.com/kube-vip/kube-vip/archive/4708b07343dd9209f9b56cfa52dc53a85d8d3166.tar.gz
+      expected-sha256: ee1a91145d44b831b8f0248d67a92eac2b49cc75b5836bcdb8403a3842fe6466
+
+  - uses: go/build
+    with:
+      packages: .
+      output: kube-vip
+      go-package: go-1.26
+      ldflags: |-
+        -X=main.Version=${{package.version}}
+        -X=main.Build=4708b07343dd9209f9b56cfa52dc53a85d8d3166
+
+  - runs: |
+      "${{targets.destdir}}/usr/bin/kube-vip" version \
+        | grep -F "Version:  ${{package.version}}"
+      "${{targets.destdir}}/usr/bin/kube-vip" version \
+        | grep -F "Build:    4708b07343dd9209f9b56cfa52dc53a85d8d3166"
+      "${{targets.destdir}}/usr/bin/kube-vip" --help >/dev/null
+      install -Dm644 LICENSE \
+        "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
+
+test:
+  pipeline:
+    - runs: |
+        kube-vip version | grep -F "Version:  ${{package.version}}"
+        kube-vip version \
+          | grep -F "Build:    4708b07343dd9209f9b56cfa52dc53a85d8d3166"
+        kube-vip --help >/dev/null
+        kube-vip manifest pod \
+          --interface eth0 \
+          --vip 192.0.2.1 \
+          --arp \
+          | grep -F "kube-vip"
+        apk info --who-owns /usr/bin/kube-vip \
+          | grep -F "${{package.name}}-${{package.full-version}}"
+        apk info --license kube-vip | grep -F "Apache-2.0"
+        grep -F "Apache License" \
+          "/usr/share/licenses/${{package.name}}/LICENSE"
+
+update:
+  enabled: true
+  github:
+    identifier: kube-vip/kube-vip
+    strip-prefix: v
+    tag-filter: v
