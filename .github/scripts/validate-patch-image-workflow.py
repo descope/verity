@@ -221,10 +221,9 @@ def main() -> None:
         "missing metrics artifacts must fail finalization",
     )
     require(
-        "group: metrics-archive-_metrics" in metrics_uncommented
-        and "cancel-in-progress: false" in metrics_uncommented
+        "concurrency:" not in metrics_uncommented
         and "bash .github/scripts/archive-metrics.sh" in metrics_uncommented,
-        "metrics finalization must serialize one archive writer and use fresh-fetch retries",
+        "metrics finalization must not replace pending writers and must use fresh-fetch retries",
     )
     failure_metrics = job_body(uncommented, "metrics-on-failure")
     finalize_upload = named_step_body(finalize, "Upload metrics artifact")
