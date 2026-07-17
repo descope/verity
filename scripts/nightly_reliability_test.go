@@ -1,6 +1,8 @@
 package scripts_test
 
 import (
+	"bufio"
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,14 +14,14 @@ import (
 )
 
 func TestArchiveMetricsRetriesFromFreshRemoteWhenAnotherWriterAdvancesBranch(t *testing.T) {
-	// Given: an archive clone and a competing writer sharing a bare remote.
+	// Given: two archive producers sharing a bare remote.
 	realGit, err := exec.LookPath("git")
 	require.NoError(t, err)
 	tmp := t.TempDir()
 	remote := filepath.Join(tmp, "remote.git")
 	seed := filepath.Join(tmp, "seed")
-	archive := filepath.Join(tmp, "archive")
-	competitor := filepath.Join(tmp, "competitor")
+	archiveAlpha := filepath.Join(tmp, "archive-alpha")
+	archiveBeta := filepath.Join(tmp, "archive-beta")
 
 	runGit(t, realGit, "", "init", "--bare", remote)
 	runGit(t, realGit, "", "init", "-b", "main", seed)
@@ -35,57 +37,94 @@ func TestArchiveMetricsRetriesFromFreshRemoteWhenAnotherWriterAdvancesBranch(t *
 	runGit(t, realGit, seed, "add", "_metrics")
 	runGit(t, realGit, seed, "commit", "-m", "seed metrics")
 	runGit(t, realGit, seed, "push", "origin", "_metrics")
-	runGit(t, realGit, "", "clone", "--branch", "main", remote, archive)
-	runGit(t, realGit, "", "clone", "--branch", "_metrics", remote, competitor)
-	configureGit(t, realGit, archive)
-	configureGit(t, realGit, competitor)
+	runGit(t, realGit, "", "clone", "--branch", "main", remote, archiveAlpha)
+	runGit(t, realGit, "", "clone", "--branch", "main", remote, archiveBeta)
+	configureGit(t, realGit, archiveAlpha)
+	configureGit(t, realGit, archiveBeta)
 
-	downloaded := filepath.Join(tmp, "downloaded")
-	writeFile(t, filepath.Join(downloaded, "metrics-alpha.json"), `{"image":"alpha"}`+"\n")
+	downloadedAlpha := filepath.Join(tmp, "downloaded-alpha")
+	downloadedBeta := filepath.Join(tmp, "downloaded-beta")
+	writeFile(t, filepath.Join(downloadedAlpha, "metrics-alpha.json"), `{"image":"alpha"}`+"\n")
+	writeFile(t, filepath.Join(downloadedBeta, "metrics-beta.json"), `{"image":"beta"}`+"\n")
 	wrapperDir := filepath.Join(tmp, "bin")
 	require.NoError(t, os.MkdirAll(wrapperDir, 0o755))
-	marker := filepath.Join(tmp, "advanced")
+	readyFIFO := filepath.Join(tmp, "alpha-push-ready")
+	releaseFIFO := filepath.Join(tmp, "release-alpha-push")
+	mkfifo, err := exec.LookPath("mkfifo")
+	require.NoError(t, err)
+	for _, fifo := range []string{readyFIFO, releaseFIFO} {
+		cmd := exec.CommandContext(t.Context(), mkfifo, fifo)
+		output, commandErr := cmd.CombinedOutput()
+		require.NoError(t, commandErr, string(output))
+	}
+	ready, err := os.OpenFile(readyFIFO, os.O_RDWR, 0)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, ready.Close()) })
+	release, err := os.OpenFile(releaseFIFO, os.O_RDWR, 0)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, release.Close()) })
+
+	barrierUsed := filepath.Join(tmp, "barrier-used")
 	wrapper := `#!/usr/bin/env bash
 set -euo pipefail
-if [ "${1:-}" = "push" ] && [ ! -e "$ADVANCE_MARKER" ]; then
-  touch "$ADVANCE_MARKER"
-  "$REAL_GIT" -C "$COMPETITOR" fetch origin _metrics
-  "$REAL_GIT" -C "$COMPETITOR" switch -C _metrics origin/_metrics
-  mkdir -p "$COMPETITOR/_metrics/runs/2026-07-17/competing"
-  printf '{"image":"competing"}\n' > "$COMPETITOR/_metrics/runs/2026-07-17/competing/competing.json"
-  "$REAL_GIT" -C "$COMPETITOR" add _metrics
-  "$REAL_GIT" -C "$COMPETITOR" commit -m 'competing metrics'
-  "$REAL_GIT" -C "$COMPETITOR" push origin HEAD:refs/heads/_metrics
+if [ "${1:-}" = "push" ] && [ ! -e "$BARRIER_USED" ]; then
+  touch "$BARRIER_USED"
+  printf 'ready\n' > "$READY_FIFO"
+  IFS= read -r _ < "$RELEASE_FIFO"
 fi
 exec "$REAL_GIT" "$@"
 `
 	writeExecutable(t, filepath.Join(wrapperDir, "git"), wrapper)
 
-	// When: the archival writer's first push races with the competing commit.
+	// When: alpha reaches push first, beta advances the branch, then alpha retries.
 	archiveScript, err := filepath.Abs(filepath.Join("..", ".github", "scripts", "archive-metrics.sh"))
 	require.NoError(t, err)
-	cmd := exec.CommandContext(t.Context(), "bash", archiveScript, downloaded, "123", "1", "2026-07-17T06:00:00Z")
-	cmd.Dir = archive
-	cmd.Env = append(
+	alpha := exec.CommandContext(t.Context(), "bash", archiveScript, downloadedAlpha, "123", "1", "2026-07-17T06:00:00Z")
+	alpha.Dir = archiveAlpha
+	alpha.Env = append(
 		os.Environ(),
 		"PATH="+wrapperDir+":"+os.Getenv("PATH"),
 		"REAL_GIT="+realGit,
-		"COMPETITOR="+competitor,
-		"ADVANCE_MARKER="+marker,
+		"READY_FIFO="+readyFIFO,
+		"RELEASE_FIFO="+releaseFIFO,
+		"BARRIER_USED="+barrierUsed,
 		"METRICS_ARCHIVE_ATTEMPTS=3",
 		"METRICS_ARCHIVE_RETRY_DELAY_SECONDS=0",
+		"METRICS_ARCHIVE_RETRY_JITTER_SECONDS=0",
 	)
-	output, err := cmd.CombinedOutput()
-	require.NoError(t, err, string(output))
+	var alphaOutput bytes.Buffer
+	alpha.Stdout = &alphaOutput
+	alpha.Stderr = &alphaOutput
+	require.NoError(t, alpha.Start())
+	readySignal, err := bufio.NewReader(ready).ReadString('\n')
+	require.NoError(t, err)
+	require.Equal(t, "ready\n", readySignal)
 
-	// Then: retry two preserves both writers and never creates local `_metrics`.
+	beta := exec.CommandContext(t.Context(), "bash", archiveScript, downloadedBeta, "456", "1", "2026-07-17T06:01:00Z")
+	beta.Dir = archiveBeta
+	beta.Env = append(
+		os.Environ(),
+		"METRICS_ARCHIVE_ATTEMPTS=3",
+		"METRICS_ARCHIVE_RETRY_DELAY_SECONDS=0",
+		"METRICS_ARCHIVE_RETRY_JITTER_SECONDS=0",
+	)
+	betaOutput, err := beta.CombinedOutput()
+	require.NoError(t, err, string(betaOutput))
+	_, err = release.WriteString("release\n")
+	require.NoError(t, err)
+	require.NoError(t, alpha.Wait(), alphaOutput.String())
+
+	// Then: both real producers survive and neither creates a local `_metrics` branch.
 	verify := filepath.Join(tmp, "verify")
 	runGit(t, realGit, "", "clone", "--branch", "_metrics", remote, verify)
-	assert.FileExists(t, filepath.Join(verify, "_metrics", "runs", "2026-07-17", "competing", "competing.json"))
 	assert.FileExists(t, filepath.Join(verify, "_metrics", "runs", "2026-07-17", "123-attempt-1", "alpha.json"))
-	branches := runGit(t, realGit, archive, "branch", "--list", "_metrics")
-	assert.Empty(t, strings.TrimSpace(branches))
-	assert.Contains(t, string(output), "Pushed on attempt 2")
+	assert.FileExists(t, filepath.Join(verify, "_metrics", "runs", "2026-07-17", "456-attempt-1", "beta.json"))
+	for _, archive := range []string{archiveAlpha, archiveBeta} {
+		branches := runGit(t, realGit, archive, "branch", "--list", "_metrics")
+		assert.Empty(t, strings.TrimSpace(branches))
+	}
+	assert.Contains(t, alphaOutput.String(), "Pushed on attempt 2")
+	assert.Contains(t, string(betaOutput), "Pushed on attempt 1")
 }
 
 func TestAggregateIntegerResultsNamesFailedAndMissingMatrixEntries(t *testing.T) {

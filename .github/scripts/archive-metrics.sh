@@ -10,14 +10,18 @@ metrics_dir=$1
 run_id=$2
 run_attempt=$3
 run_created_at=$4
-attempts=${METRICS_ARCHIVE_ATTEMPTS:-5}
-retry_delay=${METRICS_ARCHIVE_RETRY_DELAY_SECONDS:-2}
+attempts=${METRICS_ARCHIVE_ATTEMPTS:-256}
+retry_delay=${METRICS_ARCHIVE_RETRY_DELAY_SECONDS:-1}
+retry_jitter=${METRICS_ARCHIVE_RETRY_JITTER_SECONDS:-3}
 
 case "$attempts" in
   ''|*[!0-9]*|0*) echo "METRICS_ARCHIVE_ATTEMPTS must be a positive integer" >&2; exit 2 ;;
 esac
 case "$retry_delay" in
   ''|*[!0-9]*) echo "METRICS_ARCHIVE_RETRY_DELAY_SECONDS must be a non-negative integer" >&2; exit 2 ;;
+esac
+case "$retry_jitter" in
+  ''|*[!0-9]*) echo "METRICS_ARCHIVE_RETRY_JITTER_SECONDS must be a non-negative integer" >&2; exit 2 ;;
 esac
 
 date=$(date -u -d "$run_created_at" +%Y-%m-%d)
@@ -85,5 +89,9 @@ for attempt in $(seq 1 "$attempts"); do
 
   echo "::warning::Push failed; refetching origin/_metrics before retry"
   echo "::endgroup::"
-  sleep "$retry_delay"
+  delay=$retry_delay
+  if [ "$retry_jitter" -gt 0 ]; then
+    delay=$((retry_delay + RANDOM % (retry_jitter + 1)))
+  fi
+  sleep "$delay"
 done
