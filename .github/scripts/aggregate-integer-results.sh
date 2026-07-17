@@ -13,7 +13,7 @@ repository=$4
 run_id=$5
 run_url="https://github.com/${repository}/actions/runs/${run_id}"
 
-if [ "$child_result" = "success" ] || [ "$child_result" = "skipped" ]; then
+if [ "$child_result" = "success" ]; then
   echo "All dispatched Integer child builds succeeded."
   exit 0
 fi
@@ -21,6 +21,12 @@ fi
 if ! jq -e 'type == "array" and all(.[]; (.name | type == "string") and (.version | type == "string") and (.type | type == "string"))' "$expected_json" >/dev/null; then
   echo "Invalid or missing Integer build plan; inspect ${run_url}" >&2
   exit 1
+fi
+
+expected_count=$(jq 'length' "$expected_json")
+if [ "$child_result" = "skipped" ] && [ "$expected_count" -eq 0 ]; then
+  echo "No Integer child builds were dispatched."
+  exit 0
 fi
 
 reports=$(mktemp)
@@ -32,7 +38,6 @@ else
   jq -s '.' "${report_files[@]}" > "$reports"
 fi
 
-expected_count=$(jq 'length' "$expected_json")
 missing_stage="matrix-dispatch-or-report"
 if [ "$expected_count" -gt 256 ] && [ "${#report_files[@]}" -eq 0 ]; then
   missing_stage="matrix-expansion-limit"

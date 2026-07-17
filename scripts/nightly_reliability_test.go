@@ -118,6 +118,41 @@ func TestAggregateIntegerResultsNamesFailedAndMissingMatrixEntries(t *testing.T)
 	assert.Contains(t, text, "https://github.com/verity-org/verity/actions/runs/42")
 }
 
+func TestAggregateIntegerResultsFailsClosedWhenNonEmptyPlanIsSkipped(t *testing.T) {
+	// Given: a planned matrix entry whose reusable workflow was skipped.
+	tmp := t.TempDir()
+	expected := filepath.Join(tmp, "expected.json")
+	results := filepath.Join(tmp, "results")
+	writeFile(t, expected, `[{"name":"alpha","version":"1.2.3","type":"default"}]`+"\n")
+	require.NoError(t, os.MkdirAll(results, 0o755))
+
+	// When: aggregation receives the skipped matrix result.
+	cmd := exec.CommandContext(t.Context(), "bash", filepath.Join("..", ".github", "scripts", "aggregate-integer-results.sh"), expected, results, "skipped", "verity-org/verity", "42")
+	output, err := cmd.CombinedOutput()
+
+	// Then: the undispatched entry is reported instead of accepted as success.
+	require.Error(t, err)
+	assert.Contains(t, string(output), "alpha:1.2.3-default")
+	assert.Contains(t, string(output), "stage=matrix-dispatch-or-report")
+}
+
+func TestAggregateIntegerResultsAcceptsSkippedEmptyPlan(t *testing.T) {
+	// Given: discovery intentionally produced no Integer matrix entries.
+	tmp := t.TempDir()
+	expected := filepath.Join(tmp, "expected.json")
+	results := filepath.Join(tmp, "results")
+	writeFile(t, expected, "[]\n")
+	require.NoError(t, os.MkdirAll(results, 0o755))
+
+	// When: the empty matrix is reported as skipped.
+	cmd := exec.CommandContext(t.Context(), "bash", filepath.Join("..", ".github", "scripts", "aggregate-integer-results.sh"), expected, results, "skipped", "verity-org/verity", "42")
+	output, err := cmd.CombinedOutput()
+
+	// Then: the intentional no-op remains successful.
+	require.NoError(t, err, string(output))
+	assert.Contains(t, string(output), "No Integer child builds were dispatched.")
+}
+
 func configureGit(t *testing.T, gitPath, dir string) {
 	t.Helper()
 	runGit(t, gitPath, dir, "config", "user.name", "test")
