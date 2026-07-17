@@ -68,6 +68,7 @@ def main() -> None:
     self_test()
     orchestrator = uncomment(".github/workflows/orchestrator.yaml")
     integer_orchestrator = uncomment(".github/workflows/integer-orchestrator.yaml")
+    integer_shard = uncomment(".github/workflows/integer-build-shard.yaml")
     chart_gen = uncomment(".github/workflows/chart-gen.yaml")
     build_site = uncomment(".github/workflows/build-site.yaml")
     chart_integration = uncomment(".github/workflows/chart-integration.yaml")
@@ -85,14 +86,22 @@ def main() -> None:
     require(
         "nightly plan" in integer_orchestrator
         and "--family integer" in integer_orchestrator
-        and "uses: ./.github/workflows/integer-build-image.yaml" in integer_orchestrator
-        and "fromJSON(needs.discover.outputs.images)" in integer_orchestrator
+        and "uses: ./.github/workflows/integer-build-shard.yaml" in integer_orchestrator
+        and "fromJSON(needs.discover.outputs.shards)" in integer_orchestrator
         and "fail-fast: false" in integer_orchestrator
-        and "CHILD_RESULT: ${{ needs.build.result }}" in integer_orchestrator
+        and "CHILD_RESULT: ${{ needs.build-shards.result }}" in integer_orchestrator
         and "pattern: integer-build-result-*" in integer_orchestrator
         and "bash .github/scripts/aggregate-integer-results.sh" in integer_orchestrator
         and "nightly dispatch" not in integer_orchestrator,
-        "Integer orchestrator must await every reusable child and identify failed matrix entries",
+        "Integer orchestrator must await every bounded shard and identify failed matrix entries",
+    )
+    require(
+        "fromJSON(inputs.entries)" in integer_shard
+        and "uses: ./.github/workflows/integer-build-image.yaml" in integer_shard
+        and "fail-fast: false" in integer_shard
+        and "batch_id: ${{ inputs.batch_id }}" in integer_shard
+        and "shard: ${{ inputs.shard }}" in integer_shard,
+        "Integer shard workflow must reuse every existing child build and preserve correlation",
     )
     require(
         "batch_id: ${{ github.run_id }}-${{ github.run_attempt }}" in integer_orchestrator
@@ -103,9 +112,9 @@ def main() -> None:
     )
     require(
         "permissions:\n  contents: read" in integer_orchestrator
-        and "build:\n" in integer_orchestrator
+        and "build-shards:\n" in integer_orchestrator
         and "      packages: write" in integer_orchestrator,
-        "Integer publishing permissions must be scoped to the reusable build job",
+        "Integer publishing permissions must be scoped to the reusable shard job",
     )
     require(
         "bash .github/scripts/wait-for-workflows.sh patch-image.yaml" in chart_gen

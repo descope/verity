@@ -86,6 +86,7 @@ var nightlyPlanCmd = &cli.Command{
 
 		var data []byte
 		var count int
+		var integerShards []integerMatrixShard
 		var err error
 		switch family {
 		case nightlyFamilyCopa:
@@ -110,6 +111,9 @@ var nightlyPlanCmd = &cli.Command{
 			}
 			count = len(items)
 			data, err = json.Marshal(items)
+			if err == nil {
+				integerShards, err = shardIntegerImages(items)
+			}
 		default:
 			return fmt.Errorf("%w: %q; want %q or %q", errUnsupportedNightlyFamily, family, nightlyFamilyCopa, nightlyFamilyInteger)
 		}
@@ -125,6 +129,11 @@ var nightlyPlanCmd = &cli.Command{
 		if ghOut := cmd.String("github-output"); ghOut != "" {
 			if err := appendGitHubMatrixOutput(ghOut, count, data); err != nil {
 				return err
+			}
+			if family == nightlyFamilyInteger {
+				if err := appendGitHubShardOutput(ghOut, integerShards); err != nil {
+					return err
+				}
 			}
 		}
 		fmt.Fprintln(os.Stdout, string(data))

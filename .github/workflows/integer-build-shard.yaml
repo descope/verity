@@ -1,0 +1,41 @@
+name: Integer Build Shard
+run-name: "Integer shard ${{ inputs.shard }}"
+
+on:
+  workflow_call:
+    inputs:
+      shard:
+        required: true
+        type: number
+      entries:
+        required: true
+        type: string
+      batch_id:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}:${{ matrix.version }}-${{ matrix.type }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.entries) }}
+    uses: ./.github/workflows/integer-build-image.yaml
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write
+    with:
+      image: ${{ matrix.name }}
+      version: ${{ matrix.version }}
+      type: ${{ matrix.type }}
+      tags: ${{ join(matrix.tags, ',') }}
+      registry: ${{ matrix.registry }}
+      batch_id: ${{ inputs.batch_id }}
+      shard: ${{ inputs.shard }}
+    secrets: inherit

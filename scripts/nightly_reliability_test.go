@@ -138,11 +138,12 @@ func TestAggregateIntegerResultsNamesFailedAndMissingMatrixEntries(t *testing.T)
 ]`+"\n")
 	writeFile(t, filepath.Join(results, "integer-build-result-alpha", "report.json"), `{
   "image":"alpha","version":"1.2.3","type":"default",
-  "status":"failure","failure_stage":"trivy","run_id":"42"
+	  "status":"failure","failure_stage":"trivy","run_id":"42",
+	  "batch_id":"42-1","shard":1
 }`+"\n")
 
 	// When: the failed reusable matrix is aggregated.
-	cmd := exec.CommandContext(t.Context(), "bash", filepath.Join("..", ".github", "scripts", "aggregate-integer-results.sh"), expected, results, "failure", "verity-org/verity", "42")
+	cmd := exec.CommandContext(t.Context(), "bash", filepath.Join("..", ".github", "scripts", "aggregate-integer-results.sh"), expected, results, "failure", "verity-org/verity", "42", "42-1")
 	output, err := cmd.CombinedOutput()
 	require.Error(t, err)
 
@@ -150,6 +151,8 @@ func TestAggregateIntegerResultsNamesFailedAndMissingMatrixEntries(t *testing.T)
 	text := string(output)
 	assert.Contains(t, text, "alpha:1.2.3-default")
 	assert.Contains(t, text, "stage=trivy")
+	assert.Contains(t, text, "shard=1")
+	assert.Contains(t, text, "batch=42-1")
 	assert.Contains(t, text, "integer-build-result-alpha-1.2.3-default")
 	assert.Contains(t, text, "beta/tools:4.5.6-fips")
 	assert.Contains(t, text, "stage=matrix-dispatch-or-report")
@@ -166,7 +169,7 @@ func TestAggregateIntegerResultsFailsClosedWhenNonEmptyPlanIsSkipped(t *testing.
 	require.NoError(t, os.MkdirAll(results, 0o755))
 
 	// When: aggregation receives the skipped matrix result.
-	cmd := exec.CommandContext(t.Context(), "bash", filepath.Join("..", ".github", "scripts", "aggregate-integer-results.sh"), expected, results, "skipped", "verity-org/verity", "42")
+	cmd := exec.CommandContext(t.Context(), "bash", filepath.Join("..", ".github", "scripts", "aggregate-integer-results.sh"), expected, results, "skipped", "verity-org/verity", "42", "42-1")
 	output, err := cmd.CombinedOutput()
 
 	// Then: the undispatched entry is reported instead of accepted as success.
@@ -184,12 +187,63 @@ func TestAggregateIntegerResultsAcceptsSkippedEmptyPlan(t *testing.T) {
 	require.NoError(t, os.MkdirAll(results, 0o755))
 
 	// When: the empty matrix is reported as skipped.
-	cmd := exec.CommandContext(t.Context(), "bash", filepath.Join("..", ".github", "scripts", "aggregate-integer-results.sh"), expected, results, "skipped", "verity-org/verity", "42")
+	cmd := exec.CommandContext(t.Context(), "bash", filepath.Join("..", ".github", "scripts", "aggregate-integer-results.sh"), expected, results, "skipped", "verity-org/verity", "42", "42-1")
 	output, err := cmd.CombinedOutput()
 
 	// Then: the intentional no-op remains successful.
 	require.NoError(t, err, string(output))
 	assert.Contains(t, string(output), "No Integer child builds were dispatched.")
+}
+
+func TestAggregateIntegerResultsRejectsSuccessfulPartialDispatch(t *testing.T) {
+	// Given: a successful shard result that omitted one planned entry.
+	tmp := t.TempDir()
+	expected := filepath.Join(tmp, "expected.json")
+	results := filepath.Join(tmp, "results")
+	writeFile(t, expected, `[
+  {"name":"alpha","version":"1","type":"default"},
+  {"name":"beta","version":"2","type":"default"}
+]`+"\n")
+	writeFile(t, filepath.Join(results, "integer-build-result-alpha", "report.json"), `{
+  "image":"alpha","version":"1","type":"default","status":"success",
+  "run_id":"42","batch_id":"42-1","shard":1
+}`+"\n")
+
+	// When
+	cmd := exec.CommandContext(t.Context(), "bash", filepath.Join("..", ".github", "scripts", "aggregate-integer-results.sh"), expected, results, "success", "verity-org/verity", "42", "42-1")
+	output, err := cmd.CombinedOutput()
+
+	// Then
+	require.Error(t, err)
+	assert.Contains(t, string(output), "beta:2-default")
+	assert.Contains(t, string(output), "stage=matrix-dispatch-or-report")
+}
+
+func TestAggregateIntegerResultsAcceptsCompleteSuccessfulShards(t *testing.T) {
+	// Given: every planned entry has one current-batch successful report.
+	tmp := t.TempDir()
+	expected := filepath.Join(tmp, "expected.json")
+	results := filepath.Join(tmp, "results")
+	writeFile(t, expected, `[
+  {"name":"alpha","version":"1","type":"default"},
+  {"name":"beta","version":"2","type":"fips"}
+]`+"\n")
+	writeFile(t, filepath.Join(results, "alpha", "report.json"), `{
+  "image":"alpha","version":"1","type":"default","status":"success",
+  "run_id":"42","batch_id":"42-1","shard":1
+}`+"\n")
+	writeFile(t, filepath.Join(results, "beta", "report.json"), `{
+  "image":"beta","version":"2","type":"fips","status":"success",
+  "run_id":"42","batch_id":"42-1","shard":1
+}`+"\n")
+
+	// When
+	cmd := exec.CommandContext(t.Context(), "bash", filepath.Join("..", ".github", "scripts", "aggregate-integer-results.sh"), expected, results, "success", "verity-org/verity", "42", "42-1")
+	output, err := cmd.CombinedOutput()
+
+	// Then
+	require.NoError(t, err, string(output))
+	assert.Contains(t, string(output), "All 2 planned Integer child builds succeeded across 1 shard(s).")
 }
 
 func configureGit(t *testing.T, gitPath, dir string) {

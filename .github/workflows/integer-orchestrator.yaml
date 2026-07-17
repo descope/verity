@@ -12,6 +12,7 @@ on:
       - "images/_base/*.yaml"
       - "integer.yaml"
       - ".github/workflows/integer-orchestrator.yaml"
+      - ".github/workflows/integer-build-shard.yaml"
       - ".github/workflows/integer-build-image.yaml"
   workflow_dispatch:
     inputs:
@@ -81,6 +82,8 @@ jobs:
     outputs:
       images: ${{ steps.discover.outputs.images }}
       count: ${{ steps.discover.outputs.count }}
+      shards: ${{ steps.discover.outputs.shards }}
+      shard_count: ${{ steps.discover.outputs.shard_count }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -155,32 +158,29 @@ jobs:
           path: images.json
           retention-days: 7
 
-  build:
-    name: Build ${{ matrix.name }}:${{ matrix.version }}-${{ matrix.type }}
+  build-shards:
+    name: Shard ${{ matrix.shard }} (${{ matrix.count }} entries)
     needs: discover
     if: always() && !failure() && !cancelled() && needs.discover.outputs.count != '0'
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.discover.outputs.images) }}
-    uses: ./.github/workflows/integer-build-image.yaml
+        include: ${{ fromJSON(needs.discover.outputs.shards) }}
+    uses: ./.github/workflows/integer-build-shard.yaml
     permissions:
       contents: write
       packages: write
       id-token: write
       attestations: write
     with:
-      image: ${{ matrix.name }}
-      version: ${{ matrix.version }}
-      type: ${{ matrix.type }}
-      tags: ${{ join(matrix.tags, ',') }}
-      registry: ${{ matrix.registry }}
+      shard: ${{ matrix.shard }}
+      entries: ${{ matrix.entries }}
       batch_id: ${{ github.run_id }}-${{ github.run_attempt }}
     secrets: inherit
 
   aggregate:
     name: Aggregate build results
-    needs: [discover, build]
+    needs: [discover, build-shards]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -194,7 +194,7 @@ jobs:
           path: integer-build-plan
 
       - name: Download Integer child reports
-        if: needs.build.result != 'success' && needs.build.result != 'skipped'
+        if: needs.discover.outputs.count != '0'
         continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -204,10 +204,11 @@ jobs:
       - name: Fail when any child build failed
         if: always()
         env:
-          CHILD_RESULT: ${{ needs.build.result }}
+          CHILD_RESULT: ${{ needs.build-shards.result }}
           REPOSITORY: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
+          BATCH_ID: ${{ github.run_id }}-${{ github.run_attempt }}
         run: >-
           bash .github/scripts/aggregate-integer-results.sh
           integer-build-plan/images.json integer-build-results
-          "$CHILD_RESULT" "$REPOSITORY" "$RUN_ID"
+          "$CHILD_RESULT" "$REPOSITORY" "$RUN_ID" "$BATCH_ID"
