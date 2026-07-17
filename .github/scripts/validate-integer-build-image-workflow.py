@@ -82,6 +82,11 @@ def main() -> None:
         "Integer Melange intermediates must be isolated by image/version/type artifact key",
     )
     require(
+        workflow.count("bash .github/scripts/retry-go-build.sh") == 3
+        and "run: go build -o verity ." not in workflow,
+        "Every per-entry Verity build must retry transient module download failures",
+    )
+    require(
         "needs: [melange-prep, melange-build, build]" in workflow
         and "MELANGE_PREP_RESULT" in workflow
         and "MELANGE_BUILD_RESULT" in workflow
