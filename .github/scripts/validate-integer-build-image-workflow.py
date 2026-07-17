@@ -71,8 +71,8 @@ def main() -> None:
         "Integer Trivy scans must not be report-only",
     )
     require(
-        "workflow_call:" in workflow and "batch_id:" in workflow,
-        "Integer Build Image must accept an explicit parent batch identifier",
+        "workflow_call:" in workflow and "batch_id:" in workflow and "shard:" in workflow,
+        "Integer Build Image must accept explicit parent batch and shard identifiers",
     )
     require(
         "needs: [melange-prep, melange-build, build]" in workflow
@@ -84,8 +84,9 @@ def main() -> None:
     )
     require(
         "batch_id: $batch_id" in workflow
+        and "shard: $shard" in workflow
         and '"reports/${INPUT_IMAGE}/${INPUT_VERSION}/${INPUT_TYPE}/latest.json"' in workflow,
-        "Integer reports must replace latest.json with the current batch result",
+        "Integer reports must replace latest.json with current batch and shard correlation",
     )
     require(
         workflow.index("--exit-code 1 \\") < workflow.index('"crane copy"'),

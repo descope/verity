@@ -23,6 +23,10 @@ on:
         required: false
         type: string
         default: ""
+      shard:
+        required: false
+        type: number
+        default: 0
   workflow_dispatch:
     inputs:
       image:
@@ -46,6 +50,11 @@ on:
         description: "Parent nightly run freshness identifier (empty = this run)"
         required: false
         default: ""
+      shard:
+        description: "Parent Integer matrix shard (0 = direct dispatch)"
+        required: false
+        type: number
+        default: 0
 
 permissions:
   contents: write          # push-reports.sh writes to reports branch via GitHub API
@@ -873,6 +882,7 @@ jobs:
           BUILD_RESULT: ${{ needs.build.result }}
           BUILD_FAILURE_STAGE: ${{ needs.build.outputs.failure_stage }}
           BATCH_ID: ${{ inputs.batch_id }}
+          SHARD: ${{ inputs.shard }}
           RUN_ID: ${{ github.run_id }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
@@ -902,10 +912,11 @@ jobs:
             --arg built_at       "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --arg run_id         "$RUN_ID" \
             --arg batch_id       "$batch_id" \
+            --argjson shard      "$SHARD" \
             '{image: $image, version: $version, type: $type, tags: ($tags | split(",")),
               registry: $registry, digest: $digest, status: $status,
               failure_stage: $failure_stage, built_at: $built_at, run_id: $run_id,
-              batch_id: $batch_id}')
+              batch_id: $batch_id, shard: $shard}')
 
           safe_image="${INPUT_IMAGE//\//-}"
           echo "artifact_name=integer-build-result-${safe_image}-${INPUT_VERSION}-${INPUT_TYPE}" >> "$GITHUB_OUTPUT"
