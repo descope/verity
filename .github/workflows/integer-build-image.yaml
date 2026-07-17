@@ -75,6 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       needed: ${{ steps.check.outputs.needed }}
+      artifact_key: ${{ steps.artifact-key.outputs.artifact_key }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -91,6 +92,21 @@ jobs:
 
       - name: Build verity CLI
         run: go build -o verity .
+
+      - name: Generate unique artifact key
+        id: artifact-key
+        env:
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TYPE: ${{ inputs.type }}
+        run: |
+          prefix=$(printf '%s-%s-%s' "$INPUT_IMAGE" "$INPUT_VERSION" "$INPUT_TYPE" \
+            | tr -c 'A-Za-z0-9._-' '-' \
+            | cut -c1-120)
+          digest=$(printf '%s\0%s\0%s' "$INPUT_IMAGE" "$INPUT_VERSION" "$INPUT_TYPE" \
+            | sha256sum \
+            | cut -c1-12)
+          echo "artifact_key=${prefix}-${digest}" >> "$GITHUB_OUTPUT"
 
       - name: Prepare bespoke package
         id: check
@@ -109,7 +125,7 @@ jobs:
         if: steps.check.outputs.needed == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: melange-work
+          name: ${{ steps.artifact-key.outputs.artifact_key }}-melange-work
           path: |
             melange-work/
             packages/overrides/
@@ -153,7 +169,7 @@ jobs:
       - name: Download melange work artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: melange-work
+          name: ${{ needs.melange-prep.outputs.artifact_key }}-melange-work
           path: .
 
       - name: Build melange package (${{ matrix.arch }})
@@ -512,7 +528,7 @@ jobs:
       - name: Upload arch packages
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: melange-packages-${{ matrix.arch }}
+          name: ${{ needs.melange-prep.outputs.artifact_key }}-melange-packages-${{ matrix.arch }}
           path: packages/repo/
           retention-days: 1
 
@@ -637,21 +653,21 @@ jobs:
         if: needs.melange-prep.outputs.needed == 'true'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: melange-packages-x86_64
+          name: ${{ needs.melange-prep.outputs.artifact_key }}-melange-packages-x86_64
           path: packages/repo
 
       - name: Download melange packages (aarch64)
         if: needs.melange-prep.outputs.needed == 'true'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: melange-packages-aarch64
+          name: ${{ needs.melange-prep.outputs.artifact_key }}-melange-packages-aarch64
           path: packages/repo
 
       - name: Download melange signing key
         if: needs.melange-prep.outputs.needed == 'true'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: melange-work
+          name: ${{ needs.melange-prep.outputs.artifact_key }}-melange-work
           path: .
 
       - name: Verify melange package merge

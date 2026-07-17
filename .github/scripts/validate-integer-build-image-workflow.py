@@ -75,6 +75,13 @@ def main() -> None:
         "Integer Build Image must accept explicit parent batch and shard identifiers",
     )
     require(
+        "artifact_key: ${{ steps.artifact-key.outputs.artifact_key }}" in workflow
+        and "id: artifact-key" in workflow
+        and "name: melange-work" not in workflow
+        and "name: melange-packages-" not in workflow,
+        "Integer Melange intermediates must be isolated by image/version/type artifact key",
+    )
+    require(
         "needs: [melange-prep, melange-build, build]" in workflow
         and "MELANGE_PREP_RESULT" in workflow
         and "MELANGE_BUILD_RESULT" in workflow
