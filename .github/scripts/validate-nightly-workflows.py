@@ -89,8 +89,10 @@ def main() -> None:
         and "fromJSON(needs.discover.outputs.images)" in integer_orchestrator
         and "fail-fast: false" in integer_orchestrator
         and "CHILD_RESULT: ${{ needs.build.result }}" in integer_orchestrator
+        and "pattern: integer-build-result-*" in integer_orchestrator
+        and "bash .github/scripts/aggregate-integer-results.sh" in integer_orchestrator
         and "nightly dispatch" not in integer_orchestrator,
-        "Integer orchestrator must await every reusable child and fail the parent when the matrix fails",
+        "Integer orchestrator must await every reusable child and identify failed matrix entries",
     )
     require(
         "batch_id: ${{ github.run_id }}-${{ github.run_attempt }}" in integer_orchestrator

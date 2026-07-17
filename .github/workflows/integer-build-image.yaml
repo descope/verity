@@ -859,6 +859,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Push current build report to reports branch
+        id: report
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           INPUT_IMAGE: ${{ inputs.image }}
@@ -906,10 +907,21 @@ jobs:
               failure_stage: $failure_stage, built_at: $built_at, run_id: $run_id,
               batch_id: $batch_id}')
 
+          safe_image="${INPUT_IMAGE//\//-}"
+          echo "artifact_name=integer-build-result-${safe_image}-${INPUT_VERSION}-${INPUT_TYPE}" >> "$GITHUB_OUTPUT"
           echo "$report" > report.json
           bash .github/scripts/push-reports.sh \
             "reports/${INPUT_IMAGE}/${INPUT_VERSION}/${INPUT_TYPE}/latest.json" \
             report.json
+
+      - name: Upload current build report
+        if: always() && steps.report.outputs.artifact_name != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.report.outputs.artifact_name }}
+          path: report.json
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Update preflight manifest
         if: needs.build.result == 'success'

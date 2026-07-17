@@ -304,8 +304,9 @@ func TestIntegerNightlyWorkflowAggregatesChildFailuresAndPublishesCurrentReports
 	assert.Contains(t, parent, `github.event_name }}" = "schedule"`)
 	assert.Contains(t, parent, "PLAN_ARGS+=(--force)")
 	assert.Contains(t, parent, "CHILD_RESULT: ${{ needs.build.result }}")
-	assert.Contains(t, parent, `[ "$CHILD_RESULT" = "skipped" ]`)
-	assert.Contains(t, parent, "exit 1")
+	assert.Contains(t, parent, "integer-build-plan-${{ github.run_id }}-${{ github.run_attempt }}")
+	assert.Contains(t, parent, "pattern: integer-build-result-*")
+	assert.Contains(t, parent, "bash .github/scripts/aggregate-integer-results.sh")
 
 	assert.Contains(t, child, "workflow_call:")
 	assert.Contains(t, child, "batch_id:")
@@ -316,4 +317,6 @@ func TestIntegerNightlyWorkflowAggregatesChildFailuresAndPublishesCurrentReports
 	assert.Contains(t, child, "BUILD_RESULT")
 	assert.Contains(t, child, "BATCH_ID")
 	assert.Contains(t, child, "batch_id: $batch_id")
+	assert.Contains(t, child, "integer-build-result-${safe_image}-${INPUT_VERSION}-${INPUT_TYPE}")
+	assert.Contains(t, child, "Upload current build report")
 }
