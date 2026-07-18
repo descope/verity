@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.72.0"
   },
-  "ReportID": "019f6e99-f325-7331-997d-a43fbc5bc19f",
-  "CreatedAt": "2026-07-17T05:43:30.853211435Z",
+  "ReportID": "019f73a7-35f0-76c4-9b9e-3a4f723b1ee2",
+  "CreatedAt": "2026-07-18T05:16:06.000444912Z",
   "ArtifactID": "sha256:955a116ade3da9dd646b2f7e5223d3805dd965c36f33233ec25e59654c549460",
   "ArtifactName": "docker.io/datadog/agent:7.81.1",
   "ArtifactType": "container_image",
@@ -9291,6 +9291,64 @@
           "LastModifiedDate": "2026-06-17T08:12:10.903Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-5704",
+          "PkgID": "tar@1.35+dfsg-3ubuntu0.2",
+          "PkgName": "tar",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/tar@1.35%2Bdfsg-3ubuntu0.2?arch=amd64\u0026distro=ubuntu-24.04",
+            "UID": "54fc2e3d4c95bf6e"
+          },
+          "InstalledVersion": "1.35+dfsg-3ubuntu0.2",
+          "FixedVersion": "1.35+dfsg-3ubuntu0.3",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:87959b4e61587269b59b084679f6f99ca61f1f4dc6db37b9a66a65496ae8ff91",
+            "DiffID": "sha256:05ac03775293146e75203c219e4b0310ac729232754bee0dacb9178735e251b5"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-5704",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Fingerprint": "sha256:0b558dddcff3b58b3c222b03414089a2adb2044bd2ee98e419e67ab2a8e19535",
+          "Title": "tar: tar: Hidden file injection via crafted archives",
+          "Description": "A flaw was found in tar. A remote attacker could exploit this vulnerability by crafting a malicious archive, leading to hidden file injection with fully attacker-controlled content. This bypasses pre-extraction inspection mechanisms, potentially allowing an attacker to introduce malicious files onto a system without detection.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-434"
+          ],
+          "VendorSeverity": {
+            "nvd": 2,
+            "redhat": 2,
+            "ubuntu": 2
+          },
+          "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N",
+              "V3Score": 5.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:R/S:U/C:N/I:H/A:N",
+              "V3Score": 5
+            }
+          },
+          "References": [
+            "http://www.openwall.com/lists/oss-security/2026/04/11/10",
+            "http://www.openwall.com/lists/oss-security/2026/04/11/11",
+            "http://www.openwall.com/lists/oss-security/2026/04/12/2",
+            "https://access.redhat.com/security/cve/CVE-2026-5704",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2455360",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-5704",
+            "https://ubuntu.com/security/notices/USN-8477-1",
+            "https://ubuntu.com/security/notices/USN-8477-2",
+            "https://www.cve.org/CVERecord?id=CVE-2026-5704"
+          ],
+          "PublishedDate": "2026-04-06T16:16:42.14Z",
+          "LastModifiedDate": "2026-06-17T10:59:31.78Z"
+        },
+        {
           "VulnerabilityID": "CVE-2026-27456",
           "PkgID": "util-linux@2.39.3-9ubuntu6.5",
           "PkgName": "util-linux",
@@ -9382,7 +9440,7 @@
             "amazon": 1,
             "azure": 1,
             "cbl-mariner": 1,
-            "julia": 1,
+            "julia": 2,
             "nvd": 2,
             "photon": 2,
             "redhat": 1,
@@ -9390,8 +9448,8 @@
           },
           "CVSS": {
             "julia": {
-              "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L",
-              "V3Score": 2.9
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 5.5
             },
             "nvd": {
               "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
@@ -15812,8 +15870,11 @@
           },
           "Fingerprint": "sha256:c7c14c674a1f055ceaf14a9806c819de9fca18aa578783dbb18dc2fca42639e1",
           "Title": "dd-trace-py: Improper parsing of W3C baggage headers may lead to DoS",
-          "Description": "### Impact\nDatadog tracing libraries that implement W3C baggage propagation parse incoming baggage HTTP headers without enforcing item-count or byte-size limits on the extract path. The DD_TRACE_BAGGAGE_MAX_ITEMS (default 64) and DD_TRACE_BAGGAGE_MAX_BYTES (default 8192) limits were applied only to baggage injection, not extraction. A remote, unauthenticated attacker can send a request whose baggage header contains an arbitrarily large number of comma-separated key-value pairs (or a single very large value). The tracer allocates a hash-map entry for each pair on every request, causing unbounded CPU and memory consumption and enabling a remote Denial of Service against any HTTP service that has the baggage propagation style enabled.\nThe baggage propagation style is enabled by default in most affected tracers, so any internet-facing service that has been instrumented with an affected tracer version is exposed unless the propagation style has been explicitly narrowed.\n\n### Patches\nThis is resolved in version 4.8.2 and later of the `dd-trace-py` library\n\n### Workarounds\nIf users cannot upgrade immediately:\n1. Disable `baggage` extraction by removing `baggage` from `DD_TRACE_PROPAGATION_STYLE` (or `DD_TRACE_PROPAGATION_STYLE_EXTRACT` if set independently).\n2. Cap the maximum HTTP request header size at an upstream proxy or web server (for example, Apache `LimitRequestFieldSize`, Nginx `large_client_header_buffers`, Envoy `max_request_headers_kb`).\n\n\n### Resources\nRelated upstream advisories:\n[opentelemetry-go GHSA-mh2q-q3fh-2475](https://github.com/open-telemetry/opentelemetry-go/security/advisories/GHSA-mh2q-q3fh-2475)\n[opentelemetry-dotnet GHSA-g94r-2vxg-569j](https://github.com/open-telemetry/opentelemetry-dotnet/security/advisories/GHSA-g94r-2vxg-569j)",
+          "Description": "Datadog dd-trace-py is the Datadog Python APM client. Prior to 4.8.2, Datadog tracing libraries that implement W3C baggage propagation parse incoming baggage HTTP headers without enforcing DD_TRACE_BAGGAGE_MAX_ITEMS or DD_TRACE_BAGGAGE_MAX_BYTES limits on the extract path. A remote, unauthenticated attacker can send a request whose baggage header contains an arbitrarily large number of comma-separated key-value pairs or a single very large value, causing unbounded CPU and memory consumption and enabling a remote denial of service against HTTP services with baggage propagation enabled. This issue is fixed in version 4.8.2.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-770"
+          ],
           "VendorSeverity": {
             "ghsa": 3
           },
@@ -15825,8 +15886,13 @@
           },
           "References": [
             "https://github.com/DataDog/dd-trace-py",
+            "https://github.com/DataDog/dd-trace-py/commit/9c80faa3dcfe238d008c3b3cd0b8e5dfef0aa4cd",
+            "https://github.com/DataDog/dd-trace-py/pull/17926",
+            "https://github.com/DataDog/dd-trace-py/releases/tag/v4.8.2",
             "https://github.com/DataDog/dd-trace-py/security/advisories/GHSA-mw54-j2v2-42hr"
-          ]
+          ],
+          "PublishedDate": "2026-07-17T21:17:07.07Z",
+          "LastModifiedDate": "2026-07-17T21:17:07.07Z"
         },
         {
           "VulnerabilityID": "CVE-2026-44405",
