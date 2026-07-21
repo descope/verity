@@ -272,4 +272,15 @@ jobs:
             --family copa \
             --input "$RUNNER_TEMP/patch-images.json" \
             --repo "${{ github.repository }}" \
-            --ref "${{ github.ref_name }}"
+            --ref "${{ github.ref_name }}" \
+            --batch-id "${{ github.run_id }}-${{ github.run_attempt }}"
+
+      - name: Wait for this batch's patch runs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WAIT_BRANCH: ${{ github.ref_name }}
+          WAIT_EVENT: workflow_dispatch
+          WAIT_BATCH_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          WAIT_EXPECTED_RUNS: ${{ needs.discover.outputs.count }}
+          WAIT_TIMEOUT_SECONDS: 21600
+        run: bash .github/scripts/wait-for-workflows.sh patch-image.yaml

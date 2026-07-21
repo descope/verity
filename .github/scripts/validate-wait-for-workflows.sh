@@ -24,6 +24,11 @@ for required in "--method GET" "--paginate" "-f branch=main" "--jq"; do
   fi
 done
 
+if [ -n "${WAIT_EXPECT_SUFFIX:-}" ] && [[ "$args" != *"display_title"*"${WAIT_EXPECT_SUFFIX}"* ]]; then
+  echo "wait helper must filter runs by the requested display-title suffix" >&2
+  exit 1
+fi
+
 status_arg_found=0
 for arg in "$@"; do
   case "$arg" in
@@ -80,6 +85,20 @@ if ! grep -qx "integer_orchestrator_batch_id=424242-3" "$tmpdir/github-output"; 
   echo "wait helper should publish the successful producer batch id" >&2
   exit 1
 fi
+
+FAKE_GH_CALLS="$tmpdir/suffix-calls" \
+FAKE_GH_STATUSES="$tmpdir/suffix-statuses" \
+WAIT_EXPECT_SUFFIX="[batch 12345-2]" \
+PATH="$tmpdir:$PATH" \
+GITHUB_REPOSITORY="verity-org/verity" \
+WAIT_BRANCH="main" \
+WAIT_BATCH_ID="12345-2" \
+WAIT_EXPECTED_RUNS=1 \
+WAIT_EVENT="workflow_dispatch" \
+WAIT_LOOKBACK_HOURS=1 \
+WAIT_TIMEOUT_SECONDS=1 \
+WAIT_INTERVAL_SECONDS=1 \
+  bash .github/scripts/wait-for-workflows.sh patch-image.yaml > "$tmpdir/suffix-out"
 
 if FAKE_GH_CONCLUSION="failure" \
   FAKE_GH_CALLS="$tmpdir/failed-calls" \

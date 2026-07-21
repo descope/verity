@@ -150,6 +150,7 @@ var nightlyDispatchCmd = &cli.Command{
 		&cli.StringFlag{Name: "repo", Usage: "GitHub repository owner/name", Required: true},
 		&cli.StringFlag{Name: "ref", Usage: "Git ref for workflow dispatch", Required: true},
 		&cli.StringFlag{Name: "workflow", Usage: "Workflow file name; defaults from --family"},
+		&cli.StringFlag{Name: "batch-id", Usage: "Correlation identifier passed to dispatched workflows"},
 		&cli.IntFlag{Name: "retries", Usage: "Dispatch retries per item", Value: 5},
 		&cli.DurationFlag{Name: "throttle", Usage: "Delay between successful dispatches", Value: 2 * time.Second},
 	},
@@ -173,7 +174,7 @@ var nightlyDispatchCmd = &cli.Command{
 			return errMissingGitHubToken
 		}
 
-		inputs, err := nightlyDispatchInputs(cmd.String("family"), cmd.String("input"))
+		inputs, err := nightlyDispatchInputs(cmd.String("family"), cmd.String("input"), cmd.String("batch-id"))
 		if err != nil {
 			return err
 		}
@@ -477,7 +478,7 @@ func appendGitHubMatrixOutputTo(w io.WriteCloser, path string, count int, data [
 	return nil
 }
 
-func nightlyDispatchInputs(family, inputPath string) ([]map[string]string, error) {
+func nightlyDispatchInputs(family, inputPath, batchID string) ([]map[string]string, error) {
 	data, err := os.ReadFile(inputPath)
 	if err != nil {
 		return nil, fmt.Errorf("reading dispatch matrix %s: %w", inputPath, err)
@@ -498,6 +499,9 @@ func nightlyDispatchInputs(family, inputPath string) ([]map[string]string, error
 			}
 			if item.GoVcsURL != "" {
 				in["go-vcs-url"] = item.GoVcsURL
+			}
+			if batchID != "" {
+				in["batch-id"] = batchID
 			}
 			out = append(out, in)
 		}
