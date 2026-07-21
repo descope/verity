@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.72.0"
   },
-  "ReportID": "019f7e1d-047c-7089-9109-8a0d1781cbe6",
-  "CreatedAt": "2026-07-20T06:00:58.748036977Z",
+  "ReportID": "019f8331-cd93-7090-bb16-ab4b5ac66058",
+  "CreatedAt": "2026-07-21T05:41:47.027038945Z",
   "ArtifactID": "sha256:39caa1c5bfc59a7cc10ae75887f848518d4a6c52ad482a38a4883a4c1b15a59a",
   "ArtifactName": "mirror.gcr.io/library/elasticsearch:9.4.1",
   "ArtifactType": "container_image",
@@ -30367,7 +30367,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2025-5278"
           ],
           "PublishedDate": "2025-05-27T21:15:23.197Z",
-          "LastModifiedDate": "2026-07-19T16:17:03.477Z"
+          "LastModifiedDate": "2026-07-20T05:16:22.23Z"
         },
         {
           "VulnerabilityID": "CVE-2026-11352",
@@ -32205,6 +32205,7 @@
             "CWE-191"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "azure": 2,
             "nvd": 4,
             "redhat": 3
@@ -32220,6 +32221,8 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:42063",
+            "https://access.redhat.com/errata/RHSA-2026:42090",
             "https://access.redhat.com/security/cve/CVE-2026-58016",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2492257",
             "https://gitlab.gnome.org/GNOME/glib/-/issues/3932",
@@ -32227,7 +32230,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-58016"
           ],
           "PublishedDate": "2026-06-30T13:19:17.84Z",
-          "LastModifiedDate": "2026-07-01T17:46:34.577Z"
+          "LastModifiedDate": "2026-07-20T22:17:17.383Z"
         },
         {
           "VulnerabilityID": "CVE-2026-1484",
@@ -32395,6 +32398,7 @@
             "CWE-126"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "azure": 2,
             "nvd": 3,
             "redhat": 2
@@ -32443,6 +32447,7 @@
             "CWE-125"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "azure": 2,
             "nvd": 3,
             "redhat": 2
@@ -32492,6 +32497,7 @@
             "CWE-126"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "azure": 2,
             "nvd": 3,
             "redhat": 2
@@ -32540,6 +32546,7 @@
             "CWE-126"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "azure": 2,
             "nvd": 3,
             "redhat": 2
@@ -32588,6 +32595,7 @@
             "CWE-193"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "azure": 3,
             "nvd": 3,
             "redhat": 2
@@ -32636,6 +32644,7 @@
             "CWE-22"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "azure": 2,
             "nvd": 3,
             "redhat": 2
@@ -33797,6 +33806,7 @@
             "CWE-191"
           ],
           "VendorSeverity": {
+            "amazon": 2,
             "photon": 2,
             "redhat": 2
           },
@@ -33840,6 +33850,7 @@
             "CWE-59"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "redhat": 3
           },
           "CVSS": {
@@ -33886,6 +33897,7 @@
             "CWE-367"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "redhat": 2
           },
           "CVSS": {
@@ -38525,7 +38537,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-45447"
           ],
           "PublishedDate": "2026-06-09T17:17:19.277Z",
-          "LastModifiedDate": "2026-07-15T14:18:11.573Z"
+          "LastModifiedDate": "2026-07-20T12:19:30.657Z"
         },
         {
           "VulnerabilityID": "CVE-2026-2673",
@@ -40366,7 +40378,7 @@
           "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-42770",
           "Fingerprint": "sha256:a9527ffd6c81fdb1e846c8b6c53377be8ebae3c4992e59a2d98a739660716e30",
           "Title": "openssl: FFC-DH Peer Validation Uses Attacker-Supplied q",
-          "Description": "Issue summary: When EVP_PKEY_derive_set_peer() is called with a DHX (X9.42)\npeer key, the peer key is not properly checked for the subgroup membership.\n\nImpact summary: A malicious peer which presents an X9.42 key carrying the\nvictim's p and g parameters, a forged q = r (a small prime factor of the\ncofactor (p−1)/q_local), and a public value Y of order r can recover the\nvictim's private key after a small number of key exchange attempts.\n\nWhen EVP_PKEY_derive_set_peer() is called with a DHX (X9.42) peer key, the\nsubgroup membership check Y^q ≡ 1 (mod p) is performed using the peer's\nown q parameter, not the local key's q. The peer's domain parameters are\nthen matched against the domain parameters of the private key, but the value\nof q is not compared.\n\nA malicious peer who presents an X9.42 key carrying the victim's p, g,\na forged q = r (a small prime factor of the cofactor), and a public\nvalue Y of order r passes all checks. The shared secret then takes only\nr distinct values, leaking priv mod r. Repeating for each small-prime\nfactor of the cofactor and combining via CRT recovers the full private\nkey (Lim–Lee / small-subgroup-confinement attack).\n\nThe realistic attack surface is narrow: principally CMP deployments with\nlong-lived RA/CA DHX keys and bespoke enterprise or government applications\nusing X9.42 DHX static keys with interactive protocols and therefore this\nissue was assigned Low severity.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, and 3.0 are affected by this\nissue.",
+          "Description": "Issue summary: When EVP_PKEY_derive_set_peer() is called with a DHX (X9.42)\npeer key, the peer key is not properly checked for the subgroup membership.\n\nImpact summary: A malicious peer which presents an X9.42 key carrying the\nvictim's p and g parameters, a forged q = r (a small prime factor of the\ncofactor (p−1)/q_local), and a public value Y of order r can recover the\nvictim's private key after a small number of key exchange attempts.\n\nWhen EVP_PKEY_derive_set_peer() is called with a DHX (X9.42) peer key, the\nsubgroup membership check Y^q ≡ 1 (mod p) is performed using the peer's\nown q parameter, not the local key's q. The peer's domain parameters are\nthen matched against the domain parameters of the private key, but the value\nof q is not compared.\n\nA malicious peer who presents an X9.42 key carrying the victim's p, g,\na forged q = r (a small prime factor of the cofactor), and a public\nvalue Y of order r passes all checks. The shared secret then takes only\nr distinct values, leaking priv mod r. Repeating for each small-prime\nfactor of the cofactor and combining via CRT recovers the full private\nkey (Lim–Lee / small-subgroup-confinement attack).\n\nThe realistic attack surface is narrow: principally CMP deployments with\nlong-lived RA/CA DHX keys and bespoke enterprise or government applications\nusing X9.42 DHX static keys with interactive protocols and therefore this\nissue was assigned Low severity.\n\nThe FIPS modules in 4.0, 3.6, 3.5, 3.4, 3.1.2 and 3.0 are affected by this\nissue.",
           "Severity": "LOW",
           "CweIDs": [
             "CWE-325"
@@ -40449,7 +40461,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-42770"
           ],
           "PublishedDate": "2026-06-09T17:17:08.523Z",
-          "LastModifiedDate": "2026-06-17T10:48:22.65Z"
+          "LastModifiedDate": "2026-07-20T17:17:08.87Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45446",
@@ -56636,6 +56648,8 @@
             "CWE-502"
           ],
           "VendorSeverity": {
+            "alma": 3,
+            "amazon": 3,
             "ghsa": 3,
             "redhat": 3
           },
@@ -56650,7 +56664,11 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:40895",
             "https://access.redhat.com/security/cve/CVE-2026-54512",
+            "https://bugzilla.redhat.com/2492010",
+            "https://bugzilla.redhat.com/2492015",
+            "https://errata.almalinux.org/9/ALSA-2026-40895.html",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/434d6c511de7fdd9872f29157aafb6162d12d8d5",
             "https://github.com/FasterXML/jackson-databind/issues/5988",
@@ -56695,6 +56713,8 @@
             "CWE-502"
           ],
           "VendorSeverity": {
+            "alma": 3,
+            "amazon": 3,
             "ghsa": 3,
             "redhat": 3
           },
@@ -56709,7 +56729,11 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:40895",
             "https://access.redhat.com/security/cve/CVE-2026-54512",
+            "https://bugzilla.redhat.com/2492010",
+            "https://bugzilla.redhat.com/2492015",
+            "https://errata.almalinux.org/9/ALSA-2026-40895.html",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/434d6c511de7fdd9872f29157aafb6162d12d8d5",
             "https://github.com/FasterXML/jackson-databind/issues/5988",
@@ -56754,6 +56778,8 @@
             "CWE-502"
           ],
           "VendorSeverity": {
+            "alma": 3,
+            "amazon": 3,
             "ghsa": 3,
             "redhat": 3
           },
@@ -56768,7 +56794,11 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:40895",
             "https://access.redhat.com/security/cve/CVE-2026-54512",
+            "https://bugzilla.redhat.com/2492010",
+            "https://bugzilla.redhat.com/2492015",
+            "https://errata.almalinux.org/9/ALSA-2026-40895.html",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/434d6c511de7fdd9872f29157aafb6162d12d8d5",
             "https://github.com/FasterXML/jackson-databind/issues/5988",
@@ -56813,6 +56843,8 @@
             "CWE-502"
           ],
           "VendorSeverity": {
+            "alma": 3,
+            "amazon": 3,
             "ghsa": 3,
             "redhat": 3
           },
@@ -56827,7 +56859,11 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:40895",
             "https://access.redhat.com/security/cve/CVE-2026-54512",
+            "https://bugzilla.redhat.com/2492010",
+            "https://bugzilla.redhat.com/2492015",
+            "https://errata.almalinux.org/9/ALSA-2026-40895.html",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/434d6c511de7fdd9872f29157aafb6162d12d8d5",
             "https://github.com/FasterXML/jackson-databind/issues/5988",
@@ -56872,6 +56908,8 @@
             "CWE-502"
           ],
           "VendorSeverity": {
+            "alma": 3,
+            "amazon": 3,
             "ghsa": 3,
             "redhat": 3
           },
@@ -56886,7 +56924,11 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:40895",
             "https://access.redhat.com/security/cve/CVE-2026-54512",
+            "https://bugzilla.redhat.com/2492010",
+            "https://bugzilla.redhat.com/2492015",
+            "https://errata.almalinux.org/9/ALSA-2026-40895.html",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/434d6c511de7fdd9872f29157aafb6162d12d8d5",
             "https://github.com/FasterXML/jackson-databind/issues/5988",
@@ -56930,6 +56972,8 @@
             "CWE-184"
           ],
           "VendorSeverity": {
+            "alma": 3,
+            "amazon": 3,
             "ghsa": 3,
             "redhat": 3
           },
@@ -56947,7 +56991,10 @@
             "https://access.redhat.com/errata/RHSA-2026:36839",
             "https://access.redhat.com/errata/RHSA-2026:40895",
             "https://access.redhat.com/security/cve/CVE-2026-54513",
+            "https://bugzilla.redhat.com/2492010",
+            "https://bugzilla.redhat.com/2492015",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2492010",
+            "https://errata.almalinux.org/9/ALSA-2026-40895.html",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/01d1692c8d0ed03e51a0e3c4f8a9e6908e4931e5",
             "https://github.com/FasterXML/jackson-databind/commit/24529da29fdf46ff94ca38de9ebf31cd188f5e8e",
@@ -56995,6 +57042,8 @@
             "CWE-184"
           ],
           "VendorSeverity": {
+            "alma": 3,
+            "amazon": 3,
             "ghsa": 3,
             "redhat": 3
           },
@@ -57012,7 +57061,10 @@
             "https://access.redhat.com/errata/RHSA-2026:36839",
             "https://access.redhat.com/errata/RHSA-2026:40895",
             "https://access.redhat.com/security/cve/CVE-2026-54513",
+            "https://bugzilla.redhat.com/2492010",
+            "https://bugzilla.redhat.com/2492015",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2492010",
+            "https://errata.almalinux.org/9/ALSA-2026-40895.html",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/01d1692c8d0ed03e51a0e3c4f8a9e6908e4931e5",
             "https://github.com/FasterXML/jackson-databind/commit/24529da29fdf46ff94ca38de9ebf31cd188f5e8e",
@@ -57060,6 +57112,8 @@
             "CWE-184"
           ],
           "VendorSeverity": {
+            "alma": 3,
+            "amazon": 3,
             "ghsa": 3,
             "redhat": 3
           },
@@ -57077,7 +57131,10 @@
             "https://access.redhat.com/errata/RHSA-2026:36839",
             "https://access.redhat.com/errata/RHSA-2026:40895",
             "https://access.redhat.com/security/cve/CVE-2026-54513",
+            "https://bugzilla.redhat.com/2492010",
+            "https://bugzilla.redhat.com/2492015",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2492010",
+            "https://errata.almalinux.org/9/ALSA-2026-40895.html",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/01d1692c8d0ed03e51a0e3c4f8a9e6908e4931e5",
             "https://github.com/FasterXML/jackson-databind/commit/24529da29fdf46ff94ca38de9ebf31cd188f5e8e",
@@ -57125,6 +57182,8 @@
             "CWE-184"
           ],
           "VendorSeverity": {
+            "alma": 3,
+            "amazon": 3,
             "ghsa": 3,
             "redhat": 3
           },
@@ -57142,7 +57201,10 @@
             "https://access.redhat.com/errata/RHSA-2026:36839",
             "https://access.redhat.com/errata/RHSA-2026:40895",
             "https://access.redhat.com/security/cve/CVE-2026-54513",
+            "https://bugzilla.redhat.com/2492010",
+            "https://bugzilla.redhat.com/2492015",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2492010",
+            "https://errata.almalinux.org/9/ALSA-2026-40895.html",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/01d1692c8d0ed03e51a0e3c4f8a9e6908e4931e5",
             "https://github.com/FasterXML/jackson-databind/commit/24529da29fdf46ff94ca38de9ebf31cd188f5e8e",
@@ -57190,6 +57252,8 @@
             "CWE-184"
           ],
           "VendorSeverity": {
+            "alma": 3,
+            "amazon": 3,
             "ghsa": 3,
             "redhat": 3
           },
@@ -57207,7 +57271,10 @@
             "https://access.redhat.com/errata/RHSA-2026:36839",
             "https://access.redhat.com/errata/RHSA-2026:40895",
             "https://access.redhat.com/security/cve/CVE-2026-54513",
+            "https://bugzilla.redhat.com/2492010",
+            "https://bugzilla.redhat.com/2492015",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2492010",
+            "https://errata.almalinux.org/9/ALSA-2026-40895.html",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/01d1692c8d0ed03e51a0e3c4f8a9e6908e4931e5",
             "https://github.com/FasterXML/jackson-databind/commit/24529da29fdf46ff94ca38de9ebf31cd188f5e8e",
@@ -57255,6 +57322,7 @@
             "CWE-918"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "ghsa": 2,
             "redhat": 2
           },
@@ -57313,6 +57381,7 @@
             "CWE-918"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "ghsa": 2,
             "redhat": 2
           },
@@ -57371,6 +57440,7 @@
             "CWE-918"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "ghsa": 2,
             "redhat": 2
           },
@@ -57429,6 +57499,7 @@
             "CWE-918"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "ghsa": 2,
             "redhat": 2
           },
@@ -57487,6 +57558,7 @@
             "CWE-918"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "ghsa": 2,
             "redhat": 2
           },
@@ -57545,6 +57617,7 @@
             "CWE-915"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "ghsa": 2,
             "redhat": 2
           },
@@ -57604,6 +57677,7 @@
             "CWE-915"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "ghsa": 2,
             "redhat": 2
           },
@@ -57663,6 +57737,7 @@
             "CWE-915"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "ghsa": 2,
             "redhat": 2
           },
@@ -57722,6 +57797,7 @@
             "CWE-915"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "ghsa": 2,
             "redhat": 2
           },
@@ -57781,6 +57857,7 @@
             "CWE-915"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "ghsa": 2,
             "redhat": 2
           },
@@ -57841,6 +57918,8 @@
             "CWE-502"
           ],
           "VendorSeverity": {
+            "alma": 3,
+            "amazon": 3,
             "ghsa": 3,
             "redhat": 3
           },
@@ -57855,7 +57934,11 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:40895",
             "https://access.redhat.com/security/cve/CVE-2026-54512",
+            "https://bugzilla.redhat.com/2492010",
+            "https://bugzilla.redhat.com/2492015",
+            "https://errata.almalinux.org/9/ALSA-2026-40895.html",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/434d6c511de7fdd9872f29157aafb6162d12d8d5",
             "https://github.com/FasterXML/jackson-databind/issues/5988",
@@ -57900,6 +57983,8 @@
             "CWE-502"
           ],
           "VendorSeverity": {
+            "alma": 3,
+            "amazon": 3,
             "ghsa": 3,
             "redhat": 3
           },
@@ -57914,7 +57999,11 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:40895",
             "https://access.redhat.com/security/cve/CVE-2026-54512",
+            "https://bugzilla.redhat.com/2492010",
+            "https://bugzilla.redhat.com/2492015",
+            "https://errata.almalinux.org/9/ALSA-2026-40895.html",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/434d6c511de7fdd9872f29157aafb6162d12d8d5",
             "https://github.com/FasterXML/jackson-databind/issues/5988",
@@ -57958,6 +58047,8 @@
             "CWE-184"
           ],
           "VendorSeverity": {
+            "alma": 3,
+            "amazon": 3,
             "ghsa": 3,
             "redhat": 3
           },
@@ -57975,7 +58066,10 @@
             "https://access.redhat.com/errata/RHSA-2026:36839",
             "https://access.redhat.com/errata/RHSA-2026:40895",
             "https://access.redhat.com/security/cve/CVE-2026-54513",
+            "https://bugzilla.redhat.com/2492010",
+            "https://bugzilla.redhat.com/2492015",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2492010",
+            "https://errata.almalinux.org/9/ALSA-2026-40895.html",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/01d1692c8d0ed03e51a0e3c4f8a9e6908e4931e5",
             "https://github.com/FasterXML/jackson-databind/commit/24529da29fdf46ff94ca38de9ebf31cd188f5e8e",
@@ -58023,6 +58117,8 @@
             "CWE-184"
           ],
           "VendorSeverity": {
+            "alma": 3,
+            "amazon": 3,
             "ghsa": 3,
             "redhat": 3
           },
@@ -58040,7 +58136,10 @@
             "https://access.redhat.com/errata/RHSA-2026:36839",
             "https://access.redhat.com/errata/RHSA-2026:40895",
             "https://access.redhat.com/security/cve/CVE-2026-54513",
+            "https://bugzilla.redhat.com/2492010",
+            "https://bugzilla.redhat.com/2492015",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2492010",
+            "https://errata.almalinux.org/9/ALSA-2026-40895.html",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/01d1692c8d0ed03e51a0e3c4f8a9e6908e4931e5",
             "https://github.com/FasterXML/jackson-databind/commit/24529da29fdf46ff94ca38de9ebf31cd188f5e8e",
@@ -58088,6 +58187,7 @@
             "CWE-918"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "ghsa": 2,
             "redhat": 2
           },
@@ -58146,6 +58246,7 @@
             "CWE-918"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "ghsa": 2,
             "redhat": 2
           },
@@ -58204,6 +58305,7 @@
             "CWE-915"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "ghsa": 2,
             "redhat": 2
           },
@@ -58263,6 +58365,7 @@
             "CWE-915"
           ],
           "VendorSeverity": {
+            "amazon": 3,
             "ghsa": 2,
             "redhat": 2
           },
@@ -59492,7 +59595,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-44249"
           ],
           "PublishedDate": "2026-06-11T22:16:56.707Z",
-          "LastModifiedDate": "2026-07-15T02:21:51.14Z"
+          "LastModifiedDate": "2026-07-20T12:19:22.997Z"
         },
         {
           "VulnerabilityID": "CVE-2026-44249",
@@ -59561,7 +59664,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-44249"
           ],
           "PublishedDate": "2026-06-11T22:16:56.707Z",
-          "LastModifiedDate": "2026-07-15T02:21:51.14Z"
+          "LastModifiedDate": "2026-07-20T12:19:22.997Z"
         },
         {
           "VulnerabilityID": "CVE-2026-44249",
@@ -59630,7 +59733,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-44249"
           ],
           "PublishedDate": "2026-06-11T22:16:56.707Z",
-          "LastModifiedDate": "2026-07-15T02:21:51.14Z"
+          "LastModifiedDate": "2026-07-20T12:19:22.997Z"
         },
         {
           "VulnerabilityID": "CVE-2026-44249",
@@ -59699,7 +59802,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-44249"
           ],
           "PublishedDate": "2026-06-11T22:16:56.707Z",
-          "LastModifiedDate": "2026-07-15T02:21:51.14Z"
+          "LastModifiedDate": "2026-07-20T12:19:22.997Z"
         },
         {
           "VulnerabilityID": "CVE-2026-44249",
@@ -59768,7 +59871,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-44249"
           ],
           "PublishedDate": "2026-06-11T22:16:56.707Z",
-          "LastModifiedDate": "2026-07-15T02:21:51.14Z"
+          "LastModifiedDate": "2026-07-20T12:19:22.997Z"
         },
         {
           "VulnerabilityID": "CVE-2026-44249",
@@ -59837,7 +59940,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-44249"
           ],
           "PublishedDate": "2026-06-11T22:16:56.707Z",
-          "LastModifiedDate": "2026-07-15T02:21:51.14Z"
+          "LastModifiedDate": "2026-07-20T12:19:22.997Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45416",
@@ -59903,7 +60006,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-45416"
           ],
           "PublishedDate": "2026-06-12T15:16:26.94Z",
-          "LastModifiedDate": "2026-07-15T02:22:03.987Z"
+          "LastModifiedDate": "2026-07-20T12:19:30.243Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45416",
@@ -59969,7 +60072,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-45416"
           ],
           "PublishedDate": "2026-06-12T15:16:26.94Z",
-          "LastModifiedDate": "2026-07-15T02:22:03.987Z"
+          "LastModifiedDate": "2026-07-20T12:19:30.243Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45416",
@@ -60035,7 +60138,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-45416"
           ],
           "PublishedDate": "2026-06-12T15:16:26.94Z",
-          "LastModifiedDate": "2026-07-15T02:22:03.987Z"
+          "LastModifiedDate": "2026-07-20T12:19:30.243Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45416",
@@ -60101,7 +60204,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-45416"
           ],
           "PublishedDate": "2026-06-12T15:16:26.94Z",
-          "LastModifiedDate": "2026-07-15T02:22:03.987Z"
+          "LastModifiedDate": "2026-07-20T12:19:30.243Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45416",
@@ -60167,7 +60270,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-45416"
           ],
           "PublishedDate": "2026-06-12T15:16:26.94Z",
-          "LastModifiedDate": "2026-07-15T02:22:03.987Z"
+          "LastModifiedDate": "2026-07-20T12:19:30.243Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45416",
@@ -60233,7 +60336,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-45416"
           ],
           "PublishedDate": "2026-06-12T15:16:26.94Z",
-          "LastModifiedDate": "2026-07-15T02:22:03.987Z"
+          "LastModifiedDate": "2026-07-20T12:19:30.243Z"
         },
         {
           "VulnerabilityID": "CVE-2026-50010",
@@ -60299,7 +60402,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-50010"
           ],
           "PublishedDate": "2026-06-12T16:16:31.18Z",
-          "LastModifiedDate": "2026-07-15T01:16:15.657Z"
+          "LastModifiedDate": "2026-07-20T12:19:41.03Z"
         },
         {
           "VulnerabilityID": "CVE-2026-50010",
@@ -60365,7 +60468,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-50010"
           ],
           "PublishedDate": "2026-06-12T16:16:31.18Z",
-          "LastModifiedDate": "2026-07-15T01:16:15.657Z"
+          "LastModifiedDate": "2026-07-20T12:19:41.03Z"
         },
         {
           "VulnerabilityID": "CVE-2026-50010",
@@ -60431,7 +60534,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-50010"
           ],
           "PublishedDate": "2026-06-12T16:16:31.18Z",
-          "LastModifiedDate": "2026-07-15T01:16:15.657Z"
+          "LastModifiedDate": "2026-07-20T12:19:41.03Z"
         },
         {
           "VulnerabilityID": "CVE-2026-50010",
@@ -60497,7 +60600,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-50010"
           ],
           "PublishedDate": "2026-06-12T16:16:31.18Z",
-          "LastModifiedDate": "2026-07-15T01:16:15.657Z"
+          "LastModifiedDate": "2026-07-20T12:19:41.03Z"
         },
         {
           "VulnerabilityID": "CVE-2026-50010",
@@ -60563,7 +60666,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-50010"
           ],
           "PublishedDate": "2026-06-12T16:16:31.18Z",
-          "LastModifiedDate": "2026-07-15T01:16:15.657Z"
+          "LastModifiedDate": "2026-07-20T12:19:41.03Z"
         },
         {
           "VulnerabilityID": "CVE-2026-50010",
@@ -60629,7 +60732,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-50010"
           ],
           "PublishedDate": "2026-06-12T16:16:31.18Z",
-          "LastModifiedDate": "2026-07-15T01:16:15.657Z"
+          "LastModifiedDate": "2026-07-20T12:19:41.03Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45674",
@@ -61295,7 +61398,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-45292"
           ],
           "PublishedDate": "2026-05-28T17:16:32.06Z",
-          "LastModifiedDate": "2026-07-17T13:18:48.983Z"
+          "LastModifiedDate": "2026-07-20T12:19:29.777Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45292",
@@ -61358,7 +61461,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-45292"
           ],
           "PublishedDate": "2026-05-28T17:16:32.06Z",
-          "LastModifiedDate": "2026-07-17T13:18:48.983Z"
+          "LastModifiedDate": "2026-07-20T12:19:29.777Z"
         },
         {
           "VulnerabilityID": "CVE-2026-45292",
@@ -61421,7 +61524,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-45292"
           ],
           "PublishedDate": "2026-05-28T17:16:32.06Z",
-          "LastModifiedDate": "2026-07-17T13:18:48.983Z"
+          "LastModifiedDate": "2026-07-20T12:19:29.777Z"
         },
         {
           "VulnerabilityID": "CVE-2025-22227",
