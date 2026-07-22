@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.72.0"
   },
-  "ReportID": "019f6222-d55c-7b14-9b3f-e30bf85c01ed",
-  "CreatedAt": "2026-07-14T19:37:57.852727814Z",
+  "ReportID": "019f8873-535e-75d2-8b24-80ff93d07f7a",
+  "CreatedAt": "2026-07-22T06:11:27.198383394Z",
   "ArtifactID": "sha256:71fb6e775077f48033bc7659324eaa1b24eca9ec9163c7709d39d5907dceb190",
   "ArtifactName": "ghcr.io/aquasecurity/trivy:0.71.2",
   "ArtifactType": "container_image",
@@ -1426,6 +1426,8 @@
           "Description": "A flaw was found in c-ares. A use-after-free / double-free vulnerability exists in the query-completion handling path, where a query callback is invoked while the query is still linked in internal lookup structures. A remote attacker can exploit this via ares_getaddrinfo() over TCP by sending crafted DNS responses that force an EDNS-downgrade retry followed by a connection reset, causing the internal completion handler to access freed memory. This leads to memory corruption and a crash (denial of service), with potential for further impact depending on the allocator and build configuration.",
           "Severity": "HIGH",
           "VendorSeverity": {
+            "alma": 3,
+            "amazon": 3,
             "redhat": 3
           },
           "CVSS": {
@@ -1435,7 +1437,10 @@
             }
           },
           "References": [
+            "https://access.redhat.com/errata/RHSA-2026:42096",
             "https://access.redhat.com/security/cve/CVE-2026-33630",
+            "https://bugzilla.redhat.com/2497686",
+            "https://errata.almalinux.org/10/ALSA-2026-42096.html",
             "https://github.com/c-ares/c-ares/commit/1fa3b86a0b8d18fe7b60f3228a01d770feb026bc",
             "https://github.com/c-ares/c-ares/commit/d823199b688052dcdc1646f2ab4cb8c16b1c644a",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-33630",
@@ -9252,7 +9257,9 @@
           },
           "CVSS": {
             "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H",
               "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:P/PR:L/UI:N/VC:N/VI:L/VA:N/SC:H/SI:H/SA:L",
+              "V3Score": 10,
               "V40Score": 5.6
             },
             "nvd": {
@@ -9304,9 +9311,12 @@
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
           },
           "Fingerprint": "sha256:5aa7ef205b6469f13c3472dc46a11bb46cbe9cfa0f48c82ad423571dfda84f46",
-          "Title": "sigstore-go has a multi-log threshold bypass via single compromised log",
-          "Description": "### Impact\n_What kind of vulnerability is it? Who is impacted?_\n\nA verifier configured with WithTransparencyLog(N\u003e1) or WithSignedCertificateTimestamps(N\u003e1) expected defense-in-depth against the compromise of a single log instance. However, threshold counting counted verified witnesses per-entry or per-validation-path rather than per-log-authority.\n\nAs a result, a single compromised transparency log could forge multiple entries with different indices, and a single compromised CT log could verify multiple times (either across multiple certificate chains or via multiple embedded SCTs), fully satisfying the multi-log threshold requirements and defeating the multi-log policy.\n\nNote that this does not affect Cosign, as Cosign sets a threshold of 1.\n\n### Patches\n_Has the problem been patched? What versions should users upgrade to?_\n\nUpgrade to v1.1.5.\n\n### Workarounds\n_Is there a way for users to fix or remediate the vulnerability without upgrading?_\n\nThere is no workaround, beyond relying on trusted logs.",
+          "Title": "sigstore-go is a Go library for Sigstore signing and verification. Pri ...",
+          "Description": "sigstore-go is a Go library for Sigstore signing and verification. Prior to 1.2.0, a verifier configured with WithTransparencyLog(N\u003e1) or WithSignedCertificateTimestamps(N\u003e1) counts verified witnesses per entry or per validation path rather than per log authority, allowing a single compromised transparency log or CT log to satisfy multi-log threshold requirements and defeat the multi-log policy. This issue is fixed in version 1.2.0.",
           "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-347"
+          ],
           "VendorSeverity": {
             "ghsa": 2
           },
@@ -9318,8 +9328,13 @@
           },
           "References": [
             "https://github.com/sigstore/sigstore-go",
+            "https://github.com/sigstore/sigstore-go/commit/dbb07e62623edd5b175fb9dd5a41dcb85a159207",
+            "https://github.com/sigstore/sigstore-go/pull/633",
+            "https://github.com/sigstore/sigstore-go/releases/tag/v1.2.0",
             "https://github.com/sigstore/sigstore-go/security/advisories/GHSA-9vcr-p3rj-q5q6"
-          ]
+          ],
+          "PublishedDate": "2026-07-17T20:17:21.963Z",
+          "LastModifiedDate": "2026-07-21T20:25:45.92Z"
         },
         {
           "VulnerabilityID": "CVE-2026-49835",
@@ -9347,22 +9362,37 @@
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
           },
           "Fingerprint": "sha256:42ab4b0b35469c1e98884803bb52b0f85962a1730962bb6a6a48ed257999e6ed",
-          "Title": "Sigstore Timestamp Authority has OOM due to unbounded metric label cardinality",
-          "Description": "### Impact\n\nAn unauthenticated remote attacker can trigger unbounded memory growth on the timestamp authority server.\n\nThis vulnerability exists because the global `wrapMetrics` middleware records the raw HTTP request path (`r.URL.Path`) and raw HTTP request method (`r.Method`) as Prometheus labels for latency and request count metric vectors. Since this middleware runs before standard routing occurs, it executes for all incoming requests, including those for unmatched paths (yielding 404 responses) or arbitrary request methods. The Prometheus library registers a new, permanent time-series entry for every distinct label combination. An attacker can continuously issue requests containing random paths (e.g., `/api/v1/timestamp/\u003cuuid\u003e`) or random HTTP methods to exhaust system memory.\n\n### Patches\n\nThis issue has been patched by limiting the metric label values to a strict allowlist of expected paths (`/ping`, `/api/v1/timestamp`, `/api/v1/timestamp/certchain`) and expected HTTP methods (`GET`, `POST`, `HEAD`, `OPTIONS`). Unrecognized paths or methods are normalized to a static string (`\"unrecognized\"`).\n\nUsers should update to version `v2.0.7` or later.\n\n### Workarounds\n\n1. Block or drop incoming requests with invalid HTTP methods or unknown request paths at a reverse proxy or load balancer before they reach the timestamp authority server.\n2. Configure rate-limiting on the public interface to prevent remote attackers from issuing millions of unique requests in a short duration.",
+          "Title": "timestamp-authority: Sigstore Timestamp Authority: Denial of Service via unbounded metric label cardinality",
+          "Description": "Sigstore Timestamp Authority is a service for issuing RFC 3161 timestamps. Prior to 2.1.0, the global wrapMetrics middleware records raw HTTP request path r.URL.Path and raw HTTP request method r.Method as Prometheus labels for latency and request count metric vectors before routing, allowing an unauthenticated remote attacker to issue requests with random paths such as /api/v1/timestamp/\u003cuuid\u003e or random HTTP methods and create unbounded permanent time-series entries that exhaust memory. This issue is fixed in version 2.1.0.",
           "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-770"
+          ],
           "VendorSeverity": {
-            "ghsa": 2
+            "ghsa": 2,
+            "redhat": 2
           },
           "CVSS": {
             "ghsa": {
               "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
               "V3Score": 5.9
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 5.9
             }
           },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-49835",
             "https://github.com/sigstore/timestamp-authority",
-            "https://github.com/sigstore/timestamp-authority/security/advisories/GHSA-9c54-x2g4-v92j"
-          ]
+            "https://github.com/sigstore/timestamp-authority/commit/506ec57b6ac2ea1e4739322e47453469425b69b5",
+            "https://github.com/sigstore/timestamp-authority/releases/tag/v2.1.0",
+            "https://github.com/sigstore/timestamp-authority/security/advisories/GHSA-9c54-x2g4-v92j",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-49835",
+            "https://www.cve.org/CVERecord?id=CVE-2026-49835"
+          ],
+          "PublishedDate": "2026-07-17T19:17:16.227Z",
+          "LastModifiedDate": "2026-07-21T20:25:45.92Z"
         },
         {
           "VulnerabilityID": "GO-2026-5932",
@@ -9393,6 +9423,123 @@
           ]
         },
         {
+          "VulnerabilityID": "CVE-2026-46600",
+          "VendorIDs": [
+            "GO-2026-5942"
+          ],
+          "PkgID": "golang.org/x/net@v0.55.0",
+          "PkgName": "golang.org/x/net",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/golang.org/x/net@v0.55.0",
+            "UID": "800c9711eabd51e"
+          },
+          "InstalledVersion": "v0.55.0",
+          "FixedVersion": "0.56.0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:9c6b5fc6f6d3f652156e1d0097d512dc05a011ccae1a516e933d535fd39719c5",
+            "DiffID": "sha256:a2b8bc5de7c6d72ada813f4ac5158ef896a068fe5a3e8cc6236639741837fab0"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-46600",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:26891c21c7f09323ebc66b0b7930bfbd6c1e8b35d2a610b4f650ce28b154688e",
+          "Title": "Parsing an invalid SVCB or HTTPS RR can panic in golang.org/x/net/dns/dnsmessage",
+          "Description": "Parsing an invalid SVCB or HTTPS RR can panic when the size of a parameter value overflows the message buffer.",
+          "Severity": "UNKNOWN",
+          "References": [
+            "https://go.dev/cl/786345",
+            "https://go.dev/issue/79795",
+            "https://pkg.go.dev/vuln/GO-2026-5942"
+          ],
+          "PublishedDate": "2026-07-21T20:17:01.213Z",
+          "LastModifiedDate": "2026-07-21T20:17:01.213Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-56852",
+          "VendorIDs": [
+            "GO-2026-5970"
+          ],
+          "PkgID": "golang.org/x/text@v0.37.0",
+          "PkgName": "golang.org/x/text",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/golang.org/x/text@v0.37.0",
+            "UID": "45c72c1a5b809ffb"
+          },
+          "InstalledVersion": "v0.37.0",
+          "FixedVersion": "0.39.0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:9c6b5fc6f6d3f652156e1d0097d512dc05a011ccae1a516e933d535fd39719c5",
+            "DiffID": "sha256:a2b8bc5de7c6d72ada813f4ac5158ef896a068fe5a3e8cc6236639741837fab0"
+          },
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-56852",
+          "DataSource": {
+            "ID": "govulndb",
+            "Name": "The Go Vulnerability Database",
+            "URL": "https://pkg.go.dev/vuln/"
+          },
+          "Fingerprint": "sha256:cd943193c9344b4ac4f523410720bf8e1aa4a8403e837c2a66a23d0a244ab67e",
+          "Title": "Infinite loop on invalid input in golang.org/x/text",
+          "Description": "A norm.Iter can enter an infinite loop when handling input containing invalid UTF-8 bytes.",
+          "Severity": "UNKNOWN",
+          "References": [
+            "https://go.dev/cl/794100",
+            "https://go.dev/issue/80142",
+            "https://pkg.go.dev/vuln/GO-2026-5970"
+          ],
+          "PublishedDate": "2026-07-21T20:17:02.867Z",
+          "LastModifiedDate": "2026-07-21T20:17:02.867Z"
+        },
+        {
+          "VulnerabilityID": "GHSA-hrxh-6v49-42gf",
+          "PkgID": "google.golang.org/grpc@v1.81.0",
+          "PkgName": "google.golang.org/grpc",
+          "PkgIdentifier": {
+            "PURL": "pkg:golang/google.golang.org/grpc@v1.81.0",
+            "UID": "298e5bff25d2308f"
+          },
+          "InstalledVersion": "v1.81.0",
+          "FixedVersion": "1.82.1",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:9c6b5fc6f6d3f652156e1d0097d512dc05a011ccae1a516e933d535fd39719c5",
+            "DiffID": "sha256:a2b8bc5de7c6d72ada813f4ac5158ef896a068fe5a3e8cc6236639741837fab0"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://github.com/advisories/GHSA-hrxh-6v49-42gf",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Go",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
+          },
+          "Fingerprint": "sha256:7cfaed46f1eaa117a7e3bd8716582e9afb6c69fe4876078830a6a85b92d98dc2",
+          "Title": "gRPC-Go: xDS RBAC and HTTP/2 Vulnerabilities",
+          "Description": "Multiple security vulnerabilities have been identified and addressed in grpc-go affecting the xDS RBAC authorization engine (internal/xds/rbac) and the HTTP/2 transport server implementation (internal/transport). These vulnerabilities could result in:\n\n- Authorization Bypass (Fail-Open) when translating xDS RBAC policies containing `Metadata` or `RequestedServerName` fields.\n- Denial of Service (High CPU Consumption) due to an HTTP/2 Rapid Reset mitigation bypass during client-initiated stream resets.\n- Denial of Service (Server Panic) when parsing crafted xDS RBAC policies containing `NOT` rules around unsupported fields.\n\n\n### Impact\n_What kind of vulnerability is it? Who is impacted?_\n\n#### xDS RBAC Authorization Bypass via `Metadata` \u0026 `RequestedServerName` matchers\n\n- Affected Component: xDS RBAC \n- Impact: When building policy matchers for gRPC RBAC from xDS configurations, unsupported `permission` and `principal` rules (specifically `Metadata` and `RequestedServerName`) were silently ignored and treated as no-ops.\n  - If an authorization policy relied purely on these matchers for access control, treating those rules as no-ops effectively removed the restrictions.\n- If these unsupported rules were nested inside logical `NOT` rules (`Permission_NotRule` / `Principal_NotId`) or multi-condition `OR/AND` rules, silently dropping them changed the boolean logic flow of the authorization engine.\n\nAs a result, policy evaluation decisions could fail open, allowing unauthorized clients to access protected gRPC services or resources.\n\n#### HTTP/2 Rapid Reset Mitigation Bypass / Denial of Service via Stream Aborts\n\n- Affected Component: HTTP/2 transport\n- Impact: Earlier mitigations in grpc-go for HTTP/2 Rapid Reset only applied threshold checks to items that directly resulted in control frames being written back to the wire, such as `SETTINGS` ACKs or server-initiated `RST_STREAM`s.\n\nWhen a client initiated a rapid flood of stream creation (`HEADERS`) immediately followed by stream termination `RST_STREAM`, items queued up in the control buffer without counting against the transport response frame threshold. An attacker can repeatedly trigger this flood sequence to bypass reader blocking, resulting in high CPU usage, and Denial of Service (DoS).\n\n#### Denial of Service (Panic) in xDS RBAC Engine via Unsupported Fields inside NOT Rules\n\n- Affected Component: xDS RBAC \n- Impact: The xDS RBAC policy translators recursively generate matchers for nested rules. When a `NOT` rule wrapped an unsupported or unhandled field (such as `SourcedMetadata`), the recursive step returned an empty matcher. This could result in a runtime panic when the RBAC engine attempts to authorize an incoming request.\n\nAn attacker or misconfigured/malicious xDS management server delivering an LDS/RDS update containing a `NOT` rule around an unhandled field causes the gRPC server process to crash immediately (CWE-248 / Denial of Service).\n\n### Patches\n_Has the problem been patched? What versions should users upgrade to?_\n\nAll three issues have been fixed in `master` and will be released in 1.82.1 shortly.\n\n### Workarounds\n_Is there a way for users to fix or remediate the vulnerability without upgrading?_\n\nIf upgrading grpc-go immediately is not possible, apply the following workarounds based on your deployment architecture:\n\n* For xDS RBAC Vulnerabilities \u0026 Panics: Ensure that upstream xDS management servers do not push RBAC policies containing `Metadata`, `RequestedServerName`, or `NOT` rules wrapping unsupported fields (such as `SourcedMetadata`) to grpc-go servers.\n* For HTTP/2 Rapid Reset DOS: Configure upstream reverse proxies or load balancers (such as Envoy) with strict HTTP/2 `max_concurrent_streams` limits and active rate limiting on `RST_STREAM` frequency per connection.\n\n### Severity\n\n  | Vulnerability | Qualitative Severity | Approximate CVSS v3.1 Score | Primary Impact |\n  | :--- | :--- | :--- | :--- |\n  | **xDS RBAC Authorization Bypass** | **High** | `8.2` | Unauthorized Access / Fail-Open |\n  | **HTTP/2 Rapid Reset DOS Bypass** | **High** | `7.5` | High CPU Consumption / Denial of Service |\n  | **xDS RBAC Engine Server Panic** | **Medium** | `5.9` | Process Crash / Denial of Service |",
+          "Severity": "HIGH",
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:H/VA:H/SC:N/SI:N/SA:N",
+              "V40Score": 8.8
+            }
+          },
+          "References": [
+            "https://github.com/grpc/grpc-go",
+            "https://github.com/grpc/grpc-go/commit/4ea465d4ab98013f72a142fe0fc89c19770b2935",
+            "https://github.com/grpc/grpc-go/pull/9236",
+            "https://github.com/grpc/grpc-go/releases/tag/v1.82.1",
+            "https://github.com/grpc/grpc-go/security/advisories/GHSA-hrxh-6v49-42gf"
+          ],
+          "PublishedDate": "2026-07-21T22:03:55Z",
+          "LastModifiedDate": "2026-07-21T22:03:56Z"
+        },
+        {
           "VulnerabilityID": "CVE-2026-50151",
           "VendorIDs": [
             "GHSA-jxpm-75mh-9fp7"
@@ -9418,25 +9565,38 @@
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
           },
           "Fingerprint": "sha256:e3ad78877d131cfa162142f36891a76efabed663ec149a95997bc271a1f2d5a9",
-          "Title": "oras-go blob upload vulnerable to credential forwarding via unvalidated Location header",
-          "Description": "## Summary\n\noras-go follows a registry-controlled `Location` header during the monolithic blob upload flow and reuses the `Authorization` header from the initial `POST` request for the subsequent `PUT` request. If a malicious registry returns a cross-host `Location`, oras-go can send the caller's credentials to an attacker-controlled endpoint.\n\n## Affected Versions\n\ntested: v2.6.0 (commit 03243809936cce826494b5506f724c6dc11115b1, as-of 2026-01-24)\nrange: unknown; likely affects earlier v2.x releases that include the same upload flow\n\n## Impact\n\nCredential leak to an attacker-controlled endpoint and client-side ssrf to a cross-host target.\n\n## Affected Component\n\n- `registry/remote/repository.go:878-916` (`blobStore.completePushAfterInitialPost`)\n\n## Reproduction\n\nAttachments include `poc.zip` with a local-only harness (no real registry required). It runs a fake registry server that returns a cross-host `Location` and a second server that records whether it received `Authorization`.\n\n```bash\nunzip -q -o poc.zip -d /tmp/poc\ncd /tmp/poc/poc-F-ORAS-LOCATION-UPLOAD-001\nmake canonical\nmake control\n```\n\n## Recommended Fix\n\n- validate `Location` before uploading (scheme + hostname + effective port) against the original request, or require an explicit opt-in allowlist for cross-host upload urls\n- never forward `Authorization` when the upload target changes host or scheme\n\n## references\n\n- security policy: https://github.com/oras-project/oras-go/security/policy\n- vulnerable code: `registry/remote/repository.go` (see `blobStore.completePushAfterInitialPost`)",
+          "Title": "oras-go: oras-go: Credential forwarding via unvalidated Location header during blob upload",
+          "Description": "oras-go is a Go library for managing OCI artifacts. Prior to 2.6.1, registry/remote/repository.go in blobStore.completePushAfterInitialPost follows a registry-controlled Location header during monolithic blob upload and reuses the Authorization header from the initial POST request for the subsequent PUT request, allowing a malicious registry to return a cross-host Location and receive the caller's credentials at an attacker-controlled endpoint. This issue is fixed in version 2.6.1.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-918"
+          ],
           "VendorSeverity": {
-            "ghsa": 3
+            "ghsa": 3,
+            "redhat": 2
           },
           "CVSS": {
             "ghsa": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
               "V3Score": 7.5
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "V3Score": 5.9
             }
           },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-50151",
             "https://github.com/oras-project/oras-go",
             "https://github.com/oras-project/oras-go/commit/4683c46ef078091544f5f55fd25102f002806991",
             "https://github.com/oras-project/oras-go/pull/1152",
             "https://github.com/oras-project/oras-go/releases/tag/v2.6.1",
-            "https://github.com/oras-project/oras-go/security/advisories/GHSA-jxpm-75mh-9fp7"
-          ]
+            "https://github.com/oras-project/oras-go/security/advisories/GHSA-jxpm-75mh-9fp7",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-50151",
+            "https://www.cve.org/CVERecord?id=CVE-2026-50151"
+          ],
+          "PublishedDate": "2026-07-17T20:17:23.683Z",
+          "LastModifiedDate": "2026-07-20T15:16:39.333Z"
         },
         {
           "VulnerabilityID": "CVE-2026-50163",
@@ -9463,23 +9623,40 @@
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
           },
           "Fingerprint": "sha256:40295006255ca7e393017a9d7c5b9e708c81d9847040fe242fdf246a1eda96df",
-          "Title": "`oras-go` tar extraction: Hardlink entry with relative Linkname escapes extract dir via process CWD resolution",
-          "Description": "### Root cause\n\nThe tar-extraction helper `ensureLinkPath` at [`content/file/utils.go:262-275`](https://github.com/oras-project/oras-go/blob/main/content/file/utils.go#L262-L275) validates that a hardlink's target resolves inside the extract base, but then returns the original unresolved `target` string back to the caller:\n\n```go\nfunc ensureLinkPath(baseAbs, baseRel, link, target string) (string, error) {\n    path := target\n    if !filepath.IsAbs(target) {\n        path = filepath.Join(filepath.Dir(link), target)  // resolved FOR VALIDATION\n    }\n    if _, err := resolveRelToBase(baseAbs, baseRel, path); err != nil {\n        return \"\", err\n    }\n    return target, nil   // \u003c-- returns the ORIGINAL target, not the validated path\n}\n```\n\nThe caller for `TypeLink` hardlinks then does:\n\n```go\ncase tar.TypeLink:\n    var target string\n    if target, err = ensureLinkPath(dirPath, dirName, filePath, header.Linkname); err == nil {\n        err = os.Link(target, filePath)\n    }\n```\n\n`os.Link(oldname, newname)` wraps the `link(2)` system call. From the `link(2)` man page:\n\n\u003e oldpath and newpath are interpreted relative to the current working directory of the calling process.\n\nSo when `target` (i.e., `header.Linkname`) is a **relative** path, `os.Link` resolves it against the process's **current working directory**, not against `filepath.Dir(link)` as the validation assumed.\n\n### Attack\n\nAn attacker who controls an OCI-compliant registry (or any artifact source the victim consumes via `oras pull`) crafts a tarball layer with:\n\n- A regular file: `payload.tar.gz/README.txt`.\n- A hardlink entry: `Typeflag=TypeLink`, `Name=payload.tar.gz/evil_cwd_link`, `Linkname=\"victim.secret\"` (relative).\n\nand marks the layer descriptor with `io.deis.oras.content.unpack: \"true\"` (a standard annotation that tells `oras-go` to auto-extract).\n\nWhen a victim runs `oras pull` (or any Go code using `content.File`), the extraction:\n\n1. Validates `payload.tar.gz/evil_cwd_link` — passes.\n2. Calls `ensureLinkPath(dirPath, \"payload.tar.gz\", filePath, \"victim.secret\")`:\n   - `path = filepath.Join(filepath.Dir(filePath), \"victim.secret\")` = `\u003cextract_base\u003e/payload.tar.gz/victim.secret` → inside base → **validation passes**.\n   - Returns `target = \"victim.secret\"` (NOT `path`).\n3. Calls `os.Link(\"victim.secret\", \"\u003cextract_base\u003e/payload.tar.gz/evil_cwd_link\")`.\n4. `link(2)` resolves relative `oldname=\"victim.secret\"` against process CWD → creates a hardlink inside the extract tree pointing to `\u003cinvoker_CWD\u003e/victim.secret`.\n\nThe resulting hardlink and the CWD file **share an inode** — reading one reads the other; writing to one writes to the other.\n\n---\n\n## Proof of Concept\n\nTested on Ubuntu 24.04.4 LTS with `oras` CLI v1.3.0 (SHA-256 `040e140304b7dbdd9b40dacd798e2303cea44ad84eeb210750afdf15f1dcf8b4`, downloaded from \u003chttps://github.com/oras-project/oras/releases/download/v1.3.0/oras_1.3.0_linux_amd64.tar.gz\u003e).\n\nReproduction script (standalone, ~50 lines) attached. Summary of key steps:\n\n```bash\n# 1. Place victim file in the future CWD.\nmkdir -p cwd-space extract\necho \"TOP SECRET FROM CWD\" \u003e cwd-space/victim.secret\n\n# 2. Craft malicious tarball with a TypeLink entry whose Linkname is RELATIVE.\npython3 -c '\nimport tarfile, io, os\nwith tarfile.open(\"cwd-space/payload.tar.gz\", \"w:gz\", format=tarfile.GNU_FORMAT) as t:\n    info = tarfile.TarInfo(name=\"payload.tar.gz/README.txt\")\n    c = b\"pulled from registry\"; info.size = len(c); info.mode = 0o644\n    info.uid = os.getuid(); info.gid = os.getgid()\n    t.addfile(info, io.BytesIO(c))\n\n    link = tarfile.TarInfo(name=\"payload.tar.gz/evil_cwd_link\")\n    link.type = tarfile.LNKTYPE\n    link.linkname = \"victim.secret\"   # RELATIVE\n    link.mode = 0o644; link.uid = os.getuid(); link.gid = os.getgid()\n    t.addfile(link)\n'\n\n# 3. Push to OCI layout, patch in the unpack annotation, pull from cwd-space.\n(cd cwd-space \u0026\u0026 oras push --oci-layout ../layout:v1 \\\n    payload.tar.gz:application/vnd.oci.image.layer.v1.tar+gzip)\n# ... patch layout/blobs/sha256/\u003cmanifest\u003e to add\n#     io.deis.oras.content.unpack: \"true\" on layers[0].annotations ...\n\n(cd cwd-space \u0026\u0026 oras pull --oci-layout ../layout:v1 --output ../extract)\n\n# 4. Observe inode sharing.\nstat -c '%i' extract/payload.tar.gz/evil_cwd_link   # → 6554160\nstat -c '%i' cwd-space/victim.secret                # → 6554160 (SAME)\ncat extract/payload.tar.gz/evil_cwd_link             # → \"TOP SECRET FROM CWD\"\n```\n\nObserved output:\n\n```\nevil_cwd_link (inside extract dir): inode=6554160\nvictim.secret  (in invoker CWD):    inode=6554160\n*** ESCAPE CONFIRMED ***\nReading through the extract-dir hardlink yields the CWD file contents:\nTOP SECRET FROM CWD\n```\n\nA library-level regression test is also provided (`poc_test.go`) that drops into `content/file/utils_test.go` and runs via `go test ./content/file/... -run TestPoC` — output shows identical inode match for consumers of the library API.\n\n---\n\n## Impact\n\n**Primary: arbitrary-CWD-file read primitive.** An attacker-controlled OCI artifact, when pulled by a victim using the `oras` CLI or any Go program using `oras-go/v2/content/file`, can create a hardlink inside the victim's extract tree pointing to an arbitrary file in the victim's process CWD (that the invoker UID is permitted to read). Reading the extract-tree hardlink yields that file's contents verbatim.\n\n**Secondary: inode-sharing tampering primitive.** Any tool that later modifies the extract-tree hardlink (write, chmod, truncate, etc.) modifies the CWD file through the shared inode. This violates the \"writes inside the extract dir are confined\" invariant that downstream tooling (CI systems, container-image builders, artifact scanners) typically depends on.\n\n**High-severity chains:**\n\n- **CI pipelines** where `oras pull` runs from a project workspace containing secrets/credentials (`.env`, `.git/config`, service-account tokens). The pulled artifact can hardlink those secrets into a location later archived/mounted/published.\n- **Container orchestration** where the extract dir is bind-mounted into a lower-trust container while the pull-invoker's CWD is higher-trust. Hardlinks created in the extract tree expose invoker-CWD files across the trust boundary.\n- **Kubernetes operators / Flux source-controller** using `oras-go` to fetch artifacts; their CWD is typically `/` or `/root` — very sensitive.\n- **Multi-tenant registry proxies** that use `oras-go` to fetch and re-serve artifacts; each proxy process has a CWD with configuration, keys, or per-tenant state.\n\n**Not affected:**\n\n- `oras push` (tarball creation side): `tarDirectory` in the same file explicitly skips hardlink generation (line 65 comment: `\"We don't support hard links and treat it as regular files\"`), so pushed content cannot trigger this on the server.\n- Symlink extraction path (`TypeSymlink`): `os.Symlink` stores the target string verbatim and does not CWD-resolve at creation time. The current `ensureLinkPath` return-of-`target` is correct for symlinks (the existing validation correctly models the symlink-follow path).\n\n### Attack-surface boundary (`fs.protected_hardlinks`)\n\nOn Linux with `fs.protected_hardlinks=1` (default on modern distros), `link(2)` additionally requires the linking user to have READ + WRITE permission on the source file (per `may_linkat()` in the kernel). Verified on Ubuntu 24.04: as non-root, `ln /etc/passwd /tmp/x` returns `EPERM`, and the same via the oras PoC path returns `link passwd /tmp/.../evil_passwd: operation not permitted`.\n\n**So the attacker cannot use this bug to read arbitrary root-owned files (e.g., `/etc/shadow`) when the victim invokes `oras pull` as a regular user.** The attack surface depends on the invocation context:\n\n| Invocation context | Reachable file classes |\n|---|---|\n| `oras pull` run by a regular user | Any file the user OWNS or has write access to in the process CWD: `.env`, `.git/config`, `.aws/credentials`, `~/.ssh/config`, project-local secrets, CI workspace files. |\n| `oras pull` run as root (systemd without `User=`, container entrypoint default root, Kubernetes operator) | **Every file on the host filesystem.** `/etc/shadow`, `/root/.ssh/id_rsa`, bind-mounted host paths, service private keys. |\n\nThe user-context attack surface alone is sufficient for supply-chain-grade impact: CI pipelines and developer machines routinely hold API keys, signing keys, and cloud credentials in user-owned files in the working directory. The root-context escalation makes the bug Critical in mainstream Kubernetes/GitOps tooling where oras-go is adopted for artifact distribution.\n\n---\n\n## Proposed fix\n\nChange `ensureLinkPath` to expose both the verbatim target (for symlinks) and the resolved absolute path (for hardlinks); have the `TypeLink` case use the resolved path.\n\n```go\n// Current behavior preserved for TypeSymlink. TypeLink switches to the resolved\n// path to avoid CWD-resolution mismatch at os.Link time.\nfunc ensureLinkPath(baseAbs, baseRel, link, target string) (symlinkTarget, hardlinkPath string, err error) {\n    path := target\n    if !filepath.IsAbs(target) {\n        path = filepath.Join(filepath.Dir(link), target)\n    }\n    if _, err = resolveRelToBase(baseAbs, baseRel, path); err != nil {\n        return \"\", \"\", err\n    }\n    return target, path, nil\n}\n```\n\n```go\ncase tar.TypeLink:\n    var absTarget string\n    if _, absTarget, err = ensureLinkPath(dirPath, dirName, filePath, header.Linkname); err == nil {\n        err = os.Link(absTarget, filePath)\n    }\ncase tar.TypeSymlink:\n    var symTarget string\n    symTarget, _, err = ensureLinkPath(dirPath, dirName, filePath, header.Linkname)\n    if err != nil { return err }\n    if err = os.Symlink(symTarget, filePath); err != nil { ... }\n```\n\n**Regression test to add:**\n\nExtend `Test_extractTarDirectory_HardLink` with a third sub-test that:\n1. Creates a sentinel file in the test's `t.TempDir()` (or an explicitly `os.Chdir`-entered directory) with a known name, e.g. `sentinel.txt`.\n2. Builds a tarball containing a `TypeLink` entry with `Linkname: \"sentinel.txt\"` (relative).\n3. Extracts.\n4. Asserts either `extractTarDirectory` returned an error, OR the resulting hardlink's inode does NOT match the sentinel's inode.",
+          "Title": "oras-go: Oras-go: Information disclosure and arbitrary file access via crafted tarball hardlinks",
+          "Description": "oras-go is a Go library for managing OCI artifacts. Prior to 2.6.2, ensureLinkPath in content/file/utils.go:262-275 validates a hardlink target relative to the extract base but returns the unresolved target, causing os.Link(\"victim.secret\", \"\u003cextract_base\u003e/payload.tar.gz/evil_cwd_link\") to resolve header.Linkname against the process current working directory for a Typeflag=TypeLink entry such as Name=payload.tar.gz/evil_cwd_link and Linkname=\"victim.secret\" with io.deis.oras.content.unpack: \"true\", which can expose or tamper with files such as .env, .git/config, .aws/credentials, and ~/.ssh/config. This issue is fixed in version 2.6.2.",
           "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-22",
+            "CWE-59"
+          ],
           "VendorSeverity": {
-            "ghsa": 3
+            "ghsa": 3,
+            "redhat": 2
           },
           "CVSS": {
             "ghsa": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:N",
               "V3Score": 7.1
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:L/A:N",
+              "V3Score": 5.9
             }
           },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-50163",
             "https://github.com/oras-project/oras-go",
             "https://github.com/oras-project/oras-go/commit/b11f777f8d405c5023c4b307cfdc5068dfc3d406",
-            "https://github.com/oras-project/oras-go/security/advisories/GHSA-fxhp-mv3v-67qp"
-          ]
+            "https://github.com/oras-project/oras-go/commit/c463c654ab3ef34422c1764cd619806cebf20451",
+            "https://github.com/oras-project/oras-go/pull/1232",
+            "https://github.com/oras-project/oras-go/releases/tag/v2.6.2",
+            "https://github.com/oras-project/oras-go/security/advisories/GHSA-fxhp-mv3v-67qp",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-50163",
+            "https://www.cve.org/CVERecord?id=CVE-2026-50163"
+          ],
+          "PublishedDate": "2026-07-17T20:17:23.943Z",
+          "LastModifiedDate": "2026-07-20T16:17:04.433Z"
         },
         {
           "VulnerabilityID": "CVE-2026-50162",
@@ -9507,23 +9684,37 @@
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
           },
           "Fingerprint": "sha256:351cb6e484ee6d0efb395752d0487579a1992a15e8500ef26b9252cbe1b5a327",
-          "Title": "oras-go has file store write outside workingDir via symlink traversal",
-          "Description": "The file content store in `oras-go` attempts to confine writes to `workingDir` when `AllowPathTraversalOnWrite=false`, but the guard is lexical and does not account for symlink traversal. If `workingDir` contains a symlink path component and an attacker-controlled blob title (via `ocispec.AnnotationTitle`) targets a path under that symlink, `pushFile()` can create a file outside `workingDir`.\n\n## relevant links\n\n- repository: https://github.com/oras-project/oras-go\n- commit: 03243809936cce826494b5506f724c6dc11115b1\n- callsite: content/file/file.go:609 `resolveWritePath()` (used by `pushFile()`)\n\n## vulnerability details\n\n**pins:** oras-project/oras-go@03243809936cce826494b5506f724c6dc11115b1\n\n**as-of:** 2026-02-17\n\n**policy:** GitHub Security Advisory (oras-project/oras-go)\n\n**callsite:** content/file/file.go:609 `resolveWritePath()` → `pushFile()`\n\n**attacker control:** Attacker controls the pushed name (`ocispec.AnnotationTitle`) and can select a path with a symlink path component under `workingDir` → `resolveWritePath()` blocks `..` via `filepath.Rel` but does not prevent symlink traversal → `pushFile()` opens/creates the final path and follows the symlink → a file is created outside `workingDir`\n\n### root cause\n\n`resolveWritePath()` enforces the write boundary using a `filepath.Rel`-style check against `workingDir`. This prevents `../` escapes but is purely lexical and does not resolve symlinks. If a path component under `workingDir` is a symlink to an external location, the subsequent filesystem operation in `pushFile()` follows that symlink and performs the write outside `workingDir` while still passing the lexical boundary check.\n\n### attack path\n\n1. Attacker provides a blob title (via `ocispec.AnnotationTitle`) that contains a path like `out/pwn.txt`.\n2. Victim uses `oras-go` file store with `AllowPathTraversalOnWrite=false` and a `workingDir` that contains a symlink directory `out -\u003e /some/outside/dir`.\n3. The lexical boundary check accepts `out/pwn.txt` as being under `workingDir`.\n4. The write follows the symlink and creates `/some/outside/dir/pwn.txt`.\n\n## impact\n\nThis is a filesystem boundary bypass that permits writes outside `workingDir` when a symlink path component exists under `workingDir`. The concrete security impact depends on the runtime environment (what filesystem locations are writable by the process and what downstream consumers do with the written file), but the intended confinement guarantee is violated.\n\n## proof of concept\n\nthe attached `poc.zip` contains a small, self-contained go harness that demonstrates:\n\n- canonical (vulnerable): prints `[CALLSITE_HIT]` and `[PROOF_MARKER]` and shows the file is created outside `workingDir`\n- control (no symlink component): prints `[NC_MARKER]` and confirms no outside write occurs\n\nrun:\n\n```bash\nunzip -q -o poc.zip -d /tmp\ncd /tmp/poc-F-ORAS-SYMLINK-WRITE-001\nmake test\n```\n\n**expected:** when `AllowPathTraversalOnWrite=false`, file store writes should not be able to escape `workingDir`, including via symlink traversal.\n\n**actual:** A symlink path component under `workingDir` allows writes to escape `workingDir` even when `AllowPathTraversalOnWrite=false`.\n\n## recommended fix\n\nensure confinement checks account for symlink traversal. Options include rejecting symlinks in any path component (walk components with `os.Lstat`), validating the resolved parent directory via `EvalSymlinks` and enforcing it remains under the resolved `workingDir`, or using an `openat()`-style approach so the check and open happen relative to a trusted directory file descriptor.\n\n**fix accepted when:** The canonical PoC no longer prints `[PROOF_MARKER]` for the same attacker-controlled inputs.\n\n\ncheers,\nOleh",
+          "Title": "oras-go: oras-go: File store write outside working directory via symlink traversal",
+          "Description": "oras-go is a Go library for managing OCI artifacts. Prior to 2.6.1, resolveWritePath() in content/file/file.go uses a lexical filepath.Rel check for workingDir and does not account for symlink traversal, so when AllowPathTraversalOnWrite=false an attacker-controlled blob title through ocispec.AnnotationTitle such as out/pwn.txt can follow a workingDir symlink out -\u003e /some/outside/dir and cause pushFile() to create /some/outside/dir/pwn.txt outside workingDir. This issue is fixed in version 2.6.1.",
           "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-73"
+          ],
           "VendorSeverity": {
-            "ghsa": 2
+            "ghsa": 2,
+            "redhat": 2
           },
           "CVSS": {
             "ghsa": {
               "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:L/VA:N/SC:N/SI:N/SA:N",
               "V40Score": 6.9
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
+              "V3Score": 5.3
             }
           },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-50162",
             "https://github.com/oras-project/oras-go",
             "https://github.com/oras-project/oras-go/commit/cc323e564d90c6b5b4bdd71d3c8d2ee2713b37e5",
-            "https://github.com/oras-project/oras-go/security/advisories/GHSA-8xwf-rjm4-xvhv"
-          ]
+            "https://github.com/oras-project/oras-go/releases/tag/v2.6.1",
+            "https://github.com/oras-project/oras-go/security/advisories/GHSA-8xwf-rjm4-xvhv",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-50162",
+            "https://www.cve.org/CVERecord?id=CVE-2026-50162"
+          ],
+          "PublishedDate": "2026-07-17T20:17:23.817Z",
+          "LastModifiedDate": "2026-07-20T19:17:24.27Z"
         },
         {
           "VulnerabilityID": "GHSA-vh4v-2xq2-g5cg",
@@ -9595,24 +9786,38 @@
             "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Ago"
           },
           "Fingerprint": "sha256:9ac2e982552d0c1e08ce650ce67d1a9ab58783b70e9d9735ab73bf0d3f548b58",
-          "Title": "oras-go: Malicious registry can hijack Bearer token realm to exfiltrate credentials and refresh tokens",
-          "Description": "## Summary\n\noras-go's `auth.Client` follows the `realm` URL from a registry's `WWW-Authenticate: Bearer` challenge without validating its scheme or host. The `realm` field is server-controlled by design in the OCI/distribution spec — registries legitimately point token requests at a separate auth endpoint (e.g. Docker Hub's `registry-1.docker.io` -\u003e `auth.docker.io`), so cross-host realms on public DNS names are not in themselves a vulnerability. Two specific patterns, however, are never legitimate under any registry trust model and can be abused by a malicious or compromised registry (or a man-in-the-middle on a plaintext connection):\n\n1. **SSRF to internal networks.** A realm of `http://169.254.169.254/...` (AWS/Azure IMDS), `http://10.0.0.x/...` (RFC 1918), or `http://127.0.0.1/...` causes oras-go running on a cloud VM or corporate workstation to issue outbound HTTP requests from inside the user's trust boundary to an endpoint the user did not choose. The user's stored credentials are attached to those requests, but the principal harm is the network primitive — probing internal endpoints from the client. On IMDSv1 the response body is recoverable from log channels; on IMDSv2 the probe itself can still be used for service discovery.\n\n2. **TLS downgrade.** A registry contacted over `https://` can return a realm with an `http://` scheme, causing oras-go to send the user's credentials over plaintext to the token endpoint. This defeats the transport security the user chose when typing `https://`.\n\n## What is NOT claimed\n\nThis advisory does **not** claim that credential forwarding to an arbitrary public attacker host through a server-controlled realm is, on its own, a vulnerability. The distribution spec defines `realm` as a server-controlled field; a strict same-host or same-eTLD+1 enforcement would deviate from the spec and break legitimate split-host deployments. Operators who want defense-in-depth against cross-host realm forwarding can use the opt-in `Client.TrustedRealmHosts` allowlist (added separately).\n\n## Affected versions\n\n`oras.land/oras-go/v2 \u003c= v2.6.0`\n\n## Severity\n\nMedium. Network attack vector, low complexity, no privileges required, user interaction required (victim runs an oras command against the malicious or MITM'd registry), unchanged scope. Confidentiality impact is limited — IMDS probe responses can disclose information, and TLS downgrade exposes the realm request to passive observers — but the attacker does not obtain credentials beyond what the malicious endpoint already controls.\n\n## Affected code\n\n- `registry/remote/auth/client.go` — `Client.Do()` (bearer challenge handling)\n- `registry/remote/auth/client.go` — `Client.fetchBearerToken()` / `fetchDistributionToken` / `fetchOAuth2Token`\n\nThe `realm` parameter from `parseChallenge` is threaded through to `http.NewRequestWithContext` without scheme or host validation.\n\n## CWE\n\n- CWE-918: Server-Side Request Forgery (SSRF)\n- CWE-319: Cleartext Transmission of Sensitive Information\n\n## Patch\n\n`registry/remote/auth/client.go` now rejects realm URLs that:\n\n- use a scheme other than `http` or `https`\n- use `http` when the registry was contacted over `https` (TLS downgrade)\n- use an IP literal in a loopback, link-local, private, or unspecified range, unless the registry itself was reached at the same hostname (so loopback / in-cluster deployments are unaffected)\n\nCross-host realms on public DNS names continue to be accepted.\n\n## Credit\n\nReported by bugbunny.ai.",
+          "Title": "oras-go: oras-go: Information disclosure and TLS downgrade via malicious registry realm",
+          "Description": "oras-go is a Go library for managing OCI artifacts. Prior to 2.6.1, auth.Client follows the realm URL from a registry's WWW-Authenticate: Bearer challenge without validating the scheme or host, allowing a malicious or compromised registry to cause SSRF to internal networks such as http://169.254.169.254/, http://10.0.0.x/, and http://127.0.0.1/, or to downgrade a registry contacted over https:// to an http:// token endpoint in registry/remote/auth/client.go through Client.Do(), Client.fetchBearerToken(), fetchDistributionToken, and fetchOAuth2Token. This issue is fixed in version 2.6.1.",
           "Severity": "LOW",
+          "CweIDs": [
+            "CWE-319",
+            "CWE-918"
+          ],
           "VendorSeverity": {
-            "ghsa": 1
+            "ghsa": 1,
+            "redhat": 1
           },
           "CVSS": {
             "ghsa": {
               "V40Vector": "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:A/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N",
               "V40Score": 2.1
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:N/A:N",
+              "V3Score": 3.1
             }
           },
           "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-48978",
             "https://github.com/oras-project/oras-go",
             "https://github.com/oras-project/oras-go/commit/7a9f4b0b9558821b0422152ebe21ae56930fe764",
             "https://github.com/oras-project/oras-go/releases/tag/v2.6.1",
-            "https://github.com/oras-project/oras-go/security/advisories/GHSA-xf85-363p-868w"
-          ]
+            "https://github.com/oras-project/oras-go/security/advisories/GHSA-xf85-363p-868w",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-48978",
+            "https://www.cve.org/CVERecord?id=CVE-2026-48978"
+          ],
+          "PublishedDate": "2026-07-17T20:17:21.693Z",
+          "LastModifiedDate": "2026-07-21T03:16:41.74Z"
         },
         {
           "VulnerabilityID": "CVE-2026-39822",
@@ -9647,25 +9852,35 @@
           ],
           "VendorSeverity": {
             "alma": 3,
+            "amazon": 2,
+            "bitnami": 3,
             "oracle-oval": 3,
-            "redhat": 3
+            "redhat": 3,
+            "rocky": 3
           },
           "CVSS": {
+            "bitnami": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+              "V3Score": 7.8
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
               "V3Score": 7.8
             }
           },
           "References": [
-            "https://access.redhat.com/errata/RHSA-2026:37435",
+            "https://access.redhat.com/errata/RHSA-2026:38878",
             "https://access.redhat.com/security/cve/CVE-2026-39822",
-            "https://bugzilla.redhat.com/2480756",
-            "https://errata.almalinux.org/9/ALSA-2026-37435.html",
+            "https://bugzilla.redhat.com/2498152",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2498152",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39822",
+            "https://errata.almalinux.org/9/ALSA-2026-38878.html",
+            "https://errata.rockylinux.org/RLSA-2026:38878",
             "https://go.dev/cl/797880",
             "https://go.dev/issue/79005",
             "https://groups.google.com/g/golang-announce/c/OrmQE_Yp5Sc",
             "https://linux.oracle.com/cve/CVE-2026-39822.html",
-            "https://linux.oracle.com/errata/ELSA-2026-37435.html",
+            "https://linux.oracle.com/errata/ELSA-2026-38995.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-39822",
             "https://pkg.go.dev/vuln/GO-2026-4970",
             "https://www.cve.org/CVERecord?id=CVE-2026-39822"
@@ -9705,9 +9920,15 @@
             "CWE-201"
           ],
           "VendorSeverity": {
+            "amazon": 2,
+            "bitnami": 2,
             "redhat": 2
           },
           "CVSS": {
+            "bitnami": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+              "V3Score": 5.3
+            },
             "redhat": {
               "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
               "V3Score": 5.3
