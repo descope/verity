@@ -126,7 +126,7 @@ func TestNightlyDispatchInputs(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(copaPath, copaData, 0o644))
 
-	copa, err := nightlyDispatchInputs(nightlyFamilyCopa, copaPath)
+	copa, err := nightlyDispatchInputs(nightlyFamilyCopa, copaPath, "12345-2")
 	require.NoError(t, err)
 	require.Equal(t, []map[string]string{{
 		"image-name":      "library/nginx",
@@ -134,6 +134,7 @@ func TestNightlyDispatchInputs(t *testing.T) {
 		"target-registry": "ghcr.io/verity-org",
 		"platforms":       "linux/amd64,linux/arm64",
 		"go-vcs-url":      "https://github.com/nginx/nginx@release-1.29.3",
+		"batch-id":        "12345-2",
 	}}, copa)
 
 	integerPath := filepath.Join(dir, "integer.json")
@@ -147,7 +148,7 @@ func TestNightlyDispatchInputs(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(integerPath, integerData, 0o644))
 
-	integer, err := nightlyDispatchInputs(nightlyFamilyInteger, integerPath)
+	integer, err := nightlyDispatchInputs(nightlyFamilyInteger, integerPath, "")
 	require.NoError(t, err)
 	require.Equal(t, []map[string]string{{
 		"image":    "node",
@@ -504,7 +505,7 @@ func TestDispatchWorkflowReportsTransportError(t *testing.T) {
 func TestNightlyDispatchInputsRejectsUnsupportedFamily(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "matrix.json")
 	require.NoError(t, os.WriteFile(path, []byte(`[]`), 0o644))
-	_, err := nightlyDispatchInputs("bad", path)
+	_, err := nightlyDispatchInputs("bad", path, "")
 	require.ErrorIs(t, err, errUnsupportedNightlyFamily)
 	assert.True(t, strings.Contains(err.Error(), "bad"))
 }

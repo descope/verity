@@ -40,11 +40,13 @@ jobs:
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: Wait for nightly patch producers
+      - name: Wait for nightly Copa producer
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WAIT_BRANCH: ${{ github.ref_name }}
-        run: bash .github/scripts/wait-for-workflows.sh patch-image.yaml
+          WAIT_EVENT: schedule
+          WAIT_TIMEOUT_SECONDS: 21600
+        run: bash .github/scripts/wait-for-workflows.sh orchestrator.yaml
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0

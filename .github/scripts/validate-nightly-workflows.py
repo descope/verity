@@ -117,9 +117,10 @@ def main() -> None:
         "Integer publishing permissions must be scoped to the reusable shard job",
     )
     require(
-        "bash .github/scripts/wait-for-workflows.sh patch-image.yaml" in chart_gen
+        "bash .github/scripts/wait-for-workflows.sh orchestrator.yaml" in chart_gen
+        and "WAIT_TIMEOUT_SECONDS: 21600" in chart_gen
         and "actions: read" in chart_gen,
-        "chart generation must wait for active patch-image producer runs",
+        "chart generation must wait for the completed Copa orchestrator batch",
     )
     require(
         "--method GET" in wait_helper
@@ -128,10 +129,18 @@ def main() -> None:
         "wait helper must use GET pagination and REST run ids",
     )
     require(
-        "bash .github/scripts/wait-for-workflows.sh patch-image.yaml integer-orchestrator.yaml chart-gen.yaml"
+        "bash .github/scripts/wait-for-workflows.sh orchestrator.yaml integer-orchestrator.yaml chart-gen.yaml"
         in build_site
+        and "WAIT_TIMEOUT_SECONDS: 21600" in build_site
         and "actions: read" in build_site,
-        "site build must wait for active patch, Integer orchestration, and chart generation producer runs",
+        "site build must wait for Copa, Integer, and chart producer workflows",
+    )
+    require(
+        '--batch-id "${{ github.run_id }}-${{ github.run_attempt }}"' in orchestrator
+        and "WAIT_BATCH_ID:" in orchestrator
+        and "WAIT_EXPECTED_RUNS:" in orchestrator
+        and "bash .github/scripts/wait-for-workflows.sh patch-image.yaml" in orchestrator,
+        "Copa orchestration must correlate and await only its own patch runs",
     )
     require(
         "  schedule:" not in chart_integration,

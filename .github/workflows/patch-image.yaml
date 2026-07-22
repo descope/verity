@@ -1,5 +1,5 @@
 name: Patch Image
-run-name: "Patch ${{ inputs.image-name }} (${{ inputs.source-ref }})"
+run-name: "Patch ${{ inputs.image-name }} (${{ inputs.source-ref }})${{ inputs.batch-id != '' && format(' [batch {0}]', inputs.batch-id) || '' }}"
 
 # Reusable per-image lifecycle: scan → patch (matrix) → finalize.
 # Supports both workflow_call (PR inline) and workflow_dispatch (orchestrator).
@@ -39,6 +39,11 @@ on:
         required: false
         type: string
         default: ""
+      batch-id:
+        description: "Parent orchestrator run ID and attempt"
+        required: false
+        type: string
+        default: ""
 
   workflow_dispatch:
     inputs:
@@ -61,6 +66,11 @@ on:
         default: "linux/amd64,linux/arm64"
       go-vcs-url:
         description: "Go VCS URL for binary patching (e.g., https://github.com/org/repo@v1.0.0)"
+        required: false
+        type: string
+        default: ""
+      batch-id:
+        description: "Parent orchestrator run ID and attempt"
         required: false
         type: string
         default: ""
