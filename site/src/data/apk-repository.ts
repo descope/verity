@@ -1,12 +1,13 @@
 export const apkRepository = {
-  status: "experimental pending availability",
+  status: "experimental",
   basePath: "apk",
   architectures: [
     { apk: "x86_64", platform: "linux/amd64" },
     { apk: "aarch64", platform: "linux/arm64" },
   ],
-  keyFile: "verity-apk-rsa.pub",
-  keyFingerprint: "pending publication",
+  keyFile: "verity.rsa.pub",
+  // biome-ignore lint/security/noSecrets: This is the published public-key fingerprint.
+  keyFingerprint: "90f7940b20391f49b417b9b3be49f01ee88b975313860b6e1a77bbf7b109c6d2",
   caveat:
-    "The Verity APK repository is experimental. Do not rely on it for production until the publish workflow has produced signed APKINDEX files and the repository verification task confirms availability.",
+    "The Verity APK repository is experimental. Every published package is provenance-verified, re-signed with the stable Verity RSA256 key, and admitted only after its Integer build passes the zero-CVE gate.",
 };

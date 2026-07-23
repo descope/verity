@@ -26,7 +26,7 @@ wrapper charts, and the web catalog.
 | Architectures | `x86_64`, `aarch64` |
 | Channels | Rolling `latest` only; no explicit channel segment |
 | Public key | `https://verity.supply/apk/verity.rsa.pub` current-key alias; fingerprinted key files may be published during rotation |
-| Per-arch repository | `https://verity.supply/apk/<arch>` |
+| Client repository URL | `https://verity.supply/apk` (`apk` appends the architecture) |
 | Index | `/apk/<arch>/APKINDEX.tar.gz`, signed with Verity APK signing key |
 | Packages | Current Verity-built `.apk` files referenced by the index |
 

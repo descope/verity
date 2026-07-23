@@ -65,7 +65,7 @@ const keyUrl = `${repoRoot}/${apkRepository.keyFile}`;
     <div class="rounded-lg border border-verity-border bg-verity-surface p-5">
       <h2 class="mb-3 text-lg font-semibold text-verity-text-primary">Signing key</h2>
       <p class="mb-3 text-sm text-verity-text-secondary">
-        Install this key only after Verity publishes and confirms the fingerprint.
+        Confirm this fingerprint before installing the key.
       </p>
       <code
         class="block break-all rounded border border-verity-border bg-verity-void p-3 text-xs text-amber-200"
@@ -93,7 +93,7 @@ const keyUrl = `${repoRoot}/${apkRepository.keyFile}`;
     <pre
       class="overflow-x-auto rounded-lg border border-verity-border bg-verity-void p-4 text-sm text-verity-text-primary"><code>{`set -eu
 apk_arch="$(apk --print-arch)"
-repo_url="${repoRoot}/\${apk_arch}"
+repo_url="${repoRoot}"
 
 wget -O "/etc/apk/keys/${apkRepository.keyFile}" "${keyUrl}"
 printf '%s\n' "$repo_url" >> /etc/apk/repositories
@@ -106,7 +106,7 @@ apk update
     <h2 class="mb-3 text-lg font-semibold text-amber-200">Experimental caveats</h2>
     <ul class="list-disc space-y-2 pl-5 text-sm text-verity-text-secondary">
       <li>Package names, versions, repository paths, and signing keys may change.</li>
-      <li>The repository may be empty or return 404 until publish and verification complete.</li>
+      <li>A scheduled publish is retained only while its packages remain in the rolling index.</li>
       <li>Use only in ephemeral tests until general availability.</li>
       <li>Use published OCI container images for production workloads today.</li>
     </ul>

@@ -19,7 +19,7 @@ export const GET: APIRoute = ({ site }) => {
 
 > Status: **${apkRepository.status}**. ${apkRepository.caveat}
 
-The Verity APK repository is the planned package-level companion to the container-image catalog. It will expose Verity-built APK packages for Wolfi/Alpine-compatible consumers once the publish workflow and repository verification tasks are complete.
+The Verity APK repository is the package-level companion to the container-image catalog. It exposes approved Verity-built APK packages for Wolfi/Alpine-compatible consumers.
 
 ## Repository Entry Points
 
@@ -31,7 +31,7 @@ ${archRows}
 
 **Fingerprint**: \`${apkRepository.keyFingerprint}\`
 
-Until the fingerprint is published and verified, treat these URLs as documentation for the intended layout rather than a production package source.
+Verify the fingerprint before installing the key or any package.
 
 ## Install Instructions
 
@@ -41,7 +41,7 @@ Do not enable this repository on production systems yet. For disposable test con
 set -eu
 
 apk_arch="$(apk --print-arch)"
-repo_url="${repoRoot}/\${apk_arch}"
+repo_url="${repoRoot}"
 
 wget -O "/etc/apk/keys/${apkRepository.keyFile}" "${keyUrl}"
 printf '%s\n' "$repo_url" >> /etc/apk/repositories
@@ -55,7 +55,7 @@ If your image lacks \`wget\`, copy the key into \`/etc/apk/keys/${apkRepository.
 
 ## Trust Model
 
-- APK metadata is expected to be published as signed \`APKINDEX.tar.gz\` files per architecture.
+- APK metadata is published as signed \`APKINDEX.tar.gz\` files per architecture.
 - APK clients trust packages through the public key installed in \`/etc/apk/keys/\`.
 - Verify the key fingerprint from this page before installing any package.
 - Keep Verity container-image signatures and attestations separate from APK repository trust; cosign/SLSA cover OCI images, while APK installation relies on APKINDEX/package signatures.
@@ -70,7 +70,7 @@ If your image lacks \`wget\`, copy the key into \`/etc/apk/keys/${apkRepository.
 ## Experimental Caveats
 
 - Package names, versions, repository paths, and signing keys may change before general availability.
-- The repository may be empty or return 404 until the publish workflow lands and runs successfully.
+- The repository is rolling and may remove packages no longer referenced by the current index.
 - Use only in ephemeral tests until final availability is verified.
 - Prefer the published container images for production workloads today.
 
@@ -79,7 +79,7 @@ If your image lacks \`wget\`, copy the key into \`/etc/apk/keys/${apkRepository.
 [Browse Catalog](${prefix}) · [Complete LLM Reference](${prefix}llms-full.txt) · [GitHub](https://github.com/verity-org/verity)
 `;
 
-  return new Response(content.trim() + "\n", {
+  return new Response(`${content.trim()}\n`, {
     headers: {
       "Content-Type": "text/markdown; charset=utf-8",
       "Cache-Control": "public, max-age=3600",

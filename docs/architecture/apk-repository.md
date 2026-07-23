@@ -47,18 +47,17 @@ The intended implementation sequence is:
 7. Upload the verified tree as part of the GitHub Pages artifact.
 
 The publish job must fail closed if any required architecture is missing, any
-index is unsigned, any index references a missing package, or any smoke install
-fails.
+index is unsigned, an APK signature fails verification, or a fresh client cannot
+load an architecture index.
 
 ## Signing and key custody
 
 - The private signing key is stored as a GitHub Actions secret scoped to the
   Pages/repository publish workflow.
 - The current public key is non-secret and published as `/apk/verity.rsa.pub`.
-- Documentation and site copy must show the SHA-256 fingerprint next to the key
-  URL before the repository is advertised for use. Until the implementation
-  creates the production key, the canonical fingerprint value is `TBD` and the
-  repository must remain unadvertised.
+- Documentation and site copy show the SHA-256 SPKI fingerprint
+  `90f7940b20391f49b417b9b3be49f01ee88b975313860b6e1a77bbf7b109c6d2`
+  next to the public-key URL.
 - CI logs must not print private key material. Workflows should write private
   material to temporary files with restrictive permissions and delete them after
   signing.
@@ -84,7 +83,7 @@ implementation details and do not create a supported package archive.
 
 Before publishing or advertising a repository update, automation should verify:
 
-1. `/apk/verity.rsa.pub` exists and matches the documented non-`TBD`
+1. `/apk/verity.rsa.pub` exists and matches the documented
    fingerprint.
 2. Each `APKINDEX.tar.gz` includes an APK signature entry accepted by `apk` when
    the Verity public key is installed.
@@ -92,7 +91,7 @@ Before publishing or advertising a repository update, automation should verify:
    directory.
 4. A fresh Alpine-compatible client can run `apk update` against each
    architecture URL.
-5. At least one representative package install succeeds per architecture.
+5. Every published package passes `apk verify` with the committed public key.
 
 ## Failure handling
 

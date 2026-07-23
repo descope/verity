@@ -5,18 +5,23 @@ want to install Verity-built APKs directly on Alpine-compatible systems. For
 production workloads, prefer Verity's signed container images until the APK
 channel graduates from experimental status.
 
-## Repository URLs
+## Repository URL
 
-| Architecture | Repository URL |
+Configure this base URL; `apk` automatically appends the client architecture:
+
+`https://verity.supply/apk`
+
+The resulting static endpoints are:
+
+| Architecture | Index endpoint |
 | --- | --- |
 | `x86_64` | `https://verity.supply/apk/x86_64` |
 | `aarch64` | `https://verity.supply/apk/aarch64` |
 
 Public key: `https://verity.supply/apk/verity.rsa.pub`
 
-SHA-256 fingerprint: `TBD` until the implementation publishes the production
-key. Do not use the repository until this value is replaced by a real
-fingerprint on `verity.supply` and in this guide.
+SHA-256 fingerprint of the DER-encoded public key:
+`90f7940b20391f49b417b9b3be49f01ee88b975313860b6e1a77bbf7b109c6d2`
 
 ## Install
 
@@ -33,7 +38,7 @@ esac
 wget -O /etc/apk/keys/verity.rsa.pub \
   https://verity.supply/apk/verity.rsa.pub
 
-repo="https://verity.supply/apk/$arch"
+repo="https://verity.supply/apk"
 if ! grep -qxF "$repo" /etc/apk/repositories; then
   printf '%s\n' "$repo" >> /etc/apk/repositories
 fi
@@ -49,12 +54,10 @@ apk add <package-name>
 
 ## Verify repository state
 
-Before trusting the repository, confirm this guide or `verity.supply` publishes
-a non-`TBD` SHA-256 fingerprint for the production key. Then compare that value
-with the installed key:
+Compare the installed key with the fingerprint above:
 
 ```sh
-sha256sum /etc/apk/keys/verity.rsa.pub
+openssl pkey -pubin -in /etc/apk/keys/verity.rsa.pub -outform DER | sha256sum
 ```
 
 Confirm `apk` sees the Verity repository and package source:
@@ -72,7 +75,7 @@ signature verification for this repository.
 ## Remove the repository
 
 Edit `/etc/apk/repositories` and remove the matching
-`https://verity.supply/apk/<arch>` line. Then remove the key if no other Verity
+`https://verity.supply/apk` line. Then remove the key if no other Verity
 APK repository uses it:
 
 ```sh
