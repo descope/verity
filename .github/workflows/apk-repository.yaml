@@ -14,15 +14,17 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   assemble:
     name: Assemble APK repository
     runs-on: ubuntu-24.04
-    env:
-      HAS_APK_REPOSITORY_PRIVATE_KEY: ${{ secrets.APK_REPOSITORY_PRIVATE_KEY != '' }}
+    environment:
+      name: github-pages
     permissions:
       contents: read
+      actions: read
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -38,11 +40,20 @@ jobs:
           install: true
           cache: true
 
-      - name: Prepare artifact source directory
-        run: |
-          mkdir -p apk-artifacts
-          echo "Repository assembly will scan packages/repo and apk-artifacts."
-          echo "Cross-run artifact download is intentionally not performed in this privileged workflow."
+      - name: Wait for trusted Integer producer
+        id: wait-producer
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WAIT_BRANCH: main
+          WAIT_EVENT: schedule
+          WAIT_TIMEOUT_SECONDS: 21600
+        run: bash .github/scripts/wait-for-workflows.sh integer-orchestrator.yaml
+
+      - name: Download provenance-verified APK packages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INTEGER_BATCH_ID: ${{ steps.wait-producer.outputs.integer_orchestrator_batch_id }}
+        run: bash .github/scripts/download-approved-apks.sh "$INTEGER_BATCH_ID" apk-artifacts
 
       - name: Build site shell
         working-directory: site
@@ -54,19 +65,26 @@ jobs:
         env:
           APK_REPOSITORY_PRIVATE_KEY: ${{ secrets.APK_REPOSITORY_PRIVATE_KEY }}
         run: |
+          test -n "$APK_REPOSITORY_PRIVATE_KEY"
+          melange_bin=$(command -v melange)
           docker run --rm \
             -e APK_REPOSITORY_PRIVATE_KEY \
             -v "$PWD:/work" \
+            -v "$melange_bin:/usr/local/bin/melange:ro" \
             -w /work \
             alpine:3.22@sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601 \
-            sh -euxc 'packages="bash findutils"; if [ -n "${APK_REPOSITORY_PRIVATE_KEY:-}" ]; then packages="$packages abuild openssl"; fi; apk add --no-cache $packages; bash .github/scripts/assemble-apk-repository.sh --output site/dist/apk apk-artifacts packages/repo'
+            sh -euxc 'apk add --no-cache abuild bash findutils gcompat openssl; bash .github/scripts/assemble-apk-repository.sh --output site/dist/apk apk-artifacts packages/repo'
 
       - name: Validate APK repository
         run: bash .github/scripts/validate-apk-repository.sh site/dist/apk
 
-      - name: Validate APK repository signatures
-        if: env.HAS_APK_REPOSITORY_PRIVATE_KEY == 'true'
-        run: bash .github/scripts/validate-apk-repository.sh --require-signature site/dist/apk
+      - name: Cryptographically validate APK repository
+        run: |
+          docker run --rm \
+            -v "$PWD:/work" \
+            -w /work \
+            alpine:3.22@sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601 \
+            sh -euxc 'apk add --no-cache bash findutils openssl; bash .github/scripts/validate-apk-repository.sh --verify-crypto site/dist/apk'
 
       - name: Upload Pages artifact
         uses: ./.github/actions/upload-pages-artifact

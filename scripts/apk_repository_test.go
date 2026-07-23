@@ -117,7 +117,7 @@ func TestAssembleAPKRepositoryCleansStaleArchAndMarker(t *testing.T) {
 	// Stale artifacts from a previous run that should be removed.
 	writeTempFile(t, filepath.Join(outputDir, ".no-apks-found"), "old marker")
 	writeTempFile(t, filepath.Join(outputDir, "x86_64", "old.apk"), "stale")
-	writeTempFile(t, filepath.Join(outputDir, "verity-apk-repository.rsa.pub"), "stale key")
+	writeTempFile(t, filepath.Join(outputDir, "verity.rsa.pub"), "stale key")
 	// Pre-existing doc that must NOT be removed.
 	writeTempFile(t, filepath.Join(outputDir, "index.html"), "<html>docs</html>")
 	require.NoError(t, os.MkdirAll(filepath.Join(repoRoot, "apk-artifacts"), 0o755))
@@ -129,7 +129,7 @@ func TestAssembleAPKRepositoryCleansStaleArchAndMarker(t *testing.T) {
 	_, statErr := os.Stat(filepath.Join(outputDir, "x86_64"))
 	assert.True(t, os.IsNotExist(statErr), "stale arch directory should be removed")
 	// Stale key removed.
-	_, statErr = os.Stat(filepath.Join(outputDir, "verity-apk-repository.rsa.pub"))
+	_, statErr = os.Stat(filepath.Join(outputDir, "verity.rsa.pub"))
 	assert.True(t, os.IsNotExist(statErr), "stale public key should be removed")
 	// Fresh marker written.
 	assert.FileExists(t, filepath.Join(outputDir, ".no-apks-found"))
@@ -145,7 +145,7 @@ func TestAssembleAPKRepositoryDoesNotRemoveUnrelatedRSAPubFiles(t *testing.T) {
 	repoRoot := t.TempDir()
 	outputDir := filepath.Join(repoRoot, "site", "dist", "apk")
 	// This script's managed key — should be cleaned.
-	managedKey := filepath.Join(outputDir, "verity-apk-repository.rsa.pub")
+	managedKey := filepath.Join(outputDir, "verity.rsa.pub")
 	writeTempFile(t, managedKey, "stale managed key")
 	// An unrelated `.rsa.pub` published by a sibling system (e.g. a key
 	// rotation overlap that lays down both old and new keys) — must NOT
@@ -278,14 +278,14 @@ func TestValidateAPKRepositoryRequiresSignedIndexAndPublicKey(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, output, "no public key")
 
-	writeTempFile(t, filepath.Join(repoDir, "verity-apk-repository.rsa.pub"), "public key")
-	writeTarGz(t, filepath.Join(archDir, "APKINDEX.tar.gz"), "APKINDEX", ".SIGN.RSA.other.rsa.pub")
+	writeTempFile(t, filepath.Join(repoDir, "verity.rsa.pub"), "public key")
+	writeTarGz(t, filepath.Join(archDir, "APKINDEX.tar.gz"), "APKINDEX", ".SIGN.RSA256.other.rsa.pub")
 
 	output, err = runGithubScript(t, repoRoot, "validate-apk-repository.sh", "--require-signature", repoDir)
 	require.Error(t, err)
 	assert.Contains(t, output, "has no matching root public key")
 
-	writeTarGz(t, filepath.Join(archDir, "APKINDEX.tar.gz"), "APKINDEX", ".SIGN.RSA.verity-apk-repository.rsa.pub")
+	writeTarGz(t, filepath.Join(archDir, "APKINDEX.tar.gz"), "APKINDEX", ".SIGN.RSA256.verity.rsa.pub")
 
 	output, err = runGithubScript(t, repoRoot, "validate-apk-repository.sh", "--require-signature", repoDir)
 	require.NoError(t, err)
