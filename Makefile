@@ -39,7 +39,7 @@ fmt:
 # Check for Go vulnerabilities
 lint-vuln:
 	@which govulncheck > /dev/null || (echo "govulncheck not found. Run: make install-tools" && exit 1)
-	govulncheck ./...
+	bash .github/scripts/check-go-vulnerabilities.sh
 
 # Lint workflows
 lint-workflows:
@@ -53,6 +53,7 @@ lint-workflows:
 	python3 .github/scripts/validate-renovate-coverage.py
 	bash .github/scripts/validate-wait-for-workflows.sh
 	bash .github/scripts/validate-retry-helpers.sh
+	bash .github/scripts/validate-go-vulnerability-check.sh
 
 # Lint YAML files
 lint-yaml:
