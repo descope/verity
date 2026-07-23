@@ -89,6 +89,10 @@ Publication MUST fail unless all checks pass for `x86_64` and `aarch64`:
 
 Checking only that a `.SIGN.*` member exists is insufficient.
 
+An intentional change to index-generation or signing semantics MUST increment
+the published `repository-format` marker. Otherwise an unchanged signed APK and
+key set deliberately preserves the previously published index bytes.
+
 ## Rotation
 
 - Rotate routinely every 12 months and immediately after suspected compromise.

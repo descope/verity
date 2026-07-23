@@ -22,6 +22,10 @@ permissions:
 env:
   TARGET_REGISTRY: ghcr.io/verity-org
 
+concurrency:
+  group: github-pages-publish
+  cancel-in-progress: false
+
 jobs:
   # ── Job 1: Build catalog and site ──────────────────────────────────
   catalog:
@@ -54,6 +58,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           INTEGER_BATCH_ID: ${{ steps.wait-producers.outputs.integer_orchestrator_batch_id }}
         run: bash .github/scripts/download-approved-apks.sh "$INTEGER_BATCH_ID" apk-artifacts
+
+      - name: Restore previous published site
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/download-previous-pages.sh previous-pages
 
       - name: Checkout reports branch
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -190,7 +199,7 @@ jobs:
           VITE_CACHE_DIR: ${{ runner.temp }}/verity-vite-cache
         run: npm ci && npm run build
 
-      - name: Assemble APK repository overlay
+      - name: Assemble APK repository candidate
         env:
           APK_REPOSITORY_PRIVATE_KEY: ${{ secrets.APK_REPOSITORY_PRIVATE_KEY }}
         run: |
@@ -202,12 +211,23 @@ jobs:
             -v "$melange_bin:/usr/local/bin/melange:ro" \
             -w /work \
             alpine:3.22@sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601 \
-            sh -euxc 'apk add --no-cache abuild bash findutils gcompat openssl; bash .github/scripts/assemble-apk-repository.sh --output site/dist/apk packages/repo apk-artifacts'
+            sh -euxc 'apk add --no-cache abuild bash findutils gcompat openssl; bash .github/scripts/assemble-apk-repository.sh --output apk-candidate packages/repo apk-artifacts'
 
-      - name: Validate APK repository overlay
-        run: bash .github/scripts/validate-apk-repository.sh site/dist/apk
+      - name: Validate APK repository candidate
+        run: bash .github/scripts/validate-apk-repository.sh apk-candidate
 
-      - name: Cryptographically validate APK repository overlay
+      - name: Cryptographically validate current and candidate repositories
+        run: |
+          docker run --rm \
+            -v "$PWD:/work" \
+            -w /work \
+            alpine:3.22@sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601 \
+            sh -euxc 'apk add --no-cache bash findutils openssl; bash .github/scripts/validate-apk-repository.sh --verify-crypto apk-candidate; if [ -d previous-pages/apk ]; then bash .github/scripts/validate-apk-repository.sh --verify-crypto previous-pages/apk; fi'
+
+      - name: Preserve unchanged APK repository bytes
+        run: bash .github/scripts/select-apk-repository.sh apk-candidate previous-pages/apk site/dist/apk
+
+      - name: Validate selected APK repository overlay
         run: |
           docker run --rm \
             -v "$PWD:/work" \
@@ -219,6 +239,7 @@ jobs:
         uses: ./.github/actions/upload-pages-artifact
         with:
           path: site/dist
+          retention-days: 30
           overwrite: "true"
 
   # ── Job 2: Deploy to GitHub Pages ──────────────────────────────────

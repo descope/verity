@@ -13,6 +13,7 @@ The MVP repository is static and published through GitHub Pages:
 https://verity.supply/apk/
 ├── verity.rsa.pub               # current-key alias
 ├── verity-<fingerprint>.rsa.pub # optional rotation/overlap key
+├── repository-format            # publication semantics version
 ├── x86_64/
 │   ├── APKINDEX.tar.gz
 │   └── *.apk
@@ -37,14 +38,19 @@ Rules:
 
 The intended implementation sequence is:
 
-1. Build or collect Verity-owned `.apk` artifacts per target architecture.
-2. Stage files into a temporary tree matching `/apk/<arch>/`.
-3. Generate `APKINDEX.tar.gz` independently for each architecture.
-4. Sign each index with the Verity APK signing private key.
-5. Copy `verity.rsa.pub` into `/apk/`.
-6. Verify the staged repository with Alpine `apk` clients for `x86_64` and
-   `aarch64`.
-7. Upload the verified tree as part of the GitHub Pages artifact.
+1. Build a complete candidate from the exact successful scheduled Integer batch.
+2. Verify every candidate artifact's GitHub provenance before exposing the
+   repository signing secret.
+3. Re-sign candidate packages, generate per-architecture indexes, and sign the
+   indexes with the stable APK key.
+4. Restore the latest non-expired main-branch Pages artifact and verify its APK
+   signatures and indexes independently.
+5. Compare signed APK paths and digests, public-key digests, and the explicit
+   `repository-format` marker.
+6. Preserve the previous APK tree byte-for-byte when that state is unchanged;
+   otherwise select the complete candidate.
+7. Verify the selected repository with fresh Alpine clients for `x86_64` and
+   `aarch64`, then upload the complete site as the next Pages artifact.
 
 The publish job must fail closed if any required architecture is missing, any
 index is unsigned, an APK signature fails verification, or a fresh client cannot
@@ -78,6 +84,10 @@ This repository is rolling `latest` only. The Pages artifact should contain:
 Superseded APKs should be removed when no current `APKINDEX.tar.gz` references
 them. GitHub Actions artifacts, logs, and temporary staging directories are
 implementation details and do not create a supported package archive.
+
+The `github-pages` workflow artifact is retained for 30 days solely as
+authenticated previous state. It prevents unchanged nightly builds from
+re-signing indexes. It is not a historical package channel.
 
 ## Verification contract
 

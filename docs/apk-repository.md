@@ -22,6 +22,32 @@ the private key does not match the committed key.
 Approved packages are re-signed with Melange using RSA/SHA-256, and indexes are
 signed explicitly with `abuild-sign -t RSA256`.
 
+## Update discipline
+
+Every scheduled publication builds a complete candidate repository from one
+successful Integer batch. It also restores the latest retained main-branch Pages
+artifact and cryptographically verifies both repositories.
+
+A merged recipe change reaches the APK repository through the next successful
+scheduled Integer batch. Failed or partial batches never mutate the published
+repository.
+
+Publication compares the path and SHA-256 digest of every signed APK, public key,
+and `repository-format` marker:
+
+- If the state is identical, the previously published APKs and indexes are
+  copied byte-for-byte. A nightly rebuild must not create repository churn.
+- If package contents, package paths, the trust root, or the repository format
+  change, the complete candidate replaces the previous repository.
+- Recipe removal is therefore handled safely: the removed package is absent
+  from the complete candidate and disappears from the rolling repository.
+- Site-only and workflow-only changes do not reissue APK indexes unless they
+  intentionally bump `repository-format`.
+
+The Pages artifact is retained for 30 days so daily runs have authenticated
+previous state. A missing prior artifact is a first-publication bootstrap, not
+permission to merge a partial package set.
+
 ## Guarded empty behavior
 
 Local unsigned assembly may write `site/dist/apk/.no-apks-found`. Protected Pages
@@ -40,7 +66,7 @@ docker run --rm \
   -v "$(command -v melange):/usr/local/bin/melange:ro" \
   -w /work \
   alpine:3.22@sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601 \
-  sh -euxc 'apk add --no-cache abuild bash findutils openssl; bash .github/scripts/assemble-apk-repository.sh --output site/dist/apk packages/repo apk-artifacts'
+  sh -euxc 'apk add --no-cache abuild bash findutils gcompat openssl; bash .github/scripts/assemble-apk-repository.sh --output site/dist/apk packages/repo apk-artifacts'
 
 bash .github/scripts/validate-apk-repository.sh site/dist/apk
 ```

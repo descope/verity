@@ -33,6 +33,7 @@ SUPPORTED_ARCHES=(x86_64 aarch64 armv7 armhf ppc64le s390x riscv64)
 OUTPUT_DIR="site/dist/apk"
 KEY_NAME="verity.rsa"
 PUBLIC_KEY_PATH=""
+REPOSITORY_FORMAT_VERSION="1"
 SOURCES=()
 
 while [[ $# -gt 0 ]]; do
@@ -137,6 +138,7 @@ mapfile -t APKS < <(
 mkdir -p "$OUTPUT_DIR"
 rm -f "${OUTPUT_DIR:?}/.no-apks-found"
 rm -f "${OUTPUT_DIR:?}/${KEY_NAME}.pub"
+rm -f "${OUTPUT_DIR:?}/repository-format"
 for arch in "${SUPPORTED_ARCHES[@]}"; do
   rm -rf "${OUTPUT_DIR:?}/${arch}"
 done
@@ -177,6 +179,7 @@ if [[ -n "${APK_REPOSITORY_PRIVATE_KEY:-}" ]]; then
   openssl rsa -in "$private_input" -traditional -out "$private_key" >/dev/null 2>&1
   chmod 600 "$private_key"
   cp "$PUBLIC_KEY_PATH" "$public_key"
+  printf '%s\n' "$REPOSITORY_FORMAT_VERSION" > "$OUTPUT_DIR/repository-format"
   echo "Published APK repository public key: $public_key"
 else
   private_key=""

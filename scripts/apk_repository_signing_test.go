@@ -98,4 +98,84 @@ func TestAPKPublicationUsesOnlyApprovedIntegerArtifacts(t *testing.T) {
 	assert.Contains(t, downloaderText, `gh run download "$run_id"`)
 	assert.Contains(t, downloaderText, `--pattern "apk-repository-${batch_id}-*"`)
 	assert.Contains(t, downloaderText, "gh attestation verify")
+	assert.Contains(t, publisherText, "download-previous-pages.sh")
+	assert.Contains(t, publisherText, "select-apk-repository.sh")
+	assert.Contains(t, publisherText, "retention-days: 30")
+	assert.Contains(t, publisherText, "group: github-pages-publish")
+}
+
+func TestSelectAPKRepositoryPreservesPublishedBytesWhenPackagesUnchanged(t *testing.T) {
+	// Given
+	repoRoot := t.TempDir()
+	candidate := filepath.Join(repoRoot, "candidate")
+	previous := filepath.Join(repoRoot, "previous")
+	output := filepath.Join(repoRoot, "site", "dist", "apk")
+	writeTempFile(t, filepath.Join(candidate, "x86_64", "demo-1-r0.apk"), "same package")
+	writeTempFile(t, filepath.Join(candidate, "x86_64", "APKINDEX.tar.gz"), "new index")
+	writeTempFile(t, filepath.Join(candidate, "verity.rsa.pub"), "key")
+	writeTempFile(t, filepath.Join(candidate, "repository-format"), "1\n")
+	writeTempFile(t, filepath.Join(previous, "x86_64", "demo-1-r0.apk"), "same package")
+	writeTempFile(t, filepath.Join(previous, "x86_64", "APKINDEX.tar.gz"), "published index")
+	writeTempFile(t, filepath.Join(previous, "verity.rsa.pub"), "key")
+	writeTempFile(t, filepath.Join(previous, "repository-format"), "1\n")
+	writeTempFile(t, filepath.Join(output, "index.html"), "docs")
+
+	// When
+	commandOutput, err := runGithubScript(t, repoRoot, "select-apk-repository.sh", candidate, previous, output)
+
+	// Then
+	require.NoError(t, err)
+	assert.Contains(t, commandOutput, "repository state unchanged")
+	index, readErr := os.ReadFile(filepath.Join(output, "x86_64", "APKINDEX.tar.gz"))
+	require.NoError(t, readErr)
+	assert.Equal(t, "published index", string(index))
+	assert.FileExists(t, filepath.Join(output, "index.html"))
+}
+
+func TestSelectAPKRepositoryPublishesCandidateWhenPackageChanges(t *testing.T) {
+	// Given
+	repoRoot := t.TempDir()
+	candidate := filepath.Join(repoRoot, "candidate")
+	previous := filepath.Join(repoRoot, "previous")
+	output := filepath.Join(repoRoot, "output")
+	writeTempFile(t, filepath.Join(candidate, "aarch64", "demo-2-r0.apk"), "changed package")
+	writeTempFile(t, filepath.Join(candidate, "aarch64", "APKINDEX.tar.gz"), "new index")
+	writeTempFile(t, filepath.Join(candidate, "verity.rsa.pub"), "key")
+	writeTempFile(t, filepath.Join(previous, "aarch64", "demo-1-r0.apk"), "old package")
+	writeTempFile(t, filepath.Join(previous, "aarch64", "APKINDEX.tar.gz"), "old index")
+	writeTempFile(t, filepath.Join(previous, "verity.rsa.pub"), "key")
+
+	// When
+	commandOutput, err := runGithubScript(t, repoRoot, "select-apk-repository.sh", candidate, previous, output)
+
+	// Then
+	require.NoError(t, err)
+	assert.Contains(t, commandOutput, "repository state changed")
+	assert.FileExists(t, filepath.Join(output, "aarch64", "demo-2-r0.apk"))
+	_, statErr := os.Stat(filepath.Join(output, "aarch64", "demo-1-r0.apk"))
+	assert.True(t, os.IsNotExist(statErr))
+}
+
+func TestSelectAPKRepositoryPublishesCandidateWhenTrustRootChanges(t *testing.T) {
+	// Given
+	repoRoot := t.TempDir()
+	candidate := filepath.Join(repoRoot, "candidate")
+	previous := filepath.Join(repoRoot, "previous")
+	output := filepath.Join(repoRoot, "output")
+	for _, repository := range []string{candidate, previous} {
+		writeTempFile(t, filepath.Join(repository, "x86_64", "demo-1-r0.apk"), "same package")
+		writeTempFile(t, filepath.Join(repository, "x86_64", "APKINDEX.tar.gz"), "index")
+	}
+	writeTempFile(t, filepath.Join(candidate, "verity.rsa.pub"), "new key")
+	writeTempFile(t, filepath.Join(previous, "verity.rsa.pub"), "old key")
+
+	// When
+	commandOutput, err := runGithubScript(t, repoRoot, "select-apk-repository.sh", candidate, previous, output)
+
+	// Then
+	require.NoError(t, err)
+	assert.Contains(t, commandOutput, "repository state changed")
+	key, readErr := os.ReadFile(filepath.Join(output, "verity.rsa.pub"))
+	require.NoError(t, readErr)
+	assert.Equal(t, "new key", string(key))
 }
