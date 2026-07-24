@@ -19,6 +19,7 @@ var CICommand = &cli.Command{
 	Name:  "ci",
 	Usage: "CI planning helpers",
 	Commands: []*cli.Command{
+		ciAPKRepositoryCommand,
 		ciPlanCommand,
 		ciVulnerabilityCheckCommand,
 	},

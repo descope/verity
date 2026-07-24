@@ -56,20 +56,22 @@ publication fails earlier if the trusted Integer run produced no approved APKs.
 ## Local validation
 
 Non-empty repository assembly requires Alpine `apk` tooling. Signed assembly also
-requires `abuild-sign` and `openssl`. On non-Alpine hosts, run the same pinned
-container used by CI:
+invokes Melange and `abuild-sign`; key parsing, key matching, archive validation,
+and publication policy remain inside the Verity Go CLI. On non-Alpine hosts, run
+the same pinned container used by CI:
 
 ```bash
+CGO_ENABLED=0 go build -o verity .
 docker run --rm \
   -e APK_REPOSITORY_PRIVATE_KEY \
   -v "$PWD:/work" \
   -v "$(command -v melange):/usr/local/bin/melange:ro" \
   -w /work \
   alpine:3.22@sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601 \
-  sh -euxc 'apk add --no-cache abuild bash findutils gcompat openssl; bash .github/scripts/assemble-apk-repository.sh --output site/dist/apk packages/repo apk-artifacts'
+  sh -euxc 'apk add --no-cache abuild gcompat; /work/verity ci apk-repository assemble --output site/dist/apk packages/repo apk-artifacts'
 
-bash .github/scripts/validate-apk-repository.sh site/dist/apk
+./verity ci apk-repository validate site/dist/apk
 ```
 
-Run `validate-apk-repository.sh --verify-crypto` inside the same Alpine image for
-the publication-grade package and fresh-client index checks.
+Run `verity ci apk-repository validate --verify-crypto` inside the same Alpine
+image for the publication-grade package and fresh-client index checks.
