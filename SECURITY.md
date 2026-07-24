@@ -116,12 +116,13 @@ flagging common Go security issues (hardcoded credentials, unsafe file
 operations, unhandled errors on security-relevant calls).
 
 **Vulnerability scanning.** `govulncheck` scans Go module dependencies against
-the Go vulnerability database on every PR and in the daily pipeline. The
-unreviewed, module-wide `GO-2026-5939` record has no package or symbol metadata
-and describes Claircore's remote fetcher, which Verity does not compile. The
-check permits only that advisory while `github.com/quay/claircore/libindex`
-remains absent from the dependency graph; any other finding, scanner error, or
-future import of the affected package fails closed.
+the Go vulnerability database on every PR and in the daily pipeline through
+`verity ci vulncheck`. The Go policy verifies exact advisory metadata and
+runtime evidence for two database-shape errors: Trivy must not be the
+compromised `v0.69.4` release, and Claircore's vulnerable
+`github.com/quay/claircore/libindex` package must remain absent from the
+dependency graph. Any other finding, metadata change, scanner error, or future
+import of an affected package fails closed.
 
 **Secret detection.** `gitleaks` runs as a pre-commit hook and in CI to catch
 accidentally committed credentials before they land in the repository.

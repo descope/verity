@@ -142,7 +142,7 @@ jobs:
         run: golangci-lint run --timeout=5m
 
       - name: Run govulncheck
-        run: bash .github/scripts/check-go-vulnerabilities.sh
+        run: go run . ci vulncheck
 
   static-lint:
     name: Static Analysis
@@ -196,9 +196,6 @@ jobs:
 
       - name: Validate retry helpers
         run: bash .github/scripts/validate-retry-helpers.sh
-
-      - name: Validate Go vulnerability check
-        run: bash .github/scripts/validate-go-vulnerability-check.sh
 
       - name: Run yamllint
         run: yamllint -c .yamllint.yml .

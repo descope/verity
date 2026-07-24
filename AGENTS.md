@@ -98,6 +98,14 @@ searches in sandbox. Only your printed summary enters context.
   package/image so Trivy passes, or stop and escalate with the exact missing
   upstream fix.
 
+## Implementation language
+
+- Verity-owned internal logic must be implemented in Go. This includes CI
+  policy, repository maintenance, validation, and orchestration.
+- Bash in workflows and Makefiles is limited to trivial process invocation
+  required by third-party tools. Do not add or expand shell-based business or
+  security logic; migrate touched internal logic to Go.
+
 ## ctx commands
 
 |Command|Action|
