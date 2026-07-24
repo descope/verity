@@ -177,6 +177,9 @@ func extractAPKSubtree(reader io.Reader, outputDir string) error {
 		if err != nil {
 			return fmt.Errorf("read Pages artifact tar: %w", err)
 		}
+		if strings.Contains(header.Name, "..") {
+			return fmt.Errorf("%w: %s", errUnsafeArtifactPath, header.Name)
+		}
 		rawName := filepath.FromSlash(strings.TrimPrefix(header.Name, "./"))
 		if rawName != "apk" && !strings.HasPrefix(rawName, "apk"+string(filepath.Separator)) {
 			continue

@@ -152,3 +152,32 @@ func TestRestorePrevious_rejects_archive_path_traversal(t *testing.T) {
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "unsafe Pages artifact path")
 }
+
+func TestRestorePrevious_rejects_double_dot_archive_entry(t *testing.T) {
+	// Given an APK archive entry containing the traversal token CodeQL tracks.
+	output := filepath.Join(t.TempDir(), "previous")
+	archive := pagesArtifactZip(t, map[string]string{"./apk/demo..apk": "bad"})
+	runner := &fakeCommandRunner{run: func(request command) (commandResult, error) {
+		joined := strings.Join(request.args, " ")
+		switch {
+		case strings.Contains(joined, "actions/artifacts/9/zip"):
+			_, err := request.stdout.Write(archive)
+			return commandResult{}, err
+		case strings.Contains(joined, "actions/runs/90"):
+			return commandResult{stdout: []byte(`{"conclusion":"success"}`)}, nil
+		case strings.Contains(joined, "actions/artifacts"):
+			return commandResult{stdout: []byte(`{"artifacts":[{"id":9,"expired":false,"created_at":"2026-07-24T02:00:00Z","workflow_run":{"id":90,"head_branch":"main"}}]}`)}, nil
+		default:
+			return commandResult{}, assert.AnError
+		}
+	}}
+
+	// When the artifact is extracted.
+	err := RestorePrevious(context.Background(), &RestorePreviousOptions{
+		OutputDir: output, Repository: "verity-org/verity", runner: runner,
+	})
+
+	// Then the entry is rejected before its tainted name reaches a filesystem operation.
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "unsafe Pages artifact path")
+}
