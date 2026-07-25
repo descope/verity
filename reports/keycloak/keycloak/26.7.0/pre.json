@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.72.0"
   },
-  "ReportID": "019f92ae-9e42-78f1-abfc-07f20dddb493",
-  "CreatedAt": "2026-07-24T05:52:25.154587808Z",
+  "ReportID": "019f97cf-0817-700d-a3ef-ee81e239c7e0",
+  "CreatedAt": "2026-07-25T05:45:55.479005045Z",
   "ArtifactID": "sha256:a241a17e7eaab909aa9764b66027293eba32aca3007464679bf8f66798e2c76a",
   "ArtifactName": "quay.io/keycloak/keycloak:26.7.0",
   "ArtifactType": "container_image",
@@ -24926,7 +24926,7 @@
             "CWE-125"
           ],
           "VendorSeverity": {
-            "amazon": 2,
+            "amazon": 3,
             "azure": 2,
             "cbl-mariner": 2,
             "julia": 2,
@@ -35234,6 +35234,54 @@
             "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
             "https://github.com/netty/netty/security/advisories/GHSA-558v-64gr-wgg4"
           ]
+        },
+        {
+          "VulnerabilityID": "GHSA-mfg7-5gfp-c4w3",
+          "PkgName": "io.netty:netty-codec-dns",
+          "PkgPath": "opt/keycloak/lib/lib/main/io.netty.netty-codec-dns-4.1.135.Final.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/io.netty/netty-codec-dns@4.1.135.Final",
+            "UID": "684bd0cc5ea79f63"
+          },
+          "InstalledVersion": "4.1.135.Final",
+          "FixedVersion": "4.2.16.Final, 4.1.136.Final",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:bab2dd3bff66582b466c88b32c46791af5f83396ec46df8aea095aa6229e5265",
+            "DiffID": "sha256:8aab7e1c7dafe6e056ccae438fff273bfb1a9ca7b2f4952bf481c6d8d56f36bf"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://github.com/advisories/GHSA-mfg7-5gfp-c4w3",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:4e72929cc0d8e1cc455f289c8e7a2b533f1c1c06ff7147bcf9b19d603047783d",
+          "Title": "Netty: Memory Leak in DNS Record Decoder via Malformed Domain Names",
+          "Description": "### Summary\nA memory leak can be caused in Netty's DNS codec by sending malicious DNS packets containing invalid domain names. Because the leak occurs incrementally per packet, sustained malicious requests will cause a gradual Denial of Service.\n\n### Details\nInside `io.netty.handler.codec.dns.AbstractDnsRecord`, the parsed domain name string is passed to `IDN.toASCII(name)`. If the domain name contains characters that violate IDNA rules, `IDN.toASCII` throws an `IllegalArgumentException`.\n\nBecause this exception occurs inside the constructor before the `DnsRecord` instance can assign the buffer to its content field for later release, the ByteBuf whose reference count was incremented (or newly allocated) is never released, resulting in a direct memory leak.\n\nThere are several places where variants of this leak happen:\n- `io.netty.handler.codec.dns.DefaultDnsRecordDecoder#decodeRecord(java.lang.String, io.netty.handler.codec.dns.DnsRecordType, int, long, io.netty.buffer.ByteBuf, int, int)` invokes `in.retainedDuplicate()` or creates a new buffer `out` when constructing `DefaultDnsRawRecord`\n- `io.netty.handler.codec.dns.DnsCodecUtil#decompressDomainName` allocates a new `ByteBuf` and passes it to `encodeDomainName()`. If the decompressed domain name contains a null byte (`\\0`), `encodeDomainName()` throws an `IllegalArgumentException`, leaking the newly allocated buffer.\n\n### Impact\nResource Exhaustion. Any application utilizing Netty's DnsRecordDecoder (such as DnsNameResolver or custom DNS servers) is vulnerable.",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+              "V3Score": 5.3
+            }
+          },
+          "References": [
+            "https://github.com/netty/netty",
+            "https://github.com/netty/netty/commit/5b68c61f37aa4a3045cba624cbea239655c9003b",
+            "https://github.com/netty/netty/commit/bb2ff68a1fb71cb4b0eb9a9e17b66c52aff680c6",
+            "https://github.com/netty/netty/pull/17063",
+            "https://github.com/netty/netty/pull/17065",
+            "https://github.com/netty/netty/releases/tag/netty-4.1.136.Final",
+            "https://github.com/netty/netty/releases/tag/netty-4.2.16.Final",
+            "https://github.com/netty/netty/security/advisories/GHSA-mfg7-5gfp-c4w3"
+          ],
+          "PublishedDate": "2026-07-24T16:52:50Z",
+          "LastModifiedDate": "2026-07-24T16:52:50Z"
         },
         {
           "VulnerabilityID": "CVE-2026-55851",
