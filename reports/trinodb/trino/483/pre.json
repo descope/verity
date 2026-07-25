@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.72.0"
   },
-  "ReportID": "019f92cc-b75f-71e1-8ceb-7c313f3dacb7",
-  "CreatedAt": "2026-07-24T06:25:17.663125374Z",
+  "ReportID": "019f97f0-774d-7a6f-873a-32da5875adf6",
+  "CreatedAt": "2026-07-25T06:22:26.637684882Z",
   "ArtifactID": "sha256:07894acad42da3477e92f40d791c44ac1f3f7e193d7356e7772e4c3b057d3d10",
   "ArtifactName": "docker.io/trinodb/trino:483",
   "ArtifactType": "container_image",
@@ -38935,6 +38935,51 @@
       ],
       "Vulnerabilities": [
         {
+          "VulnerabilityID": "CVE-2026-59949",
+          "VendorIDs": [
+            "GHSA-xx22-p4ch-683r"
+          ],
+          "PkgName": "at.yawk.lz4:lz4-java",
+          "PkgPath": "usr/lib/trino/plugin/clickhouse/com.clickhouse_clickhouse-jdbc-0.9.8-all.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/at.yawk.lz4/lz4-java@1.10.4",
+            "UID": "383347f552fb9ec8"
+          },
+          "InstalledVersion": "1.10.4",
+          "FixedVersion": "1.11.1",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:52abf0999971f88b43599a8752727ccff77eec180fa9da7cf5c820b8b4af5405",
+            "DiffID": "sha256:f129eedaed4864ebc593d5ddb1c3bb4ee7ece79459945dc22edff492d3e93603"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-59949",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:e15e4a89e8c7fe0ee775dd60a24fbf9cbf01b1cb2bddf680ca5c098a2e476a45",
+          "Title": "LZ4 Java: Native XXHash implementations can crash the JVM when passed invalid byte array ranges",
+          "Description": "### Summary\n\nInsufficient validation of byte array arguments in JNI-based XXHash implementations in lz4-java 1.11.0 and earlier allows callers to crash the JVM by passing an invalid array reference or invalid range to native XXHash methods.\n\nThis affects applications where an attacker can influence the byte array object or the `off` / `len` arguments passed to affected XXHash APIs. It does **not** affect the common case where only the contents of a valid byte array are attacker-controlled.\n\nJava-based XXHash implementations are *not* affected.\n\n### Details\n\nThe JNI-backed XXHash implementations pass caller-provided byte array arguments to native code. The affected APIs are:\n\n- `XXHashFactory.nativeInstance().hash32().hash(byte[] buf, int off, int len, int seed)`\n- `XXHashFactory.nativeInstance().hash64().hash(byte[] buf, int off, int len, long seed)`\n- `XXHashFactory.nativeInstance().newStreamingHash32(seed).update(byte[] bytes, int off, int len)`\n- `XXHashFactory.nativeInstance().newStreamingHash64(seed).update(byte[] bytes, int off, int len)`\n\nBefore the fix, the streaming JNI implementations did not validate `bytes`, `off`, or `len` before calling `XXHashJNI.XXH32_update` / `XXHashJNI.XXH64_update`. The non-streaming JNI implementations called `SafeUtils.checkRange`, but `SafeUtils.checkRange(byte[], int, int)` skipped all array access when `len == 0`, so a null byte array with a zero length could still reach JNI.\n\nAs a result:\n\n- `hash(null, 0, 0, seed)` and `update(null, 0, 0)` could pass a null array reference to JNI, causing a fatal JVM crash in `GetPrimitiveArrayCritical`.\n- `update(new byte[16], 0, Integer.MAX_VALUE)` could cause native XXHash code to read far beyond the end of the Java array, causing a fatal JVM crash and potentially exposing in-process memory to the native routine before the crash.\n\nThe oversized-length non-streaming `hash(new byte[16], 0, Integer.MAX_VALUE, seed)` case was already rejected in Java before this fix. The missing validation affected the streaming oversized-length case and the zero-length null-array case for both streaming and non-streaming JNI XXHash APIs.\n\nThe impact of this vulnerability depends on how user code uses the XXHash API. Code that hashes attacker-controlled byte contents in a valid, correctly bounded array is not affected. Code may be affected if an attacker can cause the application to pass a null array, an attacker-controlled offset, or an attacker-controlled length to the native XXHash API. The primary impact is denial of service due to JVM termination. For oversized lengths, native code may also read outside the Java array before the process crashes.\n\n### Mitigation\n\nlz4-java 1.11.1 fixes this issue without requiring changes in user code.\n\nIf you cannot upgrade, avoid passing attacker-controlled array references, offsets, or lengths to JNI-backed XXHash APIs. In particular, validate that arrays are non-null and that `off` and `len` describe a range fully contained in the array before calling native XXHash methods.\n\nUsing `XXHashFactory.safeInstance()` avoids the JNI boundary and is not affected by this native crash behavior.",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:H",
+              "V3Score": 6.5
+            }
+          },
+          "References": [
+            "https://github.com/yawkat/lz4-java",
+            "https://github.com/yawkat/lz4-java/commit/dbd86d04b8dd716e1c2bc626be54189997d910da",
+            "https://github.com/yawkat/lz4-java/releases/tag/v1.11.1",
+            "https://github.com/yawkat/lz4-java/security/advisories/GHSA-xx22-p4ch-683r"
+          ]
+        },
+        {
           "VulnerabilityID": "CVE-2025-48924",
           "VendorIDs": [
             "GHSA-j288-q9x7-2f5v"
@@ -39703,7 +39748,7 @@
             "https://bugzilla.redhat.com/show_bug.cgi?id=2498152",
             "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-39822",
             "https://errata.almalinux.org/9/ALSA-2026-38878.html",
-            "https://errata.rockylinux.org/RLSA-2026:38495",
+            "https://errata.rockylinux.org/RLSA-2026:38878",
             "https://go.dev/cl/797880",
             "https://go.dev/issue/79005",
             "https://groups.google.com/g/golang-announce/c/OrmQE_Yp5Sc",
