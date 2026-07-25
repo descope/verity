@@ -45,7 +45,7 @@ func DownloadApproved(ctx context.Context, options *DownloadApprovedOptions) err
 	if err := os.MkdirAll(options.OutputDir, 0o755); err != nil {
 		return fmt.Errorf("create artifact output: %w", err)
 	}
-	_, err := runRequired(ctx, runner, command{
+	_, err := runRequired(ctx, runner, &command{
 		name: "gh",
 		args: []string{
 			"run", "download", matches[1],
@@ -66,7 +66,7 @@ func DownloadApproved(ctx context.Context, options *DownloadApprovedOptions) err
 	}
 	signerWorkflow := "github.com/" + options.Repository + "/.github/workflows/integer-build-image.yaml"
 	for _, packagePath := range packages {
-		_, err := runRequired(ctx, runner, command{
+		_, err := runRequired(ctx, runner, &command{
 			name: "gh",
 			args: []string{
 				"attestation", "verify", packagePath,

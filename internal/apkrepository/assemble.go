@@ -28,6 +28,7 @@ func Assemble(ctx context.Context, options *AssembleOptions) error {
 	if options == nil {
 		return errOptionsRequired
 	}
+	defer clear(options.PrivateKeyPEM)
 	config, err := parseAssembleOptions(options)
 	if err != nil {
 		return err

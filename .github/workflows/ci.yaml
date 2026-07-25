@@ -10,17 +10,29 @@ on:
     paths-ignore:
       - '**.md'
 
-permissions:
-  contents: read
-
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions: {}
+
 jobs:
+  build-verity:
+    name: Build Verity once
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build-verity.yaml
+    with:
+      source_sha: ${{ github.sha }}
+      protected_attestation: "false"
+
   changes:
     name: Detect CI scope
+    needs: build-verity
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     outputs:
       tests: ${{ steps.filter.outputs.tests }}
       go: ${{ steps.filter.outputs.go }}
@@ -29,7 +41,16 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          fetch-depth: 0
+          fetch-depth: "0"
+
+      - name: Activate same-run Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.build-verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.build-verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.build-verity.outputs.source-sha }}
+          build-key: ${{ needs.build-verity.outputs.build-key }}
+          verify-attestation: "false"
 
       - id: filter
         name: Check changed paths
@@ -37,48 +58,21 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          if [ "$EVENT_NAME" != "pull_request" ]; then
-            {
-              echo 'tests=true'
-              echo 'go=true'
-              echo 'static=true'
-              echo 'node=true'
-            } >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
-
-          if grep -Eq '(^|/)(go\.mod|go\.sum)$|\.go$|^cmd/|^internal/|^scripts/|^\.github/workflows/ci\.yaml$|^Makefile$|^mise\.toml$' changed-files.txt; then
-            echo 'tests=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'tests=false' >> "$GITHUB_OUTPUT"
-          fi
-
-          if grep -Eq '\.go$|(^|/)(go\.mod|go\.sum)$|^\.golangci\.ya?ml$' changed-files.txt; then
-            echo 'go=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'go=false' >> "$GITHUB_OUTPUT"
-          fi
-
-          if grep -Eq '^\.github/|^scripts/|\.ya?ml$|\.md$|^Makefile$|^mise\.toml$' changed-files.txt; then
-            echo 'static=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'static=false' >> "$GITHUB_OUTPUT"
-          fi
-
-          if grep -Eq '^site/|^\.github/workflows/ci\.yaml$|^mise\.toml$' changed-files.txt; then
-            echo 'node=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'node=false' >> "$GITHUB_OUTPUT"
-          fi
+        run: >-
+          ./verity ci workflow scope
+          --event-name "$EVENT_NAME"
+          --base-sha "$BASE_SHA"
+          --head-sha "$HEAD_SHA"
+          --github-output "$GITHUB_OUTPUT"
 
   test:
     name: Unit Tests
-    needs: changes
+    needs: [changes, build-verity]
     if: github.event_name != 'pull_request' || needs.changes.outputs.tests == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -86,12 +80,15 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.build-verity.outputs.source-sha }}
+          persist-credentials: "false"
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
           install_args: "go"
 
       - name: Cache Go modules
@@ -106,23 +103,26 @@ jobs:
       - name: Run tests
         run: go test -race -coverprofile=coverage.out ./...
 
-      - name: Check coverage
-        run: |
-          coverage=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
-          echo "Coverage: ${coverage}%"
-          if (( $(echo "$coverage < 80" | bc -l) )); then
-            echo "Coverage ${coverage}% is below required 80%"
-            exit 1
-          fi
+      - name: Activate same-run Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.build-verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.build-verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.build-verity.outputs.source-sha }}
+          build-key: ${{ needs.build-verity.outputs.build-key }}
+          verify-attestation: "false"
 
-      - name: Build verity
-        run: go build -o verity .
+      - name: Check coverage
+        run: ./verity ci workflow coverage --profile coverage.out --minimum 80
 
   go-lint:
     name: Go Lint
-    needs: changes
+    needs: [changes, build-verity]
     if: github.event_name != 'pull_request' || needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -130,25 +130,40 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.build-verity.outputs.source-sha }}
+          persist-credentials: "false"
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
           install_args: "go go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint go:golang.org/x/vuln/cmd/govulncheck"
+
+      - name: Activate same-run Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.build-verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.build-verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.build-verity.outputs.source-sha }}
+          build-key: ${{ needs.build-verity.outputs.build-key }}
+          verify-attestation: "false"
 
       - name: Run golangci-lint
         run: golangci-lint run --timeout=5m
 
       - name: Run govulncheck
-        run: go run . ci vulncheck
+        run: ./verity ci vulncheck
 
   static-lint:
     name: Static Analysis
-    needs: changes
+    needs: [changes, build-verity]
     if: github.event_name != 'pull_request' || needs.changes.outputs.static == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -156,46 +171,31 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.build-verity.outputs.source-sha }}
+          persist-credentials: "false"
+
+      - name: Activate same-run Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.build-verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.build-verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.build-verity.outputs.source-sha }}
+          build-key: ${{ needs.build-verity.outputs.build-key }}
+          verify-attestation: "false"
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
           install_args: "node actionlint yamllint shellcheck npm:markdownlint-cli"
 
       - name: Run actionlint
         run: actionlint
 
-      - name: Validate patch-image workflow guards
-        run: python3 .github/scripts/validate-patch-image-workflow.py
-
-      - name: Validate metrics JSON guards
-        run: bash .github/scripts/validate-metrics-json_test.sh
-
-      - name: Validate integer-build-image workflow guards
-        run: python3 .github/scripts/validate-integer-build-image-workflow.py
-
-      - name: Validate chart-integration workflow guards
-        run: python3 .github/scripts/validate-chart-integration-workflow.py
-
-      - name: Validate nightly workflow guards
-        run: python3 .github/scripts/validate-nightly-workflows.py
-
-      - name: Validate Renovate coverage
-        run: python3 .github/scripts/validate-renovate-coverage.py
-
-      - name: Validate PR Test workflow guards
-        run: python3 .github/scripts/validate-pr-test-workflow.py
-
-      - name: Validate CI workflow guards
-        run: python3 .github/scripts/validate-ci-workflow.py
-
-      - name: Validate wait-for-workflows helper
-        run: bash .github/scripts/validate-wait-for-workflows.sh
-
-      - name: Validate retry helpers
-        run: bash .github/scripts/validate-retry-helpers.sh
+      - name: Validate workflow policy
+        run: ./verity ci workflow validate .github/workflows
 
       - name: Run yamllint
         run: yamllint -c .yamllint.yml .
@@ -211,6 +211,8 @@ jobs:
     needs: changes
     if: github.event_name != 'pull_request' || needs.changes.outputs.node == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -222,8 +224,8 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
           install_args: "node"
 
       - name: Cache npm dependencies

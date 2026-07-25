@@ -13,10 +13,10 @@ func TestExecCommandRunner_captures_output_and_exit_status(t *testing.T) {
 	runner := execCommandRunner{}
 
 	// When successful and failing commands execute.
-	success, successErr := runner.Run(context.Background(), command{
+	success, successErr := runner.Run(context.Background(), &command{
 		name: "sh", args: []string{"-c", "printf stdout; printf stderr >&2"},
 	})
-	failure, failureErr := runner.Run(context.Background(), command{
+	failure, failureErr := runner.Run(context.Background(), &command{
 		name: "sh", args: []string{"-c", "printf failed >&2; exit 7"},
 	})
 
@@ -35,10 +35,10 @@ func TestRunRequired_rejects_nonzero_exit_and_start_failure(t *testing.T) {
 	runner := execCommandRunner{}
 
 	// When required commands fail by exit status and startup error.
-	_, exitErr := runRequired(context.Background(), runner, command{
+	_, exitErr := runRequired(context.Background(), runner, &command{
 		name: "sh", args: []string{"-c", "printf details >&2; exit 9"},
 	})
-	_, startErr := runRequired(context.Background(), runner, command{name: "verity-command-that-does-not-exist"})
+	_, startErr := runRequired(context.Background(), runner, &command{name: "verity-command-that-does-not-exist"})
 
 	// Then both failures are surfaced with their distinct evidence.
 	require.ErrorIs(t, exitErr, errCommandFailed)

@@ -1,0 +1,99 @@
+name: Chart Generation
+
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+      run_id:
+        required: true
+        type: string
+      run_attempt:
+        required: true
+        type: string
+      publication_id:
+        required: true
+        type: string
+      batch_id:
+        required: true
+        type: string
+      artifact_name:
+        required: true
+        type: string
+      artifact_digest:
+        required: true
+        type: string
+    outputs:
+      source_sha:
+        value: ${{ jobs.generate.outputs.source_sha }}
+      run_id:
+        value: ${{ jobs.generate.outputs.run_id }}
+      run_attempt:
+        value: ${{ jobs.generate.outputs.run_attempt }}
+      publication_id:
+        value: ${{ jobs.generate.outputs.publication_id }}
+      batch_id:
+        value: ${{ jobs.generate.outputs.batch_id }}
+      artifact_name:
+        value: ${{ jobs.generate.outputs.artifact_name }}
+      artifact_digest:
+        value: ${{ jobs.generate.outputs.artifact_digest }}
+
+permissions: {}
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+      packages: write
+    outputs:
+      source_sha: ${{ inputs.source_sha }}
+      run_id: ${{ github.run_id }}
+      run_attempt: ${{ github.run_attempt }}
+      publication_id: ${{ inputs.publication_id }}
+      batch_id: ${{ inputs.batch_id }}
+      artifact_name: chart-publication-${{ inputs.publication_id }}
+      artifact_digest: ${{ steps.upload.outputs.artifact-digest }}
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: .producer/copa
+          run-id: ${{ inputs.run_id }}
+          repository: ${{ github.repository }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify exact producer artifact
+        env:
+          PROVENANCE_API_AUTH: ${{ secrets.GITHUB_TOKEN }}
+          PROVENANCE_REPOSITORY: ${{ github.repository }}
+          PROVENANCE_RUN_ID: ${{ inputs.run_id }}
+          PROVENANCE_RUN_ATTEMPT: ${{ inputs.run_attempt }}
+          PROVENANCE_SOURCE_SHA: ${{ inputs.source_sha }}
+          PROVENANCE_PUBLICATION_ID: ${{ inputs.publication_id }}
+          PROVENANCE_ARTIFACT_NAME: ${{ inputs.artifact_name }}
+          PROVENANCE_ARTIFACT_DIGEST: ${{ inputs.artifact_digest }}
+          PROVENANCE_MANIFEST: .producer/copa/producer-manifest.json
+        run: ./verity ci artifact-provenance verify-download
+      - name: Generate charts
+        run: ./verity chart-gen
+      - name: Write exact chart producer manifest
+        env:
+          PROVENANCE_REPOSITORY: ${{ github.repository }}
+          PROVENANCE_RUN_ID: ${{ github.run_id }}
+          PROVENANCE_RUN_ATTEMPT: ${{ github.run_attempt }}
+          PROVENANCE_SOURCE_SHA: ${{ inputs.source_sha }}
+          PROVENANCE_PUBLICATION_ID: ${{ inputs.publication_id }}
+          PROVENANCE_ARTIFACT_NAME: chart-publication-${{ inputs.publication_id }}
+          PROVENANCE_MANIFEST: producer-manifest.json
+        run: ./verity ci artifact-provenance write-manifest
+      - id: upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: chart-publication-${{ inputs.publication_id }}
+          path: |
+            Chart.yaml
+            producer-manifest.json

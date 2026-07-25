@@ -2,7 +2,6 @@ package scripts_test
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -19,79 +18,65 @@ func TestPRWorkflowIntegerJobsRetainSecurityCoverageAndCacheTrivyDatabase(t *tes
 	workflow := string(data)
 	parsed := loadPRWorkflow(t)
 
-	// Then: both matrices still expand to native amd64 and arm64 legs.
-	assert.Equal(t, 2, strings.Count(workflow, `["amd64", "arm64"][] as $arch`))
+	// Then: both matrices still execute on their native architecture runners.
 	assert.Equal(t, 2, strings.Count(workflow, `runs-on: ${{ matrix.runner }}`))
-	assert.GreaterOrEqual(t, strings.Count(workflow, "ubuntu-24.04-arm"), 2)
 	assert.Contains(t, workflow, "needs.detect-changed-images.outputs.smoke-has-changes == 'true'")
 
-	for _, jobName := range []string{"integer-smoke-test", "integer-build-changed"} {
-		job := parsed.Jobs[jobName]
-		var runs strings.Builder
+	for _, test := range []struct {
+		jobName string
+		kind    string
+	}{
+		{jobName: "integer-smoke-test", kind: "smoke"},
+		{jobName: "integer-build-changed", kind: "build"},
+	} {
+		job := parsed.Jobs[test.jobName]
 		var cache workflowStep
+		var batch workflowStep
+		var cacheKey workflowStep
 		for _, step := range job.Steps {
-			runs.WriteString(step.Run)
-			if step.Name == "Cache Trivy database" {
+			switch step.Name {
+			case "Cache Trivy database":
 				cache = step
+			case "Get Trivy cache key":
+				cacheKey = step
+			case "Build and verify native-architecture Integer smoke batch", "Build and verify native-architecture Integer batch":
+				batch = step
 			}
 		}
 
-		// And: strict runtime and Trivy coverage remains in each build path.
-		assert.Contains(t, runs.String(), `--fail-on-severity "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"`, jobName)
-		assert.Contains(t, runs.String(), `docker image inspect "$loaded_ref"`, jobName)
-		assert.Contains(t, runs.String(), `--severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL`, jobName)
+		// And: typed execution preserves strict native inputs for each path.
+		assert.Contains(t, batch.Run, "./verity ci pr-test integer-batch", test.jobName)
+		assert.Contains(t, batch.Run, "--kind "+test.kind, test.jobName)
+		assert.Contains(t, batch.Run, `--arch "$INTEGER_ARCH"`, test.jobName)
+		assert.Contains(t, batch.Run, `--package-arch "$INTEGER_PACKAGE_ARCH"`, test.jobName)
+		assert.Contains(t, cacheKey.Run, "./verity ci pr-test trivy-cache-key", test.jobName)
 
 		// And: each job uses the pinned repository cache pattern with a Trivy
 		// version and UTC date key, without sharing databases across versions.
-		require.Equal(t, "actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9", cache.Uses, jobName)
-		assert.Equal(t, "~/.cache/trivy", cache.With["path"], jobName)
-		assert.Equal(t, `trivy-db-${{ steps.trivy-cache-key.outputs.version }}-${{ steps.trivy-cache-key.outputs.date }}`, cache.With["key"], jobName)
-		assert.Equal(t, `trivy-db-${{ steps.trivy-cache-key.outputs.version }}-`, cache.With["restore-keys"], jobName)
+		require.Equal(t, "actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9", cache.Uses, test.jobName)
+		assert.Equal(t, "~/.cache/trivy", cache.With["path"], test.jobName)
+		assert.Equal(t, `trivy-db-${{ steps.trivy-cache-key.outputs.version }}-${{ steps.trivy-cache-key.outputs.date }}`, cache.With["key"], test.jobName)
+		assert.Equal(t, `trivy-db-${{ steps.trivy-cache-key.outputs.version }}-`, cache.With["restore-keys"], test.jobName)
 	}
 }
 
-func TestPRWorkflowAggregateAcceptsSkippedEmptySmokeMatrixWithoutRelaxingBuildEvidence(t *testing.T) {
-	// Given: a strict-build-only plan with no remaining smoke-only variants.
-	aggregate := prAggregateScript(t)
-	buildMatrix := `{"include":[{"image":"demo","version":"1","type":"default"}]}`
-	emptySmokeMatrix := `{"include":[]}`
-	env := append(
-		os.Environ(),
-		"CHANGES_RESULT=success", "INTEGER=true", "COPA=false",
-		"DISCOVER_RESULT=success", "VALIDATE_RESULT=success",
-		"DETECT_INTEGER_RESULT=success", "INTEGER_HAS_CHANGES=true",
-		"INTEGER_SMOKE_RESULT=skipped", "INTEGER_BUILD_RESULT=success",
-		"DETECT_COPA_RESULT=success", "COPA_CHANGED_RESULT=success", "COPA_REGRESSION_RESULT=success",
-		"EXPECTED_INTEGER_MATRIX="+buildMatrix, "EXPECTED_INTEGER_SMOKE_MATRIX="+emptySmokeMatrix,
-	)
-	dir := t.TempDir()
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "integer-security-results"), 0o755))
-	for _, arch := range []string{"amd64", "arm64"} {
-		marker := filepath.Join(dir, "integer-security-results", "build-demo-1-default-"+arch+".passed")
-		require.NoError(t, os.WriteFile(marker, nil, 0o600))
-	}
-
-	// When: final aggregation evaluates the independently accurate matrices.
-	command := exec.CommandContext(t.Context(), "bash", "-c", aggregate)
-	command.Dir = dir
-	command.Env = env
-	output, runErr := command.CombinedOutput()
-
-	// Then: an empty smoke matrix requires a skipped smoke job while both
-	// native strict-build markers remain mandatory.
-	require.NoError(t, runErr, string(output))
-}
-
-func prAggregateScript(t *testing.T) string {
-	t.Helper()
+func TestPRWorkflowAggregateUsesTypedExactEvidenceGate(t *testing.T) {
+	// Given: the required final PR result job.
 	workflow := loadPRWorkflow(t)
+
+	// When: its aggregate step is inspected.
+	var aggregate workflowStep
 	for _, step := range workflow.Jobs["pr-test-result"].Steps {
 		if step.Name == "Aggregate PR test results" {
-			return step.Run
+			aggregate = step
 		}
 	}
-	require.FailNow(t, "aggregate step not found")
-	return ""
+
+	// Then: exact matrices and marker directory flow into the typed evaluator.
+	require.Contains(t, aggregate.Run, "./verity ci pr-test aggregate")
+	require.Contains(t, aggregate.Run, `--expected-integer-matrix "$EXPECTED_INTEGER_MATRIX"`)
+	require.Contains(t, aggregate.Run, `--expected-integer-smoke-matrix "$EXPECTED_INTEGER_SMOKE_MATRIX"`)
+	require.Contains(t, aggregate.Run, "--security-dir integer-security-results")
 }
 
 type workflowStep struct {

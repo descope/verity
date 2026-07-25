@@ -32,9 +32,29 @@ forbidden.
 
 - The private PEM is stored as the protected GitHub Actions environment secret
   `APK_REPOSITORY_PRIVATE_KEY`; it is never committed or uploaded as an artifact.
-- Only the `github-pages` environment publication jobs receive the secret.
-- The PEM may exist only in an ephemeral runner temporary directory with mode
-  `0600`; it is deleted when the assembly process exits.
+- Only a protected production signing environment on protected `main` may read
+  the secret. Manual dispatch must not select an arbitrary ref.
+- `ci/apk-signing-key-state.json` is the canonical public trust-state input.
+  Go validation requires its active fingerprint to match the committed canonical
+  SPKI key before publication composition.
+- GitHub injects the secret only into the exact signing step. That step copies it
+  to a local non-exported variable, immediately unsets the environment entry,
+  and passes it to the Go signer through standard input. Workflow/job/container
+  environments, command arguments, Docker metadata, logs, and xtrace must not
+  carry the PEM.
+- The Go signer removes the legacy ambient variable before spawning children.
+  Child processes receive an allowlisted environment and never inherit the key.
+- The PEM may be materialized only after immutable-image attestation succeeds,
+  inside a signer-only memory-backed directory with mode `0600`. Every success,
+  failure, cancellation, and panic path zeroizes in-memory buffers and removes
+  the materialized key before returning.
+- The signer image is addressed by an immutable SHA-256 digest and its provenance
+  attestation is mandatory. The key-bearing container is offline, non-root,
+  read-only, capability-free, and unable to gain privileges. It receives only
+  narrow data mounts; mounting the whole workspace read-write is forbidden.
+- Runtime package installation, host-resolved signing executables, mutable image
+  tags, and local `go build`/`go run` compilation are forbidden in the key
+  boundary.
 - Pull-request and untrusted workflows MUST never receive the production key.
 - GitHub OIDC provenance attestations MUST be generated for every published
   APK and verified before repository assembly.
@@ -72,7 +92,7 @@ openssl pkey -pubin -in verity.rsa.pub \
 ```
 
 The current lowercase hexadecimal fingerprint is
-`90f7940b20391f49b417b9b3be49f01ee88b975313860b6e1a77bbf7b109c6d2`.
+`416d7b8491fccfde1e5d247b4dfc0571ccd20e0610b192334d4ee1308d9adee7`.
 
 ## Mandatory validation gate
 
@@ -86,6 +106,11 @@ Publication MUST fail unless all checks pass for `x86_64` and `aarch64`:
 5. Repeat package verification with a wrong key and require it to fail.
 6. Publish only allowlisted APKs whose associated Integer build passed the
    strict zero-CVE gate.
+7. Before exposing the signing key, reject malformed or ambiguous APKs,
+   traversal paths, symlinks, hard links, path swaps, trailing data, and
+   compressed metadata/data that exceed the bounded archive limits.
+8. Require the exact private/public RSA pair and reject signature or content
+   tampering after signing.
 
 Checking only that a `.SIGN.*` member exists is insufficient.
 
@@ -93,15 +118,34 @@ An intentional change to index-generation or signing semantics MUST increment
 the published `repository-format` marker. Otherwise an unchanged signed APK and
 key set deliberately preserves the previously published index bytes.
 
-## Rotation
+## Rotation, revocation, and rollback fencing
 
+- Every publication manifest carries a monotonically increasing signing-key
+  epoch, one active fingerprint, the bounded trusted overlap set, and an
+  explicit revoked set. A candidate epoch lower than the previously authenticated
+  Pages manifest is rejected, including restore operations.
+- The genesis state is epoch `1`, trusts only the current fingerprint, and records
+  the unpublished predecessor fingerprint as revoked so rollback cannot activate it.
 - Rotate routinely every 12 months and immediately after suspected compromise.
-- Publish the new public key and fingerprint at least 30 days before switching.
-- During overlap, clients MUST trust both old and new keys.
-- Keep the old public key available until every package and index signed by it
-  has expired from the repository.
-- A compromised key MUST be removed from publishing immediately; rebuilding and
-  republishing affected packages is mandatory.
+  Generate the replacement inside its approved custody boundary; never retrieve
+  the old private key for migration.
+- For routine rotation, publish the new fingerprinted public key at least 30 days
+  before activation. During the bounded overlap, clients trust both fingerprints,
+  while new packages and indexes use only the active key.
+- Retirement removes the old fingerprint from the trusted overlap set only after
+  all artifacts signed by it are gone and the client migration window has closed.
+- Revocation is immediate and overrides overlap or retirement schedules. The
+  active fingerprint must never also appear in the revoked set, and rollback may
+  not resurrect a revoked or lower-epoch key.
+
+## Incident response
+
+If exclusive custody may have been lost, stop APK publication, preserve workflow
+run and artifact metadata, and treat the key as exposed. Revoke the fingerprint,
+advance the key epoch, create a replacement under approved custody, invalidate
+affected artifacts, audit every published package and index, and rebuild only
+from protected `main` with the attested zero-CVE signer. Do not bypass Trivy,
+signature, provenance, or client verification gates to restore service.
 
 ## Primary references
 

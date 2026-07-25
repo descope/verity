@@ -1,0 +1,39 @@
+package:
+  name: apk-repository-signer
+  version: "0.0.0"
+  epoch: 0
+  description: "Verity APK repository signer worker"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - ca-certificates-bundle
+      - go-1.26=1.26.5-r1
+  environment:
+    CGO_ENABLED: "0"
+    GOTOOLCHAIN: local
+
+# Source provenance is immutable. Rotate expected-commit to the merged signer
+# source revision before the protected bootstrap publish.
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/verity-org/verity
+      expected-commit: e4cd361cf5c987aaac54de389453df2b244b1fda
+
+  - uses: go/build
+    with:
+      packages: .
+      output: apk-repository-signer
+      go-package: go-1.26
+      ldflags: -s -w
+
+  - uses: strip
+
+update:
+  enabled: false

@@ -56,6 +56,7 @@ var NightlyCommand = &cli.Command{
 	Commands: []*cli.Command{
 		nightlyPlanCmd,
 		nightlyDispatchCmd,
+		nightlyCopaOrchestratorCmd,
 	},
 }
 

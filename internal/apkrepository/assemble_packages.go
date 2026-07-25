@@ -3,18 +3,23 @@ package apkrepository
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 )
 
-func assemblePackages(ctx context.Context, config *assembleConfig, packages []string) error {
+func assemblePackages(ctx context.Context, config *assembleConfig, packages []string) (resultErr error) {
 	temporaryDir, err := os.MkdirTemp("", "verity-apk-repository-")
 	if err != nil {
 		return fmt.Errorf("create temporary directory: %w", err)
 	}
-	defer os.RemoveAll(temporaryDir)
-	privateKey, publicKey, err := configureSigning(config, temporaryDir)
+	defer func() {
+		if err := os.RemoveAll(temporaryDir); err != nil {
+			resultErr = errors.Join(resultErr, fmt.Errorf("remove signing directory: %w", err))
+		}
+	}()
+	privateKey, _, err := configureSigning(config, temporaryDir)
 	if err != nil {
 		return err
 	}
@@ -30,7 +35,7 @@ func assemblePackages(ctx context.Context, config *assembleConfig, packages []st
 			return err
 		}
 		if privateKey != "" {
-			if _, err := runRequired(ctx, config.runner, command{name: "melange", args: []string{"sign", "--signing-key", privateKey, candidate}}); err != nil {
+			if _, err := runRequired(ctx, config.runner, &command{name: "melange", args: []string{"sign", "--signing-key", privateKey, candidate}, sensitive: true}); err != nil {
 				return fmt.Errorf("sign package %s: %w", packagePath, err)
 			}
 		}
@@ -51,13 +56,13 @@ func assemblePackages(ctx context.Context, config *assembleConfig, packages []st
 		}
 		destinations[destinationKey] = packagePath
 	}
-	return createIndexes(ctx, config, privateKey, publicKey)
+	return createIndexes(ctx, config, privateKey)
 }
 
 func configureSigning(config *assembleConfig, temporaryDir string) (privateKey, publicKey string, err error) {
 	publicKey = filepath.Join(config.outputDir, config.keyName+".pub")
 	if len(config.privateKeyPEM) == 0 {
-		fmt.Fprintln(config.stderr, "APK_REPOSITORY_PRIVATE_KEY not set; APKINDEX files will be unsigned")
+		fmt.Fprintln(config.stderr, "APK signing key was not provided on stdin; APKINDEX files will be unsigned")
 		return "", publicKey, nil
 	}
 	privateKey = filepath.Join(temporaryDir, config.keyName)
@@ -86,35 +91,32 @@ func filesEqual(first, second string) (bool, error) {
 	return bytes.Equal(firstBytes, secondBytes), nil
 }
 
-func createIndexes(ctx context.Context, config *assembleConfig, privateKey, publicKey string) error {
-	repositoryRoot, err := filepath.Abs(config.outputDir)
-	if err != nil {
-		return fmt.Errorf("resolve repository root: %w", err)
-	}
-	for _, architecture := range supportedArches {
+func createIndexes(ctx context.Context, config *assembleConfig, privateKey string) error {
+	return createIndexesForArchitectures(ctx, config, privateKey, supportedArches)
+}
+
+func createIndexesForArchitectures(ctx context.Context, config *assembleConfig, privateKey string, architectures []string) error {
+	for _, architecture := range architectures {
 		architectureDir := filepath.Join(config.outputDir, architecture)
 		packages, err := filepath.Glob(filepath.Join(architectureDir, "*.apk"))
-		if err != nil || len(packages) == 0 {
+		if err != nil {
+			return fmt.Errorf("list packages for %s: %w", architecture, err)
+		}
+		if len(packages) == 0 {
+			if err := removeIfExists(filepath.Join(architectureDir, "APKINDEX.tar.gz")); err != nil {
+				return err
+			}
 			continue
 		}
-		args := []string{"index"}
-		if privateKey == "" {
-			args = append(args, "--allow-untrusted")
-		} else {
-			args = append(args, "--keys-dir", repositoryRoot)
+		args := []string{"index", "--arch", architecture, "--output", "APKINDEX.tar.gz"}
+		if privateKey != "" {
+			args = append(args, "--signing-key", privateKey)
 		}
-		args = append(args, "--output", "APKINDEX.tar.gz")
 		for _, packagePath := range packages {
 			args = append(args, "./"+filepath.Base(packagePath))
 		}
-		if _, err := runRequired(ctx, config.runner, command{name: "apk", args: args, dir: architectureDir}); err != nil {
+		if _, err := runRequired(ctx, config.runner, &command{name: "melange", args: args, dir: architectureDir, sensitive: privateKey != ""}); err != nil {
 			return fmt.Errorf("build index for %s: %w", architecture, err)
-		}
-		indexPath := filepath.Join(architectureDir, "APKINDEX.tar.gz")
-		if privateKey != "" {
-			if _, err := runRequired(ctx, config.runner, command{name: "abuild-sign", args: []string{"-t", "RSA256", "-k", privateKey, "-p", publicKey, indexPath}}); err != nil {
-				return fmt.Errorf("sign index for %s: %w", architecture, err)
-			}
 		}
 		fmt.Fprintf(config.stdout, "Assembled %s/APKINDEX.tar.gz (%d packages)\n", architecture, len(packages))
 	}

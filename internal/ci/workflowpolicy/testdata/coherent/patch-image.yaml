@@ -1,0 +1,62 @@
+name: Patch Image
+
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+      run_id:
+        required: true
+        type: string
+      run_attempt:
+        required: true
+        type: string
+      publication_id:
+        required: true
+        type: string
+      batch_id:
+        required: true
+        type: string
+    outputs:
+      source_sha:
+        value: ${{ jobs.scan.outputs.source_sha }}
+      run_id:
+        value: ${{ jobs.scan.outputs.run_id }}
+      run_attempt:
+        value: ${{ jobs.scan.outputs.run_attempt }}
+      publication_id:
+        value: ${{ jobs.scan.outputs.publication_id }}
+      batch_id:
+        value: ${{ jobs.scan.outputs.batch_id }}
+      artifact_name:
+        value: ${{ jobs.scan.outputs.artifact_name }}
+      artifact_digest:
+        value: ${{ jobs.scan.outputs.artifact_digest }}
+
+permissions: {}
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      attestations: write
+      contents: write
+      id-token: write
+      packages: write
+    outputs:
+      source_sha: ${{ inputs.source_sha }}
+      run_id: ${{ inputs.run_id }}
+      run_attempt: ${{ inputs.run_attempt }}
+      publication_id: ${{ inputs.publication_id }}
+      batch_id: ${{ inputs.batch_id }}
+      artifact_name: copa-patch-${{ inputs.publication_id }}
+      artifact_digest: ${{ steps.upload.outputs.artifact-digest }}
+    steps:
+      - id: upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: copa-patch-${{ inputs.publication_id }}
+          path: copa-patch.json
+      - run: ./verity ci patch-image.yaml

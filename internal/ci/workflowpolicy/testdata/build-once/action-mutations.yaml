@@ -1,0 +1,68 @@
+- name: wrong artifact name
+  old: "VERITY_ARTIFACT_NAME: ${{ inputs.artifact-name }}"
+  replacement: "VERITY_ARTIFACT_NAME: verity-latest"
+  want: artifact name
+- name: wrong artifact digest
+  old: "VERITY_ARTIFACT_DIGEST: ${{ inputs.artifact-digest }}"
+  replacement: "VERITY_ARTIFACT_DIGEST: sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  want: artifact digest
+- name: wrong checksum verifier
+  old: "go run ./.github/actions/setup-verity/cmd/setup-verity extract"
+  replacement: "go run ./.github/actions/setup-verity/cmd/setup-verity extract-without-checksum"
+  want: checksum
+- name: wrong source
+  old: "VERITY_SOURCE_SHA: ${{ inputs.source-sha }}"
+  replacement: "VERITY_SOURCE_SHA: ${{ github.sha }}"
+  want: source SHA
+- name: wrong signer workflow
+  old: "github.com/verity-org/verity/.github/workflows/build-verity.yaml"
+  replacement: "github.com/verity-org/verity/.github/workflows/other.yaml"
+  want: signer workflow
+- name: wrong build key
+  old: "VERITY_BUILD_KEY: ${{ inputs.build-key }}"
+  replacement: "VERITY_BUILD_KEY: ${{ inputs.artifact-name }}"
+  want: build key
+- name: wrong run attempt
+  old: "--run-attempt \"$GITHUB_RUN_ATTEMPT\""
+  replacement: "--run-attempt \"1\""
+  want: current run
+- name: wrong signer repository
+  old: "--signer-repo \"verity-org/verity\""
+  replacement: "--signer-repo \"attacker/verity\""
+  want: signer workflow
+- name: wrong attestation predicate
+  old: "--predicate-type \"https://slsa.dev/provenance/v1\""
+  replacement: "--predicate-type \"https://example.test/weak\""
+  want: signer workflow
+- name: mutable download path
+  old: "path: ${{ runner.temp }}/setup-verity/${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/download"
+  replacement: "path: ${{ inputs.artifact-name }}"
+  want: immutable runner temp path
+- name: unverified artifact ID
+  old: "artifact-ids: ${{ steps.verify-remote.outputs.artifact-id }}"
+  replacement: "name: ${{ inputs.artifact-name }}"
+  want: verified current-run artifact ID
+- name: raw attestation boolean gate
+  old: "if: ${{ steps.verify-remote.outputs.verify-attestation == 'true' }}"
+  replacement: "if: ${{ inputs.verify-attestation == 'true' }}"
+  want: helper-normalized strict boolean
+- name: symlink activation
+  old: "go run ./.github/actions/setup-verity/cmd/setup-verity activate"
+  replacement: "ln -s \"$VERITY_ARTIFACT_DIR/verity\" \"$GITHUB_WORKSPACE/verity\""
+  want: symlink
+- name: automatic archive extraction
+  old: "skip-decompress: true"
+  replacement: "skip-decompress: false"
+  want: archive extraction
+- name: unpinned download action
+  old: "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c"
+  replacement: "actions/download-artifact@v8"
+  want: full commit SHA
+- name: secret exposure
+  old: "GH_TOKEN: ${{ github.token }}"
+  replacement: "GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}"
+  want: secret exposure
+- name: executable cache trust
+  old: "    - name: Verify exact current-run artifact identity"
+  replacement: "    - name: Restore cached Verity\n      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9\n      with:\n        path: verity\n        key: verity-latest\n    - name: Verify exact current-run artifact identity"
+  want: executable cache

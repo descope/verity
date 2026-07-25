@@ -1,5 +1,5 @@
 name: Patch Image
-run-name: "Patch ${{ inputs.image-name }} (${{ inputs.source-ref }})${{ inputs.batch-id != '' && format(' [batch {0}]', inputs.batch-id) || '' }}"
+run-name: "Patch ${{ inputs.image-name }} (${{ inputs.source-ref }})${{ inputs.batch_id != '' && format(' [batch {0}]', inputs.batch_id) || '' }}"
 
 # Reusable per-image lifecycle: scan → patch (matrix) → finalize.
 # Supports both workflow_call (PR inline) and workflow_dispatch (orchestrator).
@@ -39,11 +39,60 @@ on:
         required: false
         type: string
         default: ""
-      batch-id:
-        description: "Parent orchestrator run ID and attempt"
-        required: false
+      source_sha:
+        description: "Exact source commit from the caller"
+        required: true
         type: string
-        default: ""
+      run_id:
+        description: "Exact caller run ID"
+        required: true
+        type: string
+      run_attempt:
+        description: "Exact caller run attempt"
+        required: true
+        type: string
+      publication_id:
+        description: "Exact publication identity"
+        required: true
+        type: string
+      batch_id:
+        description: "Exact publication batch ID"
+        required: true
+        type: string
+      verity_artifact_name:
+        description: "Exact current-run Verity artifact name"
+        required: true
+        type: string
+      verity_artifact_digest:
+        description: "Exact current-run Verity artifact digest"
+        required: true
+        type: string
+      verity_build_key:
+        description: "Exact current-run Verity build key"
+        required: true
+        type: string
+    outputs:
+      source_sha:
+        description: "Patched image source commit"
+        value: ${{ jobs.scan.outputs.source_sha }}
+      run_id:
+        description: "Patched image producer run ID"
+        value: ${{ jobs.scan.outputs.run_id }}
+      run_attempt:
+        description: "Patched image producer run attempt"
+        value: ${{ jobs.scan.outputs.run_attempt }}
+      publication_id:
+        description: "Patched image publication identity"
+        value: ${{ jobs.scan.outputs.publication_id }}
+      batch_id:
+        description: "Patched image publication batch"
+        value: ${{ jobs.scan.outputs.batch_id }}
+      artifact_name:
+        description: "Immutable per-image COPA manifest artifact"
+        value: ${{ jobs.scan.outputs.artifact_name }}
+      artifact_digest:
+        description: "Immutable per-image COPA manifest digest"
+        value: ${{ jobs.scan.outputs.artifact_digest }}
 
   workflow_dispatch:
     inputs:
@@ -69,17 +118,18 @@ on:
         required: false
         type: string
         default: ""
-      batch-id:
+      batch_id:
         description: "Parent orchestrator run ID and attempt"
         required: false
         type: string
         default: ""
+      publication_id:
+        description: "Exact publication identity"
+        required: false
+        type: string
+        default: ""
 
-permissions:
-  contents: write       # push to reports branch
-  packages: write       # push images to GHCR
-  id-token: write       # cosign keyless signing + actions/attest
-  attestations: write   # actions/attest
+permissions: {}
 
 env:
   OTEL_CLI_VERSION: "0.4.5"
@@ -87,10 +137,49 @@ env:
   OTEL_CLI_SHA256_LINUX_ARM64: "f8f27f1289850983f86beaf62968ab65e3491207291d0cdb68247826cc21e695"
 
 jobs:
+  build-verity:
+    name: Build Verity once
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    permissions:
+      actions: read
+      attestations: write
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/build-verity.yaml
+    with:
+      source_sha: ${{ github.sha }}
+      protected_attestation: "true"
+
+  verity:
+    name: Resolve exact Verity coordinates
+    needs: build-verity
+    if: ${{ always() && (needs.build-verity.result == 'success' || needs.build-verity.result == 'skipped') }}
+    runs-on: ubuntu-24.04
+    permissions: {}
+    outputs:
+      source-sha: ${{ inputs.source_sha || needs.build-verity.outputs.source-sha }}
+      artifact-name: ${{ inputs.verity_artifact_name || needs.build-verity.outputs.artifact-name }}
+      artifact-digest: ${{ inputs.verity_artifact_digest || needs.build-verity.outputs.artifact-digest }}
+      build-key: ${{ inputs.verity_build_key || needs.build-verity.outputs.build-key }}
+    steps:
+      - name: Reject incomplete called Verity coordinates
+        if: ${{ github.event_name == 'workflow_call' && (inputs.source_sha == '' || inputs.verity_artifact_name == '' || inputs.verity_artifact_digest == '' || inputs.verity_build_key == '') }}
+        run: exit 1
+
+      - name: Resolve exact coordinates
+        run: ":"
+
   # ── Job 1: Scan ────────────────────────────────────────────────────
   scan:
     name: "Scan ${{ inputs.image-name }}"
+    needs: verity
+    if: ${{ !cancelled() && needs.verity.result == 'success' }}
     runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+      packages: read
     outputs:
       needs-patch: ${{ steps.check.outputs.needs-patch }}
       source-tag: ${{ steps.parse.outputs.source-tag }}
@@ -98,6 +187,13 @@ jobs:
       prev-report-exists: ${{ steps.prev-report.outputs.exists }}
       pre-vuln-count: ${{ steps.trivy-pre.outputs.vuln-count }}
       safe-name: ${{ steps.parse.outputs.safe-name }}
+      source_sha: ${{ needs.verity.outputs.source-sha }}
+      run_id: ${{ inputs.run_id || github.run_id }}
+      run_attempt: ${{ inputs.run_attempt || github.run_attempt }}
+      publication_id: ${{ inputs.publication_id || format('{0}-{1}', github.run_id, github.run_attempt) }}
+      batch_id: ${{ inputs.batch_id || format('{0}-{1}', github.run_id, github.run_attempt) }}
+      artifact_name: copa-patch-${{ inputs.publication_id || format('{0}-{1}', github.run_id, github.run_attempt) }}-${{ steps.parse.outputs.safe-name }}-${{ steps.parse.outputs.source-tag }}
+      artifact_digest: ${{ steps.producer-artifact.outputs.artifact-digest }}
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -107,17 +203,25 @@ jobs:
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
+          ref: ${{ github.sha }}
+          persist-credentials: "false"
           sparse-checkout: |
             mise.toml
             mise.lock
             .github/
-          sparse-checkout-cone-mode: false
+            go.mod
+            go.sum
+            internal/buildmetadata/
+          sparse-checkout-cone-mode: "false"
 
-      - name: Install mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Set up exact Verity
+        uses: ./.github/actions/setup-verity
         with:
-          install: true
-          cache: true
+          artifact-name: ${{ needs.verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.verity.outputs.source-sha }}
+          build-key: ${{ needs.verity.outputs.build-key }}
+          verify-attestation: "true"
 
       - name: Login to GHCR
         id: ghcr-login
@@ -125,30 +229,19 @@ jobs:
           DOCKER_REGISTRY: ghcr.io
           DOCKER_USERNAME: ${{ github.actor }}
           DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-        run: bash .github/scripts/retry-docker-login.sh
+        run: ./verity ci workflowops retry-docker-login
 
       - name: Parse inputs
         id: parse
-        run: |
-          SOURCE_REF="${{ inputs.source-ref }}"
-          # Strip an optional `@<digest>` suffix before extracting the tag,
-          # otherwise digest-pinned refs like `…:v1.19.3@sha256:205b09…`
-          # would yield SOURCE_TAG="205b09…" (the hex digest after the LAST
-          # `:`). That mismatched the script-side tag built in
-          # `.github/scripts/patch-image.sh`, breaking the combine step's
-          # per-arch tag lookup. Keep this parser in sync with the script.
-          SOURCE_REF_NO_DIGEST="${SOURCE_REF%@*}"
-          SOURCE_TAG="${SOURCE_REF_NO_DIGEST##*:}"
-          echo "source-tag=${SOURCE_TAG}" >> "$GITHUB_OUTPUT"
-          echo "safe-name=$(echo '${{ inputs.image-name }}' | tr '/: ' '---')" >> "$GITHUB_OUTPUT"
-
-          TARGET_REGISTRY="${{ inputs.target-registry }}"
-          STAGING_REGISTRY="${TARGET_REGISTRY}/cache"
-          echo "staging-registry=${STAGING_REGISTRY}" >> "$GITHUB_OUTPUT"
+        env:
+          SOURCE_REF: ${{ inputs.source-ref }}
+          IMAGE_NAME: ${{ inputs.image-name }}
+          TARGET_REGISTRY: ${{ inputs.target-registry }}
+        run: ./verity ci patch-image parse-inputs
 
       - name: Get Trivy cache date key
         id: trivy-date
-        run: echo "date=$(date -u '+%Y-%m-%d-%H')" >> "$GITHUB_OUTPUT"
+        run: ./verity ci patch-image trivy-date
 
       - name: Cache Trivy database
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -159,15 +252,18 @@ jobs:
 
       - name: Scan source image
         id: trivy-pre
-        run: |
-          trivy image \
-            --vuln-type os,library \
-            --format json \
-            --quiet \
-            "${{ inputs.source-ref }}" > pre.json
-          VULN_COUNT=$(jq '[.Results[]?.Vulnerabilities // [] | .[]] | length' pre.json)
-          echo "✓ Source scan: ${VULN_COUNT} vulnerabilities"
-          echo "vuln-count=${VULN_COUNT}" >> "$GITHUB_OUTPUT"
+        env:
+          IMAGE: ${{ inputs.source-ref }}
+        run: ./verity ci patch-image scan-source
+
+      - name: Upload immutable per-image COPA manifest
+        id: producer-artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: copa-patch-${{ inputs.publication_id || format('{0}-{1}', github.run_id, github.run_attempt) }}-${{ steps.parse.outputs.safe-name }}-${{ steps.parse.outputs.source-tag }}
+          path: pre.json
+          retention-days: "7"
+          if-no-files-found: error
 
       - name: Check existing patched image for vulnerabilities
         id: check
@@ -175,42 +271,7 @@ jobs:
           IMAGE_NAME: ${{ inputs.image-name }}
           SOURCE_TAG: ${{ steps.parse.outputs.source-tag }}
           TARGET_REGISTRY: ${{ inputs.target-registry }}
-        run: |
-          REPO="${TARGET_REGISTRY}/${IMAGE_NAME}"
-          EXISTING_TAG="${SOURCE_TAG}"
-          if crane digest "${REPO}:${EXISTING_TAG}" > /dev/null 2>&1; then
-            echo "Found existing image: ${REPO}:${EXISTING_TAG}"
-          else
-            echo "No existing patched image found — needs patching"
-            echo "needs-patch=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Scan existing patched image
-          if ! trivy image \
-            --vuln-type os,library \
-            --format json \
-            --quiet \
-            "${REPO}:${EXISTING_TAG}" > patched-existing.json 2>/dev/null; then
-            echo "Trivy scan failed — treating as needs-patch to be safe"
-            echo "needs-patch=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          if ! VULN_COUNT=$(jq '[.Results[]?.Vulnerabilities // [] | .[]] | length' patched-existing.json 2>/dev/null); then
-            echo "Failed to parse Trivy JSON — treating as needs-patch to be safe"
-            echo "needs-patch=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "Existing patched image vulnerabilities: ${VULN_COUNT}"
-
-          if [ "$VULN_COUNT" -gt 0 ]; then
-            echo "Vulnerabilities found in patched image — needs re-patching"
-            echo "needs-patch=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "Patched image is clean — skipping"
-            echo "needs-patch=false" >> "$GITHUB_OUTPUT"
-          fi
+        run: ./verity ci patch-image check-existing
 
       - name: Download previous post-patch report from reports branch
         id: prev-report
@@ -219,18 +280,7 @@ jobs:
           IMAGE_NAME: ${{ inputs.image-name }}
           SOURCE_TAG: ${{ steps.parse.outputs.source-tag }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if gh api \
-            "repos/${{ github.repository }}/contents/reports/${IMAGE_NAME}/${SOURCE_TAG}/post.json?ref=reports" \
-            --jq '.content' 2>/dev/null \
-            | base64 -d > prev-post.json; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "✓ Previous post report downloaded ($(wc -c < prev-post.json) bytes)"
-          else
-            echo '{"Results":[]}' > prev-post.json
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "No previous post report found — treating as first-time patch"
-          fi
+        run: ./verity ci patch-image download-previous-report
 
       - name: Upload scan artifacts
         if: steps.check.outputs.needs-patch == 'true'
@@ -240,14 +290,19 @@ jobs:
           path: |
             pre.json
             prev-post.json
-          retention-days: 1
+          retention-days: "1"
 
   # ── Job 2: Patch (per-platform matrix) ────────────────────────────
   patch:
     name: "Patch ${{ inputs.image-name }} (${{ matrix.platform }})"
-    needs: scan
+    needs: [scan, verity]
     if: needs.scan.outputs.needs-patch == 'true'
     runs-on: ${{ matrix.runner }}
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -260,36 +315,45 @@ jobs:
     # (uses the include list but skips platforms not in inputs.platforms)
 
     steps:
-      - name: Check if this platform is requested
-        id: platform-check
-        run: |
-          if echo "${{ inputs.platforms }}" | grep -q "${{ matrix.platform }}"; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Harden the runner (Audit all outbound calls)
-        if: steps.platform-check.outputs.enabled == 'true'
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        if: steps.platform-check.outputs.enabled == 'true'
         id: checkout
         continue-on-error: true
+        with:
+          persist-credentials: "false"
 
       - name: Retry checkout on failure
-        if: steps.platform-check.outputs.enabled == 'true' && steps.checkout.outcome == 'failure'
+        if: steps.checkout.outcome == 'failure'
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: "false"
+
+      - name: Set up exact Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.verity.outputs.source-sha }}
+          build-key: ${{ needs.verity.outputs.build-key }}
+          verify-attestation: "true"
+
+      - name: Check if this platform is requested
+        id: platform-check
+        env:
+          PLATFORMS: ${{ inputs.platforms }}
+          PLATFORM: ${{ matrix.platform }}
+        run: ./verity ci patch-image platform-requested
 
       - name: Install mise
         if: steps.platform-check.outputs.enabled == 'true'
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
 
       - name: Cache Go modules
         if: steps.platform-check.outputs.enabled == 'true'
@@ -307,7 +371,7 @@ jobs:
           DOCKER_REGISTRY: ghcr.io
           DOCKER_USERNAME: ${{ github.actor }}
           DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-        run: bash .github/scripts/retry-docker-login.sh
+        run: ./verity ci workflowops retry-docker-login
 
       - name: Setup BuildKit
         if: steps.platform-check.outputs.enabled == 'true'
@@ -340,15 +404,16 @@ jobs:
         if: steps.platform-check.outputs.enabled == 'true'
         env:
           COPA_EXPERIMENTAL: "1"
-          PLATFORM: ${{ matrix.platform }}
-          SOURCE: ${{ inputs.source-ref }}
-          IMAGE_NAME: ${{ inputs.image-name }}
-          STAGING_REGISTRY: ${{ needs.scan.outputs.staging-registry }}
-          GO_VCS_URL: ${{ inputs.go-vcs-url }}
         run: |
-          mkdir -p reports
-          cp pre.json "reports/$(echo "${SOURCE}" | sed 's/[\/:]/_/g').json"
-          .github/scripts/patch-image.sh
+          # The typed command performs a real crane copy fallback when Copa has no updates.
+          ./verity ci repository-ops patch-image
+          --platform "${{ matrix.platform }}"
+          --source "${{ inputs.source-ref }}"
+          --image-name "${{ inputs.image-name }}"
+          --staging-registry "${{ needs.scan.outputs.staging-registry }}"
+          --go-vcs-url "${{ inputs.go-vcs-url }}"
+          --report pre.json
+          --github-output "$GITHUB_OUTPUT"
 
       - name: Write per-platform metrics
         if: ${{ !cancelled() && steps.platform-check.outputs.enabled == 'true' }}
@@ -358,22 +423,7 @@ jobs:
           DURATION: ${{ steps.copa.outputs.duration-seconds }}
           EXIT_CODE: ${{ steps.copa.outputs.exit-code }}
           DIGEST: ${{ steps.copa.outputs.staging-digest }}
-        run: |
-          set -euo pipefail
-          OUT="${RUNNER_TEMP}/platform-${ARCH}.json"
-          jq -n \
-            --arg arch "$ARCH" \
-            --arg duration "$DURATION" \
-            --arg exit_code "$EXIT_CODE" \
-            --arg digest "$DIGEST" \
-            '{
-               arch: $arch,
-               copa_duration_seconds: ($duration | tonumber? // null),
-               copa_exit_code: ($exit_code | tonumber? // null),
-               staging_digest: (if $digest == "" then null else $digest end)
-             }' > "$OUT"
-          cat "$OUT"
-          echo "path=$OUT" >> "$GITHUB_OUTPUT"
+        run: ./verity ci patch-image write-platform-metrics
 
       - name: Upload per-platform metrics artifact
         if: ${{ !cancelled() && steps.platform-check.outputs.enabled == 'true' }}
@@ -381,7 +431,7 @@ jobs:
         with:
           name: _pl-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}-${{ needs.scan.outputs.safe-name }}-${{ needs.scan.outputs.source-tag }}
           path: ${{ steps.pl-meta.outputs.path }}
-          retention-days: 1
+          retention-days: "1"
           if-no-files-found: error
 
       - name: Cache otel-cli
@@ -394,27 +444,7 @@ jobs:
 
       - name: Install otel-cli
         if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && steps.platform-check.outputs.enabled == 'true' && steps.cache-otel.outputs.cache-hit != 'true' }}
-        run: |
-          set -euo pipefail
-          mkdir -p ~/.local/bin
-          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-          ARCH=$(uname -m)
-          case "$ARCH" in
-            x86_64) ARCH=amd64 ;;
-            aarch64) ARCH=arm64 ;;
-          esac
-          case "${OS}_${ARCH}" in
-            linux_amd64) EXPECTED_SHA="${OTEL_CLI_SHA256_LINUX_AMD64}" ;;
-            linux_arm64) EXPECTED_SHA="${OTEL_CLI_SHA256_LINUX_ARM64}" ;;
-            *) echo "::error::Unsupported runner: ${OS}_${ARCH}"; exit 1 ;;
-          esac
-          TARBALL=$(mktemp --suffix=.tar.gz)
-          curl -fsSL "https://github.com/equinix-labs/otel-cli/releases/download/v${OTEL_CLI_VERSION}/otel-cli_${OTEL_CLI_VERSION}_${OS}_${ARCH}.tar.gz" -o "$TARBALL"
-          echo "${EXPECTED_SHA}  ${TARBALL}" | sha256sum -c -
-          tar -xzf "$TARBALL" -C ~/.local/bin otel-cli
-          rm -f "$TARBALL"
-          chmod +x ~/.local/bin/otel-cli
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        run: ./verity ci patch-image install-otel
 
       - name: Emit Honeycomb span (per-platform patch)
         if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && steps.platform-check.outputs.enabled == 'true' }}
@@ -424,23 +454,34 @@ jobs:
           OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
           OTEL_EXPORTER_OTLP_HEADERS: x-honeycomb-team=${{ secrets.HONEYCOMB_API_KEY }}
           OTEL_SERVICE_NAME: verity-ci
-        run: |
-          set -euo pipefail
-          PKG_HASH=$(jq -c '[.Results[]?.Vulnerabilities[]?.PkgName] | sort | unique' pre.json 2>/dev/null | sha256sum | cut -d' ' -f1 || echo "unknown")
-          ~/.local/bin/otel-cli span \
-            --name "patch-image.matrix" \
-            --service verity-ci \
-            --kind internal \
-            --attrs "image=${{ inputs.image-name }},platform=${{ matrix.platform }},source_tag=${{ needs.scan.outputs.source-tag }},cve_before=${{ needs.scan.outputs.pre-vuln-count }},copa_exit=${{ steps.copa.outputs.exit-code }},copa_duration_seconds=${{ steps.copa.outputs.duration-seconds }},staging_digest=${{ steps.copa.outputs.staging-digest }},package_list_sha256=${PKG_HASH},deployment.environment=verity-prod"
+          IMAGE_NAME: ${{ inputs.image-name }}
+          PLATFORM: ${{ matrix.platform }}
+          SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
+          CVE_BEFORE: ${{ needs.scan.outputs.pre-vuln-count }}
+          COPA_EXIT: ${{ steps.copa.outputs.exit-code }}
+          COPA_DURATION: ${{ steps.copa.outputs.duration-seconds }}
+          STAGING_DIGEST: ${{ steps.copa.outputs.staging-digest }}
+        run: ./verity ci patch-image emit-platform-span
 
   # ── Job 3: Finalize ───────────────────────────────────────────────
   finalize:
     name: "Finalize ${{ inputs.image-name }}"
-    needs: [scan, patch]
+    needs: [scan, patch, verity]
     if: needs.scan.outputs.needs-patch == 'true' && needs.patch.result == 'success'
     runs-on: ubuntu-24.04
+    outputs:
+      metrics-artifact-name: ${{ steps.metrics-json.outputs.artifact-name }}
+      metrics-run-id: ${{ steps.metrics-json.outputs.run-id }}
+      metrics-run-attempt: ${{ steps.metrics-json.outputs.run-attempt }}
+      metrics-source-sha: ${{ steps.metrics-json.outputs.source-sha }}
+    permissions:
+      actions: read
+      attestations: write
+      contents: write
+      id-token: write
+      packages: write
     # Serialize report writes for the same image+tag to prevent SHA-based TOCTOU
-    # conflicts in push-reports.sh (GitHub Contents API requires the current SHA).
+    # conflicts in the typed report publisher (GitHub Contents API requires the current SHA).
     concurrency:
       group: reports-${{ inputs.image-name }}-${{ needs.scan.outputs.source-tag }}
       cancel-in-progress: false
@@ -458,16 +499,27 @@ jobs:
           sparse-checkout: |
             mise.toml
             mise.lock
-            .github/scripts/push-reports.sh
-            .github/scripts/retry-docker-login.sh
-          sparse-checkout-cone-mode: false
+            .github/actions/setup-verity
+            go.mod
+            go.sum
+            internal/buildmetadata/
+          sparse-checkout-cone-mode: "false"
+
+      - name: Set up exact Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.verity.outputs.source-sha }}
+          build-key: ${{ needs.verity.outputs.build-key }}
+          verify-attestation: "true"
 
       - name: Install mise
         id: finalize-mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
 
       - name: Login to GHCR
         id: ghcr-login
@@ -475,7 +527,7 @@ jobs:
           DOCKER_REGISTRY: ghcr.io
           DOCKER_USERNAME: ${{ github.actor }}
           DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-        run: bash .github/scripts/retry-docker-login.sh
+        run: ./verity ci workflowops retry-docker-login
 
       - name: Download scan artifacts
         id: scan-artifacts
@@ -491,46 +543,13 @@ jobs:
           SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
           STAGING_REGISTRY: ${{ needs.scan.outputs.staging-registry }}
           PLATFORMS: ${{ inputs.platforms }}
-        run: |
-          SAFE_IMAGE=$(echo "$IMAGE_NAME" | tr '/: ' '---')
-
-          # Collect platform-specific staging images
-          SOURCE_TAGS=""
-          IFS=',' read -ra PLATS <<< "$PLATFORMS"
-          for plat in "${PLATS[@]}"; do
-            arch=$(echo "$plat" | cut -d/ -f2)
-            tag="${STAGING_REGISTRY}:${SAFE_IMAGE}-${SOURCE_TAG}-${arch}"
-            if crane digest "$tag" > /dev/null 2>&1; then
-              SOURCE_TAGS="${SOURCE_TAGS} ${tag}"
-            else
-              echo "⚠️  Missing platform image: $tag"
-              exit 1
-            fi
-          done
-
-          # Always stage the manifest — non-PR runs promote to target
-          # only after the compare step confirms
-          # the vuln set changed. This prevents target registry writes on no-ops.
-          MANIFEST_TAG="${STAGING_REGISTRY}:${SAFE_IMAGE}-${SOURCE_TAG}"
-
-          # shellcheck disable=SC2086
-          docker buildx imagetools create --tag "${MANIFEST_TAG}" ${SOURCE_TAGS}
-          echo "✓ Created manifest: ${MANIFEST_TAG}"
-          echo "manifest-tag=${MANIFEST_TAG}" >> "$GITHUB_OUTPUT"
+        run: ./verity ci patch-image create-manifest
 
       - name: Post-scan new patched image
         id: postscan
         env:
-          MANIFEST_TAG: ${{ steps.manifest.outputs.manifest-tag }}
-        run: |
-          trivy image \
-            --vuln-type os,library \
-            --format json \
-            --quiet \
-            "${MANIFEST_TAG}" > post.json
-          NEW_VULNS=$(jq '[.Results[]?.Vulnerabilities // [] | .[]] | length' post.json)
-          echo "Post-patch vulnerabilities: ${NEW_VULNS}"
-          echo "vuln-count=${NEW_VULNS}" >> "$GITHUB_OUTPUT"
+          IMAGE: ${{ steps.manifest.outputs.manifest-tag }}
+        run: ./verity ci patch-image scan-post
 
       - name: Compare with previous post-patch report
         id: compare
@@ -538,28 +557,8 @@ jobs:
           IMAGE_NAME: ${{ inputs.image-name }}
           SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
           TARGET_REGISTRY: ${{ inputs.target-registry }}
-        run: |
-          # Extract sorted vuln IDs from both reports for comparison
-          NEW_IDS=$(jq -r '[.Results[]?.Vulnerabilities // [] | .[] | .VulnerabilityID] | sort | .[]' post.json | sha256sum)
-          PREV_IDS=$(jq -r '[.Results[]?.Vulnerabilities // [] | .[] | .VulnerabilityID] | sort | .[]' prev-post.json 2>/dev/null | sha256sum || echo "")
-
-          PREV_EXISTED="${{ needs.scan.outputs.prev-report-exists }}"
-          FINAL_TAG="${TARGET_REGISTRY}/${IMAGE_NAME}:${SOURCE_TAG}"
-
-
-          if crane digest "$FINAL_TAG" > /dev/null 2>&1; then
-            TARGET_EXISTS=true
-          else
-            TARGET_EXISTS=false
-          fi
-
-          if [ "$PREV_EXISTED" = "true" ] && [ "$NEW_IDS" = "$PREV_IDS" ] && [ "$TARGET_EXISTS" = "true" ]; then
-            echo "Vuln set unchanged and target exists — discarding new image (no-op)"
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "First time, vuln set changed, or target missing — publishing"
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
+          PREVIOUS_EXISTED: ${{ needs.scan.outputs.prev-report-exists }}
+        run: ./verity ci patch-image compare-reports
 
       - name: Push manifest to target registry
         id: push
@@ -569,23 +568,7 @@ jobs:
           SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
           TARGET_REGISTRY: ${{ inputs.target-registry }}
           MANIFEST_TAG: ${{ steps.manifest.outputs.manifest-tag }}
-        run: |
-          FINAL_REPO="${TARGET_REGISTRY}/${IMAGE_NAME}"
-          FINAL_TAG="${FINAL_REPO}:${SOURCE_TAG}"
-          crane copy "${MANIFEST_TAG}" "${FINAL_TAG}"
-          DIGEST=$(crane digest "${FINAL_TAG}")
-          echo "✓ Pushed to target: ${FINAL_TAG} (${DIGEST})"
-          echo "${FINAL_TAG}" > final-manifest.txt
-          {
-            echo "digest=${DIGEST}"
-            echo "final-tag=${FINAL_TAG}"
-            echo "final-repo=${FINAL_REPO}"
-          } >> "$GITHUB_OUTPUT"
-          {
-            echo "DIGEST=${DIGEST}"
-            echo "FINAL_TAG=${FINAL_TAG}"
-            echo "FINAL_REPO=${FINAL_REPO}"
-          } >> "$GITHUB_ENV"
+        run: ./verity ci patch-image crane copy
 
       - name: Resolve target manifest
         id: target
@@ -594,35 +577,15 @@ jobs:
           IMAGE_NAME: ${{ inputs.image-name }}
           SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
           TARGET_REGISTRY: ${{ inputs.target-registry }}
-        run: |
-          set -euo pipefail
-          FINAL_TAG="${TARGET_REGISTRY}/${IMAGE_NAME}:${SOURCE_TAG}"
-          DIGEST=$(crane digest "$FINAL_TAG")
-          {
-            echo "digest=${DIGEST}"
-            echo "final-tag=${FINAL_TAG}"
-          } >> "$GITHUB_OUTPUT"
+        run: ./verity ci patch-image resolve-manifest
 
       - name: Sign manifest with cosign
         id: cosign-sign
         if: steps.compare.outputs.changed == 'true' && inputs.is-pr == false
-        run: |
-          set -o pipefail
-          BUNDLE=/tmp/cosign-bundle.json
-          cosign sign --yes --bundle "$BUNDLE" "${{ steps.push.outputs.final-repo }}@${{ steps.push.outputs.digest }}" 2>&1 | tee /tmp/cosign-out
-          REKOR_URL=""
-          if [ -s "$BUNDLE" ]; then
-            LOG_INDEX=$(jq -r '.. | objects | .logIndex? // empty' "$BUNDLE" 2>/dev/null | head -n 1)
-            if [ -n "$LOG_INDEX" ]; then
-              REKOR_URL="https://rekor.sigstore.dev/api/v1/log/entries?logIndex=${LOG_INDEX}"
-            fi
-          fi
-          if [ -z "$REKOR_URL" ]; then
-            REKOR_URL=$(grep -oE 'https://rekor\.sigstore\.dev/api/v[0-9]+/log/entries[^ ]*' /tmp/cosign-out | head -n 1 || true)
-          fi
-          if [ -n "$REKOR_URL" ]; then
-            echo "rekor-url=${REKOR_URL}" >> "$GITHUB_OUTPUT"
-          fi
+        env:
+          FINAL_REPO: ${{ steps.push.outputs.final-repo }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: ./verity ci patch-image cosign sign
 
       - name: Generate SBOM
         id: sbom
@@ -639,7 +602,7 @@ jobs:
           subject-digest: ${{ steps.push.outputs.digest }}
           predicate-type: https://cyclonedx.org/bom
           predicate-path: sbom.json
-          push-to-registry: true
+          push-to-registry: "true"
 
       - name: Cache otel-cli
         if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' }}
@@ -652,27 +615,7 @@ jobs:
       - name: Install otel-cli
         id: install-otel-finalize
         if: ${{ !cancelled() && vars.HONEYCOMB_ENABLED == 'true' && steps.cache-otel-finalize.outputs.cache-hit != 'true' }}
-        run: |
-          set -euo pipefail
-          mkdir -p ~/.local/bin
-          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-          ARCH=$(uname -m)
-          case "$ARCH" in
-            x86_64) ARCH=amd64 ;;
-            aarch64) ARCH=arm64 ;;
-          esac
-          case "${OS}_${ARCH}" in
-            linux_amd64) EXPECTED_SHA="${OTEL_CLI_SHA256_LINUX_AMD64}" ;;
-            linux_arm64) EXPECTED_SHA="${OTEL_CLI_SHA256_LINUX_ARM64}" ;;
-            *) echo "::error::Unsupported runner: ${OS}_${ARCH}"; exit 1 ;;
-          esac
-          TARBALL=$(mktemp --suffix=.tar.gz)
-          curl -fsSL "https://github.com/equinix-labs/otel-cli/releases/download/v${OTEL_CLI_VERSION}/otel-cli_${OTEL_CLI_VERSION}_${OS}_${ARCH}.tar.gz" -o "$TARBALL"
-          echo "${EXPECTED_SHA}  ${TARBALL}" | sha256sum -c -
-          tar -xzf "$TARBALL" -C ~/.local/bin otel-cli
-          rm -f "$TARBALL"
-          chmod +x ~/.local/bin/otel-cli
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        run: ./verity ci patch-image install-otel
 
       - name: Emit Honeycomb span (per-image finalize)
         id: emit-otel-finalize
@@ -699,9 +642,10 @@ jobs:
           SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          bash .github/scripts/push-reports.sh \
-            "reports/${IMAGE_NAME}/${SOURCE_TAG}/pre.json" pre.json \
-            "reports/${IMAGE_NAME}/${SOURCE_TAG}/post.json" post.json
+          # git push equivalent: the typed command writes through the GitHub Contents API.
+          ./verity ci workflowops push-reports
+          "reports/${IMAGE_NAME}/${SOURCE_TAG}/pre.json" pre.json
+          "reports/${IMAGE_NAME}/${SOURCE_TAG}/post.json" post.json
 
       - name: Update preflight manifest
         id: preflight-manifest
@@ -711,55 +655,7 @@ jobs:
           SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
           SOURCE_REF: ${{ inputs.source-ref }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          UPSTREAM_DIGEST=$(crane digest "${SOURCE_REF}" 2>/dev/null || echo "")
-          VULN_COUNT=$(jq '[.Results[]?.Vulnerabilities // [] | .[]] | length' post.json 2>/dev/null || echo "0")
-          MANIFEST_FILE="reports/preflight-manifest.json"
-          BRANCH="reports"
-          REPO="${{ github.repository }}"
-          KEY="${IMAGE_NAME}/${SOURCE_TAG}"
-          MAX_RETRIES=5
-
-          MANIFEST_UPDATED=false
-          for attempt in $(seq 1 "$MAX_RETRIES"); do
-            if gh api "repos/${REPO}/contents/${MANIFEST_FILE}?ref=${BRANCH}" > /tmp/manifest_resp.json 2>&1; then
-              SHA=$(jq -r '.sha' /tmp/manifest_resp.json)
-              CONTENT=$(jq -r '.content' /tmp/manifest_resp.json | base64 -d)
-            elif grep -q '"Not Found"' /tmp/manifest_resp.json 2>/dev/null; then
-              SHA=""
-              CONTENT="{}"
-            else
-              echo "Warning: unexpected API response fetching manifest (attempt ${attempt}/${MAX_RETRIES})"
-              cat /tmp/manifest_resp.json >&2
-              sleep 2
-              continue
-            fi
-
-            UPDATED=$(echo "$CONTENT" | jq \
-              --arg key "$KEY" \
-              --arg digest "$UPSTREAM_DIGEST" \
-              --argjson vulns "$VULN_COUNT" \
-              --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-              '.[$key] = {upstream_digest: $digest, patched_vulns: $vulns, last_patched: $ts}')
-
-            ENCODED=$(echo "$UPDATED" | base64 | tr -d '\n')
-            ARGS=(--method PUT "repos/${REPO}/contents/${MANIFEST_FILE}"
-              --field "message=chore: update preflight manifest for ${KEY}"
-              --field "content=${ENCODED}"
-              --field "branch=${BRANCH}")
-            [ -n "$SHA" ] && ARGS+=(--field "sha=${SHA}")
-
-            if gh api "${ARGS[@]}" --silent; then
-              MANIFEST_UPDATED=true
-              break
-            fi
-
-            echo "Warning: manifest update attempt ${attempt}/${MAX_RETRIES} failed (SHA conflict), retrying..."
-            sleep 2
-          done
-          if [ "$MANIFEST_UPDATED" != "true" ]; then
-            echo "::warning::Preflight manifest update failed after ${MAX_RETRIES} attempts"
-          fi
+        run: ./verity ci patch-image update-preflight
 
       - name: Upload PR scan artifacts
         id: upload-pr-scan
@@ -770,7 +666,7 @@ jobs:
           path: |
             pre.json
             post.json
-          retention-days: 7
+          retention-days: "7"
 
       # Companion artifacts follow _pl-${arch}-${safe-name}-${source-tag}.
       - name: Download per-platform metrics
@@ -780,24 +676,15 @@ jobs:
         with:
           pattern: _pl-*-${{ needs.scan.outputs.safe-name }}-${{ needs.scan.outputs.source-tag }}
           path: ${{ runner.temp }}/pl-meta
-          merge-multiple: true
+          merge-multiple: "true"
 
       # merge-multiple writes platform-amd64.json / platform-arm64.json into one directory.
       - name: Merge per-platform metadata
         if: ${{ !cancelled() }}
         id: pl-merged
-        run: |
-          set -euo pipefail
-          AMD64="$(jq -c '. // null' "${RUNNER_TEMP}/pl-meta/platform-amd64.json" 2>/dev/null || echo 'null')"
-          ARM64="$(jq -c '. // null' "${RUNNER_TEMP}/pl-meta/platform-arm64.json" 2>/dev/null || echo 'null')"
-          {
-            echo "amd64<<EOF"
-            echo "$AMD64"
-            echo "EOF"
-            echo "arm64<<EOF"
-            echo "$ARM64"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+        env:
+          PLATFORM_METRICS_DIR: ${{ runner.temp }}/pl-meta
+        run: ./verity ci patch-image merge-platform-metrics
 
       - name: Build consolidated metrics JSON
         if: ${{ !cancelled() }}
@@ -805,6 +692,8 @@ jobs:
         env:
           SAFE_NAME: ${{ needs.scan.outputs.safe-name }}
           SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
+          IMAGE_NAME: ${{ inputs.image-name }}
+          SOURCE_SHA: ${{ needs.verity.outputs.source-sha }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HARDEN_OUTCOME: ${{ steps.finalize-harden.outcome }}
           CHECKOUT_OUTCOME: ${{ steps.finalize-checkout.outcome }}
@@ -828,118 +717,24 @@ jobs:
           PL_MERGE_OUTCOME: ${{ steps.pl-merged.outcome }}
           TARGET_REF: ${{ steps.target.outputs.final-tag }}
           MANIFEST_DIGEST: ${{ steps.target.outputs.digest }}
-        run: |
-          set -euo pipefail
-          OUT="metrics-${SAFE_NAME}-${SOURCE_TAG}.json"
-          STARTED_AT=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq '.run_started_at')
-          FINALIZE_CONCLUSION="success"
-          for outcome in \
-            "$HARDEN_OUTCOME" \
-            "$CHECKOUT_OUTCOME" \
-            "$MISE_OUTCOME" \
-            "$LOGIN_OUTCOME" \
-            "$SCAN_ARTIFACTS_OUTCOME" \
-            "$MANIFEST_OUTCOME" \
-            "$POSTSCAN_OUTCOME" \
-            "$COMPARE_OUTCOME" \
-            "$PUSH_OUTCOME" \
-            "$COSIGN_OUTCOME" \
-            "$SBOM_OUTCOME" \
-            "$ATTEST_OUTCOME" \
-            "$OTEL_CACHE_OUTCOME" \
-            "$OTEL_INSTALL_OUTCOME" \
-            "$OTEL_EMIT_OUTCOME" \
-            "$PUSH_REPORTS_OUTCOME" \
-            "$PREFLIGHT_OUTCOME" \
-            "$UPLOAD_PR_SCAN_OUTCOME" \
-            "$PL_DOWNLOAD_OUTCOME" \
-            "$PL_MERGE_OUTCOME"; do
-            if [ "$outcome" = "failure" ]; then
-              FINALIZE_CONCLUSION="failure"
-            fi
-          done
-          if [ -z "$TARGET_REF" ] || [ -z "$MANIFEST_DIGEST" ]; then
-            FINALIZE_CONCLUSION="failure"
-          fi
-
-          SEVERITIES_BEFORE=$(jq -c '
-            {CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNKNOWN: 0} +
-            ([.Results[]?.Vulnerabilities[]?.Severity] | group_by(.) |
-              map({key: .[0], value: length}) | from_entries)
-          ' pre.json 2>/dev/null || echo '{"CRITICAL":0,"HIGH":0,"MEDIUM":0,"LOW":0,"UNKNOWN":0}')
-          SEVERITIES_AFTER=$(jq -c '
-            {CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNKNOWN: 0} +
-            ([.Results[]?.Vulnerabilities[]?.Severity] | group_by(.) |
-              map({key: .[0], value: length}) | from_entries)
-          ' post.json 2>/dev/null || echo '{"CRITICAL":0,"HIGH":0,"MEDIUM":0,"LOW":0,"UNKNOWN":0}')
-          VULN_BEFORE=${{ needs.scan.outputs.pre-vuln-count }}
-          VULN_AFTER=${{ steps.postscan.outputs.vuln-count }}
-          SBOM_DIGEST=$(sha256sum sbom.json 2>/dev/null | cut -d' ' -f1 || true)
-
-          jq -n \
-            --arg schema_version "v1" \
-            --arg run_id "${{ github.run_id }}" \
-            --arg run_attempt "${{ github.run_attempt }}" \
-            --arg started_at "${STARTED_AT}" \
-            --arg ended_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --arg conclusion "${FINALIZE_CONCLUSION}" \
-            --arg image_name "${{ inputs.image-name }}" \
-            --arg source_tag "${SOURCE_TAG}" \
-            --arg target_ref "$TARGET_REF" \
-            --arg manifest_digest "$MANIFEST_DIGEST" \
-            --argjson vuln_before "${VULN_BEFORE:-0}" \
-            --argjson vuln_after "${VULN_AFTER:-0}" \
-            --argjson sev_before "$SEVERITIES_BEFORE" \
-            --argjson sev_after "$SEVERITIES_AFTER" \
-            --argjson amd64 '${{ steps.pl-merged.outputs.amd64 }}' \
-            --argjson arm64 '${{ steps.pl-merged.outputs.arm64 }}' \
-            --arg rekor_url "${{ steps.cosign-sign.outputs.rekor-url }}" \
-            --arg attestation_id "${{ steps.attest.outputs.attestation-id }}" \
-            --arg sbom_digest "${SBOM_DIGEST}" \
-            --arg attestation_bundle_path "${{ steps.attest.outputs.bundle-path }}" \
-            '{
-              schema_version: $schema_version,
-              run: {
-                id: ($run_id | tonumber),
-                attempt: ($run_attempt | tonumber),
-                started_at: $started_at,
-                ended_at: $ended_at,
-                conclusion: $conclusion
-              },
-              image: {
-                name: $image_name,
-                source_tag: $source_tag,
-                target_ref: (if $target_ref == "" then null else $target_ref end),
-                manifest_digest: (if $manifest_digest == "" then null else $manifest_digest end)
-              },
-              scan: {
-                before: { vuln_count: $vuln_before, by_severity: $sev_before },
-                after: { vuln_count: $vuln_after, by_severity: $sev_after }
-              },
-              platforms: {
-                amd64: $amd64,
-                arm64: $arm64
-              },
-              supply_chain: {
-                rekor_url: (if $rekor_url == "" then null else $rekor_url end),
-                attestation_id: (if $attestation_id == "" then null else $attestation_id end),
-                sbom_digest: (if $sbom_digest == "" then null else ("sha256:" + $sbom_digest) end),
-                attestation_bundle_path: (if $attestation_bundle_path == "" then null else $attestation_bundle_path end)
-              }
-            }' > "$OUT"
-
-          cat "$OUT"
-          echo "filename=$OUT" >> "$GITHUB_OUTPUT"
+          VULN_BEFORE: ${{ needs.scan.outputs.pre-vuln-count }}
+          VULN_AFTER: ${{ steps.postscan.outputs.vuln-count }}
+          AMD64: ${{ steps.pl-merged.outputs.amd64 }}
+          ARM64: ${{ steps.pl-merged.outputs.arm64 }}
+          REKOR_URL: ${{ steps.cosign-sign.outputs.rekor-url }}
+          ATTESTATION_ID: ${{ steps.attest.outputs.attestation-id }}
+          ATTESTATION_BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
+        run: ./verity ci patch-image build-success-metrics
 
       - name: Upload metrics artifact
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         env:
-          ACTIONS_ARTIFACT_UPLOAD_CONCURRENCY: 5
+          ACTIONS_ARTIFACT_UPLOAD_CONCURRENCY: "5"
         with:
-          name: metrics-${{ needs.scan.outputs.safe-name }}-${{ needs.scan.outputs.source-tag }}
+          name: ${{ steps.metrics-json.outputs.artifact-name }}
           path: ${{ steps.metrics-json.outputs.filename }}
-          retention-days: 7
+          retention-days: "7"
           if-no-files-found: error
 
   # ── Job 4: Metrics on Failure ─────────────────────────────────────
@@ -949,14 +744,44 @@ jobs:
   # matrix produced before failing, so failed runs land in _metrics.
   metrics-on-failure:
     name: "Metrics on Failure: ${{ inputs.image-name }}"
-    needs: [scan, patch]
+    needs: [scan, patch, verity]
     if: ${{ !cancelled() && needs.scan.outputs.needs-patch == 'true' && needs.patch.result == 'failure' }}
     runs-on: ubuntu-24.04
+    outputs:
+      metrics-artifact-name: ${{ steps.metrics-json.outputs.artifact-name }}
+      metrics-run-id: ${{ steps.metrics-json.outputs.run-id }}
+      metrics-run-attempt: ${{ steps.metrics-json.outputs.run-attempt }}
+      metrics-source-sha: ${{ steps.metrics-json.outputs.source-sha }}
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: "false"
+          sparse-checkout: |
+            mise.toml
+            mise.lock
+            .github/actions/setup-verity
+            go.mod
+            go.sum
+            internal/buildmetadata/
+          sparse-checkout-cone-mode: "false"
+
+      - name: Set up exact Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.verity.outputs.source-sha }}
+          build-key: ${{ needs.verity.outputs.build-key }}
+          verify-attestation: "true"
 
       - name: Download per-platform metrics (best-effort)
         id: download-pl
@@ -965,71 +790,33 @@ jobs:
         with:
           pattern: _pl-*-${{ needs.scan.outputs.safe-name }}-${{ needs.scan.outputs.source-tag }}
           path: ${{ runner.temp }}/pl-meta
-          merge-multiple: true
+          merge-multiple: "true"
 
       - name: Resolve workflow start timestamp
         id: started
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          STARTED_AT=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq '.run_started_at')
-          echo "value=${STARTED_AT}" >> "$GITHUB_OUTPUT"
+        run: ./verity ci patch-image workflow-start
 
       - name: Build minimal failure metrics JSON
         id: metrics-json
         env:
           SAFE_NAME: ${{ needs.scan.outputs.safe-name }}
           SOURCE_TAG: ${{ needs.scan.outputs.source-tag }}
-        run: |
-          set -euo pipefail
-          OUT="metrics-${SAFE_NAME}-${SOURCE_TAG}.json"
-          AMD64="$(jq -c '. // null' "${RUNNER_TEMP}/pl-meta/platform-amd64.json" 2>/dev/null || echo 'null')"
-          ARM64="$(jq -c '. // null' "${RUNNER_TEMP}/pl-meta/platform-arm64.json" 2>/dev/null || echo 'null')"
-          jq -n \
-            --arg run_id "${{ github.run_id }}" \
-            --arg run_attempt "${{ github.run_attempt }}" \
-            --arg started_at "${{ steps.started.outputs.value }}" \
-            --arg ended_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --arg image_name "${{ inputs.image-name }}" \
-            --arg source_tag "${SOURCE_TAG}" \
-            --argjson amd64 "$AMD64" \
-            --argjson arm64 "$ARM64" \
-            '{
-              schema_version: "v1",
-              run: {
-                id: ($run_id | tonumber),
-                attempt: ($run_attempt | tonumber),
-                started_at: $started_at,
-                ended_at: $ended_at,
-                conclusion: "failure"
-              },
-              image: {
-                name: $image_name,
-                source_tag: $source_tag,
-                target_ref: null,
-                manifest_digest: null
-              },
-              scan: { before: null, after: null },
-              platforms: { amd64: $amd64, arm64: $arm64 },
-              supply_chain: {
-                rekor_url: null,
-                attestation_id: null,
-                sbom_digest: null,
-                attestation_bundle_path: null
-              }
-            }' > "$OUT"
-          cat "$OUT"
-          echo "filename=$OUT" >> "$GITHUB_OUTPUT"
+          IMAGE_NAME: ${{ inputs.image-name }}
+          SOURCE_SHA: ${{ needs.verity.outputs.source-sha }}
+          STARTED_AT: ${{ steps.started.outputs.value }}
+          PLATFORM_METRICS_DIR: ${{ runner.temp }}/pl-meta
+        run: ./verity ci patch-image build-failure-metrics
 
       - name: Upload metrics artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         env:
-          ACTIONS_ARTIFACT_UPLOAD_CONCURRENCY: 5
+          ACTIONS_ARTIFACT_UPLOAD_CONCURRENCY: "5"
         with:
-          name: metrics-${{ needs.scan.outputs.safe-name }}-${{ needs.scan.outputs.source-tag }}
+          name: ${{ steps.metrics-json.outputs.artifact-name }}
           path: ${{ steps.metrics-json.outputs.filename }}
-          retention-days: 7
+          retention-days: "7"
           if-no-files-found: error
 
   # Call the archive workflow directly. Runs dispatched by GITHUB_TOKEN do not
@@ -1037,14 +824,20 @@ jobs:
   # part of this run and can consume its completed metrics artifact.
   archive-metrics:
     name: Archive Metrics
-    needs: [scan, patch, finalize, metrics-on-failure]
-    if: ${{ always() && !cancelled() && inputs.is-pr != true && needs.scan.outputs.needs-patch == 'true' }}
+    needs: [scan, patch, finalize, metrics-on-failure, verity]
+    if: ${{ always() && !cancelled() && inputs.is-pr != true && needs.scan.outputs.needs-patch == 'true' && (needs.finalize.outputs.metrics-artifact-name != '' || needs.metrics-on-failure.outputs.metrics-artifact-name != '') }}
     permissions:
-      contents: write
       actions: read
+      attestations: read
+      contents: write
     uses: ./.github/workflows/metrics-finalize.yaml
     with:
-      run-id: ${{ github.run_id }}
-      run-attempt: ${{ github.run_attempt }}
+      run-id: ${{ needs.finalize.outputs.metrics-run-id || needs.metrics-on-failure.outputs.metrics-run-id }}
+      run-attempt: ${{ needs.finalize.outputs.metrics-run-attempt || needs.metrics-on-failure.outputs.metrics-run-attempt }}
+      artifact-name: ${{ needs.finalize.outputs.metrics-artifact-name || needs.metrics-on-failure.outputs.metrics-artifact-name }}
+      source_sha: ${{ needs.finalize.outputs.metrics-source-sha || needs.metrics-on-failure.outputs.metrics-source-sha }}
+      verity_artifact_name: ${{ needs.verity.outputs.artifact-name }}
+      verity_artifact_digest: ${{ needs.verity.outputs.artifact-digest }}
+      verity_build_key: ${{ needs.verity.outputs.build-key }}
     secrets:
       archive-token: ${{ secrets.GITHUB_TOKEN }}

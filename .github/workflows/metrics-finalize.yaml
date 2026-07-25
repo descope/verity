@@ -11,18 +11,40 @@ on:
         description: "Patch Image workflow run attempt"
         required: true
         type: string
+      artifact-name:
+        description: "Exact producer metrics artifact name"
+        required: true
+        type: string
+      source_sha:
+        description: "Exact source commit used to build Verity"
+        required: true
+        type: string
+      verity_artifact_name:
+        description: "Exact current-run Verity artifact name"
+        required: true
+        type: string
+      verity_artifact_digest:
+        description: "Exact current-run Verity artifact digest"
+        required: true
+        type: string
+      verity_build_key:
+        description: "Exact production build key embedded in Verity"
+        required: true
+        type: string
     secrets:
       archive-token:
         description: "Token scoped to reading artifacts and writing the archive branch"
         required: true
 
-permissions:
-  contents: write
-  actions: read
+permissions: {}
 
 jobs:
   commit-metrics:
     runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      attestations: read
+      contents: write
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -31,61 +53,52 @@ jobs:
 
       - name: Checkout default branch
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ inputs.source_sha }}
+          token: ${{ secrets.archive-token }}
         # No fetch-depth needed; we'll fetch _metrics separately
 
-      - name: Configure git identity
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Set up exact Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ inputs.verity_artifact_name }}
+          artifact-digest: ${{ inputs.verity_artifact_digest }}
+          source-sha: ${{ inputs.source_sha }}
+          build-key: ${{ inputs.verity_build_key }}
+          verify-attestation: "true"
 
-      - name: Probe artifact existence
-        id: probe
+      - name: Resolve exact metrics producer
+        id: metadata
         env:
           GH_TOKEN: ${{ secrets.archive-token }}
-          RUN_ID: ${{ inputs.run-id }}
-        run: |
-          set -euo pipefail
-          COUNT=$(gh api "repos/${{ github.repository }}/actions/runs/${RUN_ID}/artifacts" \
-            --jq '[.artifacts[] | select(.name | startswith("metrics-"))] | length')
-          if [ "$COUNT" -eq 0 ]; then
-            echo "::error::No metrics artifacts found for run ${RUN_ID}"
-            exit 1
-          fi
-          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+        run: >-
+          ./verity ci workflowops resolve-metrics-producer
+          --run-id "${{ inputs.run-id }}"
+          --run-attempt "${{ inputs.run-attempt }}"
+          --source-sha "${{ inputs.source_sha }}"
+          --artifact-name "${{ inputs.artifact-name }}"
+          --github-output "$GITHUB_OUTPUT"
 
       - name: Download metrics artifacts
         id: download
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          run-id: ${{ inputs.run-id }}
+          run-id: ${{ steps.metadata.outputs.run-id }}
           github-token: ${{ secrets.archive-token }}
-          pattern: metrics-*
-          merge-multiple: true
+          name: ${{ steps.metadata.outputs.artifact-name }}
           path: ./downloaded-metrics
 
       - name: Validate metrics
         env:
-          RUN_ID: ${{ inputs.run-id }}
-          RUN_ATTEMPT: ${{ inputs.run-attempt }}
-        run: |
-          bash .github/scripts/validate-metrics-json.sh \
-            "$RUN_ID" "$RUN_ATTEMPT" ./downloaded-metrics
-
-      - name: Resolve workflow creation time
-        id: metadata
-        env:
-          GH_TOKEN: ${{ secrets.archive-token }}
-          RUN_ID: ${{ inputs.run-id }}
-        run: |
-          set -euo pipefail
-          created_at=$(gh api "repos/${{ github.repository }}/actions/runs/${RUN_ID}" --jq '.created_at')
-          echo "created-at=${created_at}" >> "$GITHUB_OUTPUT"
+          RUN_ID: ${{ steps.metadata.outputs.run-id }}
+          RUN_ATTEMPT: ${{ steps.metadata.outputs.run-attempt }}
+        run: ./verity ci workflowops validate-metrics-json "$RUN_ID" "$RUN_ATTEMPT" ./downloaded-metrics
 
       - name: Commit metrics to _metrics branch
         env:
-          RUN_ID: ${{ inputs.run-id }}
-          RUN_ATTEMPT: ${{ inputs.run-attempt }}
-          RUN_CREATED_AT: ${{ steps.metadata.outputs.created-at }}
+          RUN_ID: ${{ steps.metadata.outputs.run-id }}
+          RUN_ATTEMPT: ${{ steps.metadata.outputs.run-attempt }}
+          RUN_CREATED_AT: ${{ steps.metadata.outputs.run-created-at }}
         run: >-
-          bash .github/scripts/archive-metrics.sh
+          ./verity ci workflowops archive-metrics
           ./downloaded-metrics "$RUN_ID" "$RUN_ATTEMPT" "$RUN_CREATED_AT"

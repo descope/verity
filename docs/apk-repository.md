@@ -14,7 +14,9 @@ before any signing secret is exposed.
 
 ## Signing
 
-`APK_REPOSITORY_PRIVATE_KEY` is a protected `github-pages` environment secret.
+`APK_REPOSITORY_PRIVATE_KEY` is an `apk-signing` environment secret restricted
+to deployments from `main`. The environment has no reviewer or wait-timer gate,
+so protected `main` publication remains autonomous.
 The matching public key is committed at `keys/apk/verity.rsa.pub` and published
 byte-for-byte at `https://verity.supply/apk/verity.rsa.pub`. Publication fails if
 the private key does not match the committed key.

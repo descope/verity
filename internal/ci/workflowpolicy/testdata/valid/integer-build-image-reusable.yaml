@@ -1,0 +1,459 @@
+name: Integer Build Image Reusable
+run-name: "Build ${{ inputs.image }}:${{ inputs.version }}-${{ inputs.type }}"
+
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+      verity_artifact_name:
+        required: true
+        type: string
+      verity_artifact_digest:
+        required: true
+        type: string
+      verity_build_key:
+        required: true
+        type: string
+      run_id:
+        required: true
+        type: string
+      run_attempt:
+        required: true
+        type: string
+      publication_id:
+        required: true
+        type: string
+      batch_id:
+        required: true
+        type: string
+      event:
+        required: true
+        type: string
+      mode:
+        required: true
+        type: string
+      shard:
+        required: true
+        type: string
+      plan_artifact_name:
+        required: false
+        default: ""
+        type: string
+      plan_artifact_digest:
+        required: false
+        default: ""
+        type: string
+      image:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      type:
+        required: true
+        type: string
+      tags:
+        required: true
+        type: string
+      registry:
+        required: true
+        type: string
+      expected_packages:
+        required: true
+        type: string
+      publish_packages:
+        required: true
+        type: string
+      artifact_key:
+        required: true
+        type: string
+    outputs:
+      artifact_name:
+        value: ${{ jobs.build.outputs.artifact_name }}
+      artifact_digest:
+        value: ${{ jobs.build.outputs.artifact_digest }}
+permissions:
+  contents: read
+
+jobs:
+  validate-coordinates:
+    name: Validate reusable-call coordinates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Reject incomplete Verity coordinates
+        if: >-
+          inputs.source_sha == '' ||
+          inputs.verity_artifact_name == '' ||
+          inputs.verity_artifact_digest == '' ||
+          inputs.verity_build_key == ''
+        run: exit 1
+
+      - name: Reject incomplete image metadata
+        if: >-
+          inputs.run_id == '' ||
+          inputs.run_attempt == '' ||
+          inputs.publication_id == '' ||
+          inputs.batch_id == '' ||
+          inputs.event == '' ||
+          inputs.mode == '' ||
+          inputs.shard == '' ||
+          inputs.image == '' ||
+          inputs.version == '' ||
+          inputs.type == '' ||
+          inputs.tags == '' ||
+          inputs.registry == '' ||
+          inputs.expected_packages == '' ||
+          inputs.publish_packages == '' ||
+          inputs.artifact_key == ''
+        run: exit 1
+
+      - name: Accept complete reusable-call coordinates
+        if: >-
+          inputs.source_sha != '' &&
+          inputs.verity_artifact_name != '' &&
+          inputs.verity_artifact_digest != '' &&
+          inputs.verity_build_key != ''
+        run: "true"
+
+  melange-prep:
+    name: Melange prep
+    needs: validate-coordinates
+    if: needs.validate-coordinates.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      needed: ${{ steps.check.outputs.needed }}
+      source_sha: ${{ inputs.source_sha }}
+      verity_artifact_name: ${{ inputs.verity_artifact_name }}
+      verity_artifact_digest: ${{ inputs.verity_artifact_digest }}
+      verity_build_key: ${{ inputs.verity_build_key }}
+      run_id: ${{ inputs.run_id }}
+      run_attempt: ${{ inputs.run_attempt }}
+      publication_id: ${{ inputs.publication_id }}
+      artifact_key: ${{ inputs.artifact_key }}
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: "false"
+
+      - name: Activate exact Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ inputs.verity_artifact_name }}
+          artifact-digest: ${{ inputs.verity_artifact_digest }}
+          source-sha: ${{ inputs.source_sha }}
+          build-key: ${{ inputs.verity_build_key }}
+          verify-attestation: "true"
+
+      - name: Prepare bespoke package
+        id: check
+        env:
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TYPE: ${{ inputs.type }}
+        run: >-
+          ./verity integer melange prepare
+          --image "$INPUT_IMAGE"
+          --version "$INPUT_VERSION"
+          --type "$INPUT_TYPE"
+          --github-output "$GITHUB_OUTPUT"
+
+      - name: Upload private-key-free melange metadata
+        if: steps.check.outputs.needed == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ inputs.publication_id }}-${{ inputs.artifact_key }}-melange-work
+          path: |
+            melange-work/config.yaml
+            melange-work/metadata.json
+            packages/overrides/
+          if-no-files-found: error
+          retention-days: "1"
+
+  melange-build:
+    name: "Melange build (${{ matrix.arch }})"
+    needs: [melange-prep]
+    if: needs.melange-prep.outputs.needed == 'true'
+    permissions:
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.melange-prep.outputs.source_sha }}
+          persist-credentials: "false"
+
+      - name: Enable linux/amd64 Verity on ARM64
+        if: matrix.arch == 'aarch64'
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+        with:
+          image: docker.io/tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0
+          platforms: amd64
+          cache-image: "false"
+
+      - name: Activate exact Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.melange-prep.outputs.verity_artifact_name }}
+          artifact-digest: ${{ needs.melange-prep.outputs.verity_artifact_digest }}
+          source-sha: ${{ needs.melange-prep.outputs.source_sha }}
+          build-key: ${{ needs.melange-prep.outputs.verity_build_key }}
+          verify-attestation: "true"
+
+      - name: Download melange work artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.melange-prep.outputs.publication_id }}-${{ needs.melange-prep.outputs.artifact_key }}-melange-work
+          path: .
+
+      - name: Build melange package (${{ matrix.arch }})
+        env:
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TYPE: ${{ inputs.type }}
+          BUILD_ARCH: ${{ matrix.arch }}
+        run: >-
+          ./verity integer melange build
+          --image "$INPUT_IMAGE"
+          --version "$INPUT_VERSION"
+          --type "$INPUT_TYPE"
+          --arch "$BUILD_ARCH"
+          --staged
+
+      - name: Test staged packages natively (${{ matrix.arch }})
+        env:
+          BUILD_ARCH: ${{ matrix.arch }}
+        run: >-
+          ./verity ci integer-image test-packages
+          --arch "$BUILD_ARCH"
+          --workspace "$GITHUB_WORKSPACE"
+          --timeout 30m
+
+      - name: Upload arch packages
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ needs.melange-prep.outputs.publication_id }}-${{ needs.melange-prep.outputs.artifact_key }}-melange-packages-${{ matrix.arch }}
+          path: packages/repo/
+          if-no-files-found: error
+          retention-days: "1"
+
+  build:
+    name: "Build ${{ inputs.image }}:${{ inputs.version }}-${{ inputs.type }}"
+    needs: [melange-prep, melange-build]
+    if: >-
+      always() &&
+      needs.melange-prep.result == 'success' &&
+      (needs.melange-build.result == 'success' || needs.melange-build.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    outputs:
+      artifact_name: integer-component-${{ inputs.publication_id }}-${{ inputs.shard }}-${{ inputs.artifact_key }}
+      artifact_digest: ${{ steps.upload-component.outputs.artifact-digest }}
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.melange-prep.outputs.source_sha }}
+          persist-credentials: "false"
+
+      - name: Activate exact Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.melange-prep.outputs.verity_artifact_name }}
+          artifact-digest: ${{ needs.melange-prep.outputs.verity_artifact_digest }}
+          source-sha: ${{ needs.melange-prep.outputs.source_sha }}
+          build-key: ${{ needs.melange-prep.outputs.verity_build_key }}
+          verify-attestation: "true"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate apko configs
+        run: ./verity integer discover --gen-dir ./gen
+
+      - name: Read image metadata
+        id: meta
+        env:
+          INPUT_IMAGE: ${{ inputs.image }}
+        run: >-
+          ./verity integer metadata
+          --image "$INPUT_IMAGE"
+          --github-output "$GITHUB_OUTPUT"
+
+      - name: Download melange packages (x86_64)
+        if: needs.melange-prep.outputs.needed == 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.melange-prep.outputs.publication_id }}-${{ needs.melange-prep.outputs.artifact_key }}-melange-packages-x86_64
+          path: packages/repo
+
+      - name: Download melange packages (aarch64)
+        if: needs.melange-prep.outputs.needed == 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.melange-prep.outputs.publication_id }}-${{ needs.melange-prep.outputs.artifact_key }}-melange-packages-aarch64
+          path: packages/repo
+
+      - name: Download private-key-free melange metadata
+        if: needs.melange-prep.outputs.needed == 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.melange-prep.outputs.publication_id }}-${{ needs.melange-prep.outputs.artifact_key }}-melange-work
+          path: .
+
+      - name: Pin publish config to local package revisions
+        if: needs.melange-prep.outputs.needed == 'true'
+        env:
+          CONFIG_PATH: gen/${{ inputs.image }}/${{ inputs.version }}/${{ inputs.type }}.apko.yaml
+        run: >-
+          ./verity integer melange pin-config
+          --config "$CONFIG_PATH"
+          --repository packages/repo
+          --arch x86_64
+          --arch aarch64
+
+      - name: Trivy publish gate (not clean, no go)
+        env:
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TYPE: ${{ inputs.type }}
+        run: |
+          ./verity integer build --image "$INPUT_IMAGE" --version "$INPUT_VERSION" --type "$INPUT_TYPE" --arch amd64 --fail-on-severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --output gate-amd64.tar
+          ./verity integer build --image "$INPUT_IMAGE" --version "$INPUT_VERSION" --type "$INPUT_TYPE" --arch arm64 --fail-on-severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --output gate-arm64.tar
+
+      - name: Stage, scan, and publish exact multi-arch image
+        id: build
+        env:
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TYPE: ${{ inputs.type }}
+          INPUT_REGISTRY: ${{ inputs.registry }}
+          INPUT_TAGS: ${{ inputs.tags }}
+          OCI_TITLE: ${{ steps.meta.outputs.title }}
+          OCI_DESCRIPTION: ${{ steps.meta.outputs.description }}
+          CONFIG_PATH: gen/${{ inputs.image }}/${{ inputs.version }}/${{ inputs.type }}.apko.yaml
+          SOURCE_SHA: ${{ needs.melange-prep.outputs.source_sha }}
+          RUN_ID: ${{ needs.melange-prep.outputs.run_id }}
+          RUN_ATTEMPT: ${{ needs.melange-prep.outputs.run_attempt }}
+          PUBLICATION_ID: ${{ needs.melange-prep.outputs.publication_id }}
+          MELANGE_NEEDED: ${{ needs.melange-prep.outputs.needed }}
+        run: >-
+          ./verity ci integer-image publish
+          --image "$INPUT_IMAGE"
+          --version "$INPUT_VERSION"
+          --type "$INPUT_TYPE"
+          --registry "$INPUT_REGISTRY"
+          --tags "$INPUT_TAGS"
+          --title "$OCI_TITLE"
+          --description "$OCI_DESCRIPTION"
+          --config "$CONFIG_PATH"
+          --workspace "$GITHUB_WORKSPACE"
+          --source-sha "$SOURCE_SHA"
+          --run-id "$RUN_ID"
+          --run-attempt "$RUN_ATTEMPT"
+          --publication-id "$PUBLICATION_ID"
+          --melange="$MELANGE_NEEDED"
+          --github-output "$GITHUB_OUTPUT"
+
+      - name: Sign image with cosign (keyless)
+        env:
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_REGISTRY: ${{ inputs.registry }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+          PUBLICATION_ID: ${{ needs.melange-prep.outputs.publication_id }}
+        run: cosign sign --yes --annotation "verity.publication_id=${PUBLICATION_ID}" "${INPUT_REGISTRY}/${INPUT_IMAGE}@${DIGEST}"
+
+      - name: Attest SBOM
+        if: hashFiles('sbom-amd64.spdx.json') != ''
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-name: ${{ inputs.registry }}/${{ inputs.image }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          predicate-type: https://spdx.dev/Document
+          predicate-path: sbom-amd64.spdx.json
+          push-to-registry: "true"
+
+      - name: Download exact Integer plan
+        if: inputs.publish_packages != '' && inputs.publish_packages != '[]'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ inputs.plan_artifact_name }}
+          path: integer-plan
+
+      - name: Validate and stage exact Integer component
+        if: inputs.publish_packages != '' && inputs.publish_packages != '[]'
+        run: >-
+          ./verity ci integer-batch component
+          --plan integer-plan/plan.json
+          --target "${{ inputs.image }}:${{ inputs.version }}-${{ inputs.type }}"
+          --packages-dir packages/repo
+          --output-dir integer-component
+
+      - name: Attest every exact component APK
+        if: inputs.publish_packages != '' && inputs.publish_packages != '[]'
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: integer-component/packages/**/*.apk
+
+      - name: Attest exact component manifest
+        if: inputs.publish_packages != '' && inputs.publish_packages != '[]'
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: integer-component/component.json
+
+      - name: Upload exact Integer component
+        id: upload-component
+        if: inputs.publish_packages != '' && inputs.publish_packages != '[]'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: integer-component-${{ inputs.publication_id }}-${{ inputs.shard }}-${{ inputs.artifact_key }}
+          path: integer-component/
+          if-no-files-found: error
+          retention-days: "7"
+
+      - name: Upload Trivy report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: trivy-${{ needs.melange-prep.outputs.publication_id }}-${{ needs.melange-prep.outputs.artifact_key }}
+          path: trivy-report.json
+          retention-days: "30"

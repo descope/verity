@@ -1,36 +1,121 @@
 name: Chart Generation
 
-# Generates patched wrapper Helm charts for each chart in Chart.yaml.
-# Runs after the nightly orchestrator (02:00 UTC) has had time to patch
-# all chart-discovered images. Also triggerable manually.
+# Reusable chart producer for one exact successful COPA publication.
 
 on:
-  schedule:
-    - cron: '0 4 * * *'   # 04:00 UTC daily (2h after orchestrator)
-  push:
-    branches: [main]
-    paths:
-      - 'Chart.yaml'
-      - 'verity.yaml'
-      - 'copa-config.yaml'
-      - 'internal/chartgen/**'
-      - 'cmd/chart_gen.go'
-      - '.github/workflows/chart-gen.yaml'
-  workflow_dispatch: {}
+  workflow_call:
+    inputs:
+      source_sha:
+        description: "Exact COPA source commit"
+        required: true
+        type: string
+      run_id:
+        description: "Exact COPA producer run ID"
+        required: true
+        type: string
+      run_attempt:
+        description: "Exact COPA producer run attempt"
+        required: true
+        type: string
+      publication_id:
+        description: "Exact chart publication identity"
+        required: true
+        type: string
+      batch_id:
+        description: "Exact COPA publication batch"
+        required: true
+        type: string
+      artifact_name:
+        description: "Exact immutable COPA manifest artifact"
+        required: true
+        type: string
+      artifact_digest:
+        description: "Exact immutable COPA manifest digest"
+        required: true
+        type: string
+      verity_artifact_name:
+        description: "Exact current-run Verity artifact name"
+        required: true
+        type: string
+      verity_artifact_digest:
+        description: "Exact current-run Verity artifact digest"
+        required: true
+        type: string
+      verity_build_key:
+        description: "Exact current-run Verity build key"
+        required: true
+        type: string
+    outputs:
+      source_sha:
+        description: "Chart publication source commit"
+        value: ${{ jobs.chart-gen.outputs.source_sha }}
+      run_id:
+        description: "Chart publication run ID"
+        value: ${{ jobs.chart-gen.outputs.run_id }}
+      run_attempt:
+        description: "Chart publication run attempt"
+        value: ${{ jobs.chart-gen.outputs.run_attempt }}
+      publication_id:
+        description: "Chart publication identity"
+        value: ${{ jobs.chart-gen.outputs.publication_id }}
+      batch_id:
+        description: "Chart publication batch"
+        value: ${{ jobs.chart-gen.outputs.batch_id }}
+      artifact_name:
+        description: "Immutable chart publication manifest artifact"
+        value: ${{ jobs.chart-gen.outputs.artifact_name }}
+      artifact_digest:
+        description: "Immutable chart publication manifest digest"
+        value: ${{ jobs.chart-gen.outputs.artifact_digest }}
 
-permissions:
-  contents: read
-  packages: write
-  actions: read
+permissions: {}
 
 env:
   TARGET_REGISTRY: ghcr.io/verity-org
   CHART_REGISTRY: oci://ghcr.io/verity-org/charts
 
 jobs:
+  verity:
+    name: Resolve exact caller Verity coordinates
+    runs-on: ubuntu-24.04
+    permissions: {}
+    outputs:
+      source-sha: ${{ inputs.source_sha }}
+      artifact-name: ${{ inputs.verity_artifact_name }}
+      artifact-digest: ${{ inputs.verity_artifact_digest }}
+      build-key: ${{ inputs.verity_build_key }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: "false"
+
+      - name: Activate exact caller Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ inputs.verity_artifact_name }}
+          artifact-digest: ${{ inputs.verity_artifact_digest }}
+          source-sha: ${{ inputs.source_sha }}
+          build-key: ${{ inputs.verity_build_key }}
+          verify-attestation: "true"
+
   chart-gen:
     name: Generate Wrapper Charts
+    needs: verity
     runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+      packages: write
+    outputs:
+      source_sha: ${{ inputs.source_sha }}
+      run_id: ${{ github.run_id }}
+      run_attempt: ${{ github.run_attempt }}
+      publication_id: ${{ inputs.publication_id }}
+      batch_id: ${{ inputs.batch_id }}
+      artifact_name: chart-publication-${{ inputs.publication_id }}
+      artifact_digest: ${{ steps.upload-publication.outputs.artifact-digest }}
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -39,20 +124,14 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Wait for nightly Copa producer
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WAIT_BRANCH: ${{ github.ref_name }}
-          WAIT_EVENT: schedule
-          WAIT_TIMEOUT_SECONDS: 21600
-        run: bash .github/scripts/wait-for-workflows.sh orchestrator.yaml
+        with:
+          ref: ${{ needs.verity.outputs.source-sha }}
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
 
       - name: Cache Go modules
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -63,8 +142,36 @@ jobs:
           key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
           restore-keys: go-${{ runner.os }}-
 
-      - name: Build verity
-        run: go build -o verity .
+      - name: Set up exact Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.verity.outputs.source-sha }}
+          build-key: ${{ needs.verity.outputs.build-key }}
+          verify-attestation: "true"
+
+      - name: Download exact COPA publication manifest
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: .producer/copa
+          repository: ${{ github.repository }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ inputs.run_id }}
+
+      - name: Verify exact COPA producer artifact
+        env:
+          PROVENANCE_API_AUTH: ${{ secrets.GITHUB_TOKEN }}
+          PROVENANCE_REPOSITORY: ${{ github.repository }}
+          PROVENANCE_RUN_ID: ${{ inputs.run_id }}
+          PROVENANCE_RUN_ATTEMPT: ${{ inputs.run_attempt }}
+          PROVENANCE_SOURCE_SHA: ${{ inputs.source_sha }}
+          PROVENANCE_PUBLICATION_ID: ${{ inputs.publication_id }}
+          PROVENANCE_ARTIFACT_NAME: ${{ inputs.artifact_name }}
+          PROVENANCE_ARTIFACT_DIGEST: ${{ inputs.artifact_digest }}
+          PROVENANCE_MANIFEST: .producer/copa/producer-manifest.json
+        run: ./verity ci artifact-provenance verify-download
 
       - name: Login to GHCR
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
@@ -73,18 +180,37 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Derive exclude names from Integer images
-        id: exclude
-        run: |
-          EXCLUDE_NAMES=$(find images -maxdepth 1 -name '*.yaml' -printf '%f\n' 2>/dev/null | sed 's/\.yaml$//' | paste -sd, || true)
-          echo "names=${EXCLUDE_NAMES}" >> "$GITHUB_OUTPUT"
-
       - name: Generate and push wrapper charts
-        run: |
-          ./verity chart-gen \
-            --charts-file Chart.yaml \
-            --verity-config verity.yaml \
-            --target-registry "${TARGET_REGISTRY}" \
-            --chart-registry "${CHART_REGISTRY}" \
-            --exclude-names "${{ steps.exclude.outputs.names }}" \
-            --strict
+        run: >-
+          ./verity chart-gen
+          --charts-file Chart.yaml
+          --verity-config verity.yaml
+          --target-registry "${TARGET_REGISTRY}"
+          --chart-registry "${CHART_REGISTRY}"
+          --exclude-images-dir images
+          --strict
+
+      - name: Write exact chart producer manifest
+        env:
+          PROVENANCE_REPOSITORY: ${{ github.repository }}
+          PROVENANCE_RUN_ID: ${{ github.run_id }}
+          PROVENANCE_RUN_ATTEMPT: ${{ github.run_attempt }}
+          PROVENANCE_SOURCE_SHA: ${{ inputs.source_sha }}
+          PROVENANCE_PUBLICATION_ID: ${{ inputs.publication_id }}
+          PROVENANCE_ARTIFACT_NAME: chart-publication-${{ inputs.publication_id }}
+          PROVENANCE_MANIFEST: producer-manifest.json
+        run: ./verity ci artifact-provenance write-manifest
+
+      - name: Upload immutable chart publication manifest
+        id: upload-publication
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: chart-publication-${{ inputs.publication_id }}
+          path: |
+            Chart.yaml
+            verity.yaml
+            copa-config.yaml
+            .producer/copa
+            producer-manifest.json
+          retention-days: "7"
+          if-no-files-found: error

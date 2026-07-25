@@ -1,0 +1,135 @@
+- name: workflow direct root output
+  relative: .github/workflows/integer-build-image-reusable.yaml
+  old: "      - name: Prepare bespoke package"
+  replacement: |2-
+          - name: Rebuild Verity locally
+            run: go build -o verity .
+
+          - name: Prepare bespoke package
+- name: workflow output equals variant
+  relative: .github/workflows/integer-build-image-reusable.yaml
+  old: "      - name: Prepare bespoke package"
+  replacement: |2-
+          - name: Rebuild Verity with equals output
+            run: go build -o=./verity ./
+
+          - name: Prepare bespoke package
+- name: workflow CGO prefix and trailing output
+  relative: .github/workflows/integer-build-image-reusable.yaml
+  old: "      - name: Prepare bespoke package"
+  replacement: |2-
+          - name: Rebuild Verity with CGO prefix
+            run: CGO_ENABLED=0 go build . -o="$GITHUB_WORKSPACE/verity"
+
+          - name: Prepare bespoke package
+- name: workflow multiline root build
+  relative: .github/workflows/integer-build-image-reusable.yaml
+  old: "      - name: Prepare bespoke package"
+  replacement: |2-
+          - name: Rebuild Verity across lines
+            run: |-
+              CGO_ENABLED=0 \
+                go build \
+                -o ./verity \
+                .
+
+          - name: Prepare bespoke package
+- name: workflow env unset prefix
+  relative: .github/workflows/integer-build-image-reusable.yaml
+  old: "      - name: Prepare bespoke package"
+  replacement: |2-
+          - name: Rebuild Verity through env
+            run: env -u GOFLAGS go build -o ./verity .
+
+          - name: Prepare bespoke package
+- name: workflow login shell quoted build
+  relative: .github/workflows/integer-build-image-reusable.yaml
+  old: "      - name: Prepare bespoke package"
+  replacement: |2-
+          - name: Rebuild Verity through a login shell
+            run: >-
+              bash -lc 'CGO_ENABLED=0 go build -o "$GITHUB_WORKSPACE/verity" .'
+
+          - name: Prepare bespoke package
+- name: workflow quoted shell multiline build
+  relative: .github/workflows/integer-build-image-reusable.yaml
+  old: "      - name: Prepare bespoke package"
+  replacement: |2-
+          - name: Rebuild Verity through a multiline quoted shell
+            run: |-
+              bash -lc "CGO_ENABLED=0 go \
+                build -o ./verity ."
+
+          - name: Prepare bespoke package
+- name: workflow fully quoted build
+  relative: .github/workflows/integer-build-image-reusable.yaml
+  old: "      - name: Prepare bespoke package"
+  replacement: |2-
+          - name: Rebuild Verity with quoted tokens
+            run: '"go" "build" "-o" "$GITHUB_WORKSPACE/verity" "."'
+
+          - name: Prepare bespoke package
+- name: workflow root source glob
+  relative: .github/workflows/integer-build-image-reusable.yaml
+  old: "      - name: Prepare bespoke package"
+  replacement: |2-
+          - name: Rebuild Verity from root source glob
+            run: go build *.go
+
+          - name: Prepare bespoke package
+- name: workflow bash rcfile before command string
+  relative: .github/workflows/integer-build-image-reusable.yaml
+  old: "      - name: Prepare bespoke package"
+  replacement: |2-
+          - name: Rebuild Verity through Bash rcfile option
+            run: bash --rcfile /dev/null -c 'go build -o verity .'
+
+          - name: Prepare bespoke package
+- name: workflow shell change-directory returns to root
+  relative: .github/workflows/integer-build-image-reusable.yaml
+  old: "      - name: Prepare bespoke package"
+  replacement: |2-
+          - name: Return to root before rebuilding Verity
+            run: cd cmd/helper && cd ../.. && go build
+
+          - name: Prepare bespoke package
+- name: workflow root install
+  relative: .github/workflows/integer-build-image-reusable.yaml
+  old: "      - name: Prepare bespoke package"
+  replacement: |2-
+          - name: Install local Verity source
+            run: GOBIN="$GITHUB_WORKSPACE" go install .
+
+          - name: Prepare bespoke package
+- name: workflow go run root bypass
+  relative: .github/workflows/integer-build-image-reusable.yaml
+  old: "      - name: Prepare bespoke package"
+  replacement: |2-
+          - name: Run local Verity source
+            run: go run . ci workflow validate .github/workflows
+
+          - name: Prepare bespoke package
+- name: workflow build helper run bypass
+  relative: .github/workflows/integer-build-image-reusable.yaml
+  old: "      - name: Prepare bespoke package"
+  replacement: |2-
+          - name: Invoke the build helper outside its owner
+            run: >-
+              go run ./.github/actions/setup-verity/cmd/setup-verity build
+              --source-sha "$GITHUB_SHA"
+
+          - name: Prepare bespoke package
+- name: workflow compiled helper bypass
+  relative: .github/workflows/integer-build-image-reusable.yaml
+  old: "      - name: Prepare bespoke package"
+  replacement: |2-
+          - name: Compile the build helper outside its owner
+            run: >-
+              go build -o "$RUNNER_TEMP/setup-verity"
+              ./.github/actions/setup-verity/cmd/setup-verity
+
+          - name: Prepare bespoke package
+- name: setup binaries final binary regression
+  relative: .github/actions/setup-binaries/action.yml
+  old: "      run: go mod download"
+  replacement: "      run: go build -o '$GITHUB_WORKSPACE/verity' ."

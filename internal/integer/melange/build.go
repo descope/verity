@@ -2,6 +2,7 @@ package melange
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,6 +12,8 @@ import (
 )
 
 type ExecRunner struct{}
+
+var errIncompleteSigningKeyPair = errors.New("incomplete ephemeral signing key pair")
 
 func (ExecRunner) Run(ctx context.Context, command *Command, stdout, stderr io.Writer) error {
 	cmd := exec.CommandContext(ctx, command.Name, command.Args...)
@@ -43,11 +46,12 @@ func Prepare(ctx context.Context, options *BuildOptions) error {
 }
 
 func signingKeyPairExists(paths *Paths) (bool, error) {
+	found := 0
 	for _, name := range []string{"melange.rsa", "melange.rsa.pub"} {
 		path := filepath.Join(paths.WorkDir, name)
 		info, err := os.Lstat(path)
 		if os.IsNotExist(err) {
-			return false, nil
+			continue
 		}
 		if err != nil {
 			return false, fmt.Errorf("inspect signing key %q: %w", path, err)
@@ -55,11 +59,15 @@ func signingKeyPairExists(paths *Paths) (bool, error) {
 		if !info.Mode().IsRegular() {
 			return false, fmt.Errorf("signing key %q %w", path, errNotRegularFile)
 		}
+		found++
 	}
-	return true, nil
+	if found == 1 {
+		return false, errIncompleteSigningKeyPair
+	}
+	return found == 2, nil
 }
 
-func Build(ctx context.Context, options *BuildOptions) error {
+func Build(ctx context.Context, options *BuildOptions) (err error) {
 	buildDefaults(options)
 	if !options.Spec.Needed() && !options.Staged {
 		return nil
@@ -70,8 +78,14 @@ func Build(ctx context.Context, options *BuildOptions) error {
 	if !options.Arch.valid() {
 		return fmt.Errorf("%w %q", errUnsupportedArchitecture, options.Arch)
 	}
-	if err := prepareBuildInputs(ctx, options); err != nil {
+	generatedKey, err := prepareBuildInputs(ctx, options)
+	if err != nil {
 		return err
+	}
+	if generatedKey {
+		defer func() {
+			err = errors.Join(err, removeEphemeralSigningKey(&options.Paths))
+		}()
 	}
 	if err := clearBuildOutput(&options.Paths, options.Arch); err != nil {
 		return err
@@ -98,11 +112,24 @@ func clearBuildOutput(paths *Paths, arch Architecture) error {
 	return nil
 }
 
-func prepareBuildInputs(ctx context.Context, options *BuildOptions) error {
+func prepareBuildInputs(ctx context.Context, options *BuildOptions) (bool, error) {
 	if !options.Staged {
-		return Prepare(ctx, options)
+		if err := Prepare(ctx, options); err != nil {
+			return false, err
+		}
+		return false, nil
 	}
-	return restrictStagedPrivateKey(&options.Paths)
+	keyPairExists, err := signingKeyPairExists(&options.Paths)
+	if err != nil {
+		return false, err
+	}
+	if keyPairExists {
+		return false, restrictStagedPrivateKey(&options.Paths)
+	}
+	if err := runMelange(ctx, options, "keygen", "melange-work/melange.rsa"); err != nil {
+		return false, fmt.Errorf("generate ephemeral package signing key: %w", err)
+	}
+	return true, restrictStagedPrivateKey(&options.Paths)
 }
 
 func restrictStagedPrivateKey(paths *Paths) error {
@@ -118,6 +145,17 @@ func restrictStagedPrivateKey(paths *Paths) error {
 		return fmt.Errorf("restrict staged signing key: %w", err)
 	}
 	return nil
+}
+
+func removeEphemeralSigningKey(paths *Paths) error {
+	var result error
+	for _, name := range []string{"melange.rsa", "melange.rsa.pub"} {
+		path := filepath.Join(paths.WorkDir, name)
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			result = errors.Join(result, fmt.Errorf("remove ephemeral signing key %q: %w", path, err))
+		}
+	}
+	return result
 }
 
 func stagedBuildFiles(paths *Paths) ([]string, error) {
@@ -143,8 +181,12 @@ func buildStagedRecipes(ctx context.Context, options *BuildOptions, builds []str
 
 func signPackageIndexes(ctx context.Context, options *BuildOptions) error {
 	publicKey := filepath.Join(options.Paths.WorkDir, "melange.rsa.pub")
-	if err := copyFile(options.Paths.Root, publicKey, filepath.Join(options.Paths.RepoDir, "melange.rsa.pub")); err != nil {
+	publicName := "melange-" + string(options.Arch) + ".rsa.pub"
+	if err := copyFile(options.Paths.Root, publicKey, filepath.Join(options.Paths.RepoDir, publicName)); err != nil {
 		return fmt.Errorf("copy public key: %w", err)
+	}
+	if err := copyFile(options.Paths.Root, publicKey, filepath.Join(options.Paths.RepoDir, "melange.rsa.pub")); err != nil {
+		return fmt.Errorf("copy compatibility public key: %w", err)
 	}
 	indexes, err := filepath.Glob(filepath.Join(options.Paths.RepoDir, string(options.Arch), "APKINDEX.tar.gz"))
 	if err != nil {

@@ -21,7 +21,7 @@ The resulting static endpoints are:
 Public key: `https://verity.supply/apk/verity.rsa.pub`
 
 SHA-256 fingerprint of the DER-encoded public key:
-`90f7940b20391f49b417b9b3be49f01ee88b975313860b6e1a77bbf7b109c6d2`
+`416d7b8491fccfde1e5d247b4dfc0571ccd20e0610b192334d4ee1308d9adee7`
 
 ## Install
 
@@ -71,6 +71,26 @@ apk info -vv <package-name>
 `apk update` must fail if the signed index cannot be verified with the installed
 Verity public key. Treat a signature failure as a stop condition: do not bypass
 signature verification for this repository.
+
+## Key rotation and revocation
+
+During an announced rotation window, install each explicitly published
+fingerprinted key in `/etc/apk/keys` and verify every fingerprint against this
+guide or the signed release notice before running `apk update`. Keep both keys
+only for the stated overlap period. The `/apk/verity.rsa.pub` alias identifies
+the key for new installations; it does not authorize an unannounced fingerprint
+change.
+
+If Verity announces a revocation, remove the revoked fingerprinted key
+immediately, install the replacement key, verify its fingerprint, and run
+`apk update`. Do not restore an older key or repository snapshot to work around
+signature failures: publication key epochs are monotonic, and rollback must not
+resurrect retired or revoked trust.
+
+If the downloaded key fingerprint differs from the documented or announced
+value, stop. Preserve the key and command output for incident reporting, remove
+the repository URL until the discrepancy is resolved, and do not use
+`--allow-untrusted`.
 
 ## Remove the repository
 

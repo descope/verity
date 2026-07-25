@@ -41,15 +41,18 @@ The intended implementation sequence is:
 1. Build a complete candidate from the exact successful scheduled Integer batch.
 2. Verify every candidate artifact's GitHub provenance before exposing the
    repository signing secret.
-3. Re-sign candidate packages, generate per-architecture indexes, and sign the
-   indexes with the stable APK key.
-4. Restore the latest non-expired main-branch Pages artifact and verify its APK
+3. Validate package structure, paths, sizes, semantic identity, and the exact
+   active RSA-4096/65537 public key before exposing private material.
+4. Pull and attest the immutable signer image, then pass the production key to
+   the Go signer through stdin. Materialize it only in the isolated signer
+   boundary and re-sign candidate packages and indexes offline.
+5. Restore the latest non-expired main-branch Pages artifact and verify its APK
    signatures and indexes independently.
-5. Compare signed APK paths and digests, public-key digests, and the explicit
+6. Compare signed APK paths and digests, public-key digests, and the explicit
    `repository-format` marker.
-6. Preserve the previous APK tree byte-for-byte when that state is unchanged;
+7. Preserve the previous APK tree byte-for-byte when that state is unchanged;
    otherwise select the complete candidate.
-7. Verify the selected repository with fresh Alpine clients for `x86_64` and
+8. Verify the selected repository with fresh Alpine clients for `x86_64` and
    `aarch64`, then upload the complete site as the next Pages artifact.
 
 The publish job must fail closed if any required architecture is missing, any
@@ -59,19 +62,38 @@ load an architecture index.
 ## Signing and key custody
 
 - The private signing key is stored as a GitHub Actions secret scoped to the
-  Pages/repository publish workflow.
+  autonomous `apk-signing` environment and exact `main` deployments.
 - The current public key is non-secret and published as `/apk/verity.rsa.pub`.
 - Documentation and site copy show the SHA-256 SPKI fingerprint
-  `90f7940b20391f49b417b9b3be49f01ee88b975313860b6e1a77bbf7b109c6d2`
+  `416d7b8491fccfde1e5d247b4dfc0571ccd20e0610b192334d4ee1308d9adee7`
   next to the public-key URL.
-- CI logs must not print private key material. Workflows should write private
-  material to temporary files with restrictive permissions and delete them after
-  signing.
+- The protected workflow reads the private key only on protected `main`. GitHub
+  injects it into the exact signing step, which immediately copies it to a local
+  non-exported variable, unsets the environment entry, and sends it to the Go
+  signer on stdin. Workflow/job/container environments, argv, xtrace, artifacts,
+  caches, and inherited child environments must not carry the secret.
+- The immutable signer digest is attested before key materialization. Key-bearing
+  execution is offline, non-root, read-only, capability-free, and limited to
+  narrow read-only inputs plus one output mount. Runtime installation, mutable
+  executables, and writable whole-workspace mounts are forbidden.
+- Key material lives only in a signer-private memory-backed directory, is mode
+  `0600`, and is zeroized and removed on success, failure, or cancellation.
 - Key rotation is additive first: publish a fingerprinted new public key,
   announce the new fingerprint, ask clients to install both old and new keys,
   move the `/apk/verity.rsa.pub` alias to the new key for future installs, sign
   future indexes with the new key, then remove retired-key instructions after
   the overlap period.
+
+## Rotation and rollback state
+
+The authenticated publication manifest records a monotonically increasing key
+epoch, the active fingerprint, the bounded trusted overlap set, and revoked
+fingerprints. Routine rotation advances the epoch and temporarily trusts old and
+new keys. Retirement removes the old key after all old signatures and client
+instructions expire. Revocation removes trust immediately. Snapshot, delta, and
+restore paths reject lower epochs and any state that makes a revoked key active.
+The repository-owned `ci/apk-signing-key-state.json` binds that state to the
+canonical RSA public key before a manifest can be composed.
 
 ## Retention policy
 
@@ -110,3 +132,9 @@ published Pages artifact in place rather than upload a partial `/apk/` tree. If 
 bad repository is published, remediation is: regenerate from the last known-good
 package set, publish a fixed signed index, then file a follow-up issue with root
 cause and prevention steps.
+
+Suspected key exposure is a publication stop, not a normal generation failure.
+Preserve run/artifact evidence, revoke the old fingerprint, advance the epoch,
+replace the key without retrieving the old secret, invalidate affected artifacts,
+audit published signatures, and rebuild from protected `main` with the attested
+signer and mandatory all-severity Trivy gate.

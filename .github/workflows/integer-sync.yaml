@@ -5,17 +5,34 @@ on:
     - cron: "30 1 * * *"
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 concurrency:
   group: integer-package-stream-sync
   cancel-in-progress: false
 
 jobs:
+  build-verity:
+    name: Build protected Verity once
+    if: ${{ startsWith(github.workflow_ref, 'verity-org/verity/.github/workflows/integer-sync.yaml@') }}
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/build-verity.yaml
+    with:
+      source_sha: ${{ github.sha }}
+      protected_attestation: "true"
+
   sync:
+    needs: build-verity
     runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      attestations: read
+      contents: write
+      pull-requests: write
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -32,55 +49,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          fetch-depth: 0
+          ref: ${{ github.sha }}
+          fetch-depth: "0"
           token: ${{ steps.app-token.outputs.token }}
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
 
-      - name: Build Verity
-        uses: ./.github/actions/setup-binaries
+      - name: Activate protected same-run Verity
+        uses: ./.github/actions/setup-verity
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          artifact-name: ${{ needs.build-verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.build-verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.build-verity.outputs.source-sha }}
+          build-key: ${{ needs.build-verity.outputs.build-key }}
+          verify-attestation: "true"
 
       - name: Discover new Wolfi package streams
         run: ./verity integer sync --apply
 
       - name: Open or update sync pull request
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          BRANCH: automation/integer-package-streams
-          MAX_CHANGED_IMAGES: "20"
-        run: |
-          set -euo pipefail
-
-          mapfile -t changed_images < <(git diff --name-only -- images/ | sort)
-          if [ "${#changed_images[@]}" -gt "$MAX_CHANGED_IMAGES" ]; then
-            for image_path in "${changed_images[@]:$MAX_CHANGED_IMAGES}"; do
-              git restore -- "$image_path"
-            done
-            echo "Limited sync PR to $MAX_CHANGED_IMAGES image definitions"
-          fi
-
-          git add images/
-          if git diff --cached --quiet; then
-            echo "No new package streams"
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore(integer): sync Wolfi package streams"
-
-          git fetch origin "refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" || true
-          git push --force-with-lease origin "HEAD:refs/heads/$BRANCH"
-
-          gh pr view "$BRANCH" --json url --jq .url ||
-            gh pr create \
-              --base main \
-              --head "$BRANCH" \
-              --title "chore(integer): sync Wolfi package streams" \
-              --body "Automated package-stream additions discovered from Wolfi APKINDEX by \`verity integer sync --apply\`."
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: >-
+          ./verity ci repository-ops sync-pr
+          --base main
+          --branch automation/integer-package-streams
+          --max-changed-images 20

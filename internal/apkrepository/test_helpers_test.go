@@ -2,7 +2,6 @@ package apkrepository
 
 import (
 	"archive/tar"
-	"archive/zip"
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -10,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -23,12 +23,12 @@ type fakeCommandRunner struct {
 	run   func(command) (commandResult, error)
 }
 
-func (runner *fakeCommandRunner) Run(_ context.Context, request command) (commandResult, error) {
-	runner.calls = append(runner.calls, request)
+func (runner *fakeCommandRunner) Run(_ context.Context, request *command) (commandResult, error) {
+	runner.calls = append(runner.calls, *request)
 	if runner.run == nil {
 		return commandResult{}, fmt.Errorf("%w: %s %s", errUnexpectedCommand, request.name, strings.Join(request.args, " "))
 	}
-	return runner.run(request)
+	return runner.run(*request)
 }
 
 func writeTestFile(t *testing.T, path, contents string) {
@@ -52,22 +52,36 @@ func writeTestIndex(t *testing.T, path string, names ...string) {
 	require.NoError(t, file.Close())
 }
 
-func pagesArtifactZip(t *testing.T, tarEntries map[string]string) []byte {
+func writeTestAPK(t *testing.T, path, name, version, architecture, payload, signature string) {
 	t.Helper()
-	var tarBuffer bytes.Buffer
-	tarWriter := tar.NewWriter(&tarBuffer)
-	for name, contents := range tarEntries {
-		require.NoError(t, tarWriter.WriteHeader(&tar.Header{Name: name, Mode: 0o644, Size: int64(len(contents))}))
+	var apk bytes.Buffer
+	if signature != "" {
+		apk.Write(testTarGzip(t, map[string]string{".SIGN.RSA256.test.rsa.pub": signature}))
+	}
+	pkgInfo := fmt.Sprintf("pkgname = %s\npkgver = %s\narch = %s\nsize = %d\n", name, version, architecture, len(payload))
+	apk.Write(testTarGzip(t, map[string]string{".PKGINFO": pkgInfo}))
+	apk.Write(testTarGzip(t, map[string]string{"usr/bin/" + name: payload}))
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	require.NoError(t, os.WriteFile(path, apk.Bytes(), 0o644))
+}
+
+func testTarGzip(t *testing.T, entries map[string]string) []byte {
+	t.Helper()
+	var buffer bytes.Buffer
+	gzipWriter := gzip.NewWriter(&buffer)
+	tarWriter := tar.NewWriter(gzipWriter)
+	names := make([]string, 0, len(entries))
+	for name := range entries {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	for _, name := range names {
+		contents := entries[name]
+		require.NoError(t, tarWriter.WriteHeader(&tar.Header{Name: name, Mode: 0o755, Size: int64(len(contents))}))
 		_, err := tarWriter.Write([]byte(contents))
 		require.NoError(t, err)
 	}
 	require.NoError(t, tarWriter.Close())
-	var zipBuffer bytes.Buffer
-	zipWriter := zip.NewWriter(&zipBuffer)
-	artifact, err := zipWriter.Create("artifact.tar")
-	require.NoError(t, err)
-	_, err = artifact.Write(tarBuffer.Bytes())
-	require.NoError(t, err)
-	require.NoError(t, zipWriter.Close())
-	return zipBuffer.Bytes()
+	require.NoError(t, gzipWriter.Close())
+	return buffer.Bytes()
 }

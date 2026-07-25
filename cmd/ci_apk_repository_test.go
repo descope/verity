@@ -31,7 +31,7 @@ func TestCIAPKRepositoryCommand_assembles_guarded_empty_repository(t *testing.T)
 
 func TestCIAPKRepositoryCommand_registers_all_publication_operations(t *testing.T) {
 	// Given the CI command tree.
-	wanted := []string{"assemble", "validate", "download-approved", "restore-previous", "select"}
+	wanted := []string{"assemble", "snapshot", "delta", "validate", "download-approved", "restore-previous", "select"}
 
 	// When the APK repository subcommands are enumerated.
 	registered := make(map[string]bool)

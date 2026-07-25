@@ -6,8 +6,7 @@ name: PR Test
 on:
   pull_request:
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: pr-test-${{ github.event.pull_request.number || github.ref }}
@@ -19,41 +18,59 @@ env:
 jobs:
   changes:
     name: Detect PR test scope
+    needs: build-verity
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     outputs:
       integer: ${{ steps.filter.outputs.integer }}
       copa: ${{ steps.filter.outputs.copa }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          fetch-depth: 0
+          ref: ${{ needs.build-verity.outputs.source-sha }}
+          fetch-depth: "0"
+          persist-credentials: "false"
+
+      - name: Activate same-run Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.build-verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.build-verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.build-verity.outputs.source-sha }}
+          build-key: ${{ needs.build-verity.outputs.build-key }}
+          verify-attestation: "false"
 
       - id: filter
         name: Check changed paths
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
+        run: >-
+          ./verity ci pr-test scope
+          --base-sha "$BASE_SHA"
+          --head-sha "$HEAD_SHA"
+          --github-output "$GITHUB_OUTPUT"
 
-          if grep -Eq '^images/|^integer\.yaml$|^packages/(bespoke|pipelines|overrides)/|^packages/upstream\.lock\.json$|^internal/(ci|integer)/|^cmd/(ci|integer|nightly|discover|scan).*\.go$|^\.github/scripts/test-sealed-secrets-(package|image)\.sh$|^\.github/workflows/(pr-test|integer-.*)\.yaml$' changed-files.txt; then
-            echo 'integer=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'integer=false' >> "$GITHUB_OUTPUT"
-          fi
-
-          if grep -Eq '^copa-config\.yaml$|^internal/patch/|^cmd/(ci|nightly|patch|discover|scan).*\.go$|^\.github/scripts/(patch-image|scan-before|verify-patched|read-catalog-entry)\.sh$|^\.github/workflows/(pr-test|patch-image)\.yaml$|^\.github/actions/setup-binaries/' changed-files.txt; then
-            echo 'copa=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'copa=false' >> "$GITHUB_OUTPUT"
-          fi
+  build-verity:
+    name: Build Verity once
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build-verity.yaml
+    with:
+      source_sha: ${{ github.sha }}
+      protected_attestation: "false"
 
   # ── Validate discovery works ───────────────────────────────────────
   discover:
     name: Discover Images
-    needs: changes
+    needs: [changes, build-verity]
     if: needs.changes.outputs.copa == 'true'
     runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -62,12 +79,15 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.build-verity.outputs.source-sha }}
+          persist-credentials: "false"
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
 
       - name: Cache Go modules
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -78,26 +98,31 @@ jobs:
           key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
           restore-keys: go-${{ runner.os }}-
 
-      - name: Build verity
-        run: go build -o verity .
+      - name: Activate same-run Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.build-verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.build-verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.build-verity.outputs.source-sha }}
+          build-key: ${{ needs.build-verity.outputs.build-key }}
+          verify-attestation: "false"
 
       - name: Discover images
-        run: |
-          ./verity discover \
-            --config copa-config.yaml \
-            --target-registry "${TARGET_REGISTRY}" \
-            > images.json
-
-          COUNT=$(jq 'length' images.json)
-          echo "✓ Discovered ${COUNT} image+tag combos"
-          jq -r '.[] | "  - \(.name): \(.source)"' images.json
+        run: >-
+          ./verity ci pr-test discover
+          --config copa-config.yaml
+          --target-registry "${TARGET_REGISTRY}"
+          --output images.json
 
   # ── Validate all integer image configs ─────────────────────────────────
   validate:
     name: Validate image configs
-    needs: changes
+    needs: [changes, build-verity]
     if: needs.changes.outputs.integer == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -105,12 +130,15 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.build-verity.outputs.source-sha }}
+          persist-credentials: "false"
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
 
       - name: Cache Go modules
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -121,8 +149,14 @@ jobs:
           key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
           restore-keys: go-${{ runner.os }}-
 
-      - name: Build verity CLI
-        run: go build -o verity .
+      - name: Activate same-run Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.build-verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.build-verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.build-verity.outputs.source-sha }}
+          build-key: ${{ needs.build-verity.outputs.build-key }}
+          verify-attestation: "false"
 
       - name: Validate all image configs
         run: ./verity integer validate
@@ -130,9 +164,12 @@ jobs:
   # ── Integer smoke test ────────────────────────────────────────────────
   integer-smoke-test:
     name: "Integer smoke batch ${{ matrix.batch_id }} (${{ matrix.arch }})"
-    needs: [changes, detect-changed-images]
+    needs: [changes, build-verity, detect-changed-images]
     if: needs.changes.outputs.integer == 'true' && needs.detect-changed-images.outputs.smoke-has-changes == 'true'
     runs-on: ${{ matrix.runner }}
+    permissions:
+      actions: read
+      contents: read
     env:
       INTEGER_ENTRIES: ${{ toJson(matrix.entries) }}
       INTEGER_BATCH_ID: ${{ matrix.batch_id }}
@@ -149,12 +186,15 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.build-verity.outputs.source-sha }}
+          persist-credentials: "false"
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
 
       - name: Cache Go modules
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -165,11 +205,20 @@ jobs:
           key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
           restore-keys: go-${{ runner.os }}-
 
+      - name: Activate same-run Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.build-verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.build-verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.build-verity.outputs.source-sha }}
+          build-key: ${{ needs.build-verity.outputs.build-key }}
+          verify-attestation: "false"
+
       - name: Get Trivy cache key
         id: trivy-cache-key
-        run: |
-          echo "date=$(date -u '+%Y-%m-%d-%H')" >> "$GITHUB_OUTPUT"
-          echo "version=$(trivy --version | awk 'NR == 1 { print $2 }')" >> "$GITHUB_OUTPUT"
+        run: >-
+          ./verity ci pr-test trivy-cache-key
+          --github-output "$GITHUB_OUTPUT"
 
       - name: Cache Trivy database
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -178,287 +227,23 @@ jobs:
           key: trivy-db-${{ steps.trivy-cache-key.outputs.version }}-${{ steps.trivy-cache-key.outputs.date }}
           restore-keys: trivy-db-${{ steps.trivy-cache-key.outputs.version }}-
 
-      - name: Build verity CLI
-        run: go build -o verity .
-
       - name: Build and verify native-architecture Integer smoke batch
-        run: |
-          mkdir -p integer-security
-          while IFS= read -r entry; do
-            image=$(jq -r '.image' <<< "$entry")
-            version=$(jq -r '.version' <<< "$entry")
-            type=$(jq -r '.type' <<< "$entry")
-            safe_image=$(printf '%s' "$image" | tr '/:' '--')
-            report_dir="trivy-reports/${safe_image}-${version}-${type}"
-            mkdir -p "$report_dir"
-
-            echo "::group::Melange ${image}:${version}-${type} (${INTEGER_PACKAGE_ARCH})"
-            started=$SECONDS
-            if timeout --signal=TERM --kill-after=1m 30m \
-              ./verity integer melange build \
-                --image "$image" \
-                --version "$version" \
-                --type "$type" \
-                --arch "$INTEGER_PACKAGE_ARCH"; then
-              echo "Melange ${image}:${version}-${type} (${INTEGER_PACKAGE_ARCH}) completed in $((SECONDS - started))s"
-            else
-              rc=$?
-              echo "::error::Melange ${image}:${version}-${type} (${INTEGER_PACKAGE_ARCH}) failed after $((SECONDS - started))s with exit ${rc}"
-              exit "$rc"
-            fi
-            echo "::endgroup::"
-
-            if [ "$image" = "pushgateway" ]; then
-              expected_version=$(yq -r '.package.version' \
-                melange-work/specs/pushgateway.yaml/build.yaml)
-              expected_full_version=$(yq -r '.package.version + "-r" + (.package.epoch | tostring)' \
-                melange-work/specs/pushgateway.yaml/build.yaml)
-              timeout --signal=TERM --kill-after=1m 5m \
-                melange test \
-                  --arch "$INTEGER_PACKAGE_ARCH" \
-                  --repository-append "${GITHUB_WORKSPACE}/packages/repo" \
-                  --repository-append https://packages.wolfi.dev/os \
-                  --keyring-append "${GITHUB_WORKSPACE}/melange-work/melange.rsa.pub" \
-                  --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub \
-                  --pipeline-dirs melange-work/pipelines \
-                  --runner docker \
-                  melange-work/specs/pushgateway.yaml/build.yaml \
-                  prometheus-pushgateway
-            fi
-
-            if [ "$image" = "weaviate" ]; then
-              expected_version=$(yq -r '.package.version' \
-                melange-work/specs/weaviate.yaml/build.yaml)
-              expected_full_version=$(yq -r '.package.version + "-r" + (.package.epoch | tostring)' \
-                melange-work/specs/weaviate.yaml/build.yaml)
-              timeout --signal=TERM --kill-after=1m 5m \
-                melange test \
-                  --arch "$INTEGER_PACKAGE_ARCH" \
-                  --repository-append "${GITHUB_WORKSPACE}/packages/repo" \
-                  --repository-append https://packages.wolfi.dev/os \
-                  --keyring-append "${GITHUB_WORKSPACE}/melange-work/melange.rsa.pub" \
-                  --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub \
-                  --pipeline-dirs melange-work/pipelines \
-                  --runner docker \
-                  melange-work/specs/weaviate.yaml/build.yaml \
-                  weaviate
-            fi
-
-            if [ "$image" = "rclone" ]; then
-              echo "::group::rclone package test (${INTEGER_PACKAGE_ARCH})"
-              bash .github/scripts/test-rclone-package.sh "$INTEGER_PACKAGE_ARCH"
-              echo "::endgroup::"
-            fi
-
-            if [ "$image" = "step-ca" ]; then
-              echo "::group::Step CA package test (${INTEGER_PACKAGE_ARCH})"
-              bash .github/scripts/test-step-ca-package.sh "$INTEGER_PACKAGE_ARCH"
-              echo "::endgroup::"
-            fi
-
-            if [ "$image" = "sealed-secrets" ]; then
-              expected_version=$(yq -r '.package.version' \
-                melange-work/specs/sealed-secrets-0.yaml/build.yaml)
-              expected_full_version=$(yq -r '.package.version + "-r" + (.package.epoch | tostring)' \
-                melange-work/specs/sealed-secrets-0.yaml/build.yaml)
-              echo "::group::Sealed Secrets package test (${INTEGER_PACKAGE_ARCH})"
-              bash .github/scripts/test-sealed-secrets-package.sh "$INTEGER_PACKAGE_ARCH"
-              echo "::endgroup::"
-            fi
-
-            arch="$INTEGER_ARCH"
-            tar_path="image-${safe_image}-${version}-${type}-${arch}.tar"
-            ./verity integer build \
-              --image "$image" \
-              --version "$version" \
-              --type "$type" \
-              --output "$tar_path" \
-              --arch "$arch" \
-              --fail-on-severity "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
-
-            load_output=$(docker load --input "$tar_path")
-            echo "$load_output"
-            loaded_ref=$(awk -F': ' '/^Loaded image: / {print $2}' <<< "$load_output" | tail -1)
-            if [ -z "$loaded_ref" ]; then
-              echo "::error::docker load did not report an image reference for ${arch}"
-              exit 1
-            fi
-            runtime_metadata=$(docker image inspect "$loaded_ref" \
-              --format '{{.Architecture}} {{.Config.User}}')
-            runtime_arch=${runtime_metadata%% *}
-            runtime_user=${runtime_metadata#* }
-            if [ "$runtime_arch" != "$arch" ]; then
-              echo "::error::runtime architecture mismatch: expected ${arch}, got ${runtime_arch}"
-              exit 1
-            fi
-
-            if [ "$image" = "rclone" ]; then
-              (
-                rclone_version=$(yq -r '.package.version' \
-                  melange-work/specs/rclone.yaml/build.yaml)
-                rclone_full_version=$(yq -r '.package.version + "-r" + (.package.epoch | tostring)' \
-                  melange-work/specs/rclone.yaml/build.yaml)
-                container="integer-rclone-${arch}-pr-smoke"
-                smoke=$(mktemp -d)
-                sbom="${RUNNER_TEMP}/rclone-${arch}.spdx.json"
-                trap 'docker rm --force "$container" >/dev/null 2>&1 || true; rm -rf "$smoke" "$sbom"' EXIT
-
-                docker run --rm "$loaded_ref" --version \
-                  | grep -E "^rclone v?${rclone_version}$"
-                mkdir -p "$smoke/source" "$smoke/destination"
-                chmod 0755 "$smoke" "$smoke/source"
-                chmod 0777 "$smoke/destination"
-                printf '%s\n' 'verity rclone PR checksum smoke' \
-                  >"$smoke/source/payload.txt"
-                (
-                  cd "$smoke/source"
-                  sha256sum payload.txt >../payload.sha256
-                )
-                docker run --rm --volume "$smoke:/work" "$loaded_ref" \
-                  copy /work/source /work/destination
-                docker run --rm --volume "$smoke:/work" "$loaded_ref" \
-                  check --checksum /work/source /work/destination
-                (
-                  cd "$smoke/destination"
-                  sha256sum --check ../payload.sha256
-                )
-
-                docker create --name "$container" "$loaded_ref" --version >/dev/null
-                docker cp \
-                  "$container:/var/lib/db/sbom/rclone-${rclone_full_version}.spdx.json" \
-                  "$sbom"
-                jq -e --arg full_version "$rclone_full_version" '
-                  .spdxVersion == "SPDX-2.3"
-                  and any(
-                    .packages[];
-                    .name == "rclone"
-                    and .versionInfo == $full_version
-                    and .licenseDeclared == "MIT"
-                  )
-                ' "$sbom"
-              )
-            fi
-
-            if [ "$image" = "pushgateway" ]; then
-              (
-                container="integer-pushgateway-${arch}-pr-smoke"
-                sbom="${RUNNER_TEMP}/pushgateway-${arch}.spdx.json"
-                trap 'docker rm --force "$container" >/dev/null 2>&1 || true; rm -f "$sbom"' EXIT
-
-                docker run --detach --rm --name "$container" \
-                  --publish 127.0.0.1::9091 \
-                  "$loaded_ref" --web.listen-address=0.0.0.0:9091
-
-                host_port=$(docker port "$container" 9091/tcp | awk -F: 'END {print $NF}')
-                test -n "$host_port"
-                ready=false
-                for _ in $(seq 1 90); do
-                  if curl -fsS "http://127.0.0.1:$host_port/-/ready" | grep -Fxq OK; then
-                    ready=true
-                    break
-                  fi
-                  docker inspect --format '{{.State.Running}}' "$container" | grep -Fx true
-                  sleep 1
-                done
-                test "$ready" = true
-                curl -fsS "http://127.0.0.1:$host_port/metrics" \
-                  | grep -E "pushgateway_build_info\\{.*version=\"$expected_version\""
-                printf '%s\n' \
-                  '# HELP integer_pushgateway_smoke Integer Pushgateway smoke metric.' \
-                  '# TYPE integer_pushgateway_smoke gauge' \
-                  'integer_pushgateway_smoke 7' \
-                  | curl -fsS --data-binary @- \
-                    "http://127.0.0.1:$host_port/metrics/job/integer_pushgateway_smoke"
-                curl -fsS "http://127.0.0.1:$host_port/metrics" \
-                  | grep -F 'integer_pushgateway_smoke{instance="",job="integer_pushgateway_smoke"} 7'
-                test "$runtime_user" = 65532
-
-                docker cp \
-                  "$container:/var/lib/db/sbom/prometheus-pushgateway-${expected_full_version}.spdx.json" \
-                  "$sbom"
-                jq -e --arg full_version "$expected_full_version" '
-                  .spdxVersion == "SPDX-2.3"
-                  and any(
-                    .packages[];
-                    .name == "prometheus-pushgateway"
-                    and .versionInfo == $full_version
-                    and .licenseDeclared == "Apache-2.0"
-                  )
-                ' "$sbom"
-              )
-            fi
-
-            if [ "$image" = "weaviate" ]; then
-              (
-                container="integer-weaviate-${arch}-pr-smoke"
-                sbom="${RUNNER_TEMP}/weaviate-${arch}.spdx.json"
-                trap 'docker rm --force "$container" >/dev/null 2>&1 || true; rm -f "$sbom"' EXIT
-
-                docker run --detach --rm --name "$container" \
-                  --publish 127.0.0.1::8080 \
-                  --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=true \
-                  --env CLUSTER_HOSTNAME="$container" \
-                  --env DEFAULT_VECTORIZER_MODULE=none \
-                  --env DISABLE_TELEMETRY=true \
-                  --env PERSISTENCE_DATA_PATH=/var/lib/weaviate \
-                  "$loaded_ref" --host 0.0.0.0 --port 8080 --scheme http
-
-                host_port=$(docker port "$container" 8080/tcp | awk -F: 'END {print $NF}')
-                test -n "$host_port"
-                ready=false
-                for _ in $(seq 1 90); do
-                  if curl -fsS "http://127.0.0.1:$host_port/v1/.well-known/ready" >/dev/null; then
-                    ready=true
-                    break
-                  fi
-                  docker inspect --format '{{.State.Running}}' "$container" | grep -Fx true
-                  sleep 1
-                done
-                test "$ready" = true
-                curl -fsS "http://127.0.0.1:$host_port/v1/meta" \
-                  | jq -e --arg version "$expected_version" '.version == $version'
-                # Inspect immutable image metadata; do not exec a second Weaviate process.
-                test "$runtime_user" = 65532
-
-                docker cp \
-                  "$container:/var/lib/db/sbom/weaviate-${expected_full_version}.spdx.json" \
-                  "$sbom"
-                jq -e --arg full_version "$expected_full_version" '
-                  .spdxVersion == "SPDX-2.3"
-                  and any(
-                    .packages[];
-                    .name == "weaviate"
-                    and .versionInfo == $full_version
-                    and .licenseDeclared == "BSD-3-Clause"
-                  )
-                ' "$sbom"
-              )
-            fi
-
-            if [ "$image" = "sealed-secrets" ]; then
-              bash .github/scripts/test-sealed-secrets-image.sh \
-                "$loaded_ref" "$expected_version" "$expected_full_version"
-            fi
-
-            trivy image \
-              --exit-code 1 \
-              --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
-              --vuln-type os,library \
-              --format json \
-              --output "${report_dir}/${arch}.json" \
-              --input "$tar_path"
-            total=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' "${report_dir}/${arch}.json")
-            echo "${image}:${version}-${type} ${arch}: Total vulnerabilities: ${total}"
-            touch "integer-security/smoke-${safe_image}-${version}-${type}-${arch}.passed"
-            rm -f "$tar_path"
-          done < <(jq -c '.[]' <<< "$INTEGER_ENTRIES")
+        run: >-
+          ./verity ci pr-test integer-batch
+          --kind smoke
+          --entries "$INTEGER_ENTRIES"
+          --arch "$INTEGER_ARCH"
+          --package-arch "$INTEGER_PACKAGE_ARCH"
+          --runner-temp "$RUNNER_TEMP"
+          --security-dir integer-security
+          --reports-dir trivy-reports
 
       - name: Upload Integer security completion
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: "integer-security-smoke-batch-${{ matrix.batch_id }}-${{ matrix.arch }}"
           path: integer-security/*.passed
-          retention-days: 7
+          retention-days: "7"
 
       - name: Upload architecture-qualified Trivy reports
         if: always()
@@ -466,14 +251,17 @@ jobs:
         with:
           name: "trivy-smoke-batch-${{ matrix.batch_id }}-${{ matrix.arch }}"
           path: trivy-reports/**/*.json
-          retention-days: 7
+          retention-days: "7"
 
   # ── Build + scan changed Integer images ──────────────────────────────
   detect-changed-images:
     name: Detect changed images
-    needs: changes
+    needs: [changes, build-verity]
     if: needs.changes.outputs.integer == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     outputs:
       matrix: ${{ steps.detect.outputs.matrix }}
       smoke-matrix: ${{ steps.detect.outputs.smoke-matrix }}
@@ -489,13 +277,15 @@ jobs:
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          fetch-depth: 0
+          ref: ${{ needs.build-verity.outputs.source-sha }}
+          fetch-depth: "0"
+          persist-credentials: "false"
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
 
       - name: Cache Go modules
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -506,64 +296,36 @@ jobs:
           key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
           restore-keys: go-${{ runner.os }}-
 
-      - name: Build verity CLI
-        run: go build -o verity .
+      - name: Activate same-run Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.build-verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.build-verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.build-verity.outputs.source-sha }}
+          build-key: ${{ needs.build-verity.outputs.build-key }}
+          verify-attestation: "false"
 
       - name: Detect changed image files and build matrix
         id: detect
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
-          git show "${BASE_SHA}":packages/upstream.lock.json > "$RUNNER_TEMP/base-upstream.lock.json" 2>/dev/null || printf '{"packages":{},"pipeline_files":{}}\n' > "$RUNNER_TEMP/base-upstream.lock.json"
-          mkdir -p "$RUNNER_TEMP/base-images"
-          while IFS= read -r file; do
-            case "$file" in
-              images/*.yaml)
-                relative="${file#images/}"
-                mkdir -p "$RUNNER_TEMP/base-images/$(dirname "$relative")"
-                git show "${BASE_SHA}:${file}" > "$RUNNER_TEMP/base-images/$relative" 2>/dev/null || rm -f "$RUNNER_TEMP/base-images/$relative"
-                ;;
-            esac
-          done < changed-files.txt
-          ./verity ci plan \
-            --kind integer-pr \
-            --changed-files changed-files.txt \
-            --base-upstream-lock "$RUNNER_TEMP/base-upstream.lock.json" \
-            --base-images-dir "$RUNNER_TEMP/base-images" \
-            --gen-dir "$RUNNER_TEMP/integer-gen" \
-            > ci-plan.json
-
-          expected_matrix=$(jq -c '.matrix' ci-plan.json)
-          expected_smoke_matrix=$(jq -c '.smokeMatrix' ci-plan.json)
-          matrix=$(jq -c '[.matrix.include | to_entries | group_by((.key / 16 | floor))[] | {batch_id: (.[0].key / 16 | floor), entries: map(.value)} as $batch | ["amd64", "arm64"][] as $arch | $batch + {arch: $arch, package_arch: (if $arch == "amd64" then "x86_64" else "aarch64" end), runner: (if $arch == "amd64" then "ubuntu-latest" else "ubuntu-24.04-arm" end)}] | {include: .}' ci-plan.json)
-          smoke_matrix=$(jq -c '[.smokeMatrix.include | to_entries | group_by((.key / 16 | floor))[] | {batch_id: (.[0].key / 16 | floor), entries: map(.value)} as $batch | ["amd64", "arm64"][] as $arch | $batch + {arch: $arch, package_arch: (if $arch == "amd64" then "x86_64" else "aarch64" end), runner: (if $arch == "amd64" then "ubuntu-latest" else "ubuntu-24.04-arm" end)}] | {include: .}' ci-plan.json)
-          has_changes=$(jq -r '.hasChanges' ci-plan.json)
-          count=$(jq '.include | length' <<< "$expected_matrix")
-          smoke_count=$(jq '.include | length' <<< "$expected_smoke_matrix")
-          if [ "$smoke_count" -gt 0 ]; then
-            smoke_has_changes=true
-          else
-            smoke_has_changes=false
-          fi
-          batch_count=$(jq '.include | length' <<< "$matrix")
-          echo "Matrix: ${count} strict builds and ${smoke_count} smoke-only variants in ${batch_count} strict batches"
-          echo "$matrix" | jq .
-          {
-            echo "matrix=${matrix}"
-            echo "smoke-matrix=${smoke_matrix}"
-            echo "expected-matrix=${expected_matrix}"
-            echo "expected-smoke-matrix=${expected_smoke_matrix}"
-            echo "has-changes=${has_changes}"
-            echo "smoke-has-changes=${smoke_has_changes}"
-          } >> "$GITHUB_OUTPUT"
+        run: >-
+          ./verity ci pr-test plan-integer
+          --base-sha "$BASE_SHA"
+          --head-sha "$HEAD_SHA"
+          --temp-dir "$RUNNER_TEMP"
+          --gen-dir "$RUNNER_TEMP/integer-gen"
+          --github-output "$GITHUB_OUTPUT"
 
   integer-build-changed:
     name: "Integer build batch ${{ matrix.batch_id }} (${{ matrix.arch }})"
-    needs: [changes, detect-changed-images]
+    needs: [changes, build-verity, detect-changed-images]
     if: needs.changes.outputs.integer == 'true' && needs.detect-changed-images.outputs.has-changes == 'true'
     runs-on: ${{ matrix.runner }}
+    permissions:
+      actions: read
+      contents: read
     env:
       INTEGER_ENTRIES: ${{ toJson(matrix.entries) }}
       INTEGER_BATCH_ID: ${{ matrix.batch_id }}
@@ -580,12 +342,15 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.build-verity.outputs.source-sha }}
+          persist-credentials: "false"
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
 
       - name: Cache Go modules
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -596,11 +361,20 @@ jobs:
           key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
           restore-keys: go-${{ runner.os }}-
 
+      - name: Activate same-run Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.build-verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.build-verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.build-verity.outputs.source-sha }}
+          build-key: ${{ needs.build-verity.outputs.build-key }}
+          verify-attestation: "false"
+
       - name: Get Trivy cache key
         id: trivy-cache-key
-        run: |
-          echo "date=$(date -u '+%Y-%m-%d-%H')" >> "$GITHUB_OUTPUT"
-          echo "version=$(trivy --version | awk 'NR == 1 { print $2 }')" >> "$GITHUB_OUTPUT"
+        run: >-
+          ./verity ci pr-test trivy-cache-key
+          --github-output "$GITHUB_OUTPUT"
 
       - name: Cache Trivy database
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -609,187 +383,23 @@ jobs:
           key: trivy-db-${{ steps.trivy-cache-key.outputs.version }}-${{ steps.trivy-cache-key.outputs.date }}
           restore-keys: trivy-db-${{ steps.trivy-cache-key.outputs.version }}-
 
-      - name: Build verity CLI
-        run: go build -o verity .
-
       - name: Build and verify native-architecture Integer batch
-        run: |
-          mkdir -p integer-security
-          while IFS= read -r entry; do
-            image=$(jq -r '.image' <<< "$entry")
-            version=$(jq -r '.version' <<< "$entry")
-            type=$(jq -r '.type' <<< "$entry")
-            safe_image=$(printf '%s' "$image" | tr '/:' '--')
-            report_dir="trivy-reports/${safe_image}-${version}-${type}"
-            mkdir -p "$report_dir"
-
-            echo "::group::Melange ${image}:${version}-${type} (${INTEGER_PACKAGE_ARCH})"
-            started=$SECONDS
-            if timeout --signal=TERM --kill-after=1m 30m \
-              ./verity integer melange build \
-                --image "$image" \
-                --version "$version" \
-                --type "$type" \
-                --arch "$INTEGER_PACKAGE_ARCH"; then
-              echo "Melange ${image}:${version}-${type} (${INTEGER_PACKAGE_ARCH}) completed in $((SECONDS - started))s"
-            else
-              rc=$?
-              echo "::error::Melange ${image}:${version}-${type} (${INTEGER_PACKAGE_ARCH}) failed after $((SECONDS - started))s with exit ${rc}"
-              exit "$rc"
-            fi
-            echo "::endgroup::"
-
-            if [ "$image" = "pushgateway" ]; then
-              expected_version=$(yq -r '.package.version' \
-                melange-work/specs/pushgateway.yaml/build.yaml)
-              expected_full_version=$(yq -r '.package.version + "-r" + (.package.epoch | tostring)' \
-                melange-work/specs/pushgateway.yaml/build.yaml)
-              timeout --signal=TERM --kill-after=1m 5m \
-                melange test \
-                  --arch "$INTEGER_PACKAGE_ARCH" \
-                  --repository-append "${GITHUB_WORKSPACE}/packages/repo" \
-                  --repository-append https://packages.wolfi.dev/os \
-                  --keyring-append "${GITHUB_WORKSPACE}/melange-work/melange.rsa.pub" \
-                  --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub \
-                  --pipeline-dirs melange-work/pipelines \
-                  --runner docker \
-                  melange-work/specs/pushgateway.yaml/build.yaml \
-                  prometheus-pushgateway
-            fi
-
-            if [ "$image" = linkerd ] && [ "$version" = 25 ] && [ "$type" = default ]; then
-              if timeout --signal=TERM --kill-after=1m 30m \
-                ./verity integer melange build \
-                  --image "$image" \
-                  --version "$version" \
-                  --type "$type" \
-                  --arch "$INTEGER_PACKAGE_ARCH" \
-                  --staged; then
-                echo "Staged Melange canary completed for ${INTEGER_PACKAGE_ARCH}"
-              else
-                rc=$?
-                echo "::error::staged Melange canary failed for ${INTEGER_PACKAGE_ARCH} with exit ${rc}"
-                exit "$rc"
-              fi
-
-              ./verity integer discover --apkindex-url "" --gen-dir ./pin-config-gen
-              config="pin-config-gen/${image}/${version}/${type}.apko.yaml"
-              ./verity integer melange pin-config \
-                --config "$config" \
-                --repository packages/repo \
-                --arch "$INTEGER_PACKAGE_ARCH"
-              grep -Eq 'linkerd2-cli=[^ ,]+@local' "$config"
-
-              canary_image="pin-config-${INTEGER_ARCH}.tar"
-              canary_report="pin-config-${INTEGER_ARCH}.json"
-              apko build \
-                --arch "$INTEGER_ARCH" \
-                --repository-append "@local packages/repo" \
-                --keyring-append melange-work/melange.rsa.pub \
-                "$config" \
-                integer:pin-config-canary \
-                "$canary_image"
-              trivy image \
-                --exit-code 1 \
-                --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
-                --vuln-type os,library \
-                --format json \
-                --output "$canary_report" \
-                --input "$canary_image"
-              total=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' "$canary_report")
-              echo "Pin-config canary ${INTEGER_ARCH}: Total vulnerabilities: ${total}"
-            fi
-
-            arch="$INTEGER_ARCH"
-            tar_path="image-${safe_image}-${version}-${type}-${arch}.tar"
-            ./verity integer build \
-              --image "$image" \
-              --version "$version" \
-              --type "$type" \
-              --output "$tar_path" \
-              --arch "$arch" \
-              --fail-on-severity "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
-
-            load_output=$(docker load --input "$tar_path")
-            echo "$load_output"
-            loaded_ref=$(awk -F': ' '/^Loaded image: / {print $2}' <<< "$load_output" | tail -1)
-            if [ -z "$loaded_ref" ]; then
-              echo "::error::docker load did not report an image reference for ${arch}"
-              exit 1
-            fi
-            runtime_arch=$(docker image inspect "$loaded_ref" --format '{{.Architecture}}')
-            if [ "$runtime_arch" != "$arch" ]; then
-              echo "::error::runtime architecture mismatch: expected ${arch}, got ${runtime_arch}"
-              exit 1
-            fi
-
-            if [ "$image" = "pushgateway" ]; then
-              (
-                container="integer-pushgateway-${arch}-pr-build"
-                sbom="${RUNNER_TEMP}/pushgateway-${arch}.spdx.json"
-                trap 'docker rm --force "$container" >/dev/null 2>&1 || true; rm -f "$sbom"' EXIT
-
-                docker run --detach --rm --name "$container" \
-                  --publish 127.0.0.1::9091 \
-                  "$loaded_ref" --web.listen-address=0.0.0.0:9091
-
-                host_port=$(docker port "$container" 9091/tcp | awk -F: 'END {print $NF}')
-                test -n "$host_port"
-                ready=false
-                for _ in $(seq 1 90); do
-                  if curl -fsS "http://127.0.0.1:$host_port/-/ready" | grep -Fxq OK; then
-                    ready=true
-                    break
-                  fi
-                  docker inspect --format '{{.State.Running}}' "$container" | grep -Fx true
-                  sleep 1
-                done
-                test "$ready" = true
-                curl -fsS "http://127.0.0.1:$host_port/metrics" \
-                  | grep -E "pushgateway_build_info\\{.*version=\"$expected_version\""
-                printf '%s\n' \
-                  '# HELP integer_pushgateway_smoke Integer Pushgateway smoke metric.' \
-                  '# TYPE integer_pushgateway_smoke gauge' \
-                  'integer_pushgateway_smoke 7' \
-                  | curl -fsS --data-binary @- \
-                    "http://127.0.0.1:$host_port/metrics/job/integer_pushgateway_smoke"
-                curl -fsS "http://127.0.0.1:$host_port/metrics" \
-                  | grep -F 'integer_pushgateway_smoke{instance="",job="integer_pushgateway_smoke"} 7'
-
-                docker cp \
-                  "$container:/var/lib/db/sbom/prometheus-pushgateway-${expected_full_version}.spdx.json" \
-                  "$sbom"
-                jq -e --arg full_version "$expected_full_version" '
-                  .spdxVersion == "SPDX-2.3"
-                  and any(
-                    .packages[];
-                    .name == "prometheus-pushgateway"
-                    and .versionInfo == $full_version
-                    and .licenseDeclared == "Apache-2.0"
-                  )
-                ' "$sbom"
-              )
-            fi
-
-            trivy image \
-              --exit-code 1 \
-              --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
-              --vuln-type os,library \
-              --format json \
-              --output "${report_dir}/${arch}.json" \
-              --input "$tar_path"
-            total=$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' "${report_dir}/${arch}.json")
-            echo "${image}:${version}-${type} ${arch}: Total vulnerabilities: ${total}"
-            touch "integer-security/build-${safe_image}-${version}-${type}-${arch}.passed"
-            rm -f "$tar_path"
-          done < <(jq -c '.[]' <<< "$INTEGER_ENTRIES")
+        run: >-
+          ./verity ci pr-test integer-batch
+          --kind build
+          --entries "$INTEGER_ENTRIES"
+          --arch "$INTEGER_ARCH"
+          --package-arch "$INTEGER_PACKAGE_ARCH"
+          --runner-temp "$RUNNER_TEMP"
+          --security-dir integer-security
+          --reports-dir trivy-reports
 
       - name: Upload Integer security completion
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: "integer-security-build-batch-${{ matrix.batch_id }}-${{ matrix.arch }}"
           path: integer-security/*.passed
-          retention-days: 7
+          retention-days: "7"
 
       - name: Upload architecture-qualified Trivy reports
         if: always()
@@ -797,15 +407,16 @@ jobs:
         with:
           name: "trivy-build-batch-${{ matrix.batch_id }}-${{ matrix.arch }}"
           path: trivy-reports/**/*.json
-          retention-days: 7
+          retention-days: "7"
 
   # ── Detect changed Copa images and test them ─────────────────────────
   detect-copa-changes:
     name: Detect changed images
-    needs: changes
+    needs: [changes, build-verity]
     if: needs.changes.outputs.copa == 'true'
     runs-on: ubuntu-24.04
     permissions:
+      actions: read
       contents: read
       packages: read
     outputs:
@@ -820,13 +431,15 @@ jobs:
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          fetch-depth: 0
+          ref: ${{ needs.build-verity.outputs.source-sha }}
+          fetch-depth: "0"
+          persist-credentials: "false"
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
 
       - name: Cache Go modules
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -837,50 +450,46 @@ jobs:
           key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
           restore-keys: go-${{ runner.os }}-
 
-      - name: Build verity CLI
-        run: go build -o verity .
+      - name: Activate same-run Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.build-verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.build-verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.build-verity.outputs.source-sha }}
+          build-key: ${{ needs.build-verity.outputs.build-key }}
+          verify-attestation: "false"
 
       - name: Login to GHCR
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ github.token }}
 
       - name: Detect changed Copa images
         id: detect
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          git diff --name-only "$BASE_SHA"..."$HEAD_SHA" > changed-files.txt
-          git show "${BASE_SHA}":copa-config.yaml > base-copa-config.yaml 2>/dev/null || printf 'images: []\n' > base-copa-config.yaml
-
-          ./verity ci plan \
-            --kind copa-pr \
-            --changed-files changed-files.txt \
-            --base-copa-config base-copa-config.yaml \
-            --copa-config copa-config.yaml \
-            --target-registry "${TARGET_REGISTRY}" \
-            > ci-plan.json
-
-          matrix=$(jq -c '.matrix' ci-plan.json)
-          has_changes=$(jq -r '.hasChanges' ci-plan.json)
-          count=$(jq '.include | length' <<< "$matrix")
-          echo "Copa change matrix: ${count} images to test"
-          echo "$matrix" | jq .
-          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
-          echo "has-changes=${has_changes}" >> "$GITHUB_OUTPUT"
+        run: >-
+          ./verity ci pr-test plan-copa
+          --base-sha "$BASE_SHA"
+          --head-sha "$HEAD_SHA"
+          --temp-dir "$RUNNER_TEMP"
+          --config copa-config.yaml
+          --target-registry "${TARGET_REGISTRY}"
+          --github-output "$GITHUB_OUTPUT"
 
   copa-patching-changed:
     name: "Copa Patch: ${{ matrix.name }}:${{ matrix.tag }}"
-    needs: [changes, detect-copa-changes]
+    needs: [changes, build-verity, detect-copa-changes]
     if: needs.changes.outputs.copa == 'true' && needs.detect-copa-changes.outputs.has-changes == 'true'
     runs-on: ubuntu-24.04
     continue-on-error: true  # Go binary patching is experimental — don't block PR
     permissions:
+      actions: read
       contents: read
-      packages: write
+      packages: read
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.detect-copa-changes.outputs.matrix) }}
@@ -892,20 +501,15 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Set safe artifact name
-        id: safe-name
-        env:
-          IMAGE_NAME: ${{ matrix.name }}
-        run: |
-          SAFE_NAME=$(printf '%s' "$IMAGE_NAME" | tr -cs 'A-Za-z0-9._-' '-' | cut -c1-80)
-          printf 'name=%s\n' "$SAFE_NAME" >> "$GITHUB_OUTPUT"
+        with:
+          ref: ${{ needs.build-verity.outputs.source-sha }}
+          persist-credentials: "false"
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
 
       - name: Cache Go modules
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -916,17 +520,28 @@ jobs:
           key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
           restore-keys: go-${{ runner.os }}-
 
-      - name: Read catalog entry
-        id: catalog
+      - name: Activate same-run Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.build-verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.build-verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.build-verity.outputs.source-sha }}
+          build-key: ${{ needs.build-verity.outputs.build-key }}
+          verify-attestation: "false"
+
+      - name: Resolve Copa metadata
+        id: metadata
         env:
           IMAGE_NAME: ${{ matrix.name }}
           IMAGE_TAG: ${{ matrix.tag }}
-        run: ./.github/scripts/read-catalog-entry.sh
-
-      - name: Setup Copa and Verity
-        uses: ./.github/actions/setup-binaries
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          ./verity ci pr-test copa-metadata
+          --config copa-config.yaml
+          --image-name "$IMAGE_NAME"
+          --image-tag "$IMAGE_TAG"
+          --platform linux/amd64
+          --staging-registry localhost:5000/regression
+          --github-output "$GITHUB_OUTPUT"
 
       - name: Setup BuildKit
         run: |
@@ -935,70 +550,91 @@ jobs:
             --name copa-builder \
             --driver docker-container \
             --driver-opt network=host \
-            --driver-opt image=moby/buildkit:v0.21.1 \
+            --driver-opt image=moby/buildkit:v0.21.1@sha256:87afb62ed6a762bb65b85d53819f3b341fb74a36d1fc0a1153a64f367637bfda \
             --use
           docker buildx inspect --bootstrap
 
       - name: Start local registry
-        run: |
-          # renovate: datasource=docker depName=registry
-          docker run -d -p 5000:5000 --name registry registry:2@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+        run: docker run -d -p 5000:5000 --name registry registry:2@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
 
-      - name: Scan image (before patching)
+      - name: Scan image before patching
         env:
-          SOURCE: ${{ steps.catalog.outputs.source }}
-        run: ./.github/scripts/scan-before.sh
-
-      - name: Prepare report for patch-image.sh
-        if: env.skip_patch != 'true'
-        run: |
-          mkdir -p reports
-          REPORT_NAME=$(echo "${{ steps.catalog.outputs.source }}" | sed 's/[\/:]/_/g')
-          cp before.json "reports/${REPORT_NAME}.json"
+          SOURCE: ${{ steps.metadata.outputs.source }}
+        run: >-
+          ./verity ci repository-ops scan-before
+          --source "$SOURCE"
+          --report before.json
+          --github-env "$GITHUB_ENV"
 
       - name: Patch image
+        id: patch
         if: env.skip_patch != 'true'
         env:
           COPA_EXPERIMENTAL: "1"
-          PLATFORM: linux/amd64
-          SOURCE: ${{ steps.catalog.outputs.source }}
+          SOURCE: ${{ steps.metadata.outputs.source }}
           IMAGE_NAME: ${{ matrix.name }}
-          STAGING_REGISTRY: localhost:5000/regression
-          GO_VCS_URL: ${{ steps.catalog.outputs.go_vcs_url }}
-        run: ./.github/scripts/patch-image.sh
+          GO_VCS_URL: ${{ steps.metadata.outputs.go_vcs_url }}
+        run: >-
+          ./verity ci repository-ops patch-image
+          --platform linux/amd64
+          --source "$SOURCE"
+          --image-name "$IMAGE_NAME"
+          --staging-registry localhost:5000/regression
+          --go-vcs-url "$GO_VCS_URL"
+          --report before.json
+          --github-output "$GITHUB_OUTPUT"
+
+      - name: Pin patched image
+        id: pinned
+        if: env.skip_patch != 'true'
+        env:
+          DESTINATION: ${{ steps.metadata.outputs.destination }}
+          STAGING_DIGEST: ${{ steps.patch.outputs.staging-digest }}
+        run: >-
+          ./verity ci pr-test copa-pin
+          --destination "$DESTINATION"
+          --digest "$STAGING_DIGEST"
+          --github-output "$GITHUB_OUTPUT"
 
       - name: Verify patched image is clean
         if: env.skip_patch != 'true'
         env:
           IMAGE_LABEL: "${{ matrix.name }}:${{ matrix.tag }}"
-          IMAGE_NAME: ${{ matrix.name }}
-          IMAGE_TAG: ${{ matrix.tag }}
-        run: |
-          SAFE_IMAGE=$(printf '%s' "$IMAGE_NAME" | tr '/: ' '---')
-          export PATCHED_IMAGE="localhost:5000/regression:${SAFE_IMAGE}-${IMAGE_TAG}-amd64"
-          ./.github/scripts/verify-patched.sh
+          PINNED_IMAGE: ${{ steps.pinned.outputs.image }}
+          BEFORE_TOTAL: ${{ env.before_total }}
+          BEFORE_GO: ${{ env.before_go }}
+          BEFORE_NON_GO: ${{ env.before_non_go }}
+        run: >-
+          ./verity ci repository-ops verify-patched
+          --image "$PINNED_IMAGE"
+          --image-label "$IMAGE_LABEL"
+          --report after.json
+          --before-total "$BEFORE_TOTAL"
+          --before-go "$BEFORE_GO"
+          --before-non-go "$BEFORE_NON_GO"
 
       - name: Upload scan reports
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: "copa-changed-${{ steps.safe-name.outputs.name }}-${{ matrix.tag }}"
+          name: "copa-changed-${{ steps.metadata.outputs.artifact_name }}-${{ matrix.tag }}"
           path: |
             before.json
             after.json
-          retention-days: 7
+          retention-days: "7"
 
   # ── Copa patching regression tests ──────────────────────────────────
   # Matrix lists catalog image names + pinned tags.
   # Image URL and goVcsUrl are read from copa-config.yaml at runtime.
   copa-patching-regression:
     name: "Copa Patch: ${{ matrix.name }}:${{ matrix.tag }}"
-    needs: changes
+    needs: [changes, build-verity]
     if: needs.changes.outputs.copa == 'true'
     runs-on: ubuntu-24.04
     permissions:
+      actions: read
       contents: read
-      packages: write
+      packages: read
     strategy:
       fail-fast: false
       matrix:
@@ -1017,12 +653,15 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.build-verity.outputs.source-sha }}
+          persist-credentials: "false"
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
 
       - name: Cache Go modules
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -1033,17 +672,28 @@ jobs:
           key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
           restore-keys: go-${{ runner.os }}-
 
-      - name: Read catalog entry
-        id: catalog
+      - name: Activate same-run Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.build-verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.build-verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.build-verity.outputs.source-sha }}
+          build-key: ${{ needs.build-verity.outputs.build-key }}
+          verify-attestation: "false"
+
+      - name: Resolve Copa metadata
+        id: metadata
         env:
           IMAGE_NAME: ${{ matrix.name }}
           IMAGE_TAG: ${{ matrix.tag }}
-        run: ./.github/scripts/read-catalog-entry.sh
-
-      - name: Setup Copa and Verity
-        uses: ./.github/actions/setup-binaries
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          ./verity ci pr-test copa-metadata
+          --config copa-config.yaml
+          --image-name "$IMAGE_NAME"
+          --image-tag "$IMAGE_TAG"
+          --platform linux/amd64
+          --staging-registry localhost:5000/regression
+          --github-output "$GITHUB_OUTPUT"
 
       - name: Setup BuildKit
         run: |
@@ -1052,62 +702,83 @@ jobs:
             --name copa-builder \
             --driver docker-container \
             --driver-opt network=host \
-            --driver-opt image=moby/buildkit:v0.21.1 \
+            --driver-opt image=moby/buildkit:v0.21.1@sha256:87afb62ed6a762bb65b85d53819f3b341fb74a36d1fc0a1153a64f367637bfda \
             --use
           docker buildx inspect --bootstrap
 
       - name: Start local registry
-        run: |
-          # renovate: datasource=docker depName=registry
-          docker run -d -p 5000:5000 --name registry registry:2@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+        run: docker run -d -p 5000:5000 --name registry registry:2@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
 
-      - name: Scan image (before patching)
+      - name: Scan image before patching
         env:
-          SOURCE: ${{ steps.catalog.outputs.source }}
-        run: ./.github/scripts/scan-before.sh
-
-      - name: Prepare report for patch-image.sh
-        if: env.skip_patch != 'true'
-        run: |
-          mkdir -p reports
-          REPORT_NAME=$(echo "${{ steps.catalog.outputs.source }}" | sed 's/[\/:]/_/g')
-          cp before.json "reports/${REPORT_NAME}.json"
+          SOURCE: ${{ steps.metadata.outputs.source }}
+        run: >-
+          ./verity ci repository-ops scan-before
+          --source "$SOURCE"
+          --report before.json
+          --github-env "$GITHUB_ENV"
 
       - name: Patch image
+        id: patch
         if: env.skip_patch != 'true'
         env:
           COPA_EXPERIMENTAL: "1"
-          PLATFORM: linux/amd64
-          SOURCE: ${{ steps.catalog.outputs.source }}
+          SOURCE: ${{ steps.metadata.outputs.source }}
           IMAGE_NAME: ${{ matrix.name }}
-          STAGING_REGISTRY: localhost:5000/regression
-          GO_VCS_URL: ${{ steps.catalog.outputs.go_vcs_url }}
-        run: ./.github/scripts/patch-image.sh
+          GO_VCS_URL: ${{ steps.metadata.outputs.go_vcs_url }}
+        run: >-
+          ./verity ci repository-ops patch-image
+          --platform linux/amd64
+          --source "$SOURCE"
+          --image-name "$IMAGE_NAME"
+          --staging-registry localhost:5000/regression
+          --go-vcs-url "$GO_VCS_URL"
+          --report before.json
+          --github-output "$GITHUB_OUTPUT"
+
+      - name: Pin patched image
+        id: pinned
+        if: env.skip_patch != 'true'
+        env:
+          DESTINATION: ${{ steps.metadata.outputs.destination }}
+          STAGING_DIGEST: ${{ steps.patch.outputs.staging-digest }}
+        run: >-
+          ./verity ci pr-test copa-pin
+          --destination "$DESTINATION"
+          --digest "$STAGING_DIGEST"
+          --github-output "$GITHUB_OUTPUT"
 
       - name: Verify patched image is clean
         if: env.skip_patch != 'true'
         env:
           IMAGE_LABEL: "${{ matrix.name }}:${{ matrix.tag }}"
-          IMAGE_NAME: ${{ matrix.name }}
-          IMAGE_TAG: ${{ matrix.tag }}
-        run: |
-          SAFE_IMAGE=$(printf '%s' "$IMAGE_NAME" | tr '/: ' '---')
-          export PATCHED_IMAGE="localhost:5000/regression:${SAFE_IMAGE}-${IMAGE_TAG}-amd64"
-          ./.github/scripts/verify-patched.sh
+          PINNED_IMAGE: ${{ steps.pinned.outputs.image }}
+          BEFORE_TOTAL: ${{ env.before_total }}
+          BEFORE_GO: ${{ env.before_go }}
+          BEFORE_NON_GO: ${{ env.before_non_go }}
+        run: >-
+          ./verity ci repository-ops verify-patched
+          --image "$PINNED_IMAGE"
+          --image-label "$IMAGE_LABEL"
+          --report after.json
+          --before-total "$BEFORE_TOTAL"
+          --before-go "$BEFORE_GO"
+          --before-non-go "$BEFORE_NON_GO"
 
       - name: Upload scan reports
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: "copa-regression-${{ matrix.tag }}"
+          name: "copa-regression-${{ steps.metadata.outputs.artifact_name }}-${{ matrix.tag }}"
           path: |
             before.json
             after.json
-          retention-days: 7
+          retention-days: "7"
 
   pr-test-result:
     name: PR Test
     needs:
+      - build-verity
       - changes
       - discover
       - validate
@@ -1119,14 +790,36 @@ jobs:
       - copa-patching-regression
     if: always()
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.build-verity.outputs.source-sha }}
+          persist-credentials: "false"
+
+      - name: Activate same-run Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.build-verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.build-verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.build-verity.outputs.source-sha }}
+          build-key: ${{ needs.build-verity.outputs.build-key }}
+          verify-attestation: "false"
+
       - name: Download Integer security completions
         if: needs.changes.outputs.integer == 'true' && needs.detect-changed-images.outputs.has-changes == 'true'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: integer-security-*
           path: integer-security-results
-          merge-multiple: true
+          merge-multiple: "true"
 
       - name: Aggregate PR test results
         env:
@@ -1144,136 +837,20 @@ jobs:
           DETECT_COPA_RESULT: ${{ needs.detect-copa-changes.result }}
           COPA_CHANGED_RESULT: ${{ needs.copa-patching-changed.result }}
           COPA_REGRESSION_RESULT: ${{ needs.copa-patching-regression.result }}
-        run: |
-          echo "changes: ${CHANGES_RESULT}"
-          echo "integer: ${INTEGER}"
-          echo "copa: ${COPA}"
-          echo "discover: ${DISCOVER_RESULT}"
-          echo "validate: ${VALIDATE_RESULT}"
-          echo "detect-changed-images: ${DETECT_INTEGER_RESULT}"
-          echo "integer-has-changes: ${INTEGER_HAS_CHANGES}"
-          echo "integer-smoke-test: ${INTEGER_SMOKE_RESULT}"
-          echo "integer-build-changed: ${INTEGER_BUILD_RESULT}"
-          echo "detect-copa-changes: ${DETECT_COPA_RESULT}"
-          echo "copa-patching-changed: ${COPA_CHANGED_RESULT}"
-          echo "copa-patching-regression: ${COPA_REGRESSION_RESULT}"
-
-          require_success() {
-            local name="$1"
-            local result="$2"
-            if [ "$result" != "success" ]; then
-              echo "::error::${name} did not succeed: ${result}"
-              exit 1
-            fi
-          }
-
-          allow_success_or_skipped() {
-            local name="$1"
-            local result="$2"
-            case "$result" in
-              success|skipped) ;;
-              *)
-                echo "::error::${name} did not succeed or skip cleanly: ${result}"
-                exit 1
-                ;;
-            esac
-          }
-
-          require_integer_markers() {
-            local matrix="$1"
-            local kind="$2"
-            local entries
-            if ! entries=$(jq -ce '
-              if (.include | type) == "array" and (.include | length) > 0 then
-                .include | unique_by(.image, .version, .type)[]
-              else
-                error("expected a non-empty include array")
-              end
-            ' <<< "$matrix"); then
-              echo "::error::invalid expected Integer ${kind} matrix"
-              exit 1
-            fi
-            while IFS= read -r entry; do
-              image=$(jq -r '.image' <<< "$entry")
-              version=$(jq -r '.version' <<< "$entry")
-              type=$(jq -r '.type' <<< "$entry")
-              safe_image=$(printf '%s' "$image" | tr '/:' '--')
-              for arch in amd64 arm64; do
-                marker="integer-security-results/${kind}-${safe_image}-${version}-${type}-${arch}.passed"
-                if [ ! -f "$marker" ]; then
-                  echo "::error::missing successful Integer ${kind} security leg: ${image}:${version}-${type} (${arch})"
-                  exit 1
-                fi
-              done
-            done <<< "$entries"
-          }
-
-          integer_matrix_entry_count() {
-            local matrix="$1"
-            local kind="$2"
-            local count
-            if ! count=$(jq -er '
-              if type == "object" and (.include | type) == "array" then
-                .include | length
-              else
-                error("expected an include array")
-              end
-            ' <<< "$matrix"); then
-              echo "::error::invalid expected Integer ${kind} matrix"
-              exit 1
-            fi
-            echo "$count"
-          }
-
-          require_result() {
-            local name="$1"
-            local result="$2"
-            local expected="$3"
-            if [ "$result" != "$expected" ]; then
-              echo "::error::${name} must be ${expected}: ${result}"
-              exit 1
-            fi
-          }
-
-          require_success "changes" "$CHANGES_RESULT"
-
-          if [ "$INTEGER" = "true" ]; then
-            require_success "validate" "$VALIDATE_RESULT"
-            require_success "detect-changed-images" "$DETECT_INTEGER_RESULT"
-            if [ "$INTEGER_HAS_CHANGES" = "true" ]; then
-              smoke_count=$(integer_matrix_entry_count "$EXPECTED_INTEGER_SMOKE_MATRIX" smoke)
-              build_count=$(integer_matrix_entry_count "$EXPECTED_INTEGER_MATRIX" build)
-              if [ "$smoke_count" -gt 0 ]; then
-                require_success "integer-smoke-test" "$INTEGER_SMOKE_RESULT"
-                require_integer_markers "$EXPECTED_INTEGER_SMOKE_MATRIX" smoke
-              else
-                require_result "integer-smoke-test" "$INTEGER_SMOKE_RESULT" skipped
-              fi
-              if [ "$build_count" -eq 0 ]; then
-                echo "::error::expected Integer build matrix must not be empty when changes are present"
-                exit 1
-              fi
-              require_success "integer-build-changed" "$INTEGER_BUILD_RESULT"
-              require_integer_markers "$EXPECTED_INTEGER_MATRIX" build
-            else
-              allow_success_or_skipped "integer-smoke-test" "$INTEGER_SMOKE_RESULT"
-              allow_success_or_skipped "integer-build-changed" "$INTEGER_BUILD_RESULT"
-            fi
-          else
-            allow_success_or_skipped "validate" "$VALIDATE_RESULT"
-            allow_success_or_skipped "detect-changed-images" "$DETECT_INTEGER_RESULT"
-            allow_success_or_skipped "integer-smoke-test" "$INTEGER_SMOKE_RESULT"
-            allow_success_or_skipped "integer-build-changed" "$INTEGER_BUILD_RESULT"
-          fi
-
-          if [ "$COPA" = "true" ]; then
-            require_success "discover" "$DISCOVER_RESULT"
-            require_success "detect-copa-changes" "$DETECT_COPA_RESULT"
-            allow_success_or_skipped "copa-patching-changed" "$COPA_CHANGED_RESULT"
-            require_success "copa-patching-regression" "$COPA_REGRESSION_RESULT"
-          else
-            allow_success_or_skipped "discover" "$DISCOVER_RESULT"
-            allow_success_or_skipped "detect-copa-changes" "$DETECT_COPA_RESULT"
-            allow_success_or_skipped "copa-patching-changed" "$COPA_CHANGED_RESULT"
-            allow_success_or_skipped "copa-patching-regression" "$COPA_REGRESSION_RESULT"
-          fi
+        run: >-
+          ./verity ci pr-test aggregate
+          --changes-result "$CHANGES_RESULT"
+          --integer "$INTEGER"
+          --copa "$COPA"
+          --discover-result "$DISCOVER_RESULT"
+          --validate-result "$VALIDATE_RESULT"
+          --detect-integer-result "$DETECT_INTEGER_RESULT"
+          --integer-has-changes "$INTEGER_HAS_CHANGES"
+          --integer-smoke-result "$INTEGER_SMOKE_RESULT"
+          --integer-build-result "$INTEGER_BUILD_RESULT"
+          --expected-integer-matrix "$EXPECTED_INTEGER_MATRIX"
+          --expected-integer-smoke-matrix "$EXPECTED_INTEGER_SMOKE_MATRIX"
+          --detect-copa-result "$DETECT_COPA_RESULT"
+          --copa-changed-result "$COPA_CHANGED_RESULT"
+          --copa-regression-result "$COPA_REGRESSION_RESULT"
+          --security-dir integer-security-results

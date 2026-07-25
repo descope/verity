@@ -48,7 +48,7 @@ func verifyArchitectureCrypto(
 	runner commandRunner,
 ) error {
 	for _, packagePath := range layout.packages {
-		if _, err := runRequired(ctx, runner, command{
+		if _, err := runRequired(ctx, runner, &command{
 			name: "apk",
 			args: []string{"verify", "--keys-dir", repository, packagePath},
 		}); err != nil {
@@ -97,7 +97,7 @@ func verifyArchitectureCrypto(
 }
 
 func initializeClient(ctx context.Context, runner commandRunner, root, architecture string) error {
-	_, err := runRequired(ctx, runner, command{
+	_, err := runRequired(ctx, runner, &command{
 		name: "apk",
 		args: []string{"--root", root, "--arch", architecture, "--repositories-file", "/dev/null", "add", "--initdb"},
 	})
@@ -107,8 +107,8 @@ func initializeClient(ctx context.Context, runner commandRunner, root, architect
 	return nil
 }
 
-func updateCommand(root, architecture, keysDir, repositoriesFile string) command {
-	return command{
+func updateCommand(root, architecture, keysDir, repositoriesFile string) *command {
+	return &command{
 		name: "apk",
 		args: []string{
 			"--root", root,
@@ -135,7 +135,7 @@ func rejectWrongKey(
 	if err := writeWrongPublicKey(filepath.Join(wrongKeys, keyName)); err != nil {
 		return err
 	}
-	verifyResult, err := runner.Run(ctx, command{
+	verifyResult, err := runner.Run(ctx, &command{
 		name: "apk",
 		args: []string{"verify", "--keys-dir", wrongKeys, layout.packages[0]},
 	})

@@ -1,147 +1,15 @@
-name: APK Repository
+name: APK Repository (retired)
 
 on:
-  workflow_dispatch:
-    inputs:
-      publish_pages:
-        description: "Deploy the assembled site artifact to GitHub Pages"
-        required: true
-        default: "false"
-        type: choice
-        options:
-          - "false"
-          - "true"
+  workflow_call:
 
-permissions:
-  contents: read
-  actions: read
-
-concurrency:
-  group: github-pages-publish
-  cancel-in-progress: false
+permissions: {}
 
 jobs:
-  assemble:
-    name: Assemble APK repository
+  retired:
+    name: Reject standalone APK publication
     runs-on: ubuntu-24.04
-    environment:
-      name: github-pages
-    permissions:
-      contents: read
-      actions: read
+    permissions: {}
     steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Install mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
-        with:
-          install: true
-          cache: true
-
-      - name: Build static Verity CLI
-        run: CGO_ENABLED=0 go build -o verity .
-
-      - name: Wait for trusted Integer producer
-        id: wait-producer
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WAIT_BRANCH: main
-          WAIT_EVENT: schedule
-          WAIT_TIMEOUT_SECONDS: 21600
-        run: bash .github/scripts/wait-for-workflows.sh integer-orchestrator.yaml
-
-      - name: Download provenance-verified APK packages
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          INTEGER_BATCH_ID: ${{ steps.wait-producer.outputs.integer_orchestrator_batch_id }}
-        run: ./verity ci apk-repository download-approved "$INTEGER_BATCH_ID" apk-artifacts
-
-      - name: Restore previous published site
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./verity ci apk-repository restore-previous previous-pages
-
-      - name: Build site shell
-        working-directory: site
-        env:
-          VITE_CACHE_DIR: ${{ runner.temp }}/verity-vite-cache
-        run: npm ci && npm run build
-
-      - name: Assemble APK repository candidate
-        env:
-          APK_REPOSITORY_PRIVATE_KEY: ${{ secrets.APK_REPOSITORY_PRIVATE_KEY }}
-        run: |
-          test -n "$APK_REPOSITORY_PRIVATE_KEY"
-          melange_bin=$(command -v melange)
-          docker run --rm \
-            -e APK_REPOSITORY_PRIVATE_KEY \
-            -v "$PWD:/work" \
-            -v "$melange_bin:/usr/local/bin/melange:ro" \
-            -w /work \
-            alpine:3.22@sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601 \
-            sh -euxc 'apk add --no-cache abuild gcompat; /work/verity ci apk-repository assemble --output apk-candidate apk-artifacts packages/repo'
-
-      - name: Validate APK repository candidate
-        run: ./verity ci apk-repository validate apk-candidate
-
-      - name: Cryptographically validate candidate repository
-        run: |
-          docker run --rm \
-            -v "$PWD:/work" \
-            -w /work \
-            alpine:3.22@sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601 \
-            /work/verity ci apk-repository validate --verify-crypto apk-candidate
-
-      - name: Cryptographically validate previous repository
-        if: ${{ hashFiles('previous-pages/apk/**') != '' }}
-        run: |
-          docker run --rm \
-            -v "$PWD:/work" \
-            -w /work \
-            alpine:3.22@sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601 \
-            /work/verity ci apk-repository validate --verify-crypto previous-pages/apk
-
-      - name: Preserve unchanged APK repository bytes
-        run: ./verity ci apk-repository select apk-candidate previous-pages/apk site/dist/apk
-
-      - name: Validate selected APK repository
-        run: |
-          docker run --rm \
-            -v "$PWD:/work" \
-            -w /work \
-            alpine:3.22@sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601 \
-            /work/verity ci apk-repository validate --verify-crypto site/dist/apk
-
-      - name: Upload Pages artifact
-        if: inputs.publish_pages == 'true'
-        uses: ./.github/actions/upload-pages-artifact
-        with:
-          path: site/dist
-          retention-days: 30
-          overwrite: "true"
-
-  deploy:
-    name: Deploy APK repository site
-    needs: assemble
-    if: inputs.publish_pages == 'true'
-    runs-on: ubuntu-24.04
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    permissions:
-      pages: write
-      id-token: write
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
-        id: deployment
+      - name: Fail closed before publication or secret access
+        run: exit 1

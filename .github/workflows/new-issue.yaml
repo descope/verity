@@ -4,16 +4,31 @@ on:
   issues:
     types: [opened]
 
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
+permissions: {}
 
 jobs:
+  build-verity:
+    name: Build Verity once
+    if: contains(github.event.issue.labels.*.name, 'new-image')
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/build-verity.yaml
+    with:
+      source_sha: ${{ github.sha }}
+      protected_attestation: "true"
+
   add-image:
     name: Add Image to copa-config.yaml
+    needs: build-verity
     runs-on: ubuntu-24.04
     if: contains(github.event.issue.labels.*.name, 'new-image')
+    permissions:
+      actions: read
+      contents: write
+      issues: write
+      pull-requests: write
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -29,26 +44,44 @@ jobs:
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
+          ref: ${{ needs.build-verity.outputs.source-sha }}
           token: ${{ steps.app-token.outputs.token }}
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
+
+      - name: Activate same-run Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.build-verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.build-verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.build-verity.outputs.source-sha }}
+          build-key: ${{ needs.build-verity.outputs.build-key }}
+          verify-attestation: "true"
 
       - name: Parse issue form
         id: parse
         env:
           ISSUE_BODY: ${{ github.event.issue.body }}
-        run: ./.github/scripts/parse-image-issue-form.sh
+        run: >-
+          ./verity ci repository-ops parse-image-issue
+          --github-output "$GITHUB_OUTPUT"
 
       - name: Add image and create PR
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           IMAGE_NAME: ${{ steps.parse.outputs.name }}
           IMAGE_REPOSITORY: ${{ steps.parse.outputs.repository }}
           IMAGE_TAG: ${{ steps.parse.outputs.tag }}
           IMAGE_REGISTRY: ${{ steps.parse.outputs.registry }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
-        run: ./.github/scripts/add-standalone-image.sh
+        run: >-
+          ./verity ci repository-ops add-standalone-image
+          --name "$IMAGE_NAME"
+          --repository "$IMAGE_REPOSITORY"
+          --tag "$IMAGE_TAG"
+          --registry "$IMAGE_REGISTRY"
+          --issue-number "$ISSUE_NUMBER"

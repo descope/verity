@@ -87,3 +87,26 @@ func TestSelect_publishes_candidate_when_package_or_trust_state_changes(t *testi
 		})
 	}
 }
+
+func TestSelect_returns_cancellation_before_mutating_output(t *testing.T) {
+	// Given a cancelled publication request and pre-existing output bytes.
+	root := t.TempDir()
+	output := filepath.Join(root, "output")
+	marker := filepath.Join(output, "index.html")
+	writeTestFile(t, marker, "preserve me")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	// When repository selection starts.
+	err := Select(ctx, &SelectOptions{
+		CandidateDir: filepath.Join(root, "missing-candidate"),
+		PreviousDir:  filepath.Join(root, "missing-previous"),
+		OutputDir:    output,
+	})
+
+	// Then cancellation is reported before any output byte changes.
+	require.ErrorIs(t, err, context.Canceled)
+	contents, readErr := os.ReadFile(marker)
+	require.NoError(t, readErr)
+	assert.Equal(t, "preserve me", string(contents))
+}

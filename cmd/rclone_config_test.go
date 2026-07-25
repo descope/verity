@@ -83,43 +83,29 @@ func Test_Rclone_resolves_fixed_local_package(t *testing.T) {
 	require.Equal(t, []string{"rclone=1.74.4-r0@local"}, tmpl.Packages)
 }
 
-func Test_Rclone_CI_tests_package_and_image_natively(t *testing.T) {
-	// Given: the Integer package workflow used by both architecture runners.
-	workflow, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "integer-build-image.yaml"))
-	require.NoError(t, err)
-	text := string(workflow)
+func Test_Rclone_CI_uses_reusable_image_security_gates(t *testing.T) {
+	// Given: the generated reusable Integer image workflow fixture.
+	workflow := readGeneratedWorkflowFixture(t, "integer-build-image-reusable.yaml")
 
-	// When: the rclone-family native gates are inspected.
+	// When: the shared package and image gates are inspected.
 
-	// Then: each native leg tests the package and its strictly scanned image.
-	require.Contains(t, text, "Test rclone package natively (${{ matrix.arch }})")
-	require.Contains(t, text, "Test rclone image natively (${{ matrix.arch }})")
-	require.Contains(t, text, "if: inputs.image == 'rclone'")
-	require.Contains(t, text, "test-rclone-package.sh")
-	require.Contains(t, text, "--fail-on-severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL")
-	require.Contains(t, text, "^rclone v?${rclone_version}$")
-	require.Contains(t, text, "copy /work/source /work/destination")
-	require.Contains(t, text, "check --checksum /work/source /work/destination")
-	require.Contains(t, text, "sha256sum --check")
-	require.Contains(t, text, "rclone-${rclone_full_version}.spdx.json")
-	require.Contains(t, text, "licenseDeclared == \"MIT\"")
+	// Then: reusable execution keeps native package testing, strict scanning, signing, and SBOM attestation.
+	requireIntegerImageReusablePackageGate(t, workflow)
+	requireIntegerImageReusableImageGate(t, workflow)
 }
 
-func Test_Rclone_native_image_proof_derives_package_version(t *testing.T) {
-	// Given: the native image proof maintained alongside the package recipe.
-	workflow, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "integer-build-image.yaml"))
-	require.NoError(t, err)
-	text := string(workflow)
+func Test_Rclone_reusable_image_proof_uses_generated_metadata(t *testing.T) {
+	// Given: the generated reusable Integer image workflow fixture.
+	workflow := readGeneratedWorkflowFixture(t, "integer-build-image-reusable.yaml")
 
-	// When: routine package version or epoch bumps change the generated SBOM name.
+	// When: the generic image metadata and publish path are inspected.
 
-	// Then: runtime and SPDX assertions follow the built recipe instead of a stale literal.
-	require.Contains(t, text, "rclone_version=$(yq -r '.package.version'")
-	require.Contains(t, text, "rclone_full_version=$(yq -r '.package.version + \"-r\"")
-	require.Contains(t, text, "--arg full_version \"$rclone_full_version\"")
-	require.Contains(t, text, ".versionInfo == $full_version")
-	require.NotContains(t, text, "rclone-1.74.4-r0.spdx.json")
-	require.NotContains(t, text, ".versionInfo == \"1.74.4-r0\"")
+	// Then: package-version-sensitive proof is delegated to the generated metadata path, without a stale rclone literal.
+	requireIntegerImageReusableImageGate(t, workflow)
+	require.Contains(t, workflow, "Read image metadata")
+	require.Contains(t, workflow, "./verity integer metadata")
+	require.NotContains(t, workflow, "rclone-1.74.4-r0.spdx.json")
+	require.NotContains(t, workflow, ".versionInfo == \"1.74.4-r0\"")
 }
 
 func Test_Rclone_PR_smoke_tests_runtime_copy_checksum_and_provenance_natively(t *testing.T) {
@@ -130,17 +116,8 @@ func Test_Rclone_PR_smoke_tests_runtime_copy_checksum_and_provenance_natively(t 
 
 	// When: the rclone-family native smoke gate is inspected.
 
-	// Then: PR CI validates runtime, local copy/checksum behavior, SPDX, and strict Trivy.
-	require.Contains(t, text, "if [ \"$image\" = \"rclone\" ]; then")
-	require.Contains(t, text, "rclone_version=$(yq -r '.package.version'")
-	require.Contains(t, text, "rclone_full_version=$(yq -r '.package.version + \"-r\"")
-	require.Contains(t, text, "^rclone v?${rclone_version}$")
-	require.Contains(t, text, "copy /work/source /work/destination")
-	require.Contains(t, text, "check --checksum /work/source /work/destination")
-	require.Contains(t, text, "sha256sum --check")
-	require.Contains(t, text, "rclone-${rclone_full_version}.spdx.json")
-	require.Contains(t, text, ".spdxVersion == \"SPDX-2.3\"")
-	require.Contains(t, text, ".versionInfo == $full_version")
-	require.Contains(t, text, "licenseDeclared == \"MIT\"")
-	require.Contains(t, text, "--severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL")
+	// Then: PR CI delegates the native runtime and provenance proof to Go.
+	require.Contains(t, text, "./verity ci pr-test integer-batch")
+	require.Contains(t, text, "--kind smoke")
+	require.NotContains(t, text, "if [ \"$image\" = \"rclone\" ]; then")
 }

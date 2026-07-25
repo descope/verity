@@ -18,6 +18,8 @@ var ciAPKRepositoryCommand = &cli.Command{
 	Usage: "Publish and validate the signed APK repository",
 	Commands: []*cli.Command{
 		ciAPKRepositoryAssembleCommand,
+		ciAPKRepositorySnapshotCommand,
+		ciAPKRepositoryDeltaCommand,
 		ciAPKRepositoryValidateCommand,
 		ciAPKRepositoryDownloadApprovedCommand,
 		ciAPKRepositoryRestorePreviousCommand,
@@ -29,18 +31,77 @@ var ciAPKRepositoryAssembleCommand = &cli.Command{
 	Name:      "assemble",
 	Usage:     "Assemble APK packages into signed architecture repositories",
 	ArgsUsage: "[SOURCE_DIR ...]",
-	Flags: []cli.Flag{
+	Flags:     apkRepositoryBuildFlags(),
+	Action: func(ctx context.Context, command *cli.Command) error {
+		key, err := readAPKSigningKey(command)
+		if err != nil {
+			return err
+		}
+		defer clear(key)
+		return apkrepository.Assemble(ctx, apkRepositoryBuildOptions(command, key))
+	},
+}
+
+var ciAPKRepositorySnapshotCommand = &cli.Command{
+	Name:      "snapshot",
+	Usage:     "Publish a complete signed x86_64/aarch64 APK snapshot",
+	ArgsUsage: "[SOURCE_DIR ...]",
+	Flags:     apkRepositoryBuildFlags(),
+	Action: func(ctx context.Context, command *cli.Command) error {
+		key, err := readAPKSigningKey(command)
+		if err != nil {
+			return err
+		}
+		defer clear(key)
+		return apkrepository.Snapshot(ctx, apkRepositoryBuildOptions(command, key))
+	},
+}
+
+func apkRepositoryBuildFlags() []cli.Flag {
+	return []cli.Flag{
 		&cli.StringFlag{Name: "output", Aliases: []string{"o"}, Value: "site/dist/apk", Usage: "Repository output directory"},
 		&cli.StringFlag{Name: "key-name", Value: "verity.rsa", Usage: "Published RSA key basename"},
 		&cli.StringFlag{Name: "public-key", Usage: "Committed public key path"},
+	}
+}
+
+func apkRepositoryBuildOptions(command *cli.Command, key []byte) *apkrepository.AssembleOptions {
+	return &apkrepository.AssembleOptions{
+		OutputDir:     command.String("output"),
+		KeyName:       command.String("key-name"),
+		PublicKeyPath: command.String("public-key"),
+		Sources:       command.Args().Slice(),
+		PrivateKeyPEM: key,
+		Stdout:        os.Stdout,
+		Stderr:        os.Stderr,
+	}
+}
+
+var ciAPKRepositoryDeltaCommand = &cli.Command{
+	Name:      "delta",
+	Usage:     "Apply a manifest-authorized APK delta to a signed base repository",
+	ArgsUsage: "BASE_DIR PACKAGE_DIR",
+	Flags: []cli.Flag{
+		&cli.StringFlag{Name: "manifest", Required: true, Usage: "Canonical APK delta manifest path"},
+		&cli.StringFlag{Name: "output", Aliases: []string{"o"}, Value: "site/dist/apk", Usage: "Repository output directory"},
+		&cli.StringFlag{Name: "key-name", Value: "verity.rsa", Usage: "Published RSA key basename"},
 	},
 	Action: func(ctx context.Context, command *cli.Command) error {
-		return apkrepository.Assemble(ctx, &apkrepository.AssembleOptions{
+		if err := requireAPKRepositoryArguments(command, 2); err != nil {
+			return err
+		}
+		key, err := readAPKSigningKey(command)
+		if err != nil {
+			return err
+		}
+		defer clear(key)
+		return apkrepository.ApplyDelta(ctx, &apkrepository.DeltaOptions{
+			BaseDir:       command.Args().Get(0),
+			PackageDir:    command.Args().Get(1),
+			ManifestPath:  command.String("manifest"),
 			OutputDir:     command.String("output"),
 			KeyName:       command.String("key-name"),
-			PublicKeyPath: command.String("public-key"),
-			Sources:       command.Args().Slice(),
-			PrivateKeyPEM: []byte(os.Getenv("APK_REPOSITORY_PRIVATE_KEY")),
+			PrivateKeyPEM: key,
 			Stdout:        os.Stdout,
 			Stderr:        os.Stderr,
 		})

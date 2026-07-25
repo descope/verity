@@ -20,6 +20,8 @@ var CICommand = &cli.Command{
 	Usage: "CI planning helpers",
 	Commands: []*cli.Command{
 		ciAPKRepositoryCommand,
+		newCIIntegerBatchCommand(),
+		newCIIntegerImageCommand(),
 		ciPlanCommand,
 		ciVulnerabilityCheckCommand,
 	},
