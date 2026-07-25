@@ -3,8 +3,8 @@
   "Trivy": {
     "Version": "0.72.0"
   },
-  "ReportID": "019f8da3-0d73-7348-b4cc-c53bedf3d0ce",
-  "CreatedAt": "2026-07-23T06:21:41.107216235Z",
+  "ReportID": "019f97e0-8b59-7489-85c9-db4f187641dd",
+  "CreatedAt": "2026-07-25T06:05:03.193298646Z",
   "ArtifactID": "sha256:0d0063f60a3082ce256152d564870dffed62bcc0995fa471db17b2ce8910cb24",
   "ArtifactName": "docker.io/apache/kafka:4.3.1",
   "ArtifactType": "container_image",
@@ -4097,7 +4097,7 @@
             "https://www.cve.org/CVERecord?id=CVE-2026-45186"
           ],
           "PublishedDate": "2026-05-10T07:16:07.883Z",
-          "LastModifiedDate": "2026-07-15T02:22:02.89Z"
+          "LastModifiedDate": "2026-07-24T20:10:00.147Z"
         },
         {
           "VulnerabilityID": "CVE-2026-56131",
@@ -6873,6 +6873,51 @@
       ],
       "Vulnerabilities": [
         {
+          "VulnerabilityID": "CVE-2026-59949",
+          "VendorIDs": [
+            "GHSA-xx22-p4ch-683r"
+          ],
+          "PkgName": "at.yawk.lz4:lz4-java",
+          "PkgPath": "opt/kafka/libs/lz4-java-1.10.2.jar",
+          "PkgIdentifier": {
+            "PURL": "pkg:maven/at.yawk.lz4/lz4-java@1.10.2",
+            "UID": "d2adc6b2c367e525"
+          },
+          "InstalledVersion": "1.10.2",
+          "FixedVersion": "1.11.1",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:da9d0fb3345c8fa944451bc81ffc8d4852a9d9ce9b9ab5e6e08d634414c4bcfc",
+            "DiffID": "sha256:85ed86239b446242d6c2080a8d47c916fbfdeee1a4cb73010782dc35362defe5"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-59949",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory Maven",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Amaven"
+          },
+          "Fingerprint": "sha256:032c1451176dc7da6f8ec8c7a285bff8c232c76d212f4e5aa39429a480cb2428",
+          "Title": "LZ4 Java: Native XXHash implementations can crash the JVM when passed invalid byte array ranges",
+          "Description": "### Summary\n\nInsufficient validation of byte array arguments in JNI-based XXHash implementations in lz4-java 1.11.0 and earlier allows callers to crash the JVM by passing an invalid array reference or invalid range to native XXHash methods.\n\nThis affects applications where an attacker can influence the byte array object or the `off` / `len` arguments passed to affected XXHash APIs. It does **not** affect the common case where only the contents of a valid byte array are attacker-controlled.\n\nJava-based XXHash implementations are *not* affected.\n\n### Details\n\nThe JNI-backed XXHash implementations pass caller-provided byte array arguments to native code. The affected APIs are:\n\n- `XXHashFactory.nativeInstance().hash32().hash(byte[] buf, int off, int len, int seed)`\n- `XXHashFactory.nativeInstance().hash64().hash(byte[] buf, int off, int len, long seed)`\n- `XXHashFactory.nativeInstance().newStreamingHash32(seed).update(byte[] bytes, int off, int len)`\n- `XXHashFactory.nativeInstance().newStreamingHash64(seed).update(byte[] bytes, int off, int len)`\n\nBefore the fix, the streaming JNI implementations did not validate `bytes`, `off`, or `len` before calling `XXHashJNI.XXH32_update` / `XXHashJNI.XXH64_update`. The non-streaming JNI implementations called `SafeUtils.checkRange`, but `SafeUtils.checkRange(byte[], int, int)` skipped all array access when `len == 0`, so a null byte array with a zero length could still reach JNI.\n\nAs a result:\n\n- `hash(null, 0, 0, seed)` and `update(null, 0, 0)` could pass a null array reference to JNI, causing a fatal JVM crash in `GetPrimitiveArrayCritical`.\n- `update(new byte[16], 0, Integer.MAX_VALUE)` could cause native XXHash code to read far beyond the end of the Java array, causing a fatal JVM crash and potentially exposing in-process memory to the native routine before the crash.\n\nThe oversized-length non-streaming `hash(new byte[16], 0, Integer.MAX_VALUE, seed)` case was already rejected in Java before this fix. The missing validation affected the streaming oversized-length case and the zero-length null-array case for both streaming and non-streaming JNI XXHash APIs.\n\nThe impact of this vulnerability depends on how user code uses the XXHash API. Code that hashes attacker-controlled byte contents in a valid, correctly bounded array is not affected. Code may be affected if an attacker can cause the application to pass a null array, an attacker-controlled offset, or an attacker-controlled length to the native XXHash API. The primary impact is denial of service due to JVM termination. For oversized lengths, native code may also read outside the Java array before the process crashes.\n\n### Mitigation\n\nlz4-java 1.11.1 fixes this issue without requiring changes in user code.\n\nIf you cannot upgrade, avoid passing attacker-controlled array references, offsets, or lengths to JNI-backed XXHash APIs. In particular, validate that arrays are non-null and that `off` and `len` describe a range fully contained in the array before calling native XXHash methods.\n\nUsing `XXHashFactory.safeInstance()` avoids the JNI boundary and is not affected by this native crash behavior.",
+          "Severity": "MEDIUM",
+          "VendorSeverity": {
+            "ghsa": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:H",
+              "V3Score": 6.5
+            }
+          },
+          "References": [
+            "https://github.com/yawkat/lz4-java",
+            "https://github.com/yawkat/lz4-java/commit/dbd86d04b8dd716e1c2bc626be54189997d910da",
+            "https://github.com/yawkat/lz4-java/releases/tag/v1.11.1",
+            "https://github.com/yawkat/lz4-java/security/advisories/GHSA-xx22-p4ch-683r"
+          ]
+        },
+        {
           "VulnerabilityID": "GHSA-r7wm-3cxj-wff9",
           "PkgName": "com.fasterxml.jackson.core:jackson-core",
           "PkgPath": "opt/kafka/libs/jackson-core-2.21.2.jar",
@@ -6956,7 +7001,8 @@
             "amazon": 3,
             "ghsa": 3,
             "oracle-oval": 3,
-            "redhat": 3
+            "redhat": 3,
+            "rocky": 3
           },
           "CVSS": {
             "ghsa": {
@@ -6973,13 +7019,18 @@
             "https://access.redhat.com/security/cve/CVE-2026-54512",
             "https://bugzilla.redhat.com/2492010",
             "https://bugzilla.redhat.com/2492015",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2492010",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2492015",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-54512",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-54513",
             "https://errata.almalinux.org/9/ALSA-2026-40895.html",
+            "https://errata.rockylinux.org/RLSA-2026:40895",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/434d6c511de7fdd9872f29157aafb6162d12d8d5",
             "https://github.com/FasterXML/jackson-databind/issues/5988",
             "https://github.com/FasterXML/jackson-databind/security/advisories/GHSA-j3rv-43j4-c7qm",
             "https://linux.oracle.com/cve/CVE-2026-54512.html",
-            "https://linux.oracle.com/errata/ELSA-2026-40895.html",
+            "https://linux.oracle.com/errata/ELSA-2026-43400.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-54512",
             "https://www.cve.org/CVERecord?id=CVE-2026-54512"
           ],
@@ -7023,7 +7074,8 @@
             "amazon": 3,
             "ghsa": 3,
             "oracle-oval": 3,
-            "redhat": 3
+            "redhat": 3,
+            "rocky": 3
           },
           "CVSS": {
             "ghsa": {
@@ -7040,11 +7092,23 @@
             "https://access.redhat.com/errata/RHSA-2026:40895",
             "https://access.redhat.com/errata/RHSA-2026:41951",
             "https://access.redhat.com/errata/RHSA-2026:43218",
+            "https://access.redhat.com/errata/RHSA-2026:43400",
+            "https://access.redhat.com/errata/RHSA-2026:44061",
+            "https://access.redhat.com/errata/RHSA-2026:44062",
+            "https://access.redhat.com/errata/RHSA-2026:44063",
+            "https://access.redhat.com/errata/RHSA-2026:44064",
+            "https://access.redhat.com/errata/RHSA-2026:44065",
+            "https://access.redhat.com/errata/RHSA-2026:44066",
+            "https://access.redhat.com/errata/RHSA-2026:44271",
             "https://access.redhat.com/security/cve/CVE-2026-54513",
             "https://bugzilla.redhat.com/2492010",
             "https://bugzilla.redhat.com/2492015",
             "https://bugzilla.redhat.com/show_bug.cgi?id=2492010",
+            "https://bugzilla.redhat.com/show_bug.cgi?id=2492015",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-54512",
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-54513",
             "https://errata.almalinux.org/9/ALSA-2026-40895.html",
+            "https://errata.rockylinux.org/RLSA-2026:40895",
             "https://github.com/FasterXML/jackson-databind",
             "https://github.com/FasterXML/jackson-databind/commit/01d1692c8d0ed03e51a0e3c4f8a9e6908e4931e5",
             "https://github.com/FasterXML/jackson-databind/commit/24529da29fdf46ff94ca38de9ebf31cd188f5e8e",
@@ -7053,13 +7117,13 @@
             "https://github.com/FasterXML/jackson-databind/pull/5984",
             "https://github.com/FasterXML/jackson-databind/security/advisories/GHSA-rmj7-2vxq-3g9f",
             "https://linux.oracle.com/cve/CVE-2026-54513.html",
-            "https://linux.oracle.com/errata/ELSA-2026-40895.html",
+            "https://linux.oracle.com/errata/ELSA-2026-43400.html",
             "https://nvd.nist.gov/vuln/detail/CVE-2026-54513",
             "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-54513.json",
             "https://www.cve.org/CVERecord?id=CVE-2026-54513"
           ],
           "PublishedDate": "2026-06-23T21:17:02.333Z",
-          "LastModifiedDate": "2026-07-22T12:18:14.063Z"
+          "LastModifiedDate": "2026-07-23T12:18:26.847Z"
         },
         {
           "VulnerabilityID": "CVE-2026-54514",
@@ -7789,7 +7853,7 @@
             "https://nvd.nist.gov/vuln/detail/CVE-2026-56740"
           ],
           "PublishedDate": "2026-07-17T22:17:57.153Z",
-          "LastModifiedDate": "2026-07-20T15:16:44.08Z"
+          "LastModifiedDate": "2026-07-23T17:57:11.017Z"
         },
         {
           "VulnerabilityID": "CVE-2026-56741",
@@ -7844,7 +7908,7 @@
             "https://nvd.nist.gov/vuln/detail/CVE-2026-56741"
           ],
           "PublishedDate": "2026-07-17T22:17:57.317Z",
-          "LastModifiedDate": "2026-07-20T16:17:05.493Z"
+          "LastModifiedDate": "2026-07-23T17:57:11.017Z"
         }
       ]
     }
