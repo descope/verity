@@ -30,7 +30,7 @@ func TestVerifyCurrentRunAttempt_accepts_exact_repository_workflow_and_attempt(t
 func TestVerifyCurrentRunAttempt_accepts_protected_producer_identity(t *testing.T) {
 	// Given the protected build producer is the exact referenced workflow.
 	response := exactRunAttemptResponse()
-	response.ReferencedWorkflows[0].Path = "verity-org/verity/.github/workflows/build-verity-protected.yaml@refs/heads/main"
+	response.ReferencedWorkflows[0].Path = "verity-org/verity/.github/workflows/build-verity-protected.yaml@" + testActionSourceSHA
 	server := runAttemptServer(t, &response, nil)
 	options := exactRemoteOptions(server.URL)
 	options.ProtectedAttestation = true
@@ -39,6 +39,24 @@ func TestVerifyCurrentRunAttempt_accepts_protected_producer_identity(t *testing.
 	err := verifyCurrentRunAttempt(context.Background(), options)
 
 	// Then the protected producer identity is accepted.
+	require.NoError(t, err)
+}
+
+func TestVerifyCurrentRunAttempt_accepts_pull_request_merge_workflow_identity(t *testing.T) {
+	// Given the API reports the current source SHA and a distinct synthetic PR merge workflow SHA.
+	response := exactRunAttemptResponse()
+	mergeSHA := strings.Repeat("c", 40)
+	response.ReferencedWorkflows[0] = remoteReferencedWorkflow{
+		Path: "verity-org/verity/.github/workflows/build-verity.yaml@" + mergeSHA,
+		SHA:  mergeSHA,
+		Ref:  "refs/pull/1024/merge",
+	}
+	server := runAttemptServer(t, &response, nil)
+
+	// When current-run identity is verified for an unprotected PR build.
+	err := verifyCurrentRunAttempt(context.Background(), exactRemoteOptions(server.URL))
+
+	// Then the exact referenced PR merge workflow is accepted without conflating it with head_sha.
 	require.NoError(t, err)
 }
 
@@ -108,8 +126,9 @@ func exactRunAttemptResponse() remoteRunAttempt {
 		ID: 42, RunAttempt: 2, HeadSHA: testActionSourceSHA,
 		Repository: remoteRepository{ID: 99, FullName: "verity-org/verity"},
 		ReferencedWorkflows: []remoteReferencedWorkflow{{
-			Path: "verity-org/verity/.github/workflows/build-verity.yaml@refs/heads/main",
+			Path: "verity-org/verity/.github/workflows/build-verity.yaml@" + testActionSourceSHA,
 			SHA:  testActionSourceSHA,
+			Ref:  "refs/heads/main",
 		}},
 	}
 }

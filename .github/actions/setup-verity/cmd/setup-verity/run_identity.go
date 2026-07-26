@@ -34,6 +34,7 @@ type remoteRepository struct {
 type remoteReferencedWorkflow struct {
 	Path string `json:"path"`
 	SHA  string `json:"sha"`
+	Ref  string `json:"ref"`
 }
 
 func verifyCurrentRunAttempt(ctx context.Context, options *remoteOptions) error {
@@ -100,9 +101,35 @@ func matchesCurrentRunAttempt(run *remoteRunAttempt, options *remoteOptions) boo
 	matches := 0
 	for _, workflow := range run.ReferencedWorkflows {
 		separator := strings.LastIndex(workflow.Path, "@")
-		if separator > 0 && workflow.Path[:separator] == expectedPath && workflow.SHA == options.Identity.SourceSHA {
+		if separator > 0 && workflow.Path[:separator] == expectedPath &&
+			matchesReferencedWorkflow(workflow, workflow.Path[separator+1:], options) {
 			matches++
 		}
 	}
 	return matches == 1
+}
+
+func matchesReferencedWorkflow(workflow remoteReferencedWorkflow, pathSHA string, options *remoteOptions) bool {
+	if workflow.SHA != pathSHA || !lowerHexSHA(workflow.SHA) {
+		return false
+	}
+	if options.ProtectedAttestation {
+		return workflow.Ref == "refs/heads/main" && workflow.SHA == options.Identity.SourceSHA
+	}
+	if workflow.SHA == options.Identity.SourceSHA {
+		return workflow.Ref == "refs/heads/main"
+	}
+	return strings.HasPrefix(workflow.Ref, "refs/pull/") && strings.HasSuffix(workflow.Ref, "/merge")
+}
+
+func lowerHexSHA(value string) bool {
+	if len(value) != 40 {
+		return false
+	}
+	for _, char := range []byte(value) {
+		if (char < '0' || char > '9') && (char < 'a' || char > 'f') {
+			return false
+		}
+	}
+	return true
 }

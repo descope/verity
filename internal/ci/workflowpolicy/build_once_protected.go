@@ -8,7 +8,7 @@ import (
 const (
 	protectedBuildVerityWorkflowName      = "build-verity-protected.yaml"
 	protectedBuildVerityWorkflowReference = "./.github/workflows/build-verity-protected.yaml"
-	protectedBuildGate                    = "${{github.repository=='verity-org/verity'&&github.ref_protected==true}}"
+	protectedBuildGate                    = "${{github.repository=='verity-org/verity'&&github.ref=='refs/heads/main'&&github.ref_protected==true}}"
 )
 
 func validateProtectedBuildWorkflow(name string, data []byte) ([]Violation, error) {

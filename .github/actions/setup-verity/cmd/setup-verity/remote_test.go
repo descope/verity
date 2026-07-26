@@ -244,7 +244,7 @@ func fakeArtifactServer(t *testing.T, name, digest, sourceSHA string, calls *int
 		if request.URL.Path == "/repos/verity-org/verity/actions/runs/42/attempts/2" {
 			writer.Header().Set("Content-Type", "application/json")
 			response := exactRunAttemptResponse()
-			response.ReferencedWorkflows[0].Path = "verity-org/verity/.github/workflows/build-verity-protected.yaml@refs/heads/main"
+			response.ReferencedWorkflows[0].Path = "verity-org/verity/.github/workflows/build-verity-protected.yaml@" + testActionSourceSHA
 			require.NoError(t, json.NewEncoder(writer).Encode(response))
 			return
 		}
