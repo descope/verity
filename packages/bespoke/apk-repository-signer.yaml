@@ -18,13 +18,15 @@ environment:
     CGO_ENABLED: "0"
     GOTOOLCHAIN: local
 
-# Source provenance is immutable. Rotate expected-commit to the merged signer
-# source revision before the protected bootstrap publish.
+# Bootstrap source is pinned to this PR branch so pre-merge Integer validation
+# can build it. Rotate branch and expected-commit to protected main before the
+# signer lock becomes runnable.
 pipeline:
   - uses: git-checkout
     with:
       repository: https://github.com/verity-org/verity
-      expected-commit: e4cd361cf5c987aaac54de389453df2b244b1fda
+      branch: apk-repository-publish
+      expected-commit: 69b4bec7ee2a1f89162dd4e4250b953c6e654a29
 
   - uses: go/build
     with:
