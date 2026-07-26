@@ -9,21 +9,31 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-const maxAPKSigningKeyBytes = 64 << 10
+const (
+	apkSigningKeyEnvironment = "APK_REPOSITORY_PRIVATE_KEY"
+	maxAPKSigningKeyBytes    = 64 << 10
+)
 
-var errAPKSigningKeyTooLarge = errors.New("APK signing key from stdin exceeds size limit")
+var errAPKSigningKeyTooLarge = errors.New("APK signing key exceeds size limit")
 
 func readAPKSigningKey(command *cli.Command) ([]byte, error) {
-	if err := os.Unsetenv("APK_REPOSITORY_PRIVATE_KEY"); err != nil {
+	environmentKey, fromEnvironment := os.LookupEnv(apkSigningKeyEnvironment)
+	if err := os.Unsetenv(apkSigningKeyEnvironment); err != nil {
 		return nil, fmt.Errorf("clear ambient APK signing key: %w", err)
 	}
-	reader := command.Reader
-	if reader == nil {
-		reader = os.Stdin
-	}
-	key, err := io.ReadAll(io.LimitReader(reader, maxAPKSigningKeyBytes+1))
-	if err != nil {
-		return nil, fmt.Errorf("read APK signing key from stdin: %w", err)
+	var key []byte
+	if fromEnvironment {
+		key = []byte(environmentKey)
+	} else {
+		reader := command.Reader
+		if reader == nil {
+			reader = os.Stdin
+		}
+		var err error
+		key, err = io.ReadAll(io.LimitReader(reader, maxAPKSigningKeyBytes+1))
+		if err != nil {
+			return nil, fmt.Errorf("read APK signing key from stdin: %w", err)
+		}
 	}
 	if len(key) > maxAPKSigningKeyBytes {
 		clear(key)

@@ -109,44 +109,31 @@ func TestValidateDirectory_requires_canonical_APK_signing_key_state(t *testing.T
 	assert.ErrorContains(t, err, string(RuleAPKSigningBoundary))
 }
 
-func TestValidateAPKSigningBoundary_accepts_bounded_BuildSite_stdin_bridge(t *testing.T) {
-	tests := []struct {
-		name   string
-		output string
-	}{
-		{name: "stdout redirect", output: "> signer-result.json"},
-		{name: "output flag", output: "--output signer-result.json"},
-		{name: "output equals flag", output: "--output=signer-result.json"},
-		{name: "machine output flags", output: "--record-output signer-result.json --github-output \"$GITHUB_OUTPUT\""},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			// Given the exact Build Site env-to-stdin bridge and a bounded machine record destination.
-			workflows := siteSignerWorkflows(boundedSignerRun(test.output), nil)
+func TestValidateAPKSigningBoundary_accepts_Go_owned_BuildSite_key_lifecycle(t *testing.T) {
+	// Given the exact Build Site command that lets Verity consume and clear the environment key.
+	workflows := siteSignerWorkflows(boundedSignerRun(), nil)
 
-			// When the APK signing boundary is evaluated.
-			violations := validateAPKSigningBoundary(workflows)
+	// When the APK signing boundary is evaluated.
+	violations := validateAPKSigningBoundary(workflows)
 
-			// Then the bounded bridge is allowed without allowing direct key exposure.
-			assert.NotContains(t, violationRules(violations), RuleAPKSigningBoundary)
-		})
-	}
+	// Then no shell key manipulation or unbounded output path is required.
+	assert.NotContains(t, violationRules(violations), RuleAPKSigningBoundary)
 }
 
-func TestValidateAPKSigningBoundary_rejects_unbounded_BuildSite_stdin_bridges(t *testing.T) {
+func TestValidateAPKSigningBoundary_rejects_shell_owned_BuildSite_key_lifecycle(t *testing.T) {
 	tests := []struct {
 		name string
 		run  string
 	}{
-		{name: "key file", run: replaceSignerCommand(boundedSignerRun("> signer-result.json"), `printf '%s' "$signing_key" > signer-key`)},
-		{name: "arbitrary pipe", run: replaceSignerCommand(boundedSignerRun("> signer-result.json"), `cat signer-key | ./verity ci site-publication signer-execute signer-plan.json > signer-result.json`)},
-		{name: "wrong output file", run: strings.Replace(boundedSignerRun("> signer-result.json"), "> signer-result.json", "> /tmp/signer-result.json", 1)},
-		{name: "missing environment cleanup", run: strings.Replace(boundedSignerRun("> signer-result.json"), "unset APK_REPOSITORY_PRIVATE_KEY\n", "", 1)},
-		{name: "xtrace", run: "set -x\n" + boundedSignerRun("> signer-result.json")},
+		{name: "key file", run: `printf '%s' "$APK_REPOSITORY_PRIVATE_KEY" > signer-key`},
+		{name: "arbitrary pipe", run: `printf '%s' "$APK_REPOSITORY_PRIVATE_KEY" | ./verity ci site-publication signer-execute signer-plan.json --record-output signer-result.json`},
+		{name: "wrong output file", run: strings.Replace(boundedSignerRun(), signerResultFile, "/tmp/signer-result.json", 1)},
+		{name: "extra cleanup shell", run: boundedSignerRun() + "\nunset APK_REPOSITORY_PRIVATE_KEY"},
+		{name: "xtrace", run: "set -x\n" + boundedSignerRun()},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			// Given a signer-looking pipe that violates one bounded bridge invariant.
+			// Given a signer-looking step that keeps key lifecycle logic in the shell.
 			workflows := siteSignerWorkflows(test.run, nil)
 
 			// When both signing-boundary and Go-owned shell policies are evaluated.
@@ -158,14 +145,14 @@ func TestValidateAPKSigningBoundary_rejects_unbounded_BuildSite_stdin_bridges(t 
 	}
 }
 
-func TestValidateGoOwnedLogic_accepts_only_bounded_BuildSite_stdin_bridge(t *testing.T) {
-	// Given the Build Site signer job with the exact approved env-to-stdin bridge.
-	workflows := siteSignerWorkflows(boundedSignerRun("--record-output signer-result.json --github-output \"$GITHUB_OUTPUT\""), nil)
+func TestValidateGoOwnedLogic_accepts_direct_BuildSite_signer_invocation(t *testing.T) {
+	// Given the Build Site signer job delegates the complete key lifecycle to Verity.
+	workflows := siteSignerWorkflows(boundedSignerRun(), nil)
 
 	// When Go-owned shell policy is evaluated.
 	violations := validateGoOwnedLogic(workflows)
 
-	// Then the bounded bridge is the only permitted pipeline.
+	// Then the direct Go invocation contains no shell-owned policy or orchestration.
 	assert.NotContains(t, violationRules(violations), RuleGoOwnedLogic)
 }
 
@@ -286,19 +273,12 @@ func siteSignerWorkflows(run string, env scalarMap) []workflowFile {
 		env = scalarMap{apkPrivateKeySecretName: productionSigningSecret}
 	}
 	return []workflowFile{{Name: buildSiteWorkflowName, Workflow: workflow{Jobs: map[string]workflowJob{
-		buildSiteSignerJob: {Steps: []workflowStep{{Name: "Execute isolated signer with stdin key", Run: run, Env: env}}},
+		buildSiteSignerJob: {Steps: []workflowStep{{Name: "Execute isolated signer with Go-owned key lifecycle", Run: run, Env: env}}},
 	}}}}
 }
 
-func boundedSignerRun(output string) string {
-	return "signing_key=\"$APK_REPOSITORY_PRIVATE_KEY\"\n" +
-		"unset APK_REPOSITORY_PRIVATE_KEY\n" +
-		"printf '%s' \"$signing_key\" | ./verity ci site-publication signer-execute signer-plan.json " + output + "\n" +
-		"unset signing_key"
-}
-
-func replaceSignerCommand(run, replacement string) string {
-	return strings.Replace(run, `printf '%s' "$signing_key" | ./verity ci site-publication signer-execute signer-plan.json > signer-result.json`, replacement, 1)
+func boundedSignerRun() string {
+	return `./verity ci site-publication signer-execute signer-plan.json --record-output signer-result.json --github-output "$GITHUB_OUTPUT"`
 }
 
 func secureSignerRun() string {

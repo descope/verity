@@ -87,8 +87,8 @@ func signingKeyStateViolations(file *workflowFile) []Violation {
 }
 
 func signerStepViolations(workflowName, jobName string, step *workflowStep) []Violation {
-	stdinBridge := isBoundedSignerStdinBridge(workflowName, jobName, step)
-	reasons := signerStepSecretViolations(step, stdinBridge)
+	goOwnedBoundary := isGoOwnedSignerBoundary(workflowName, jobName, step)
+	reasons := signerStepSecretViolations(step, goOwnedBoundary)
 	lower := strings.ToLower(step.Run)
 	if stringContainsAny(lower, "set -x", "set -o xtrace", "sh -x", "bash -x") {
 		reasons = append(reasons, "xtrace is forbidden in the signing boundary")
@@ -116,35 +116,27 @@ func signerStepViolations(workflowName, jobName string, step *workflowStep) []Vi
 	return violations
 }
 
-func signerStepSecretViolations(step *workflowStep, stdinBridge bool) []string {
+func signerStepSecretViolations(step *workflowStep, goOwnedBoundary bool) []string {
 	var reasons []string
 	for name, value := range step.Env {
 		if strings.EqualFold(name, apkPrivateKeySecretName) || containsProductionKey(value) {
-			if !stdinBridge {
+			if !goOwnedBoundary {
 				reasons = append(reasons, "production signing key must not enter ambient step environment")
 			}
 			break
 		}
 	}
-	if containsProductionKey(step.Run) && !stdinBridge {
+	if containsProductionKey(step.Run) && !goOwnedBoundary {
 		reasons = append(reasons, "production signing key must not appear in command argv or Docker environment")
 	}
 	return reasons
 }
 
-func isBoundedSignerStdinBridge(workflowName, jobName string, step *workflowStep) bool {
+func isGoOwnedSignerBoundary(workflowName, jobName string, step *workflowStep) bool {
 	if workflowName != buildSiteWorkflowName || jobName != buildSiteSignerJob || !hasSignerSecretEnvironment(step.Env) {
 		return false
 	}
-	statements := signerBridgeStatements(step.Run)
-	if len(statements) == 5 && statements[0] == "set -euo pipefail" {
-		statements = statements[1:]
-	}
-	return len(statements) == 4 &&
-		statements[0] == `signing_key="$APK_REPOSITORY_PRIVATE_KEY"` &&
-		statements[1] == "unset APK_REPOSITORY_PRIVATE_KEY" &&
-		isBoundedSignerInvocation(statements[2]) &&
-		statements[3] == "unset signing_key"
+	return isBoundedSignerInvocation(strings.TrimSpace(step.Run))
 }
 
 func hasSignerSecretEnvironment(environment scalarMap) bool {
@@ -155,19 +147,8 @@ func hasSignerSecretEnvironment(environment scalarMap) bool {
 	return ok && normalizeExpression(value) == "${{secrets."+apkPrivateKeySecretName+"}}"
 }
 
-func signerBridgeStatements(script string) []string {
-	lines := strings.Split(strings.ReplaceAll(script, "\r\n", "\n"), "\n")
-	statements := make([]string, 0, len(lines))
-	for _, line := range lines {
-		if statement := strings.TrimSpace(line); statement != "" {
-			statements = append(statements, statement)
-		}
-	}
-	return statements
-}
-
 func isBoundedSignerInvocation(statement string) bool {
-	prefix := `printf '%s' "$signing_key" | ./verity ci site-publication signer-execute ` + signerPlanFile
+	prefix := `./verity ci site-publication signer-execute ` + signerPlanFile
 	if !strings.HasPrefix(statement, prefix) {
 		return false
 	}
@@ -177,26 +158,7 @@ func isBoundedSignerInvocation(statement string) bool {
 
 func boundedSignerMachineOutput(output string) bool {
 	normalized := strings.Join(strings.Fields(output), " ")
-	switch normalized {
-	case "> " + signerResultFile,
-		"--output " + signerResultFile,
-		"--output=" + signerResultFile,
-		"--output " + signerResultFile + " --github-output \"$GITHUB_OUTPUT\"",
-		"--output=" + signerResultFile + " --github-output \"$GITHUB_OUTPUT\"",
-		"--output " + signerResultFile + " --github-output=\"$GITHUB_OUTPUT\"",
-		"--output=" + signerResultFile + " --github-output=\"$GITHUB_OUTPUT\"",
-		"--github-output \"$GITHUB_OUTPUT\" --output " + signerResultFile,
-		"--github-output \"$GITHUB_OUTPUT\" --output=" + signerResultFile,
-		"--github-output=\"$GITHUB_OUTPUT\" --output " + signerResultFile,
-		"--github-output=\"$GITHUB_OUTPUT\" --output=" + signerResultFile,
-		"--record-output " + signerResultFile + " --github-output \"$GITHUB_OUTPUT\"",
-		"--record-output=" + signerResultFile + " --github-output \"$GITHUB_OUTPUT\"",
-		"--github-output \"$GITHUB_OUTPUT\" --record-output " + signerResultFile,
-		"--github-output \"$GITHUB_OUTPUT\" --record-output=" + signerResultFile:
-		return true
-	default:
-		return false
-	}
+	return normalized == "--record-output "+signerResultFile+" --github-output \"$GITHUB_OUTPUT\""
 }
 
 func isAPKSignerJob(workflowName, jobName string, job *workflowJob) bool {

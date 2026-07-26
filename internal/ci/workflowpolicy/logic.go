@@ -34,7 +34,7 @@ func validateGoOwnedLogic(workflows []workflowFile) []Violation {
 }
 
 func workflowStepLogicViolation(workflowName, jobName string, step *workflowStep) string {
-	if isBoundedSignerStdinBridge(workflowName, jobName, step) {
+	if isGoOwnedSignerBoundary(workflowName, jobName, step) {
 		return ""
 	}
 	return workflowLogicViolation(step.Run, step.Shell)

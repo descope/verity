@@ -387,15 +387,11 @@ jobs:
           --public-key verity.rsa.pub
           --record-output signer-plan.json
 
-      - name: Execute isolated signer with stdin key
+      - name: Execute isolated signer with Go-owned key lifecycle
         id: signer
         env:
           APK_REPOSITORY_PRIVATE_KEY: ${{ secrets.APK_REPOSITORY_PRIVATE_KEY }}
-        run: |
-          signing_key="$APK_REPOSITORY_PRIVATE_KEY"
-          unset APK_REPOSITORY_PRIVATE_KEY
-          printf '%s' "$signing_key" | ./verity ci site-publication signer-execute signer-plan.json --record-output signer-result.json --github-output "$GITHUB_OUTPUT"
-          unset signing_key
+        run: ./verity ci site-publication signer-execute signer-plan.json --record-output signer-result.json --github-output "$GITHUB_OUTPUT"
 
       - name: Revalidate signed APK repository
         run: ./verity ci apk-repository validate --require-signature --verify-crypto signed-apk
