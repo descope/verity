@@ -117,7 +117,7 @@ func validateBuildJob(name string, job *workflowJob, sourceExpression string) []
 	var violations []Violation
 	if len(job.Outputs) != 4 ||
 		normalizeExpression(job.Outputs["artifact-name"]) != "${{steps.build.outputs.artifact-name}}" ||
-		normalizeExpression(job.Outputs["artifact-digest"]) != "${{steps.upload.outputs.artifact-digest}}" ||
+		normalizeExpression(job.Outputs["artifact-digest"]) != "${{format('sha256:{0}',steps.upload.outputs.artifact-digest)}}" ||
 		normalizeExpression(job.Outputs["source-sha"]) != "${{steps.build.outputs.source-sha}}" ||
 		normalizeExpression(job.Outputs["build-key"]) != "${{steps.build.outputs.build-key}}" {
 		violations = append(violations, buildOnceViolation(name, "build", "build outputs must bind the exact upload, source SHA, and build key"))
