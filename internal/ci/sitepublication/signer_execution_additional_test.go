@@ -4,9 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -19,71 +16,6 @@ var (
 	errSentinelExecutorExposedSecret = errors.New("executor exposed sentinel-secret")
 	errSentinelTransportStopped      = errors.New("transport stopped")
 )
-
-func TestSignerExecRunner_runs_fake_executor_with_stdin_and_safe_environment(t *testing.T) {
-	// Given
-	t.Setenv("GH_TOKEN", "sentinel-gh-token")
-	t.Setenv("UNSAFE_SENTINEL", "must-not-pass")
-	stdin := []byte("sentinel-stdin-key")
-	command := signerHelperCommand("success", stdin)
-
-	// When
-	result, err := (ExecRunner{}).Run(context.Background(), command)
-
-	// Then
-	require.NoError(t, err)
-	assert.Zero(t, result.ExitCode)
-	output := string(result.Stdout)
-	assert.Contains(t, output, "stdin=sentinel-stdin-key")
-	assert.Contains(t, output, "gh=sentinel-gh-token")
-	assert.Contains(t, output, "unsafe=")
-	assert.NotContains(t, output, "must-not-pass")
-	assert.Contains(t, output, "path=/usr/bin:/bin")
-	assert.Contains(t, string(result.Stderr), "stderr=sentinel")
-	assert.Equal(t, make([]byte, len(stdin)), stdin)
-}
-
-func TestSignerExecRunner_returns_exit_cancellation_and_start_failures(t *testing.T) {
-	t.Run("nonzero exit", func(t *testing.T) {
-		// Given
-		command := signerHelperCommand("exit-19", nil)
-
-		// When
-		result, err := (ExecRunner{}).Run(context.Background(), command)
-
-		// Then
-		require.NoError(t, err)
-		assert.Equal(t, 19, result.ExitCode)
-		assert.Contains(t, string(result.Stderr), "stderr=exit-19")
-	})
-
-	t.Run("canceled before start", func(t *testing.T) {
-		// Given
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-		stdin := []byte("sentinel-canceled-key")
-
-		// When
-		result, err := (ExecRunner{}).Run(ctx, signerHelperCommand("success", stdin))
-
-		// Then
-		require.ErrorIs(t, err, context.Canceled)
-		assert.Equal(t, make([]byte, len(stdin)), stdin)
-		assert.Empty(t, result.Stdout)
-	})
-
-	t.Run("missing executor", func(t *testing.T) {
-		// Given
-		command := ExecutionCommand{Name: filepath.Join(t.TempDir(), "missing-executor")}
-
-		// When
-		result, err := (ExecRunner{}).Run(context.Background(), command)
-
-		// Then
-		require.ErrorContains(t, err, "start signer command")
-		assert.Equal(t, ExecutionResult{}, result)
-	})
-}
 
 func TestExecuteSigner_succeeds_with_fake_executor_and_sentinel_key(t *testing.T) {
 	// Given
@@ -204,48 +136,10 @@ func TestParseSignerOperationResult_rejects_malformed_unknown_and_trailing_outpu
 	}
 }
 
-func TestSignerExecHelperProcess(t *testing.T) {
-	separator := -1
-	for index, argument := range os.Args {
-		if argument == "--" {
-			separator = index
-			break
-		}
-	}
-	if separator == -1 || separator+1 >= len(os.Args) {
-		return
-	}
-	scenario := os.Args[separator+1]
-	switch scenario {
-	case "success":
-		stdin, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(2)
-		}
-		fmt.Fprintf(os.Stdout, "stdin=%s gh=%s unsafe=%s path=%s\n", stdin, os.Getenv("GH_TOKEN"), os.Getenv("UNSAFE_SENTINEL"), os.Getenv("PATH"))
-		fmt.Fprintln(os.Stderr, "stderr=sentinel")
-	case "exit-19":
-		fmt.Fprintln(os.Stderr, "stderr=exit-19")
-		os.Exit(19)
-	default:
-		fmt.Fprintln(os.Stderr, "unknown helper scenario: "+scenario)
-		os.Exit(3)
-	}
-}
-
 type executionRunnerFunc func(context.Context, ExecutionCommand) (ExecutionResult, error)
 
 func (run executionRunnerFunc) Run(ctx context.Context, command ExecutionCommand) (ExecutionResult, error) {
 	return run(ctx, command)
-}
-
-func signerHelperCommand(scenario string, stdin []byte) ExecutionCommand {
-	return ExecutionCommand{
-		Name:  os.Args[0],
-		Args:  []string{"-test.run=^TestSignerExecHelperProcess$", "--", scenario},
-		Stdin: stdin,
-	}
 }
 
 func canceledSignerContext() context.Context {

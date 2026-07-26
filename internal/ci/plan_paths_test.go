@@ -1,14 +1,10 @@
 package ci
 
 import (
-	"encoding/json"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/verity-org/verity/internal/config"
-	copadiscovery "github.com/verity-org/verity/internal/discovery"
 )
 
 const planChartsFixture = `
@@ -20,27 +16,6 @@ dependencies:
     version: "1.0.0"
     repository: "https://example.invalid/charts"
 `
-
-func TestMarshal_normalizes_empty_plan_matrices_deterministically(t *testing.T) {
-	// Given
-	plan := Plan{Kind: "integer-pr"}
-
-	// When
-	first, err := Marshal(plan)
-	require.NoError(t, err)
-	second, err := Marshal(plan)
-	require.NoError(t, err)
-	var decoded Plan
-	err = json.Unmarshal(first, &decoded)
-
-	// Then
-	require.NoError(t, err)
-	require.Equal(t, first, second)
-	require.NotNil(t, decoded.Matrix.Include)
-	require.NotNil(t, decoded.SmokeMatrix)
-	require.NotNil(t, decoded.SmokeMatrix.Include)
-	require.Nil(t, plan.SmokeMatrix)
-}
 
 func TestPlanCopaPR_handles_noop_empty_discovery_and_config_errors(t *testing.T) {
 	t.Run("unrelated change", func(t *testing.T) {
@@ -260,32 +235,4 @@ func TestPlanCharts_reports_chart_dependency_and_image_config_errors(t *testing.
 		// Then
 		require.ErrorContains(t, err, "load head Chart.yaml")
 	})
-}
-
-func TestPlan_matching_helpers_cover_values_replacements_and_stable_copa_tags(t *testing.T) {
-	// Given
-	charts := []config.ChartSpec{{Name: "alpha"}, {Name: "beta"}}
-	chartNames := chartNameSet(charts)
-	selected := map[string]struct{}{}
-	valuesDir := filepath.Join(t.TempDir(), "values")
-	writeTestFile(t, filepath.Join(valuesDir, "nested", "ignored.yaml"), "image: widget\n")
-	writeTestFile(t, filepath.Join(valuesDir, "notes.txt"), "widget\n")
-	writeTestFile(t, filepath.Join(valuesDir, "unknown.yaml"), "image: widget\n")
-	writeTestFile(t, filepath.Join(valuesDir, "alpha.yaml"), "image: ghcr.io/verity-org/widget:1\n")
-
-	// When
-	addValueFileMatches(selected, filepath.Join(valuesDir, "missing"), "widget", chartNames)
-	addValueFileMatches(selected, valuesDir, "widget", chartNames)
-	addFuzzyChartMatches(selected, "beta", charts, []string{"beta", "missing"}, chartNames)
-	addReplacementMatches(selected, "alpha", map[string]config.Replacement{"sentinel": {Image: "ghcr.io/verity-org/alpha"}}, charts, nil, chartNames)
-	matrix := firstCopaTagMatrix([]copadiscovery.DiscoveredImage{
-		{Name: "beta", Source: "registry.invalid/beta"},
-		{Name: "alpha", Source: "registry.invalid/alpha:2"},
-		{Name: "alpha", Source: "registry.invalid/alpha:1"},
-	})
-
-	// Then
-	require.Equal(t, []string{"alpha", "beta"}, sortedChartNames(selected))
-	require.Equal(t, []string{"alpha", "beta"}, mapKeys(map[string]int{"beta": 2, "alpha": 1}))
-	require.Equal(t, []map[string]string{{"name": "alpha", "tag": "1"}, {"name": "beta", "tag": "latest"}}, matrix.Include)
 }

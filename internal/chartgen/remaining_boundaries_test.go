@@ -66,40 +66,60 @@ func Test_processChart_tolerates_packaged_archive_cleanup_failure(t *testing.T) 
 	assert.DirExists(t, fake.packagePath)
 }
 
-func Test_chartgen_mapping_helpers_cover_command_sort_and_basename_boundaries(t *testing.T) {
+func TestBuildImageMappings_returns_empty_when_image_inspection_fails(t *testing.T) {
 	// Given
 	installChartgenCommandFakes(t)
 	t.Setenv("CHARTGEN_FAKE_CRANE_MODE", "error")
 
-	// When / Then
+	// When
 	mappings, err := BuildImageMappings([]string{"quay.io/acme/mapped:1.2.3"}, "registry.invalid/patched", nil)
+
+	// Then
 	require.NoError(t, err)
 	assert.Empty(t, mappings)
+}
 
+func Test_applyReplacements_replaces_all_matching_images(t *testing.T) {
+	// Given
 	vc := &config.VerityConfig{Replacements: map[string]config.Replacement{
 		"acme/foo": {Registry: "registry.invalid", Image: "foo"},
 		"acme/bar": {Registry: "registry.invalid", Image: "bar"},
 	}}
+
+	// When
 	remaining, replacements, excluded := applyReplacements([]string{"quay.io/acme/foo:1", "quay.io/acme/bar:2"}, vc, nil)
+
+	// Then
 	assert.Empty(t, remaining)
 	assert.Len(t, replacements, 2)
 	assert.Zero(t, excluded)
-
-	assert.Equal(t, "app", nameBasename("quay.io/acme/app:1@sha256:deadbeef"))
-	assert.Equal(t, "app", nameBasename("app:1"))
-	assert.Equal(t, "app", nameBasename("app"))
 }
 
-func Test_log_and_chart_image_override_helpers_cover_empty_and_source_mismatch_paths(t *testing.T) {
-	// When / Then
-	assert.True(t, logEmptyMappingsAction(config.ChartSpec{Name: "empty", Version: "1.0.0"}, 0, 0, 0, 0))
+func Test_nameBasename_strips_registry_tag_and_digest(t *testing.T) {
+	tests := []string{"quay.io/acme/app:1@sha256:deadbeef", "app:1", "app"}
+	for _, input := range tests {
+		t.Run(input, func(t *testing.T) {
+			assert.Equal(t, "app", nameBasename(input))
+		})
+	}
+}
+
+func Test_buildChartImageOverrides_ignores_source_mismatch(t *testing.T) {
+	// When
 	got, err := buildChartImageOverrides("sentinel", []ImageMapping{{Source: "other"}}, &config.VerityConfig{
 		ChartImageOverrides: map[string][]config.ChartImageOverride{
 			"sentinel": {{Source: "wanted", Path: chartImageKey}},
 		},
 	})
+
+	// Then
 	require.NoError(t, err)
 	assert.Empty(t, got)
+}
+
+func Test_logEmptyMappingsAction_returns_true_when_all_counts_are_zero(t *testing.T) {
+	chart := config.ChartSpec{Name: "empty", Version: "1.0.0"}
+	assert.True(t, logEmptyMappingsAction(chart, 0, 0, 0, 0))
 }
 
 func Test_GetSubchartValues_reports_temp_and_collected_directory_errors(t *testing.T) {
