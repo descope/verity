@@ -123,8 +123,7 @@ func exactSameRunBuildWorkflows() []workflowFile {
 		Permissions: readOnlyPermissions(),
 		Uses:        "./.github/workflows/build-verity.yaml",
 		With: scalarMap{
-			"source_sha":            "${{ github.sha }}",
-			"protected_attestation": "false",
+			"source_sha": "${{ github.sha }}",
 		},
 	}
 	return workflows

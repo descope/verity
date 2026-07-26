@@ -122,3 +122,27 @@ func TestExtractSiteArchive_rejects_parent_traversal(t *testing.T) {
 	require.ErrorIs(t, err, ErrInvalidArchive)
 	assert.NoFileExists(t, filepath.Join(parent, "escape"))
 }
+
+func TestExtractSiteArchive_rejects_symlink_escape_beneath_output_root(t *testing.T) {
+	// Given an existing extraction root containing a symlink to an outside directory.
+	output := t.TempDir()
+	outside := t.TempDir()
+	require.NoError(t, os.Symlink(outside, filepath.Join(output, "catalog")))
+	var archive bytes.Buffer
+	writer := tar.NewWriter(&archive)
+	header := &tar.Header{
+		Name: "catalog/escape", Mode: 0o644, Size: 1, Typeflag: tar.TypeReg,
+		ModTime: archiveEpoch, Uid: 0, Gid: 0, Format: tar.FormatUSTAR,
+	}
+	require.NoError(t, writer.WriteHeader(header))
+	_, err := writer.Write([]byte("x"))
+	require.NoError(t, err)
+	require.NoError(t, writer.Close())
+
+	// When the hostile archive is extracted.
+	_, err = ExtractSiteArchive(bytes.NewReader(archive.Bytes()), output)
+
+	// Then the symlink cannot redirect an archive write outside the root.
+	require.ErrorIs(t, err, ErrInvalidArchive)
+	assert.NoFileExists(t, filepath.Join(outside, "escape"))
+}

@@ -115,8 +115,13 @@ func (activation signerActivation) safeOnPullRequest() bool {
 }
 
 func (activation signerActivation) exactAttestationProducer(stepIndex int) bool {
-	if activation.file.Name != buildVerityWorkflowName || activation.jobName != "attest" ||
-		!gatesEquivalent(activation.job.If, protectedAttestationIf) || stepIndex+1 >= len(activation.job.Steps) {
+	if activation.file.Name != protectedBuildVerityWorkflowName || activation.jobName != "attest" ||
+		stepIndex+1 >= len(activation.job.Steps) {
+		return false
+	}
+	build, exists := activation.file.Workflow.Jobs["build"]
+	if !exists || build.Uses != buildVerityWorkflowReference ||
+		!gatesEquivalent(build.If, protectedBuildGate) || !containsString(activation.job.Needs, "build") {
 		return false
 	}
 	next := &activation.job.Steps[stepIndex+1]

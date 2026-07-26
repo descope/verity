@@ -56,7 +56,7 @@ func TestPRTestWorkflow_uses_typed_read_only_secret_free_commands(t *testing.T) 
 	require.NotContains(t, string(data), "attestations:")
 
 	build := workflow.Jobs["build-verity"]
-	require.Equal(t, "false", build.With["protected_attestation"])
+	require.Equal(t, map[string]any{"source_sha": "${{ github.sha }}"}, build.With)
 
 	for name, job := range workflow.Jobs {
 		for _, step := range job.Steps {

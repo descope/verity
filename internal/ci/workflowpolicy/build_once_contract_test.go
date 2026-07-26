@@ -30,23 +30,6 @@ func TestValidateBuildOnceWorkflow_accepts_exact_fixture(t *testing.T) {
 	assert.Empty(t, violations)
 }
 
-func TestValidateBuildOnceWorkflow_allows_protected_attestation_for_schedule_callers(t *testing.T) {
-	// Given a reusable producer whose strict protected input is set by a scheduled caller.
-	data := readBuildOnceFixture(t, ".github", "workflows", "build-verity.yaml")
-	parsed, err := decodeWorkflow(data)
-	require.NoError(t, err)
-	attest, exists := parsed.Jobs["attest"]
-	require.True(t, exists)
-
-	// When the protected attestation contract is evaluated.
-	violations, err := validateBuildOnceWorkflow("build-verity.yaml", data)
-
-	// Then the producer does not suppress protected mode based on the caller event.
-	require.NoError(t, err)
-	assert.NotContains(t, normalizeExpression(attest.If), "github.event_name")
-	assert.Empty(t, violations)
-}
-
 func TestValidateBuildOnceWorkflow_rejects_security_mutation_fixtures(t *testing.T) {
 	// Given the exact workflow and named hostile mutations.
 	base := readBuildOnceFixture(t, ".github", "workflows", "build-verity.yaml")
@@ -138,9 +121,9 @@ func TestValidateDirectory_registers_build_once_repository_contract(t *testing.T
 		replacement string
 	}{
 		{
-			name:     "workflow protected default",
-			relative: filepath.Join(".github", "workflows", "build-verity.yaml"),
-			old:      "default: false", replacement: "default: true",
+			name:     "protected workflow source gate",
+			relative: filepath.Join(".github", "workflows", protectedBuildVerityWorkflowName),
+			old:      "inputs.source_sha == github.sha", replacement: "inputs.source_sha != github.sha",
 		},
 		{
 			name:     "action attestation gate",
@@ -193,8 +176,9 @@ func copyBuildOnceRepository(t *testing.T) string {
 		require.NoError(t, os.WriteFile(filepath.Join(workflowDirectory, entry.Name()), data, 0o600))
 	}
 	paths := map[string][]byte{
-		filepath.Join(".github", "workflows", "build-verity.yaml"):        readBuildOnceFixture(t, ".github", "workflows", "build-verity.yaml"),
-		filepath.Join(".github", "actions", "setup-verity", "action.yml"): readBuildOnceFixture(t, ".github", "actions", "consume-verity", "action.yml"),
+		filepath.Join(".github", "workflows", "build-verity.yaml"):              readBuildOnceFixture(t, ".github", "workflows", "build-verity.yaml"),
+		filepath.Join(".github", "workflows", protectedBuildVerityWorkflowName): readBuildOnceFixture(t, ".github", "workflows", protectedBuildVerityWorkflowName),
+		filepath.Join(".github", "actions", "setup-verity", "action.yml"):       readBuildOnceFixture(t, ".github", "actions", "consume-verity", "action.yml"),
 	}
 	for relative, data := range paths {
 		path := filepath.Join(root, relative)

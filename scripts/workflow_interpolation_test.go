@@ -122,7 +122,7 @@ func TestIntegerBuildWorkflowReadsMetadataThroughVerity(t *testing.T) {
 
 	// Then: the wrapper delegates to the reusable implementation, where metadata
 	// resolution uses declared-name lookup in the Go CLI.
-	assert.Contains(t, wrapper, "uses: ./.github/workflows/build-verity.yaml")
+	assert.Contains(t, wrapper, "uses: ./.github/workflows/build-verity-protected.yaml")
 	assert.Contains(t, wrapper, "uses: ./.github/workflows/integer-build-image-reusable.yaml")
 	assert.Contains(t, wrapper, "verity_artifact_name: ${{ needs.build-verity.outputs.artifact-name }}")
 	assert.Contains(t, reusable, `./verity integer metadata`)

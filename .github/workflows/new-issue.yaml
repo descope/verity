@@ -11,13 +11,13 @@ jobs:
     name: Build Verity once
     if: contains(github.event.issue.labels.*.name, 'new-image')
     permissions:
+      actions: read
       attestations: write
       contents: read
       id-token: write
-    uses: ./.github/workflows/build-verity.yaml
+    uses: ./.github/workflows/build-verity-protected.yaml
     with:
       source_sha: ${{ github.sha }}
-      protected_attestation: "true"
 
   add-image:
     name: Add Image to copa-config.yaml

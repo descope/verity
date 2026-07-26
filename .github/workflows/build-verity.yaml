@@ -7,11 +7,6 @@ on:
         description: Exact source commit to build
         required: true
         type: string
-      protected_attestation:
-        description: Attest only on an authorized protected ref
-        required: false
-        type: boolean
-        default: false
     outputs:
       artifact-name:
         description: Immutable Verity artifact name
@@ -76,33 +71,3 @@ jobs:
           compression-level: "0"
           overwrite: "false"
           include-hidden-files: "false"
-
-  attest:
-    if: ${{ inputs.protected_attestation && github.repository == 'verity-org/verity' && github.ref_protected }}
-    needs: build
-    runs-on: ubuntu-24.04
-    permissions:
-      actions: read
-      contents: read
-      id-token: write
-      attestations: write
-    steps:
-      - name: Check out exact source
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          ref: ${{ inputs.source_sha }}
-          persist-credentials: "false"
-
-      - name: Recover exact built binary
-        uses: ./.github/actions/setup-verity
-        with:
-          artifact-name: ${{ needs.build.outputs.artifact-name }}
-          artifact-digest: ${{ needs.build.outputs.artifact-digest }}
-          source-sha: ${{ inputs.source_sha }}
-          build-key: ${{ needs.build.outputs.build-key }}
-          verify-attestation: "false"
-
-      - name: Attest exact Verity binary
-        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
-        with:
-          subject-path: verity

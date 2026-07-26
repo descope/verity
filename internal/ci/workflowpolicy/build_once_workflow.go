@@ -10,7 +10,6 @@ import (
 const (
 	buildVerityWorkflowName = "build-verity.yaml"
 	buildVerityCommand      = "go run ./.github/actions/setup-verity/cmd/setup-verity build"
-	protectedAttestationIf  = "${{inputs.protected_attestation&&github.repository=='verity-org/verity'&&github.ref_protected}}"
 )
 
 type rawWorkflowCallInput struct {
@@ -51,10 +50,7 @@ func validateBuildOnceSurface(file *workflowFile, data []byte) []Violation {
 	if err != nil {
 		violations = append(violations, buildOnceViolation(file.Name, "", "workflow_call inputs must be canonical"))
 	} else if triggerCount != 1 || !exactBuildOnceInputs(inputs) {
-		violations = append(violations, buildOnceViolation(file.Name, "", "workflow_call inputs must be required source_sha and optional protected_attestation"))
-	}
-	if input := inputs["protected_attestation"]; input.Default == nil || *input.Default {
-		violations = append(violations, buildOnceViolation(file.Name, "", "protected attestation default must remain false"))
+		violations = append(violations, buildOnceViolation(file.Name, "", "workflow_call must accept only required source_sha"))
 	}
 	if len(file.Workflow.On.WorkflowSecrets) != 0 {
 		violations = append(violations, buildOnceViolation(file.Name, "", "build-once workflow must not accept secrets"))
@@ -86,13 +82,11 @@ func decodeBuildOnceInputs(data []byte) (inputs map[string]rawWorkflowCallInput,
 }
 
 func exactBuildOnceInputs(inputs map[string]rawWorkflowCallInput) bool {
-	if len(inputs) != 2 {
+	if len(inputs) != 1 {
 		return false
 	}
 	source, sourceExists := inputs["source_sha"]
-	protected, protectedExists := inputs["protected_attestation"]
-	return sourceExists && source.Required && source.Type == "string" && source.Default == nil &&
-		protectedExists && !protected.Required && protected.Type == "boolean"
+	return sourceExists && source.Required && source.Type == "string" && source.Default == nil
 }
 
 func exactBuildOnceOutputs(outputs map[string]workflowCallOutput) bool {
@@ -107,20 +101,14 @@ func exactBuildOnceOutputs(outputs map[string]workflowCallOutput) bool {
 
 func validateBuildOnceJobs(file *workflowFile) []Violation {
 	var violations []Violation
-	if len(file.Workflow.Jobs) != 2 {
-		violations = append(violations, buildOnceViolation(file.Name, "", "build-once workflow must contain only build and attest jobs"))
+	if len(file.Workflow.Jobs) != 1 {
+		violations = append(violations, buildOnceViolation(file.Name, "", "build-once workflow must contain only the unprivileged build job"))
 	}
 	build, buildExists := file.Workflow.Jobs["build"]
-	attest, attestExists := file.Workflow.Jobs["attest"]
 	if !buildExists || !buildOnceReadPermissions(build.Permissions) {
 		violations = append(violations, buildOnceViolation(file.Name, "build", "build job must remain contents-read only"))
 	} else {
 		violations = append(violations, validateBuildJob(file.Name, &build)...)
-	}
-	if !attestExists {
-		violations = append(violations, buildOnceViolation(file.Name, "attest", "protected attestation job is required"))
-	} else {
-		violations = append(violations, validateAttestJob(file.Name, &attest)...)
 	}
 	return violations
 }
@@ -200,46 +188,6 @@ func exactBuildUpload(steps []workflowStep) bool {
 			step.With["overwrite"] == "false" && step.With["include-hidden-files"] == "false"
 	}
 	return false
-}
-
-func validateAttestJob(name string, job *workflowJob) []Violation {
-	var violations []Violation
-	if normalizeExpression(job.If) != protectedAttestationIf {
-		violations = append(violations, buildOnceViolation(name, "attest", "protected attestation gate must bind the strict input and exclude forks and unprotected refs"))
-	}
-	if len(job.Needs) != 1 || job.Needs[0] != "build" {
-		violations = append(violations, buildOnceViolation(name, "attest", "attestation must depend only on the completed build"))
-	}
-	expected := map[permissionScope]permissionLevel{
-		actionsScope: permissionRead, contentsScope: permissionRead,
-		idTokenScope: permissionWrite, attestationsScope: permissionWrite,
-	}
-	if !buildOnceExactPermissions(job.Permissions, expected) {
-		violations = append(violations, buildOnceViolation(name, "attest", "id-token and attestations writes must exist only on the protected attestation job"))
-	}
-	if !exactAttestationSteps(job.Steps) {
-		violations = append(violations, buildOnceViolation(name, "attest", "attestation must consume and attest the exact built binary"))
-	}
-	return violations
-}
-
-func exactAttestationSteps(steps []workflowStep) bool {
-	setupFound := false
-	attestFound := false
-	for index := range steps {
-		step := &steps[index]
-		switch actionName(step.Uses) {
-		case "./.github/actions/setup-verity":
-			setupFound = normalizeExpression(step.With["artifact-name"]) == "${{needs.build.outputs.artifact-name}}" &&
-				normalizeExpression(step.With["artifact-digest"]) == "${{needs.build.outputs.artifact-digest}}" &&
-				normalizeExpression(step.With["source-sha"]) == "${{inputs.source_sha}}" &&
-				normalizeExpression(step.With["build-key"]) == "${{needs.build.outputs.build-key}}" &&
-				step.With["verify-attestation"] == "false"
-		case "actions/attest-build-provenance":
-			attestFound = step.With["subject-path"] == "verity"
-		}
-	}
-	return setupFound && attestFound
 }
 
 func buildOnceReadPermissions(value permissions) bool {

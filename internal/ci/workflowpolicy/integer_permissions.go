@@ -16,7 +16,7 @@ type integerPermissionDelegation struct {
 var integerPermissionDelegations = []integerPermissionDelegation{
 	{
 		identity: workflowJobIdentity{workflow: "integer-orchestrator.yaml", job: "build-verity"},
-		uses:     "./.github/workflows/build-verity.yaml",
+		uses:     protectedBuildVerityWorkflowReference,
 		scopes:   []permissionScope{idTokenScope, attestationsScope},
 	},
 	{
@@ -26,7 +26,7 @@ var integerPermissionDelegations = []integerPermissionDelegation{
 	},
 	{
 		identity: workflowJobIdentity{workflow: "integer-build-image.yaml", job: "build-verity"},
-		uses:     "./.github/workflows/build-verity.yaml",
+		uses:     protectedBuildVerityWorkflowReference,
 		scopes:   []permissionScope{idTokenScope, attestationsScope},
 	},
 	{
@@ -49,12 +49,12 @@ var integerPermissionDelegations = []integerPermissionDelegation{
 var publicationPermissionDelegations = []integerPermissionDelegation{
 	{
 		identity: workflowJobIdentity{workflow: buildSiteWorkflowName, job: "build-verity"},
-		uses:     "./.github/workflows/build-verity.yaml",
+		uses:     protectedBuildVerityWorkflowReference,
 		scopes:   []permissionScope{idTokenScope, attestationsScope},
 	},
 	{
 		identity: workflowJobIdentity{workflow: "new-issue.yaml", job: "build-verity"},
-		uses:     "./.github/workflows/build-verity.yaml",
+		uses:     protectedBuildVerityWorkflowReference,
 		scopes:   []permissionScope{idTokenScope, attestationsScope},
 	},
 	{
@@ -69,17 +69,17 @@ var publicationPermissionDelegations = []integerPermissionDelegation{
 	},
 	{
 		identity: workflowJobIdentity{workflow: "integer-sync.yaml", job: "build-verity"},
-		uses:     "./.github/workflows/build-verity.yaml",
+		uses:     protectedBuildVerityWorkflowReference,
 		scopes:   []permissionScope{idTokenScope, attestationsScope},
 	},
 	{
 		identity: workflowJobIdentity{workflow: "orchestrator.yaml", job: "build-verity"},
-		uses:     "./.github/workflows/build-verity.yaml",
+		uses:     protectedBuildVerityWorkflowReference,
 		scopes:   []permissionScope{idTokenScope, attestationsScope},
 	},
 	{
 		identity: workflowJobIdentity{workflow: "patch-image.yaml", job: "build-verity"},
-		uses:     "./.github/workflows/build-verity.yaml",
+		uses:     protectedBuildVerityWorkflowReference,
 		scopes:   []permissionScope{idTokenScope, attestationsScope},
 	},
 	{

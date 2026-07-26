@@ -89,9 +89,9 @@ func expectedPermissionDelegations() []integerPermissionDelegation {
 		uses     string
 		packages bool
 	}{
-		{workflow: "integer-orchestrator.yaml", job: "build-verity", uses: "./.github/workflows/build-verity.yaml"},
+		{workflow: "integer-orchestrator.yaml", job: "build-verity", uses: protectedBuildVerityWorkflowReference},
 		{workflow: "integer-orchestrator.yaml", job: "orchestrate", uses: integerOrchestratorReference, packages: true},
-		{workflow: "integer-build-image.yaml", job: "build-verity", uses: "./.github/workflows/build-verity.yaml"},
+		{workflow: "integer-build-image.yaml", job: "build-verity", uses: protectedBuildVerityWorkflowReference},
 		{workflow: "integer-build-image.yaml", job: "build", uses: integerImageWorkflowReference, packages: true},
 		{workflow: "integer-orchestrator-reusable.yaml", job: "build-shards", uses: integerShardWorkflowReference, packages: true},
 		{workflow: "integer-build-shard.yaml", job: "build", uses: integerImageWorkflowReference, packages: true},

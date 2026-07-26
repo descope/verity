@@ -12,7 +12,7 @@ const (
 	setupVerityCommand  = "go run ./.github/actions/setup-verity/cmd/setup-verity"
 	setupDownloadPath   = "${{ runner.temp }}/setup-verity/${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/download"
 	setupArtifactPath   = "${{ runner.temp }}/setup-verity/${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/artifact"
-	setupSignerWorkflow = "github.com/verity-org/verity/.github/workflows/build-verity.yaml"
+	setupSignerWorkflow = "github.com/verity-org/verity/.github/workflows/build-verity-protected.yaml"
 )
 
 type setupActionInput struct {

@@ -67,7 +67,7 @@ func TestIntegerBuildWorkflowUsesCanonicalVerityArtifact(t *testing.T) {
 	reusable := string(reusableData)
 
 	// Then
-	assert.Equal(t, 1, strings.Count(wrapper, "uses: ./.github/workflows/build-verity.yaml"))
+	assert.Equal(t, 1, strings.Count(wrapper, "uses: ./.github/workflows/build-verity-protected.yaml"))
 	assert.Contains(t, wrapper, "needs: build-verity")
 	assert.Contains(t, wrapper, "uses: ./.github/workflows/integer-build-image-reusable.yaml")
 	assert.Contains(t, reusable, "uses: ./.github/actions/setup-verity")

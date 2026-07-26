@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-const integerBuildVerityReference = "./.github/workflows/build-verity.yaml"
+const integerBuildVerityReference = protectedBuildVerityWorkflowReference
 
 type integerDirectWrapperSpec struct {
 	name              string
@@ -80,7 +80,7 @@ func validateIntegerDirectWrapperJobs(file *workflowFile, spec integerDirectWrap
 	}
 	builder, builderExists := file.Workflow.Jobs["build-verity"]
 	if !builderExists || builder.Uses != integerBuildVerityReference || !hasSuccessSemantics(builder.If) ||
-		normalizeExpression(builder.With["source_sha"]) != "${{github.sha}}" || builder.With["protected_attestation"] != "true" {
+		normalizeExpression(builder.With["source_sha"]) != "${{github.sha}}" || len(builder.With) != 1 {
 		violations = append(violations, integerViolation(spec.name, "build-verity", "direct wrapper must build protected Verity exactly once"))
 	}
 	implementation, implementationExists := file.Workflow.Jobs[spec.implementationJob]

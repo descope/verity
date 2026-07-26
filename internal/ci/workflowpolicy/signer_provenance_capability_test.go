@@ -66,19 +66,27 @@ func TestValidateSignerProvenance_accepts_protected_only_secret_and_signing_step
 
 func TestValidateSignerProvenance_accepts_exact_first_party_attestation_producer(t *testing.T) {
 	// Given the first-party job that recovers a complete same-run artifact immediately before attesting it.
-	workflows := []workflowFile{{Name: buildVerityWorkflowName, Workflow: workflow{
+	workflows := []workflowFile{{Name: protectedBuildVerityWorkflowName, Workflow: workflow{
 		On:          triggers{WorkflowCall: true},
-		Permissions: readOnlyPermissions(),
-		Jobs: map[string]workflowJob{"attest": {
-			If: protectedAttestationIf,
-			Permissions: permissions{declared: true, scopes: map[permissionScope]permissionLevel{
-				contentsScope: permissionRead, idTokenScope: permissionWrite, attestationsScope: permissionWrite,
-			}},
-			Steps: []workflowStep{
-				setupVerityStep("false"),
-				{Uses: "actions/attest-build-provenance@1111111111111111111111111111111111111111", With: scalarMap{"subject-path": "verity"}},
+		Permissions: permissions{declared: true, all: permissionNone},
+		Jobs: map[string]workflowJob{
+			"build": {
+				If:          protectedBuildGate,
+				Uses:        buildVerityWorkflowReference,
+				Permissions: readOnlyPermissions(),
 			},
-		}},
+			"attest": {
+				Needs: stringList{"build"},
+				Permissions: permissions{declared: true, scopes: map[permissionScope]permissionLevel{
+					actionsScope: permissionRead, contentsScope: permissionRead,
+					idTokenScope: permissionWrite, attestationsScope: permissionWrite,
+				}},
+				Steps: []workflowStep{
+					setupVerityStep("false"),
+					{Uses: "actions/attest-build-provenance@1111111111111111111111111111111111111111", With: scalarMap{"subject-path": "verity"}},
+				},
+			},
+		},
 	}}}
 
 	// When signer provenance policy evaluates the attestation issuer.

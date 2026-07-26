@@ -18,6 +18,7 @@ func evaluatePolicies(directory string, workflows []workflowFile) []Violation {
 	violations = append(violations, validateZeroCVEOrdering(workflows)...)
 	violations = append(violations, validateLocalVerityBuildPolicy(directory, workflows)...)
 	violations = append(violations, validateBuildOnceDirectory(directory, workflows)...)
+	violations = append(violations, validatePublicationRollout(directory, workflows)...)
 	return violations
 }
 

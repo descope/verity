@@ -36,6 +36,12 @@ Rules:
 
 ## Build and publish flow
 
+The production schedule and `main` push trigger remain disabled during signer
+bootstrap. First merge the inert build and publication machinery, build the
+signer from protected `main`, require its zero-CVE scan and GitHub provenance,
+and commit its immutable digest and source SHA with `runnable: true`. The final
+cutover enables automatic publication only after that lock is reviewable.
+
 The intended implementation sequence is:
 
 1. Build a complete candidate from the exact successful scheduled Integer batch.

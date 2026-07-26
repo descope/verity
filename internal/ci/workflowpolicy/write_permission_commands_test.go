@@ -75,7 +75,7 @@ func TestValidatePermissions_accepts_exact_new_issue_build_Verity_delegation(t *
 				Permissions: permissions{declared: true, scopes: map[permissionScope]permissionLevel{}},
 				Jobs: map[string]workflowJob{
 					"build-verity": {
-						Uses: "./.github/workflows/build-verity.yaml",
+						Uses: protectedBuildVerityWorkflowReference,
 						Permissions: permissions{declared: true, scopes: map[permissionScope]permissionLevel{
 							idTokenScope: permissionWrite, attestationsScope: permissionWrite,
 						}},
@@ -84,7 +84,7 @@ func TestValidatePermissions_accepts_exact_new_issue_build_Verity_delegation(t *
 			},
 		},
 		{
-			Name: "build-verity.yaml",
+			Name: protectedBuildVerityWorkflowName,
 			Workflow: workflow{
 				On:          triggers{WorkflowCall: true},
 				Permissions: readOnlyPermissions(),

@@ -19,7 +19,7 @@ func TestIntegerNightlyWorkflowDispatchesEveryBoundedShard(t *testing.T) {
 	reusable := string(reusableData)
 
 	// Then: the wrapper supplies the canonical Verity artifact to the reusable caller.
-	assert.Contains(t, parent, "uses: ./.github/workflows/build-verity.yaml")
+	assert.Contains(t, parent, "uses: ./.github/workflows/build-verity-protected.yaml")
 	assert.Contains(t, parent, "needs: build-verity")
 	assert.Contains(t, parent, "uses: ./.github/workflows/integer-orchestrator-reusable.yaml")
 	assert.Contains(t, parent, "event: ${{ github.event_name }}")
@@ -77,7 +77,7 @@ func TestIntegerNightlyWorkflowAggregatesChildFailuresAndPublishesExactManifest(
 	child := string(childData)
 
 	// Then: the parent delegates execution and never owns a local aggregator.
-	assert.Contains(t, parent, "uses: ./.github/workflows/build-verity.yaml")
+	assert.Contains(t, parent, "uses: ./.github/workflows/build-verity-protected.yaml")
 	assert.Contains(t, parent, "uses: ./.github/workflows/integer-orchestrator-reusable.yaml")
 	assert.Contains(t, parent, "verity_artifact_digest: ${{ needs.build-verity.outputs.artifact-digest }}")
 	assert.NotContains(t, parent, "aggregate-integer-results.sh")

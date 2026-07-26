@@ -34,6 +34,15 @@ func validateBuildOnceRepository(root string) ([]Violation, error) {
 	if err != nil {
 		return nil, err
 	}
+	protectedPath := filepath.Join(root, ".github", "workflows", protectedBuildVerityWorkflowName)
+	protectedData, err := os.ReadFile(protectedPath)
+	if err != nil {
+		return nil, fmt.Errorf("read protected build workflow %q: %w", protectedPath, err)
+	}
+	protectedViolations, err := validateProtectedBuildWorkflow(filepath.Base(protectedPath), protectedData)
+	if err != nil {
+		return nil, err
+	}
 
 	actionPath := filepath.Join(root, ".github", "actions", "setup-verity", "action.yml")
 	actionData, err := os.ReadFile(actionPath)
@@ -45,7 +54,9 @@ func validateBuildOnceRepository(root string) ([]Violation, error) {
 		return nil, err
 	}
 
-	return append(workflowViolations, actionViolations...), nil
+	violations := append([]Violation{}, workflowViolations...)
+	violations = append(violations, protectedViolations...)
+	return append(violations, actionViolations...), nil
 }
 
 func buildOnceViolation(name, job, detail string) Violation {
