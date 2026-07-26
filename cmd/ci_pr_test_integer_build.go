@@ -20,7 +20,7 @@ func runPRMelangeBuild(
 	staged bool,
 ) error {
 	args := []string{
-		"integer", "melange", "build", "--image", entry.Image, "--version", entry.Version,
+		integerCommandName, "melange", "build", "--image", entry.Image, "--version", entry.Version,
 		"--type", entry.Type, "--arch", request.PackageArchitecture,
 	}
 	if staged {
@@ -97,7 +97,7 @@ func runPRIntegerBuild(
 	_, err := runPRIntegerCommand(ctx, deps, &prCommandRequest{
 		Name: request.VerityPath, Dir: request.RepoRoot,
 		Args: []string{
-			"integer", "build", "--image", entry.Image, "--version", entry.Version,
+			integerCommandName, "build", "--image", entry.Image, "--version", entry.Version,
 			"--type", entry.Type, "--output", tarPath, "--arch", request.Architecture,
 			"--fail-on-severity", prIntegerSeverities,
 		},

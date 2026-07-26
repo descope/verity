@@ -15,32 +15,32 @@ type integerSurface struct {
 var integerSurfaces = map[string]integerSurface{
 	"integer-orchestrator-reusable.yaml": {
 		inputs: map[string]string{
-			"source_sha": "string", "verity_artifact_name": "string", "verity_artifact_digest": "string", "verity_build_key": "string",
-			"run_id": "string", "run_attempt": "string", "publication_id": "string", "batch_id": "string",
-			"event": "string",
+			"source_sha": workflowInputStringType, "verity_artifact_name": workflowInputStringType, "verity_artifact_digest": workflowInputStringType, "verity_build_key": workflowInputStringType,
+			"run_id": workflowInputStringType, "run_attempt": workflowInputStringType, "publication_id": workflowInputStringType, "batch_id": workflowInputStringType,
+			"event": workflowInputStringType,
 		},
-		optionalInputs: map[string]string{"base_sha": "string", "image": "string"},
+		optionalInputs: map[string]string{"base_sha": workflowInputStringType, "image": workflowInputStringType},
 		outputs:        []string{"manifest_artifact_name", "manifest_artifact_digest"}, outputJob: "aggregate",
 	},
 	"integer-build-shard.yaml": {
 		inputs: map[string]string{
-			"source_sha": "string", "verity_artifact_name": "string", "verity_artifact_digest": "string", "verity_build_key": "string",
-			"run_id": "string", "run_attempt": "string", "publication_id": "string", "batch_id": "string",
-			"event": "string", "mode": "string", "shard": "string", "entries": "string",
-			"component_count": "number", "plan_artifact_name": "string", "plan_artifact_digest": "string",
+			"source_sha": workflowInputStringType, "verity_artifact_name": workflowInputStringType, "verity_artifact_digest": workflowInputStringType, "verity_build_key": workflowInputStringType,
+			"run_id": workflowInputStringType, "run_attempt": workflowInputStringType, "publication_id": workflowInputStringType, "batch_id": workflowInputStringType,
+			"event": workflowInputStringType, "mode": workflowInputStringType, "shard": workflowInputStringType, "entries": workflowInputStringType,
+			"component_count": "number", "plan_artifact_name": workflowInputStringType, "plan_artifact_digest": workflowInputStringType,
 		},
 		outputs:   []string{"manifest_artifact_name", "manifest_artifact_digest", "package_artifact_name", "package_artifact_digest"},
 		outputJob: "aggregate",
 	},
 	"integer-build-image-reusable.yaml": {
 		inputs: map[string]string{
-			"source_sha": "string", "verity_artifact_name": "string", "verity_artifact_digest": "string", "verity_build_key": "string",
-			"run_id": "string", "run_attempt": "string", "publication_id": "string", "batch_id": "string",
-			"event": "string", "mode": "string", "shard": "string", "image": "string", "version": "string", "type": "string",
-			"tags": "string", "registry": "string", "expected_packages": "string", "publish_packages": "string",
-			"artifact_key": "string",
+			"source_sha": workflowInputStringType, "verity_artifact_name": workflowInputStringType, "verity_artifact_digest": workflowInputStringType, "verity_build_key": workflowInputStringType,
+			"run_id": workflowInputStringType, "run_attempt": workflowInputStringType, "publication_id": workflowInputStringType, "batch_id": workflowInputStringType,
+			"event": workflowInputStringType, "mode": workflowInputStringType, "shard": workflowInputStringType, "image": workflowInputStringType, "version": workflowInputStringType, "type": workflowInputStringType,
+			"tags": workflowInputStringType, "registry": workflowInputStringType, "expected_packages": workflowInputStringType, "publish_packages": workflowInputStringType,
+			"artifact_key": workflowInputStringType,
 		},
-		optionalInputs: map[string]string{"plan_artifact_name": "string", "plan_artifact_digest": "string"},
+		optionalInputs: map[string]string{"plan_artifact_name": workflowInputStringType, "plan_artifact_digest": workflowInputStringType},
 		outputs:        []string{"artifact_name", "artifact_digest"}, outputJob: "build",
 	},
 }

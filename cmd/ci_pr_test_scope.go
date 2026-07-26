@@ -48,7 +48,7 @@ func runCIPrScope(ctx context.Context, command *cli.Command) error {
 	}
 	scope := classifyPRTestPaths(paths)
 	if err := appendPRGitHubValues(command.String("github-output"), [][2]string{
-		{"integer", strconv.FormatBool(scope.Integer)},
+		{integerCommandName, strconv.FormatBool(scope.Integer)},
 		{"copa", strconv.FormatBool(scope.Copa)},
 	}); err != nil {
 		return err

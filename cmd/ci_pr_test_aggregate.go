@@ -23,7 +23,7 @@ func newCIPrAggregateCommand() *cli.Command {
 		Usage: "Require exact PR job results and native Integer security evidence",
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "changes-result", Required: true},
-			&cli.StringFlag{Name: "integer", Required: true}, &cli.StringFlag{Name: "copa", Required: true},
+			&cli.StringFlag{Name: integerCommandName, Required: true}, &cli.StringFlag{Name: "copa", Required: true},
 			&cli.StringFlag{Name: "discover-result", Required: true}, &cli.StringFlag{Name: "validate-result", Required: true},
 			&cli.StringFlag{Name: "detect-integer-result", Required: true}, &cli.StringFlag{Name: "integer-has-changes", Required: true},
 			&cli.StringFlag{Name: "integer-smoke-result", Required: true}, &cli.StringFlag{Name: "integer-build-result", Required: true},
@@ -37,7 +37,7 @@ func newCIPrAggregateCommand() *cli.Command {
 }
 
 func runCIPrAggregate(_ context.Context, command *cli.Command) error {
-	integer, err := parsePRBool("integer", command.String("integer"))
+	integer, err := parsePRBool(integerCommandName, command.String(integerCommandName))
 	if err != nil {
 		return err
 	}

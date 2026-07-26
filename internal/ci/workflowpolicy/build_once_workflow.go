@@ -86,7 +86,7 @@ func exactBuildOnceInputs(inputs map[string]rawWorkflowCallInput) bool {
 		return false
 	}
 	source, sourceExists := inputs["source_sha"]
-	return sourceExists && source.Required && source.Type == "string" && source.Default == nil
+	return sourceExists && source.Required && source.Type == workflowInputStringType && source.Default == nil
 }
 
 func exactBuildOnceOutputs(outputs map[string]workflowCallOutput) bool {

@@ -19,6 +19,7 @@ type prIntegerBatchKind string
 const (
 	prIntegerBatchSmoke prIntegerBatchKind = "smoke"
 	prIntegerBatchBuild prIntegerBatchKind = "build"
+	prVerityFlagName                       = "verity"
 )
 
 type prIntegerBatchRequest struct {
@@ -72,7 +73,7 @@ func newCIPrIntegerBatchCommand() *cli.Command {
 			&cli.StringFlag{Name: "runner-temp", Value: os.TempDir()},
 			&cli.StringFlag{Name: "security-dir", Value: "integer-security"},
 			&cli.StringFlag{Name: "reports-dir", Value: "trivy-reports"},
-			&cli.StringFlag{Name: "verity", Value: "./verity"},
+			&cli.StringFlag{Name: prVerityFlagName, Value: "./verity"},
 		},
 		Action: runCIPrIntegerBatch,
 	}
@@ -119,7 +120,7 @@ func newPRIntegerBatchRequest(command *cli.Command) (prIntegerBatchRequest, erro
 		Kind: kind, Entries: entries, Architecture: arch, PackageArchitecture: packageArch,
 		RepoRoot: filepath.Clean(command.String("repo-root")), RunnerTemp: filepath.Clean(command.String("runner-temp")),
 		SecurityDir: filepath.Clean(command.String("security-dir")), ReportsDir: filepath.Clean(command.String("reports-dir")),
-		VerityPath: command.String("verity"),
+		VerityPath: command.String(prVerityFlagName),
 	}, nil
 }
 

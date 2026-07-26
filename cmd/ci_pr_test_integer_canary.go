@@ -22,7 +22,7 @@ func runPRLinkerdCanary(
 	genDir := filepath.Join(request.RepoRoot, "pin-config-gen")
 	if _, err := runPRIntegerCommand(ctx, deps, &prCommandRequest{
 		Name: request.VerityPath, Dir: request.RepoRoot,
-		Args: []string{"integer", "discover", "--apkindex-url", "", "--gen-dir", genDir},
+		Args: []string{integerCommandName, "discover", "--apkindex-url", "", "--gen-dir", genDir},
 	}); err != nil {
 		return fmt.Errorf("discover pin-config canary: %w", err)
 	}
@@ -30,7 +30,7 @@ func runPRLinkerdCanary(
 	if _, err := runPRIntegerCommand(ctx, deps, &prCommandRequest{
 		Name: request.VerityPath, Dir: request.RepoRoot,
 		Args: []string{
-			"integer", "melange", "pin-config", "--config", config,
+			integerCommandName, "melange", "pin-config", "--config", config,
 			"--repository", "packages/repo", "--arch", request.PackageArchitecture,
 		},
 	}); err != nil {

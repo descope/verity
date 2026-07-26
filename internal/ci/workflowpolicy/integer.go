@@ -97,7 +97,7 @@ func validateWorkflowCallIdentityInputs(file *workflowFile, names []string) []Vi
 	var violations []Violation
 	for _, name := range names {
 		input, present := file.Workflow.On.WorkflowInputs[name]
-		if !file.Workflow.On.WorkflowCall || !present || !input.Required || input.Type != "string" {
+		if !file.Workflow.On.WorkflowCall || !present || !input.Required || input.Type != workflowInputStringType {
 			violations = append(violations, Violation{
 				Rule: RuleProducerIdentity, Workflow: file.Name,
 				Detail: fmt.Sprintf("workflow_call input %q must be a required string", name),

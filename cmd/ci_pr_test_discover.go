@@ -20,7 +20,7 @@ func newCIPrDiscoverCommand() *cli.Command {
 			&cli.StringFlag{Name: "config", Value: "copa-config.yaml"},
 			&cli.StringFlag{Name: "target-registry"},
 			&cli.StringFlag{Name: "output", Value: "images.json"},
-			&cli.StringFlag{Name: "verity", Value: "./verity"},
+			&cli.StringFlag{Name: prVerityFlagName, Value: "./verity"},
 			&cli.StringFlag{Name: "repo-root", Value: "."},
 		},
 		Action: runCIPrDiscover,
@@ -33,7 +33,7 @@ func runCIPrDiscover(ctx context.Context, command *cli.Command) error {
 		args = append(args, "--target-registry", registry)
 	}
 	result, err := requirePRCommand(ctx, &prCommandRequest{
-		Name:   command.String("verity"),
+		Name:   command.String(prVerityFlagName),
 		Args:   args,
 		Dir:    command.String("repo-root"),
 		Stderr: command.ErrWriter,
