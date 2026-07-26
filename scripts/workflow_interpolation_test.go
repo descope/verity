@@ -103,9 +103,9 @@ func TestPRWorkflowExercisesProductionPinningOnLinkerdCanary(t *testing.T) {
 	require.NoError(t, err)
 	workflow := string(data)
 
-	// Then: each architecture uses its native runner and the typed build batch
-	// owns the Linkerd production package-pinning canary.
-	assert.NotContains(t, workflow, "docker/setup-qemu-action")
+	// Then: the typed native-architecture build batch owns the Linkerd
+	// production package-pinning canary. QEMU only activates the canonical
+	// AMD64 Verity binary before this command executes on ARM64.
 	assert.Contains(t, workflow, "./verity ci pr-test integer-batch")
 	assert.Contains(t, workflow, "--kind build")
 	assert.NotContains(t, workflow, `if [ "$image" = linkerd ]`)

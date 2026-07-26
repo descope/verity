@@ -189,6 +189,14 @@ jobs:
           ref: ${{ needs.build-verity.outputs.source-sha }}
           persist-credentials: "false"
 
+      - name: Enable linux/amd64 Verity on ARM64
+        if: matrix.arch == 'arm64'
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+        with:
+          image: docker.io/tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0
+          platforms: amd64
+          cache-image: "false"
+
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
@@ -344,6 +352,14 @@ jobs:
         with:
           ref: ${{ needs.build-verity.outputs.source-sha }}
           persist-credentials: "false"
+
+      - name: Enable linux/amd64 Verity on ARM64
+        if: matrix.arch == 'arm64'
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+        with:
+          image: docker.io/tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0
+          platforms: amd64
+          cache-image: "false"
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0

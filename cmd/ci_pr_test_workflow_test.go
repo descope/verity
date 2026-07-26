@@ -67,3 +67,35 @@ func TestPRTestWorkflow_uses_typed_read_only_secret_free_commands(t *testing.T) 
 		}
 	}
 }
+
+func TestPRTestWorkflow_enablesAMD64Verity_beforeARM64IntegerJobs(t *testing.T) {
+	// Given the real pull-request workflow and its native-architecture Integer jobs.
+	path := filepath.Join("..", ".github", "workflows", "pr-test.yaml")
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	var workflow prWorkflowContract
+	require.NoError(t, yaml.Unmarshal(data, &workflow))
+
+	for _, jobName := range []string{"integer-smoke-test", "integer-build-changed"} {
+		job := workflow.Jobs[jobName]
+		qemuIndex := -1
+		setupIndex := -1
+
+		// When the architecture bootstrap order is inspected.
+		for index, step := range job.Steps {
+			switch {
+			case strings.HasPrefix(step.Uses, "docker/setup-qemu-action@"):
+				qemuIndex = index
+				require.Equal(t, "docker.io/tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0", step.With["image"], jobName)
+				require.Equal(t, "amd64", step.With["platforms"], jobName)
+			case step.Uses == "./.github/actions/setup-verity":
+				setupIndex = index
+			}
+		}
+
+		// Then ARM64 runners can execute the canonical AMD64 binary before its first use.
+		require.NotEqual(t, -1, qemuIndex, jobName)
+		require.NotEqual(t, -1, setupIndex, jobName)
+		require.Less(t, qemuIndex, setupIndex, jobName)
+	}
+}
