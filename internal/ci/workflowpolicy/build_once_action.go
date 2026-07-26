@@ -64,7 +64,7 @@ func validateSetupActionSurface(name string, action *setupAction) []Violation {
 }
 
 func exactSetupInputs(inputs map[string]setupActionInput) bool {
-	if len(inputs) != 5 {
+	if len(inputs) != 6 {
 		return false
 	}
 	for _, name := range []string{"artifact-name", "artifact-digest", "source-sha", "build-key"} {
@@ -74,7 +74,9 @@ func exactSetupInputs(inputs map[string]setupActionInput) bool {
 		}
 	}
 	verify, exists := inputs["verify-attestation"]
-	return exists && !verify.Required && verify.Default == "false"
+	producer, producerExists := inputs["protected-producer"]
+	return exists && !verify.Required && verify.Default == "false" &&
+		producerExists && !producer.Required && producer.Default == "false"
 }
 
 func validateSetupActionSteps(name string, steps []workflowStep) []Violation {
@@ -114,6 +116,7 @@ func validateRemoteStep(name string, step *workflowStep) []Violation {
 		{key: "VERITY_ARTIFACT_DIGEST", value: "${{ inputs.artifact-digest }}", detail: "artifact digest must bind the exact action input"},
 		{key: "VERITY_SOURCE_SHA", value: "${{ inputs.source-sha }}", detail: "source SHA must bind the exact action input"},
 		{key: "VERITY_BUILD_KEY", value: "${{ inputs.build-key }}", detail: "build key must bind the exact action input"},
+		{key: "VERITY_PROTECTED_PRODUCER", value: "${{ inputs.protected-producer == 'true' || inputs.verify-attestation == 'true' }}", detail: "protected producer mode must bind exact action inputs"},
 		{key: "VERITY_PROTECTED", value: "${{ inputs.verify-attestation }}", detail: "protected mode must bind the exact action input"},
 	}
 	var violations []Violation
@@ -130,6 +133,7 @@ func validateRemoteStep(name string, step *workflowStep) []Violation {
 		`--source-sha "$VERITY_SOURCE_SHA"`, `--build-key "$VERITY_BUILD_KEY"`,
 		`--repository "$GITHUB_REPOSITORY"`, `--run-id "$GITHUB_RUN_ID"`,
 		`--run-attempt "$GITHUB_RUN_ATTEMPT"`,
+		`--protected-producer "$VERITY_PROTECTED_PRODUCER"`,
 		`--protected-attestation "$VERITY_PROTECTED"`, `--github-output "$GITHUB_OUTPUT"`,
 	} {
 		if !strings.Contains(step.Run, marker) {

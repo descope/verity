@@ -69,6 +69,7 @@ func verifyCurrentRunAttempt(ctx context.Context, options *remoteOptions) error 
 	if !matchesCurrentRunAttempt(&run, options) {
 		return artifactMismatch("workflow-run identity")
 	}
+	options.verifiedRunHeadSHA = run.HeadSHA
 	return nil
 }
 
@@ -89,12 +90,12 @@ func runAttemptEndpoint(options *remoteOptions) (*url.URL, error) {
 }
 
 func matchesCurrentRunAttempt(run *remoteRunAttempt, options *remoteOptions) bool {
-	if run.ID != options.RunID || run.RunAttempt != options.RunAttempt || run.HeadSHA != options.Identity.SourceSHA ||
+	if run.ID != options.RunID || run.RunAttempt != options.RunAttempt || !lowerHexSHA(run.HeadSHA) ||
 		run.Repository.ID <= 0 || run.Repository.FullName != options.Repository {
 		return false
 	}
 	workflowPath := buildVerityWorkflowPath
-	if options.ProtectedAttestation {
+	if options.protectedProducer() {
 		workflowPath = protectedBuildVerityWorkflowPath
 	}
 	expectedPath := options.Repository + "/" + workflowPath
@@ -102,24 +103,35 @@ func matchesCurrentRunAttempt(run *remoteRunAttempt, options *remoteOptions) boo
 	for _, workflow := range run.ReferencedWorkflows {
 		separator := strings.LastIndex(workflow.Path, "@")
 		if separator > 0 && workflow.Path[:separator] == expectedPath &&
-			matchesReferencedWorkflow(workflow, workflow.Path[separator+1:], options) {
+			matchesReferencedWorkflow(workflow, workflow.Path[separator+1:], run.HeadSHA, options) {
 			matches++
 		}
 	}
 	return matches == 1
 }
 
-func matchesReferencedWorkflow(workflow remoteReferencedWorkflow, pathSHA string, options *remoteOptions) bool {
-	if workflow.SHA != pathSHA || !lowerHexSHA(workflow.SHA) {
+func matchesReferencedWorkflow(workflow remoteReferencedWorkflow, pathSHA, runHeadSHA string, options *remoteOptions) bool {
+	if workflow.SHA != pathSHA || workflow.SHA != options.Identity.SourceSHA || !lowerHexSHA(workflow.SHA) {
 		return false
 	}
-	if options.ProtectedAttestation {
-		return workflow.Ref == "refs/heads/main" && workflow.SHA == options.Identity.SourceSHA
+	if workflow.Ref == "refs/heads/main" {
+		return runHeadSHA == options.Identity.SourceSHA
 	}
-	if workflow.SHA == options.Identity.SourceSHA {
-		return workflow.Ref == "refs/heads/main"
+	if options.protectedProducer() {
+		return false
 	}
-	return strings.HasPrefix(workflow.Ref, "refs/pull/") && strings.HasSuffix(workflow.Ref, "/merge")
+	return pullRequestMergeRef(workflow.Ref)
+}
+
+func pullRequestMergeRef(ref string) bool {
+	const prefix = "refs/pull/"
+	const suffix = "/merge"
+	if !strings.HasPrefix(ref, prefix) || !strings.HasSuffix(ref, suffix) {
+		return false
+	}
+	pullRequestID := ref[len(prefix) : len(ref)-len(suffix)]
+	id, err := strconv.ParseUint(pullRequestID, 10, 64)
+	return err == nil && id > 0
 }
 
 func lowerHexSHA(value string) bool {

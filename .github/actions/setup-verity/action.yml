@@ -18,6 +18,10 @@ inputs:
     description: Verify protected GitHub build provenance before activation
     required: false
     default: "false"
+  protected-producer:
+    description: Require the protected main-only Verity producer identity
+    required: false
+    default: "false"
 
 runs:
   using: composite
@@ -36,6 +40,7 @@ runs:
         VERITY_ARTIFACT_DIGEST: ${{ inputs.artifact-digest }}
         VERITY_SOURCE_SHA: ${{ inputs.source-sha }}
         VERITY_BUILD_KEY: ${{ inputs.build-key }}
+        VERITY_PROTECTED_PRODUCER: ${{ inputs.protected-producer == 'true' || inputs.verify-attestation == 'true' }}
         VERITY_PROTECTED: ${{ inputs.verify-attestation }}
       run: >-
         go run ./.github/actions/setup-verity/cmd/setup-verity verify-remote
@@ -46,6 +51,7 @@ runs:
         --repository "$GITHUB_REPOSITORY"
         --run-id "$GITHUB_RUN_ID"
         --run-attempt "$GITHUB_RUN_ATTEMPT"
+        --protected-producer "$VERITY_PROTECTED_PRODUCER"
         --protected-attestation "$VERITY_PROTECTED"
         --github-output "$GITHUB_OUTPUT"
 

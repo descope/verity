@@ -51,6 +51,31 @@ func TestRunVerifyRemote_rejects_noncanonical_boolean_before_API(t *testing.T) {
 	assert.Zero(t, calls)
 }
 
+func TestRunVerifyRemote_accepts_protected_producer_before_attestation_exists(t *testing.T) {
+	// Given the protected producer emitted an exact artifact that has not yet been attested.
+	name := "verity-linux-amd64-" + testActionBuildKey + "-42-2"
+	digest := "sha256:" + strings.Repeat("b", 64)
+	server := fakeArtifactServer(t, name, digest, testActionSourceSHA, nil)
+	t.Setenv("GITHUB_API_URL", server.URL)
+	t.Setenv("GH_TOKEN", "token")
+
+	// When bootstrap recovery verifies protected producer identity without requiring its future attestation.
+	err := runVerifyRemote(context.Background(), []string{
+		"--artifact-name", name,
+		"--artifact-digest", digest,
+		"--source-sha", testActionSourceSHA,
+		"--build-key", testActionBuildKey,
+		"--repository", "verity-org/verity",
+		"--run-id", "42",
+		"--run-attempt", "2",
+		"--protected-producer", "true",
+		"--protected-attestation", "false",
+	})
+
+	// Then the circular attestation dependency is avoided without accepting the unprotected producer.
+	require.NoError(t, err)
+}
+
 func TestParseStrictBoolean_rejects_aliases_case_and_whitespace_variants(t *testing.T) {
 	for _, value := range []string{
 		"", "0", "1", "FALSE", "False", "TRUE", "True", "no", "yes",

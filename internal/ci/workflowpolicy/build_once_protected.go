@@ -97,6 +97,7 @@ func exactProtectedAttestationSteps(steps []workflowStep) bool {
 				normalizeExpression(step.With["artifact-digest"]) == "${{needs.build.outputs.artifact-digest}}" &&
 				normalizeExpression(step.With["source-sha"]) == "${{needs.build.outputs.source-sha}}" &&
 				normalizeExpression(step.With["build-key"]) == "${{needs.build.outputs.build-key}}" &&
+				step.With["protected-producer"] == "true" &&
 				step.With["verify-attestation"] == "false"
 		case "actions/attest-build-provenance":
 			attestFound = step.With["subject-path"] == "verity"

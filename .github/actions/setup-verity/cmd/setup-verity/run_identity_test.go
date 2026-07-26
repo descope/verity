@@ -43,21 +43,67 @@ func TestVerifyCurrentRunAttempt_accepts_protected_producer_identity(t *testing.
 }
 
 func TestVerifyCurrentRunAttempt_accepts_pull_request_merge_workflow_identity(t *testing.T) {
-	// Given the API reports the current source SHA and a distinct synthetic PR merge workflow SHA.
+	// Given the API reports a branch head SHA while the artifact uses the distinct synthetic PR merge SHA.
 	response := exactRunAttemptResponse()
 	mergeSHA := strings.Repeat("c", 40)
+	response.HeadSHA = strings.Repeat("d", 40)
 	response.ReferencedWorkflows[0] = remoteReferencedWorkflow{
 		Path: "verity-org/verity/.github/workflows/build-verity.yaml@" + mergeSHA,
 		SHA:  mergeSHA,
 		Ref:  "refs/pull/1024/merge",
 	}
 	server := runAttemptServer(t, &response, nil)
+	options := exactRemoteOptions(server.URL)
+	options.Identity.SourceSHA = mergeSHA
 
 	// When current-run identity is verified for an unprotected PR build.
-	err := verifyCurrentRunAttempt(context.Background(), exactRemoteOptions(server.URL))
+	err := verifyCurrentRunAttempt(context.Background(), options)
 
 	// Then the exact referenced PR merge workflow is accepted without conflating it with head_sha.
 	require.NoError(t, err)
+	assert.Equal(t, strings.Repeat("d", 40), options.verifiedRunHeadSHA)
+}
+
+func TestVerifyCurrentRunAttempt_rejects_untrusted_pull_request_workflow_identity(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*remoteRunAttempt, *remoteOptions)
+	}{
+		{name: "workflow SHA differs from requested source", mutate: func(_ *remoteRunAttempt, options *remoteOptions) {
+			options.Identity.SourceSHA = strings.Repeat("e", 40)
+		}},
+		{name: "pull request ref is not numeric", mutate: func(response *remoteRunAttempt, _ *remoteOptions) {
+			response.ReferencedWorkflows[0].Ref = "refs/pull/not-a-number/merge"
+		}},
+		{name: "workflow ref is an unprotected branch", mutate: func(response *remoteRunAttempt, _ *remoteOptions) {
+			response.ReferencedWorkflows[0].Ref = "refs/heads/feature"
+		}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Given an otherwise exact PR run identity with one hostile mutation.
+			mergeSHA := strings.Repeat("c", 40)
+			response := exactRunAttemptResponse()
+			response.HeadSHA = strings.Repeat("d", 40)
+			response.ReferencedWorkflows[0] = remoteReferencedWorkflow{
+				Path: "verity-org/verity/.github/workflows/build-verity.yaml@" + mergeSHA,
+				SHA:  mergeSHA,
+				Ref:  "refs/pull/1024/merge",
+			}
+			server := runAttemptServer(t, &response, nil)
+			options := exactRemoteOptions(server.URL)
+			options.Identity.SourceSHA = mergeSHA
+			test.mutate(&response, options)
+
+			// When the setup boundary verifies current-run identity.
+			err := verifyCurrentRunAttempt(context.Background(), options)
+
+			// Then a source mismatch or forged ref cannot authorize artifact use.
+			require.Error(t, err)
+			assert.ErrorIs(t, err, buildmetadata.ErrArtifactMismatch)
+		})
+	}
 }
 
 func TestVerifyCurrentRunAttempt_rejects_hostile_identity_mutations(t *testing.T) {

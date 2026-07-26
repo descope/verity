@@ -84,7 +84,8 @@ func TestVerifyRemoteArtifact_follows_all_artifact_pages(t *testing.T) {
 	_, err := findCurrentRunArtifact(context.Background(), &remoteOptions{
 		APIBaseURL: server.URL, Token: "token", Repository: "verity-org/verity", RunID: 42,
 		ArtifactName: name, ArtifactDigest: digest,
-		Identity: artifactIdentity{SourceSHA: testActionSourceSHA, BuildKey: testActionBuildKey},
+		Identity:           artifactIdentity{SourceSHA: testActionSourceSHA, BuildKey: testActionBuildKey},
+		verifiedRunHeadSHA: testActionSourceSHA,
 	})
 
 	// Then every page is searched with the exact name and maximum page size.
@@ -138,9 +139,11 @@ func TestFindCurrentRunArtifact_rejects_truncated_pagination(t *testing.T) {
 func TestMatchesRemoteArtifact_rejects_identity_mismatches(t *testing.T) {
 	name := "verity-linux-amd64-" + testActionBuildKey
 	digest := "sha256:" + strings.Repeat("b", 64)
+	runHeadSHA := strings.Repeat("d", 40)
 	options := &remoteOptions{
 		RunID: 42, ArtifactName: name, ArtifactDigest: digest,
-		Identity: artifactIdentity{SourceSHA: testActionSourceSHA, BuildKey: testActionBuildKey},
+		Identity:           artifactIdentity{SourceSHA: testActionSourceSHA, BuildKey: testActionBuildKey},
+		verifiedRunHeadSHA: runHeadSHA,
 	}
 	tests := []struct {
 		name   string
@@ -149,7 +152,7 @@ func TestMatchesRemoteArtifact_rejects_identity_mismatches(t *testing.T) {
 		{name: "wrong name", mutate: func(artifact *remoteArtifact) { artifact.Name = "verity-latest" }},
 		{name: "wrong digest", mutate: func(artifact *remoteArtifact) { artifact.Digest = "sha256:" + strings.Repeat("c", 64) }},
 		{name: "wrong run ID", mutate: func(artifact *remoteArtifact) { artifact.WorkflowRun.ID++ }},
-		{name: "wrong source SHA", mutate: func(artifact *remoteArtifact) { artifact.WorkflowRun.HeadSHA = strings.Repeat("c", 40) }},
+		{name: "wrong run head SHA", mutate: func(artifact *remoteArtifact) { artifact.WorkflowRun.HeadSHA = strings.Repeat("c", 40) }},
 		{name: "expired", mutate: func(artifact *remoteArtifact) { artifact.Expired = true }},
 	}
 
@@ -158,7 +161,7 @@ func TestMatchesRemoteArtifact_rejects_identity_mismatches(t *testing.T) {
 			// Given one artifact identity mismatch.
 			artifact := remoteArtifact{
 				ID: 7, Name: name, Digest: digest,
-				WorkflowRun: remoteWorkflowRun{ID: 42, HeadSHA: testActionSourceSHA},
+				WorkflowRun: remoteWorkflowRun{ID: 42, HeadSHA: runHeadSHA},
 			}
 			test.mutate(&artifact)
 

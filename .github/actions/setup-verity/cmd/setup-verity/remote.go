@@ -30,7 +30,9 @@ type remoteOptions struct {
 	ArtifactName         string
 	ArtifactDigest       string
 	Identity             artifactIdentity
+	ProtectedProducer    bool
 	ProtectedAttestation bool
+	verifiedRunHeadSHA   string
 	GitHubOutput         string
 }
 
@@ -76,7 +78,7 @@ func verifyRemoteArtifact(ctx context.Context, options *remoteOptions) error {
 }
 
 func validateRemoteOptions(options *remoteOptions) error {
-	if options.ProtectedAttestation && options.Repository != protectedRepository {
+	if options.protectedProducer() && options.Repository != protectedRepository {
 		return artifactMismatch("protected repository")
 	}
 	if options.APIBaseURL == "" || options.Token == "" || options.RunID <= 0 || options.RunAttempt <= 0 || !validArtifactDigest(options.ArtifactDigest) {
@@ -87,6 +89,10 @@ func validateRemoteOptions(options *remoteOptions) error {
 		return artifactMismatch("invalid repository")
 	}
 	return nil
+}
+
+func (options *remoteOptions) protectedProducer() bool {
+	return options.ProtectedProducer || options.ProtectedAttestation
 }
 
 func findCurrentRunArtifact(ctx context.Context, options *remoteOptions) (remoteArtifact, error) {
@@ -180,7 +186,8 @@ func fetchArtifactPage(ctx context.Context, client *http.Client, endpoint, token
 
 func matchesRemoteArtifact(artifact remoteArtifact, options *remoteOptions) bool {
 	return artifact.Name == options.ArtifactName && !artifact.Expired && artifact.Digest == options.ArtifactDigest &&
-		artifact.WorkflowRun.ID == options.RunID && artifact.WorkflowRun.HeadSHA == options.Identity.SourceSHA
+		artifact.WorkflowRun.ID == options.RunID && options.verifiedRunHeadSHA != "" &&
+		artifact.WorkflowRun.HeadSHA == options.verifiedRunHeadSHA
 }
 
 func appendRemoteOutputs(outputPath string, artifactID int64, protected bool) (err error) {

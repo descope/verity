@@ -60,6 +60,7 @@ func runVerifyRemote(ctx context.Context, arguments []string) error {
 	repository := flags.String("repository", "", "GitHub repository")
 	runID := flags.Int64("run-id", 0, "GitHub run ID")
 	runAttempt := flags.Int64("run-attempt", 0, "GitHub run attempt")
+	protectedProducer := flags.String("protected-producer", "false", "protected producer identity mode")
 	protected := flags.String("protected-attestation", "false", "protected attestation mode")
 	githubOutput := flags.String("github-output", "", "GitHub output file")
 	if err := flags.Parse(arguments); err != nil {
@@ -69,10 +70,15 @@ func runVerifyRemote(ctx context.Context, arguments []string) error {
 	if err != nil {
 		return err
 	}
+	protectedProducerValue, err := parseStrictBoolean(*protectedProducer)
+	if err != nil {
+		return err
+	}
 	return verifyRemoteArtifact(ctx, &remoteOptions{
 		APIBaseURL: os.Getenv("GITHUB_API_URL"), Token: os.Getenv("GH_TOKEN"), Repository: *repository,
 		RunID: *runID, RunAttempt: *runAttempt, ArtifactName: *artifactName, ArtifactDigest: *artifactDigest,
-		Identity: artifactIdentity{SourceSHA: *sourceSHA, BuildKey: *buildKey}, ProtectedAttestation: protectedValue,
+		Identity:          artifactIdentity{SourceSHA: *sourceSHA, BuildKey: *buildKey},
+		ProtectedProducer: protectedProducerValue, ProtectedAttestation: protectedValue,
 		GitHubOutput: *githubOutput,
 	})
 }
