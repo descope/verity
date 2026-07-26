@@ -64,6 +64,29 @@ func TestVerifyCurrentRunAttempt_accepts_pull_request_merge_workflow_identity(t 
 	assert.Equal(t, strings.Repeat("d", 40), options.verifiedRunHeadSHA)
 }
 
+func TestVerifyCurrentRunAttempt_accepts_pull_request_head_source_identity(t *testing.T) {
+	// Given the artifact is built from the PR head while the reusable workflow runs from the merge SHA.
+	response := exactRunAttemptResponse()
+	mergeSHA := strings.Repeat("c", 40)
+	headSHA := strings.Repeat("d", 40)
+	response.HeadSHA = headSHA
+	response.ReferencedWorkflows[0] = remoteReferencedWorkflow{
+		Path: "verity-org/verity/.github/workflows/build-verity.yaml@" + mergeSHA,
+		SHA:  mergeSHA,
+		Ref:  "refs/pull/1024/merge",
+	}
+	server := runAttemptServer(t, &response, nil)
+	options := exactRemoteOptions(server.URL)
+	options.Identity.SourceSHA = headSHA
+
+	// When current-run identity is verified for the head-built PR artifact.
+	err := verifyCurrentRunAttempt(context.Background(), options)
+
+	// Then the verified run head may supply source while the workflow remains bound to the merge ref.
+	require.NoError(t, err)
+	assert.Equal(t, headSHA, options.verifiedRunHeadSHA)
+}
+
 func TestVerifyCurrentRunAttempt_rejects_untrusted_pull_request_workflow_identity(t *testing.T) {
 	tests := []struct {
 		name   string

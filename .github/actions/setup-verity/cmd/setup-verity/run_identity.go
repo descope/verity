@@ -111,16 +111,17 @@ func matchesCurrentRunAttempt(run *remoteRunAttempt, options *remoteOptions) boo
 }
 
 func matchesReferencedWorkflow(workflow remoteReferencedWorkflow, pathSHA, runHeadSHA string, options *remoteOptions) bool {
-	if workflow.SHA != pathSHA || workflow.SHA != options.Identity.SourceSHA || !lowerHexSHA(workflow.SHA) {
+	if workflow.SHA != pathSHA || !lowerHexSHA(workflow.SHA) {
 		return false
 	}
 	if workflow.Ref == "refs/heads/main" {
-		return runHeadSHA == options.Identity.SourceSHA
+		return workflow.SHA == options.Identity.SourceSHA && runHeadSHA == options.Identity.SourceSHA
 	}
 	if options.protectedProducer() {
 		return false
 	}
-	return pullRequestMergeRef(workflow.Ref)
+	return pullRequestMergeRef(workflow.Ref) &&
+		(workflow.SHA == options.Identity.SourceSHA || runHeadSHA == options.Identity.SourceSHA)
 }
 
 func pullRequestMergeRef(ref string) bool {
