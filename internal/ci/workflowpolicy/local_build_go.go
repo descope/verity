@@ -117,7 +117,7 @@ func goRunCompilationReason(location runLocation, arguments []string) string {
 	if !isSetupVerityTarget(target) || nextArgument(arguments, targetIndex+1) != "build" {
 		return ""
 	}
-	if location.isWorkflow && location.file == buildVerityWorkflowName && location.job == "build" &&
+	if location.isWorkflow && (location.file == buildVerityWorkflowName || location.file == protectedBuildVerityWorkflowName) && location.job == "build" &&
 		location.stepID == "build" && target == setupVerityPackage {
 		return ""
 	}

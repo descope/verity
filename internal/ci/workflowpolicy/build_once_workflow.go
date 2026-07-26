@@ -108,12 +108,12 @@ func validateBuildOnceJobs(file *workflowFile) []Violation {
 	if !buildExists || !buildOnceReadPermissions(build.Permissions) {
 		violations = append(violations, buildOnceViolation(file.Name, "build", "build job must remain contents-read only"))
 	} else {
-		violations = append(violations, validateBuildJob(file.Name, &build)...)
+		violations = append(violations, validateBuildJob(file.Name, &build, "${{ inputs.source_sha }}")...)
 	}
 	return violations
 }
 
-func validateBuildJob(name string, job *workflowJob) []Violation {
+func validateBuildJob(name string, job *workflowJob, sourceExpression string) []Violation {
 	var violations []Violation
 	if len(job.Outputs) != 4 ||
 		normalizeExpression(job.Outputs["artifact-name"]) != "${{steps.build.outputs.artifact-name}}" ||
@@ -133,7 +133,7 @@ func validateBuildJob(name string, job *workflowJob) []Violation {
 	if buildCount != 1 || directBuild {
 		violations = append(violations, buildOnceViolation(name, "build", "exactly one Verity build is allowed"))
 	}
-	if !exactBuildIdentityStep(job.Steps) {
+	if !exactBuildIdentityStep(job.Steps, sourceExpression) {
 		violations = append(violations, buildOnceViolation(name, "build", "build helper must bind exact source and current run identity"))
 	}
 	if !exactBuildUpload(job.Steps) {
@@ -142,14 +142,14 @@ func validateBuildJob(name string, job *workflowJob) []Violation {
 	return violations
 }
 
-func exactBuildIdentityStep(steps []workflowStep) bool {
+func exactBuildIdentityStep(steps []workflowStep, sourceExpression string) bool {
 	for index := range steps {
 		step := &steps[index]
 		if step.ID != "build" || !strings.Contains(step.Run, buildVerityCommand) {
 			continue
 		}
 		expectedEnvironment := map[string]string{
-			"VERITY_SOURCE_SHA":   "${{ inputs.source_sha }}",
+			"VERITY_SOURCE_SHA":   sourceExpression,
 			"VERITY_ARTIFACT_DIR": "${{ runner.temp }}/verity-artifact",
 			"VERITY_RUN_ID":       "${{ github.run_id }}",
 			"VERITY_RUN_ATTEMPT":  "${{ github.run_attempt }}",

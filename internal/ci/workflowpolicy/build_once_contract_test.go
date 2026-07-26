@@ -123,7 +123,7 @@ func TestValidateDirectory_registers_build_once_repository_contract(t *testing.T
 		{
 			name:     "protected workflow source gate",
 			relative: filepath.Join(".github", "workflows", protectedBuildVerityWorkflowName),
-			old:      "inputs.source_sha == github.sha", replacement: "inputs.source_sha != github.sha",
+			old:      "github.ref_protected == true", replacement: "github.ref_protected == false",
 		},
 		{
 			name:     "action attestation gate",

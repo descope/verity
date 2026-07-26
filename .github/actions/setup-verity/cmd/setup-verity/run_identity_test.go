@@ -27,6 +27,21 @@ func TestVerifyCurrentRunAttempt_accepts_exact_repository_workflow_and_attempt(t
 	require.NoError(t, err)
 }
 
+func TestVerifyCurrentRunAttempt_accepts_protected_producer_identity(t *testing.T) {
+	// Given the protected build producer is the exact referenced workflow.
+	response := exactRunAttemptResponse()
+	response.ReferencedWorkflows[0].Path = "verity-org/verity/.github/workflows/build-verity-protected.yaml@refs/heads/main"
+	server := runAttemptServer(t, &response, nil)
+	options := exactRemoteOptions(server.URL)
+	options.ProtectedAttestation = true
+
+	// When current-run identity is verified in protected mode.
+	err := verifyCurrentRunAttempt(context.Background(), options)
+
+	// Then the protected producer identity is accepted.
+	require.NoError(t, err)
+}
+
 func TestVerifyCurrentRunAttempt_rejects_hostile_identity_mutations(t *testing.T) {
 	tests := []struct {
 		name   string

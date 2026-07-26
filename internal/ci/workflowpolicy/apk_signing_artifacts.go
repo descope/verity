@@ -120,8 +120,8 @@ func (activation signerActivation) exactAttestationProducer(stepIndex int) bool 
 		return false
 	}
 	build, exists := activation.file.Workflow.Jobs["build"]
-	if !exists || build.Uses != buildVerityWorkflowReference ||
-		!gatesEquivalent(build.If, protectedBuildGate) || !containsString(activation.job.Needs, "build") {
+	if !exists || build.Uses != "" || !gatesEquivalent(build.If, protectedBuildGate) ||
+		!containsString(activation.job.Needs, "build") {
 		return false
 	}
 	next := &activation.job.Steps[stepIndex+1]

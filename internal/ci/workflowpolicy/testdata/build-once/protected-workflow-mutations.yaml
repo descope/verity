@@ -1,11 +1,11 @@
 - name: protected source gate removed
-  old: "${{ github.repository == 'verity-org/verity' && github.ref_protected == true && inputs.source_sha == github.sha }}"
+  old: "${{ github.repository == 'verity-org/verity' && github.ref_protected == true }}"
   replacement: "${{ github.repository == 'verity-org/verity' }}"
-  want: exact protected SHA
-- name: protected builder redirected
-  old: "uses: ./.github/workflows/build-verity.yaml"
-  replacement: "uses: ./.github/workflows/copy-build-verity.yaml"
-  want: exact protected SHA
+  want: exact protected gate
+- name: protected source becomes caller controlled
+  old: "VERITY_SOURCE_SHA: ${{ github.sha }}"
+  replacement: "VERITY_SOURCE_SHA: ${{ inputs.source_sha }}"
+  want: current run identity
 - name: attestation loses dependency
   old: "needs: build"
   replacement: "needs: []"

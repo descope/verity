@@ -8,7 +8,7 @@ import (
 const (
 	protectedBuildVerityWorkflowName      = "build-verity-protected.yaml"
 	protectedBuildVerityWorkflowReference = "./.github/workflows/build-verity-protected.yaml"
-	protectedBuildGate                    = "${{github.repository=='verity-org/verity'&&github.ref_protected==true&&inputs.source_sha==github.sha}}"
+	protectedBuildGate                    = "${{github.repository=='verity-org/verity'&&github.ref_protected==true}}"
 )
 
 func validateProtectedBuildWorkflow(name string, data []byte) ([]Violation, error) {
@@ -35,8 +35,8 @@ func validateProtectedBuildSurface(file *workflowFile, data []byte) []Violation 
 		violations = append(violations, buildOnceViolation(file.Name, "", "protected workflow defaults must deny all permissions"))
 	}
 	inputs, triggerCount, err := decodeBuildOnceInputs(data)
-	if err != nil || triggerCount != 1 || !exactBuildOnceInputs(inputs) {
-		violations = append(violations, buildOnceViolation(file.Name, "", "protected workflow_call must accept only required source_sha"))
+	if err != nil || triggerCount != 1 || len(inputs) != 0 {
+		violations = append(violations, buildOnceViolation(file.Name, "", "protected workflow_call must not accept caller-controlled inputs"))
 	}
 	if len(file.Workflow.On.WorkflowSecrets) != 0 {
 		violations = append(violations, buildOnceViolation(file.Name, "", "protected build workflow must not accept secrets"))
@@ -53,9 +53,11 @@ func validateProtectedBuildJobs(file *workflowFile) []Violation {
 		violations = append(violations, buildOnceViolation(file.Name, "", "protected workflow must contain only build and attest jobs"))
 	}
 	build, buildExists := file.Workflow.Jobs["build"]
-	if !buildExists || build.Uses != buildVerityWorkflowReference || normalizeExpression(build.If) != protectedBuildGate ||
-		!buildOnceReadPermissions(build.Permissions) || normalizeExpression(build.With["source_sha"]) != "${{inputs.source_sha}}" {
-		violations = append(violations, buildOnceViolation(file.Name, "build", "protected build must call the unprivileged producer for the exact protected SHA"))
+	if !buildExists || normalizeExpression(build.If) != protectedBuildGate || !buildOnceReadPermissions(build.Permissions) ||
+		build.Uses != "" || len(build.With) != 0 {
+		violations = append(violations, buildOnceViolation(file.Name, "build", "protected build must compile github.sha directly under the exact protected gate"))
+	} else {
+		violations = append(violations, validateBuildJob(file.Name, &build, "${{ github.sha }}")...)
 	}
 	attest, attestExists := file.Workflow.Jobs["attest"]
 	if !attestExists {

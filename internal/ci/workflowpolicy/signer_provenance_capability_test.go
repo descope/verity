@@ -72,7 +72,6 @@ func TestValidateSignerProvenance_accepts_exact_first_party_attestation_producer
 		Jobs: map[string]workflowJob{
 			"build": {
 				If:          protectedBuildGate,
-				Uses:        buildVerityWorkflowReference,
 				Permissions: readOnlyPermissions(),
 			},
 			"attest": {

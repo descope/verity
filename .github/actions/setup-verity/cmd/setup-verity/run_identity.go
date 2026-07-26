@@ -13,7 +13,10 @@ import (
 	"time"
 )
 
-const buildVerityWorkflowPath = ".github/workflows/build-verity.yaml"
+const (
+	buildVerityWorkflowPath          = ".github/workflows/build-verity.yaml"
+	protectedBuildVerityWorkflowPath = ".github/workflows/build-verity-protected.yaml"
+)
 
 type remoteRunAttempt struct {
 	ID                  int64                      `json:"id"`
@@ -89,7 +92,11 @@ func matchesCurrentRunAttempt(run *remoteRunAttempt, options *remoteOptions) boo
 		run.Repository.ID <= 0 || run.Repository.FullName != options.Repository {
 		return false
 	}
-	expectedPath := options.Repository + "/" + buildVerityWorkflowPath
+	workflowPath := buildVerityWorkflowPath
+	if options.ProtectedAttestation {
+		workflowPath = protectedBuildVerityWorkflowPath
+	}
+	expectedPath := options.Repository + "/" + workflowPath
 	matches := 0
 	for _, workflow := range run.ReferencedWorkflows {
 		separator := strings.LastIndex(workflow.Path, "@")
