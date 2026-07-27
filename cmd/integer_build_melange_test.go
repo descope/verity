@@ -46,7 +46,7 @@ func TestIntegerPrepareMelangeBuild_ResolvesVersionAndBuildsLocally(t *testing.T
 	// Then: placeholders are resolved before the Go build and local repository paths are returned.
 	require.NoError(t, err)
 	assert.Equal(t, []string{integerMelangeRepository}, artifacts.Repositories)
-	assert.Equal(t, []string{"packages/repo/aarch64/melange.rsa.pub"}, artifacts.Keyrings)
+	assert.Equal(t, []string{"packages/repo/melange-aarch64.rsa.pub"}, artifacts.Keyrings)
 	assert.Equal(t, []apkindex.Package{{Name: "cilium-1.19", Version: "1.0-r0"}}, artifacts.Packages)
 	assert.Equal(t, melange.Spec{
 		Upstream:    "cilium-1.19",
@@ -86,7 +86,7 @@ func TestIntegerPrepareMelangeBuild_ReusesExistingArtifacts(t *testing.T) {
 	// Then: the existing artifacts are reused without rebuilding.
 	require.NoError(t, err)
 	assert.Equal(t, []string{integerMelangeRepository}, artifacts.Repositories)
-	assert.Equal(t, []string{"packages/repo/aarch64/melange.rsa.pub"}, artifacts.Keyrings)
+	assert.Equal(t, []string{"packages/repo/melange-aarch64.rsa.pub"}, artifacts.Keyrings)
 	assert.Equal(t, []apkindex.Package{{Name: "custom", Version: "1.0-r0"}}, artifacts.Packages)
 	assert.Zero(t, buildCalls)
 }

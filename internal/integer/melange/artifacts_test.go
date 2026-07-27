@@ -26,7 +26,7 @@ func TestArtifactsExistRequiresMatchingSpecAndRegularFiles(t *testing.T) {
 	}
 	writeInputs(root)
 	writeTestFile(t, filepath.Join(paths.RepoDir, string(arch), "APKINDEX.tar.gz"), "index")
-	writeTestFile(t, filepath.Join(paths.RepoDir, string(arch), "melange.rsa.pub"), "public")
+	writeTestFile(t, filepath.Join(paths.RepoDir, "melange-"+string(arch)+".rsa.pub"), "public")
 	require.NoError(t, writeArtifactMarker(&paths, spec, arch))
 
 	assert.True(t, ArtifactsExist(&paths, spec, arch))
@@ -40,7 +40,7 @@ func TestArtifactsExistRequiresMatchingSpecAndRegularFiles(t *testing.T) {
 			return filepath.Join(paths.RepoDir, string(arch), "APKINDEX.tar.gz")
 		}},
 		{name: "public key", path: func(paths *Paths) string {
-			return filepath.Join(paths.RepoDir, string(arch), "melange.rsa.pub")
+			return filepath.Join(paths.RepoDir, "melange-"+string(arch)+".rsa.pub")
 		}},
 		{name: "marker", path: func(paths *Paths) string {
 			return artifactMarkerPath(paths, arch)
@@ -52,7 +52,7 @@ func TestArtifactsExistRequiresMatchingSpecAndRegularFiles(t *testing.T) {
 			symlinkPaths := testPaths(symlinkRoot)
 			writeInputs(symlinkRoot)
 			writeTestFile(t, filepath.Join(symlinkPaths.RepoDir, string(arch), "APKINDEX.tar.gz"), "index")
-			writeTestFile(t, filepath.Join(symlinkPaths.RepoDir, string(arch), "melange.rsa.pub"), "public")
+			writeTestFile(t, filepath.Join(symlinkPaths.RepoDir, "melange-"+string(arch)+".rsa.pub"), "public")
 			require.NoError(t, writeArtifactMarker(&symlinkPaths, spec, arch))
 			path := target.path(&symlinkPaths)
 			require.NoError(t, os.Remove(path))
@@ -79,7 +79,7 @@ func TestArtifactsExistInvalidatesChangedBuildInputs(t *testing.T) {
 	writeTestFile(t, testPath(root, "packages/upstream.lock.json"), lock)
 	writeTestFile(t, testPath(root, "packages/overrides/fips.env"), "GOFIPS140=v1.0.0\n")
 	writeTestFile(t, filepath.Join(paths.RepoDir, string(arch), "APKINDEX.tar.gz"), "index")
-	writeTestFile(t, filepath.Join(paths.RepoDir, string(arch), "melange.rsa.pub"), "public")
+	writeTestFile(t, filepath.Join(paths.RepoDir, "melange-"+string(arch)+".rsa.pub"), "public")
 	require.NoError(t, writeArtifactMarker(&paths, spec, arch))
 	require.True(t, ArtifactsExist(&paths, spec, arch))
 
@@ -100,7 +100,7 @@ func TestArtifactsExistInvalidatesChangedBespokeRecipe(t *testing.T) {
 	writeTestFile(t, testPath(root, "packages/bespoke/custom.yaml"), "package:\n  name: custom\n")
 	writeTestFile(t, testPath(root, "packages/upstream.lock.json"), `{"packages":{},"pipeline_files":{}}`)
 	writeTestFile(t, filepath.Join(paths.RepoDir, string(arch), "APKINDEX.tar.gz"), "index")
-	writeTestFile(t, filepath.Join(paths.RepoDir, string(arch), "melange.rsa.pub"), "public")
+	writeTestFile(t, filepath.Join(paths.RepoDir, "melange-"+string(arch)+".rsa.pub"), "public")
 	require.NoError(t, writeArtifactMarker(&paths, spec, arch))
 	require.True(t, ArtifactsExist(&paths, spec, arch))
 
@@ -126,7 +126,7 @@ func TestArtifactsExistRejectsSymlinkedRootsAndChangedOutputs(t *testing.T) {
 }`, testSHA(recipe)))
 		writeTestFile(t, filepath.Join(paths.RepoDir, string(arch), "APKINDEX.tar.gz"), "index")
 		writeTestFile(t, filepath.Join(paths.RepoDir, string(arch), "caddy.apk"), "package")
-		writeTestFile(t, filepath.Join(paths.RepoDir, string(arch), "melange.rsa.pub"), "public")
+		writeTestFile(t, filepath.Join(paths.RepoDir, "melange-"+string(arch)+".rsa.pub"), "public")
 		require.NoError(t, writeArtifactMarker(&paths, spec, arch))
 		require.True(t, ArtifactsExist(&paths, spec, arch))
 		return root, paths, spec, arch

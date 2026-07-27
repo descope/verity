@@ -85,7 +85,7 @@ func Test_Build_and_Prepare_report_incomplete_keys_prepare_and_keygen_errors(t *
 	// Given
 	root := t.TempDir()
 	paths, spec := setupStagedUpstreamBuild(t, root)
-	writeTestFile(t, filepath.Join(paths.WorkDir, "melange.rsa"), "private")
+	writeTestFile(t, filepath.Join(paths.WorkDir, "melange-x86_64.rsa"), "private")
 
 	// When / Then
 	require.ErrorIs(t, Build(context.Background(), &BuildOptions{
@@ -105,7 +105,7 @@ func Test_Build_and_Prepare_report_incomplete_keys_prepare_and_keygen_errors(t *
 	require.ErrorIs(t, err, errSentinelBuildRunner)
 }
 
-func Test_Prepare_reports_incomplete_key_after_successful_staging(t *testing.T) {
+func Test_Prepare_leaves_signingKeys_toArchitectureBuild(t *testing.T) {
 	// Given
 	root := t.TempDir()
 	paths := testPaths(root)
@@ -119,7 +119,7 @@ func Test_Prepare_reports_incomplete_key_after_successful_staging(t *testing.T) 
 	})
 
 	// Then
-	require.ErrorIs(t, err, errIncompleteSigningKeyPair)
+	require.NoError(t, err)
 }
 
 func Test_signPackageIndexes_reports_public_key_and_compatibility_copy_errors(t *testing.T) {
@@ -130,7 +130,7 @@ func Test_signPackageIndexes_reports_public_key_and_compatibility_copy_errors(t 
 	err := signPackageIndexes(context.Background(), &BuildOptions{Paths: paths, Arch: ArchitectureX8664, Runner: &orchestrationRunner{}})
 	require.ErrorContains(t, err, "copy public key")
 
-	writeTestFile(t, filepath.Join(paths.WorkDir, "melange.rsa.pub"), "public")
+	writeTestFile(t, filepath.Join(paths.WorkDir, "melange-x86_64.rsa.pub"), "public")
 	require.NoError(t, os.MkdirAll(filepath.Join(paths.RepoDir, "melange.rsa.pub"), 0o755))
 	err = signPackageIndexes(context.Background(), &BuildOptions{Paths: paths, Arch: ArchitectureX8664, Runner: &orchestrationRunner{}})
 	require.ErrorContains(t, err, "copy compatibility public key")

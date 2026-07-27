@@ -44,8 +44,12 @@ func Test_Build_removes_ephemeral_staged_key_after_success(t *testing.T) {
 
 	// Then
 	require.NoError(t, err)
-	assert.NoFileExists(t, filepath.Join(paths.WorkDir, "melange.rsa"))
-	assert.NoFileExists(t, filepath.Join(paths.WorkDir, "melange.rsa.pub"))
+	require.Len(t, runner.commands, 3)
+	assert.Equal(t, recordedCommand{name: "melange", args: []string{"keygen", "melange-work/melange-x86_64.rsa"}}, runner.commands[0])
+	assert.Contains(t, runner.commands[1].args, "melange-work/melange-x86_64.rsa")
+	assert.Contains(t, runner.commands[2].args, "melange-work/melange-x86_64.rsa")
+	assert.NoFileExists(t, filepath.Join(paths.WorkDir, "melange-x86_64.rsa"))
+	assert.NoFileExists(t, filepath.Join(paths.WorkDir, "melange-x86_64.rsa.pub"))
 	assert.FileExists(t, artifactMarkerPath(&paths, ArchitectureX8664))
 }
 
@@ -66,8 +70,8 @@ func Test_Build_removes_ephemeral_staged_key_when_recipe_build_fails(t *testing.
 
 	// Then
 	require.ErrorIs(t, err, errSentinelBuildRunner)
-	assert.NoFileExists(t, filepath.Join(paths.WorkDir, "melange.rsa"))
-	assert.NoFileExists(t, filepath.Join(paths.WorkDir, "melange.rsa.pub"))
+	assert.NoFileExists(t, filepath.Join(paths.WorkDir, "melange-x86_64.rsa"))
+	assert.NoFileExists(t, filepath.Join(paths.WorkDir, "melange-x86_64.rsa.pub"))
 }
 
 func Test_Build_stops_at_missing_recipes_index_and_marker_boundaries(t *testing.T) {
@@ -171,6 +175,6 @@ func setupStagedUpstreamBuild(t *testing.T, root string) (Paths, Spec) {
 
 func writeSigningPair(t *testing.T, paths *Paths) {
 	t.Helper()
-	writeTestFile(t, filepath.Join(paths.WorkDir, "melange.rsa"), "private")
-	writeTestFile(t, filepath.Join(paths.WorkDir, "melange.rsa.pub"), "public")
+	writeTestFile(t, filepath.Join(paths.WorkDir, "melange-x86_64.rsa"), "private")
+	writeTestFile(t, filepath.Join(paths.WorkDir, "melange-x86_64.rsa.pub"), "public")
 }

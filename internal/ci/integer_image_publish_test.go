@@ -38,7 +38,7 @@ func TestPublishIntegerImage_runsStagingTrivyBeforeEveryFinalPromotion(t *testin
 	assert.Contains(t, runner.calls[0].Args[len(runner.calls[0].Args)-1], "integer-publication-42-3")
 }
 
-func TestPublishIntegerImage_usesCanonicalArchitectureKeyBasenames_whenMelangeEnabled(t *testing.T) {
+func TestPublishIntegerImage_usesUniqueArchitectureKeyBasenames_whenMelangeEnabled(t *testing.T) {
 	// Given: a multi-architecture image publication using staged Melange packages.
 	runner := &recordingIntegerImageRunner{}
 	options := integerImagePublishFixture(t, runner)
@@ -47,11 +47,11 @@ func TestPublishIntegerImage_usesCanonicalArchitectureKeyBasenames_whenMelangeEn
 	// When: the exact image publication command stages the image.
 	_, err := PublishIntegerImage(t.Context(), &options)
 
-	// Then: each architecture keeps the basename embedded in its APKINDEX signature.
+	// Then: each architecture selects the unique basename embedded in its APKINDEX signature.
 	require.NoError(t, err)
 	require.NotEmpty(t, runner.calls)
-	assert.Contains(t, runner.calls[0].Args, filepath.Join(options.Workspace, "packages", "repo", "x86_64", "melange.rsa.pub"))
-	assert.Contains(t, runner.calls[0].Args, filepath.Join(options.Workspace, "packages", "repo", "aarch64", "melange.rsa.pub"))
+	assert.Contains(t, runner.calls[0].Args, filepath.Join(options.Workspace, "packages", "repo", "melange-x86_64.rsa.pub"))
+	assert.Contains(t, runner.calls[0].Args, filepath.Join(options.Workspace, "packages", "repo", "melange-aarch64.rsa.pub"))
 }
 
 func TestPublishIntegerImage_stopsBeforePromotion_whenStagingTrivyFails(t *testing.T) {
