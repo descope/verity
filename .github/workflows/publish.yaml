@@ -1,6 +1,41 @@
 name: Publish
 
 on:
+  schedule:
+    - cron: "0 4 * * *"
+  push:
+    branches: [main]
+    paths:
+      - "integer.yaml"
+      - "images/**"
+      - "packages/bespoke/**"
+      - "packages/pipelines/**"
+      - "packages/overrides/**"
+      - "packages/upstream.lock.json"
+      - "copa-config.yaml"
+      - "Chart.yaml"
+      - "verity.yaml"
+      - "site/**"
+      - "keys/apk/**"
+      - "ci/apk-signer.lock.json"
+      - "ci/apk-signing-key-state.json"
+      - "*.go"
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - "mise.toml"
+      - "mise.lock"
+      - ".github/actions/setup-verity/**"
+      - ".github/workflows/publish.yaml"
+      - ".github/workflows/build-site.yaml"
+      - ".github/workflows/build-verity.yaml"
+      - ".github/workflows/build-verity-protected.yaml"
+      - ".github/workflows/orchestrator.yaml"
+      - ".github/workflows/patch-image.yaml"
+      - ".github/workflows/integer-orchestrator-reusable.yaml"
+      - ".github/workflows/integer-build-shard.yaml"
+      - ".github/workflows/integer-build-image.yaml"
+      - ".github/workflows/integer-build-image-reusable.yaml"
   workflow_dispatch:
     inputs:
       mode:
