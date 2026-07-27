@@ -38,6 +38,22 @@ func TestPublishIntegerImage_runsStagingTrivyBeforeEveryFinalPromotion(t *testin
 	assert.Contains(t, runner.calls[0].Args[len(runner.calls[0].Args)-1], "integer-publication-42-3")
 }
 
+func TestPublishIntegerImage_usesCanonicalArchitectureKeyBasenames_whenMelangeEnabled(t *testing.T) {
+	// Given: a multi-architecture image publication using staged Melange packages.
+	runner := &recordingIntegerImageRunner{}
+	options := integerImagePublishFixture(t, runner)
+	options.Melange = true
+
+	// When: the exact image publication command stages the image.
+	_, err := PublishIntegerImage(t.Context(), &options)
+
+	// Then: each architecture keeps the basename embedded in its APKINDEX signature.
+	require.NoError(t, err)
+	require.NotEmpty(t, runner.calls)
+	assert.Contains(t, runner.calls[0].Args, filepath.Join(options.Workspace, "packages", "repo", "x86_64", "melange.rsa.pub"))
+	assert.Contains(t, runner.calls[0].Args, filepath.Join(options.Workspace, "packages", "repo", "aarch64", "melange.rsa.pub"))
+}
+
 func TestPublishIntegerImage_stopsBeforePromotion_whenStagingTrivyFails(t *testing.T) {
 	// Given: a runner whose exact staged-image Trivy command fails.
 	runner := &recordingIntegerImageRunner{failID: "trivy:image"}
