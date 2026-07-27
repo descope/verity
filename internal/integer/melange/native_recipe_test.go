@@ -47,8 +47,8 @@ func TestNativePackageRecipes_includeInvokedTestTools(t *testing.T) {
 	}
 }
 
-func TestCiliumCompatRecipe_includesAPKToolsForVirtualPackageTest(t *testing.T) {
-	// Given: the locked Cilium recipe containing the compatibility subpackage.
+func TestCiliumRecipe_includesAPKToolsForEveryAPKInspectingSubpackageTest(t *testing.T) {
+	// Given: the locked Cilium recipe containing reusable tests that invoke apk.
 	paths := repositoryTestPaths(t)
 	data, err := os.ReadFile(filepath.Join(paths.LockedDir, "cilium-1.19.yaml"))
 	require.NoError(t, err)
@@ -61,22 +61,28 @@ func TestCiliumCompatRecipe_includesAPKToolsForVirtualPackageTest(t *testing.T) 
 						Packages []string `yaml:"packages"`
 					} `yaml:"contents"`
 				} `yaml:"environment"`
+				Pipeline []struct {
+					Uses string `yaml:"uses"`
+				} `yaml:"pipeline"`
 			} `yaml:"test"`
 		} `yaml:"subpackages"`
 	}
 	require.NoError(t, yaml.Unmarshal(data, &recipe))
 
-	// When: the compatibility subpackage test environment is selected.
-	var packages []string
+	// When: subpackage tests using APK-inspection pipelines are selected.
+	var inspected []string
 	for _, subpackage := range recipe.Subpackages {
-		if subpackage.Name == "${{package.name}}-compat" {
-			packages = subpackage.Test.Environment.Contents.Packages
-			break
+		for _, step := range subpackage.Test.Pipeline {
+			if step.Uses != "test/virtualpackage" && step.Uses != "test/emptypackage" {
+				continue
+			}
+			inspected = append(inspected, subpackage.Name)
+			require.Contains(t, subpackage.Test.Environment.Contents.Packages, "apk-tools", subpackage.Name)
 		}
 	}
 
-	// Then: the reusable virtual-package test can invoke apk explicitly.
-	require.Contains(t, packages, "apk-tools")
+	// Then: both current APK-inspection tests remain covered by the contract.
+	require.ElementsMatch(t, []string{"${{package.name}}-compat", "${{package.name}}-iptables"}, inspected)
 }
 
 func TestCraneRecipe_retainsCoverageFloorWithConfigProbe(t *testing.T) {
