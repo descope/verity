@@ -111,6 +111,12 @@ jobs:
       contents: read
     steps:
       - run: echo valid
+  call:
+    uses: ./.github/workflows/reusable.yaml
+    with:
+      enabled: false
+      count: 2
+      name: publication
 `
 
 	// When the typed scalar forms cross the workflow boundary.
@@ -118,4 +124,22 @@ jobs:
 
 	// Then deliberate booleans, numbers, and heterogeneous matrix values remain valid.
 	assert.NoError(t, err)
+}
+
+func TestDecodeWorkflow_rejects_nonScalarReusableInputs(t *testing.T) {
+	tests := []string{
+		"null",
+		"[one, two]",
+		"{nested: value}",
+	}
+	for _, value := range tests {
+		// Given: a reusable workflow input with a non-supported value shape.
+		input := fmt.Sprintf("on: workflow_dispatch\njobs:\n  call:\n    uses: ./.github/workflows/reusable.yaml\n    with: {value: %s}\n", value)
+
+		// When: the strict schema validates the input mapping.
+		_, err := decodeWorkflow([]byte(input))
+
+		// Then: only GitHub-supported scalar input values are accepted.
+		assert.Error(t, err)
+	}
 }

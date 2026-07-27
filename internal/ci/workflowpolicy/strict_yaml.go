@@ -145,6 +145,10 @@ func validateExtensionScalars(node *yaml.Node, path string) error {
 	return validateMapping(node, path, yamlMappingSchema{extension: validateString})
 }
 
+func validateInputScalars(node *yaml.Node, path string) error {
+	return validateMapping(node, path, yamlMappingSchema{extension: validateInputScalar})
+}
+
 func childPath(path, key string) string {
 	return path + "." + key
 }

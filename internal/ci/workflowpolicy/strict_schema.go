@@ -60,7 +60,7 @@ func validateJobNode(node *yaml.Node, path string) error {
 		"services":          validateServicesNode,
 		"strategy":          validateStrategyNode,
 		"uses":              validateString,
-		"with":              validateExtensionScalars,
+		"with":              validateInputScalars,
 		"secrets":           validateSecretsNode,
 	}}); err != nil {
 		return err
