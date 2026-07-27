@@ -2,7 +2,6 @@ package signerlock
 
 import (
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -139,28 +138,24 @@ func TestParse_rejectsUnknownFields(t *testing.T) {
 	require.ErrorIs(t, err, ErrMalformed)
 }
 
-func TestLoad_bootstrapTemplateFailsClosed(t *testing.T) {
-	// Given the checked-in bootstrap lock template.
+func TestLoad_checkedInLockIsRunnableAndImmutable(t *testing.T) {
+	// Given the checked-in production signer lock.
 	_, testFile, _, ok := runtime.Caller(0)
 	require.True(t, ok)
 	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(testFile), "..", "..", ".."))
 	path := filepath.Join(repoRoot, "ci", "apk-signer.lock.json")
-	data, err := os.ReadFile(path)
+
+	// When the lock is strictly loaded and validated.
+	lock, err := Load(path)
+
+	// Then publication is bound to immutable trusted signer coordinates.
 	require.NoError(t, err)
-	var sentinel struct {
-		Bootstrap bool `json:"bootstrap"`
-		Runnable  bool `json:"runnable"`
-	}
-	require.NoError(t, json.Unmarshal(data, &sentinel))
-	require.True(t, sentinel.Bootstrap)
-	require.False(t, sentinel.Runnable)
-
-	// When the template is loaded as a runnable lock.
-	_, err = Load(path)
-
-	// Then the explicit bootstrap sentinel prevents use until replaced.
-	require.Error(t, err)
-	require.ErrorIs(t, err, ErrBootstrap)
+	assert.False(t, lock.Bootstrap)
+	assert.True(t, lock.Runnable)
+	assert.Equal(t, SignerImageRepository, lock.Image)
+	assert.Equal(t, TrustedWorkflowIdentity, lock.Workflow)
+	assert.NotEmpty(t, lock.Digest)
+	assert.NotEmpty(t, lock.SourceSHA)
 }
 
 func validLock() Lock {
