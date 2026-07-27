@@ -35,11 +35,11 @@ func Test_Velero_recipe_pins_immutable_fixed_source_and_runtime_contract(t *test
 
 	// When: its source, dependency, smoke, and license metadata are inspected.
 
-	// Then: revision r1 owns Apache-2.0 v1.18.2 and the OpenTelemetry security fix.
+	// Then: revision r4 owns Apache-2.0 v1.18.2 and both dependency security fixes.
 	require.Contains(t, text, "name: velero")
 	require.Contains(t, text, "# renovate: datasource=github-tags depName=velero-io/velero versioning=semver-coerced")
 	require.Contains(t, text, "version: \"1.18.2\"")
-	require.Contains(t, text, "epoch: 1")
+	require.Contains(t, text, "epoch: 4")
 	require.Contains(t, text, "license: Apache-2.0")
 	require.Contains(t, text, "Adapted from wolfi-dev/os@080b7b160597fec7f7bfec73b8f281bb55c17117")
 	require.Contains(t, text, "repository: https://github.com/velero-io/velero")
@@ -50,6 +50,7 @@ func Test_Velero_recipe_pins_immutable_fixed_source_and_runtime_contract(t *test
 	require.Contains(t, text, "go.opentelemetry.io/otel/sdk@v1.44.0")
 	require.Contains(t, text, "go.opentelemetry.io/otel/sdk/metric@v1.44.0")
 	require.Contains(t, text, "go.opentelemetry.io/otel/trace@v1.44.0")
+	require.Contains(t, text, "golang.org/x/text@v0.39.0")
 	require.Contains(t, text, "go-package: go-1.26")
 	require.Contains(t, text, "version --client-only")
 	require.Contains(t, text, "velero backup create --help")
@@ -68,10 +69,10 @@ func Test_Velero_resolves_only_fixed_local_package(t *testing.T) {
 	// When: the local Melange artifact is pinned for the image build.
 	err = pinLocalPackageVersions(&tmpl, "1", []apkindex.Package{{
 		Name:    "velero",
-		Version: "1.18.2-r1",
+		Version: "1.18.2-r4",
 	}})
 
 	// Then: apko can only select the approved fixed local revision.
 	require.NoError(t, err)
-	require.Equal(t, []string{"velero=1.18.2-r1@local"}, tmpl.Packages)
+	require.Equal(t, []string{"velero=1.18.2-r4@local"}, tmpl.Packages)
 }
