@@ -58,6 +58,9 @@ test:
   pipeline:
     - runs: |
         manager --help
-        ghalistener 2>&1 | grep -F "LISTENER_CONFIG_PATH environment variable is not set"
+        if output="$(ghalistener 2>&1)"; then
+          exit 1
+        fi
+        printf '%s\n' "$output" | grep -F "LISTENER_CONFIG_PATH environment variable is not set"
         github-webhook-server --help
         actions-metrics-server --help
