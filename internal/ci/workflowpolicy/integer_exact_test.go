@@ -109,6 +109,19 @@ func TestIntegerOrchestrator_usesGoPlannedIdentityWithoutFallbacks(t *testing.T)
 	assert.Contains(t, workflow, "publication_id: ${{ steps.plan-outputs.outputs.publication_id }}")
 }
 
+func TestBuildSite_requestsPackageTargetsWithoutWeakeningStandaloneInteger(t *testing.T) {
+	// Given: the protected publication and standalone Integer callers.
+	buildSite := readRepositoryIntegerWorkflowText(t, "build-site.yaml")
+	standalone := readRepositoryIntegerWorkflowText(t, "integer-orchestrator.yaml")
+
+	// When: their reusable Integer inputs are inspected.
+
+	// Then: APK publication explicitly limits work to package producers, while
+	// standalone Integer retains every image and its unchanged Trivy gate.
+	assert.Contains(t, buildSite, "package_targets_only: true")
+	assert.NotContains(t, standalone, "package_targets_only: true")
+}
+
 func TestIntegerWorkflows_useExactNeeds_andReadOnlyDefaults(t *testing.T) {
 	// Given: the three strict Integer producer workflows.
 	orchestrator := readRepositoryIntegerWorkflow(t, "integer-orchestrator-reusable.yaml")

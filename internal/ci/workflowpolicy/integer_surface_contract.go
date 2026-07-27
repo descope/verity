@@ -4,6 +4,7 @@ const (
 	integerInputSurfaceDetail  = "workflow_call inputs must contain the exact producer contract"
 	integerOutputSurfaceDetail = "workflow_call outputs must contain only exact artifact names and digests"
 	workflowInputStringType    = "string"
+	workflowInputBooleanType   = "boolean"
 )
 
 func validateIntegerSurface(file *workflowFile, surface integerSurface) []Violation {

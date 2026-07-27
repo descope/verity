@@ -109,6 +109,28 @@ func TestPlanIntegerProduction_scheduleEnumeratesCompleteUniquePackageSnapshot(t
 	}
 }
 
+func TestPlanIntegerProduction_packageTargetsOnly_excludesPlainImagesWithoutDroppingPackages(t *testing.T) {
+	// Given: a complete Integer fixture containing plain and recipe-backed images.
+	root := setupIntegerProductionRepo(t)
+	options := integerProductionOptions(root, IntegerBatchEventWorkflowCall)
+	options.PackageTargetsOnly = true
+
+	// When: APK publication requests only package-producing targets.
+	plan, err := PlanIntegerProduction(&options)
+
+	// Then: every recipe-backed target and package remains, while unrelated
+	// plain images stay under the standalone Integer zero-CVE workflow.
+	require.NoError(t, err)
+	assert.Equal(t, []string{
+		"caddy:1-fips", "caddy:2-fips", "cilium:1.19-default",
+		"linkerd:25-default", "platform/envoy:1.2-default",
+	}, integerTargetIDs(plan.Targets))
+	assert.Equal(t, []string{
+		"aarch64/caddy", "aarch64/caddy-tools", "aarch64/cilium-1.19", "aarch64/envoy-1.2", "aarch64/linkerd2-cli-25",
+		"x86_64/caddy", "x86_64/caddy-tools", "x86_64/cilium-1.19", "x86_64/envoy-1.2", "x86_64/linkerd2-cli-25",
+	}, integerPackageIDs(plan.Packages))
+}
+
 func TestPlanIntegerProduction_realCraneCoalescesEquivalentPackageDeclarations(t *testing.T) {
 	// Given: the repository's real crane definition, whose default and FIPS
 	// recipes intentionally declare the same main APK identity.

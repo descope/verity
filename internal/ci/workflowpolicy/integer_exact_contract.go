@@ -19,8 +19,10 @@ var integerSurfaces = map[string]integerSurface{
 			"run_id": workflowInputStringType, "run_attempt": workflowInputStringType, "publication_id": workflowInputStringType, "batch_id": workflowInputStringType,
 			"event": workflowInputStringType,
 		},
-		optionalInputs: map[string]string{"base_sha": workflowInputStringType, "image": workflowInputStringType},
-		outputs:        []string{"manifest_artifact_name", "manifest_artifact_digest"}, outputJob: "aggregate",
+		optionalInputs: map[string]string{
+			"base_sha": workflowInputStringType, "image": workflowInputStringType, "package_targets_only": workflowInputBooleanType,
+		},
+		outputs: []string{"manifest_artifact_name", "manifest_artifact_digest"}, outputJob: "aggregate",
 	},
 	"integer-build-shard.yaml": {
 		inputs: map[string]string{

@@ -151,22 +151,23 @@ type IntegerBatchManifest struct {
 }
 
 type IntegerProductionOptions struct {
-	Event         IntegerBatchEvent
-	SourceSHA     string
-	RunID         uint64
-	RunAttempt    uint64
-	PublicationID string
-	BatchID       string
-	ChangedFiles  []string
-	Only          []string
-	RepoRoot      string
-	BaseLockPath  string
-	BaseImagesDir string
-	ConfigPath    string
-	ImagesDir     string
-	APKIndexURL   string
-	CacheDir      string
-	GenDir        string
+	Event              IntegerBatchEvent
+	SourceSHA          string
+	RunID              uint64
+	RunAttempt         uint64
+	PublicationID      string
+	BatchID            string
+	ChangedFiles       []string
+	Only               []string
+	PackageTargetsOnly bool
+	RepoRoot           string
+	BaseLockPath       string
+	BaseImagesDir      string
+	ConfigPath         string
+	ImagesDir          string
+	APKIndexURL        string
+	CacheDir           string
+	GenDir             string
 }
 
 type IntegerComponentOptions struct {
