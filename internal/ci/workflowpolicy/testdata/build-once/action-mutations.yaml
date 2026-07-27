@@ -27,9 +27,13 @@
   replacement: "--run-attempt \"1\""
   want: current run
 - name: wrong signer repository
-  old: "--signer-repo \"verity-org/verity\""
-  replacement: "--signer-repo \"attacker/verity\""
+  old: "--repo \"$GITHUB_REPOSITORY\""
+  replacement: "--repo \"attacker/verity\""
   want: signer workflow
+- name: conflicting signer repository selector
+  old: "--signer-workflow \"github.com/verity-org/verity/.github/workflows/build-verity-protected.yaml\""
+  replacement: "--signer-repo \"verity-org/verity\"\n        --signer-workflow \"github.com/verity-org/verity/.github/workflows/build-verity-protected.yaml\""
+  want: mutually exclusive
 - name: wrong attestation predicate
   old: "--predicate-type \"https://slsa.dev/provenance/v1\""
   replacement: "--predicate-type \"https://example.test/weak\""

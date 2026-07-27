@@ -187,7 +187,7 @@ func validateAttestationStep(name string, step *workflowStep) []Violation {
 		violations = append(violations, buildOnceViolation(name, "composite", "attestation verification must use the helper-normalized strict boolean"))
 	}
 	markers := []string{
-		`--repo "$GITHUB_REPOSITORY"`, `--signer-repo "verity-org/verity"`,
+		`--repo "$GITHUB_REPOSITORY"`,
 		`--signer-workflow "` + setupSignerWorkflow + `"`,
 		`--signer-digest "$VERITY_SOURCE_SHA"`, `--source-digest "$VERITY_SOURCE_SHA"`, `--deny-self-hosted-runners`,
 		`--predicate-type "https://slsa.dev/provenance/v1"`,
@@ -197,6 +197,9 @@ func validateAttestationStep(name string, step *workflowStep) []Violation {
 			violations = append(violations, buildOnceViolation(name, "composite", "signer workflow, repository, source SHA, and binary digest must be verified"))
 			break
 		}
+	}
+	if strings.Contains(step.Run, "--signer-repo") {
+		violations = append(violations, buildOnceViolation(name, "composite", "mutually exclusive attestation identity selectors are forbidden"))
 	}
 	return violations
 }
