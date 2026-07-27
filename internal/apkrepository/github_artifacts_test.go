@@ -41,7 +41,7 @@ func TestDownloadApproved_downloads_exact_batch_and_verifies_every_attestation(t
 	require.NoError(t, err)
 	require.Len(t, runner.calls, 2)
 	assert.Equal(t, []string{"run", "download", "1234", "--repo", "verity-org/verity", "--pattern", "apk-repository-1234-2-*", "--dir", output}, runner.calls[0].args)
-	assert.Contains(t, runner.calls[1].args, "github.com/verity-org/verity/.github/workflows/integer-build-image.yaml")
+	assert.Contains(t, runner.calls[1].args, "github.com/verity-org/verity/.github/workflows/integer-build-image-reusable.yaml")
 	assert.Contains(t, runner.calls[1].args, "refs/heads/main")
 	assert.Contains(t, runner.calls[1].args, "--deny-self-hosted-runners")
 	assert.Contains(t, stdout.String(), "Downloaded and verified 1 approved APK packages")

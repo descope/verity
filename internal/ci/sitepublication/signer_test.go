@@ -64,8 +64,11 @@ func TestBuildSignerPlan_constructs_ordered_isolated_minimal_commands(t *testing
 	assert.NotContains(t, strings.Join(signArgs, " "), request.KeyDirectory)
 	assert.NotContains(t, signArgs, "--signing-key")
 	assert.Equal(t, request.Plan.SignerReference, signerPlan.ImageReference)
-	assert.Contains(t, signerPlan.Steps[1].Command.Args, "--source-digest")
-	assert.Contains(t, signerPlan.Steps[1].Command.Args, testSignerSourceSHA)
+	attestationArgs := signerPlan.Steps[1].Command.Args
+	assert.Contains(t, attestationArgs, "--bundle-from-oci")
+	assert.Contains(t, attestationArgs, "github.com/verity-org/verity/.github/workflows/integer-build-image-reusable.yaml")
+	assert.Contains(t, attestationArgs, "--source-digest")
+	assert.Contains(t, attestationArgs, testSignerSourceSHA)
 }
 
 func TestExecuteSigner_passes_key_on_stdin_only_after_attestation(t *testing.T) {

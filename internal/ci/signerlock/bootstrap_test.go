@@ -11,7 +11,7 @@ func TestBootstrapLock_failsClosedBeforeItCanRun(t *testing.T) {
 	data := []byte(`{
   "image": "ghcr.io/verity-org/apk-repository-signer",
   "digest": "sha256:REPLACE_WITH_REAL_DIGEST",
-  "workflow": "github.com/verity-org/verity/.github/workflows/integer-build-image.yaml",
+  "workflow": "github.com/verity-org/verity/.github/workflows/integer-build-image-reusable.yaml",
   "source_sha": "REPLACE_WITH_REAL_SOURCE_SHA",
   "bootstrap": true,
   "runnable": false

@@ -13,7 +13,7 @@ import (
 
 const (
 	SignerImageRepository   = "ghcr.io/verity-org/apk-repository-signer"
-	TrustedWorkflowIdentity = "github.com/verity-org/verity/.github/workflows/integer-build-image.yaml"
+	TrustedWorkflowIdentity = "github.com/verity-org/verity/.github/workflows/integer-build-image-reusable.yaml"
 	digestPrefix            = "sha256:"
 	digestHexLength         = 64
 	sourceSHAHexLength      = 40

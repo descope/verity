@@ -64,7 +64,7 @@ func DownloadApproved(ctx context.Context, options *DownloadApprovedOptions) err
 	if len(packages) == 0 {
 		return fmt.Errorf("%w: %s", errNoApprovedArtifacts, options.BatchID)
 	}
-	signerWorkflow := "github.com/" + options.Repository + "/.github/workflows/integer-build-image.yaml"
+	signerWorkflow := "github.com/" + options.Repository + "/.github/workflows/integer-build-image-reusable.yaml"
 	for _, packagePath := range packages {
 		_, err := runRequired(ctx, runner, &command{
 			name: "gh",

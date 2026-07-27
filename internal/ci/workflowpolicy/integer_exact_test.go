@@ -139,6 +139,17 @@ func TestIntegerBuildImage_usesSupportedCosignAnnotationsFlag(t *testing.T) {
 	require.NotContains(t, workflow, "cosign sign --yes --annotation ")
 }
 
+func TestIntegerBuildImage_attestsIndexSBOMFailClosed(t *testing.T) {
+	// Given: the exact image producer text.
+	workflow := readRepositoryIntegerWorkflowText(t, "integer-build-image-reusable.yaml")
+
+	// When: the SBOM attestation step is inspected.
+
+	// Then: the multi-arch index SBOM is mandatory rather than conditionally skipped.
+	require.Contains(t, workflow, "predicate-path: sbom-index.spdx.json")
+	require.NotContains(t, workflow, "if: hashFiles('sbom-")
+}
+
 func TestIntegerBuildImage_usesGoOwnedPackageAndPublicationGates_beforeAttestation(t *testing.T) {
 	// Given: the exact image producer text.
 	workflow := readRepositoryIntegerWorkflowText(t, "integer-build-image-reusable.yaml")
