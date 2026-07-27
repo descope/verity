@@ -154,6 +154,7 @@ func buildSignerSteps(plan *SignerPlan) ([]SignerStep, error) {
 		{Name: "pull", Command: ExecutionCommand{Name: runtime, Args: []string{"pull", plan.ImageReference}}},
 		{Name: "attest", Command: ExecutionCommand{Name: trustedGHBinary, Args: []string{
 			"attestation", "verify", "oci://" + plan.ImageReference,
+			"--bundle-from-oci",
 			"--repo", plan.Execution.Repository,
 			"--signer-workflow", signerlock.TrustedWorkflowIdentity,
 			"--source-ref", "refs/heads/main", "--source-digest", string(plan.SignerSourceSHA),

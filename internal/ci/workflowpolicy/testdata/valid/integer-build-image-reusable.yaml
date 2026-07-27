@@ -403,13 +403,12 @@ jobs:
         run: cosign sign --yes --annotations "verity.publication_id=${PUBLICATION_ID}" "${INPUT_REGISTRY}/${INPUT_IMAGE}@${DIGEST}"
 
       - name: Attest SBOM
-        if: hashFiles('sbom-amd64.spdx.json') != ''
         uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         with:
           subject-name: ${{ inputs.registry }}/${{ inputs.image }}
           subject-digest: ${{ steps.build.outputs.digest }}
           predicate-type: https://spdx.dev/Document
-          predicate-path: sbom-amd64.spdx.json
+          predicate-path: sbom-index.spdx.json
           push-to-registry: "true"
 
       - name: Download exact Integer plan
