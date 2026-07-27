@@ -52,13 +52,19 @@ func TestRunPRLinkerdCanary_uses_staged_local_pin_and_strict_scan(t *testing.T) 
 
 	// Then: staged Melange, @local pinning, native apko, and all-severity Trivy are retained.
 	require.NoError(t, err)
-	var staged, pinConfig, strictScan bool
+	var staged, pinConfig, architectureKeyring, strictScan bool
 	for _, call := range runner.calls {
 		staged = staged || containsArguments(call.Args, "--staged")
 		pinConfig = pinConfig || containsArguments(call.Args, "integer", "melange", "pin-config")
+		architectureKeyring = architectureKeyring || (call.Name == "apko" && containsArguments(
+			call.Args,
+			"--keyring-append",
+			filepath.Join("packages", "repo", "melange-aarch64.rsa.pub"),
+		))
 		strictScan = strictScan || (call.Name == "trivy" && containsArguments(call.Args, "--severity", prIntegerSeverities))
 	}
 	require.True(t, staged)
 	require.True(t, pinConfig)
+	require.True(t, architectureKeyring)
 	require.True(t, strictScan)
 }

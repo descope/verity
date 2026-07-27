@@ -2,9 +2,9 @@ package:
   name: velero
   # renovate: datasource=github-tags depName=velero-io/velero versioning=semver-coerced
   version: "1.18.2"
-  # r1 rebuilds the latest compatible release with OpenTelemetry 1.44.0,
-  # fixing CVE-2026-41178 (GHSA-5wrp-cwcj-q835).
-  epoch: 1
+  # r4 rebuilds the latest compatible release with OpenTelemetry 1.44.0 and
+  # golang.org/x/text 0.39.0, fixing CVE-2026-41178 and CVE-2026-56852.
+  epoch: 4
   description: Backup and migrate Kubernetes applications and their persistent volumes
   copyright:
     - license: Apache-2.0
@@ -43,6 +43,7 @@ pipeline:
         go.opentelemetry.io/otel/sdk@v1.44.0
         go.opentelemetry.io/otel/sdk/metric@v1.44.0
         go.opentelemetry.io/otel/trace@v1.44.0
+        golang.org/x/text@v0.39.0
 
   - uses: go/build
     with:
@@ -60,6 +61,10 @@ pipeline:
         "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
 
 test:
+  environment:
+    contents:
+      packages:
+        - apk-tools
   pipeline:
     - runs: |
         velero version --client-only 2>&1 | grep -F "v${{package.version}}"

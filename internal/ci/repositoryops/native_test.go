@@ -34,7 +34,7 @@ func TestNativeService_TestPackage_buildsExactRcloneCommand(t *testing.T) {
 		"test", "--arch", "x86_64",
 		"--repository-append", filepath.Join(root, "packages", "repo"),
 		"--repository-append", "https://packages.wolfi.dev/os",
-		"--keyring-append", filepath.Join(root, "melange-work", "melange.rsa.pub"),
+		"--keyring-append", filepath.Join(root, "packages", "repo", "melange-x86_64.rsa.pub"),
 		"--keyring-append", "https://packages.wolfi.dev/os/wolfi-signing.rsa.pub",
 		"--runner", "docker", "--pipeline-dirs", "melange-work/pipelines",
 		"melange-work/specs/rclone.yaml/build.yaml", "rclone",
