@@ -16,7 +16,6 @@ import (
 const (
 	integerMelangeRepoDir    = "packages/repo"
 	integerMelangeRepository = "@local " + integerMelangeRepoDir
-	integerMelangeKeyPath    = "melange-work/melange.rsa.pub"
 	integerMelangePackageTag = "@local"
 )
 
@@ -67,7 +66,7 @@ func integerPrepareMelangeBuild(ctx context.Context, configSpec *intconfig.Melan
 	}
 	return integerMelangeArtifacts{
 		Repositories: []string{integerMelangeRepository},
-		Keyrings:     []string{integerMelangeKeyPath},
+		Keyrings:     []string{filepath.ToSlash(filepath.Join(integerMelangeRepoDir, "melange-"+string(architecture)+".rsa.pub"))},
 		Packages:     packages,
 	}, nil
 }
