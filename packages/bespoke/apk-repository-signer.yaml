@@ -18,15 +18,13 @@ environment:
     CGO_ENABLED: "0"
     GOTOOLCHAIN: local
 
-# Bootstrap source is pinned to this PR branch so pre-merge Integer validation
-# can build it. Rotate branch and expected-commit to protected main before the
-# signer lock becomes runnable.
+# Signer source is pinned to the protected main revision that introduced the
+# audited signer implementation; no mutable branch participates in resolution.
 pipeline:
   - uses: git-checkout
     with:
       repository: https://github.com/verity-org/verity
-      branch: apk-repository-publish
-      expected-commit: 69b4bec7ee2a1f89162dd4e4250b953c6e654a29
+      expected-commit: fffeadbbadd3bfc3c682479aad6648adc4a71d79
 
   - uses: go/build
     with:
