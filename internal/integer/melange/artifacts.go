@@ -221,7 +221,8 @@ func artifactOutputDigests(paths *Paths, arch Architecture) (map[string]string, 
 	if _, ok := outputs["package/APKINDEX.tar.gz"]; !ok {
 		return nil, errNoPackageIndex
 	}
-	keyData, err := readRegularFile(paths.WorkDir, "melange.rsa.pub")
+	publicName := "melange-" + string(arch) + ".rsa.pub"
+	keyData, err := readRegularFile(paths.RepoDir, publicName)
 	if err != nil {
 		return nil, fmt.Errorf("verify public key: %w", err)
 	}

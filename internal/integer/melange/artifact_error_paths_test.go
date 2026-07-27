@@ -226,7 +226,7 @@ func newArtifactErrorFixture(t *testing.T) (Paths, lockFile, Spec) {
 	writeTestFile(t, filepath.Join(paths.LockedDir, entry.File), recipe)
 	writeTestFile(t, paths.LockFile, fmt.Sprintf(`{"packages":{"sentinel":{"file":"sentinel.yaml","sha256":%q,"assets":{}}},"pipeline_files":{}}`, entry.SHA256))
 	writeTestFile(t, filepath.Join(paths.RepoDir, string(ArchitectureX8664), "APKINDEX.tar.gz"), "index")
-	writeTestFile(t, filepath.Join(paths.WorkDir, "melange.rsa.pub"), "public")
+	writeTestFile(t, filepath.Join(paths.RepoDir, "melange-"+string(ArchitectureX8664)+".rsa.pub"), "public")
 	return paths, lock, Spec{Upstream: "sentinel"}
 }
 
