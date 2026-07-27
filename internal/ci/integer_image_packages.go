@@ -57,6 +57,7 @@ func TestIntegerPackages(ctx context.Context, options *IntegerPackageTestOptions
 			"--repository-append", melange.RepositoryURL,
 			"--keyring-append", filepath.Join(options.Workspace, "packages", "repo", "melange-"+string(options.Architecture)+".rsa.pub"),
 			"--keyring-append", melange.KeyringURL,
+			"--test-package-append", "busybox",
 			"--runner", "docker",
 		}
 		if usePipelines {

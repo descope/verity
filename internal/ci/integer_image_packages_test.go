@@ -3,6 +3,7 @@ package ci
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -32,6 +33,10 @@ func TestTestIntegerPackages_runsEveryStagedRecipeNatively(t *testing.T) {
 		assert.Contains(t, call.Args, filepath.Join(root, "packages", "repo"))
 		assert.Contains(t, call.Args, filepath.Join(root, "packages", "repo", "melange-aarch64.rsa.pub"))
 		assert.Contains(t, call.Args, "melange-work/pipelines")
+		testPackage := slices.Index(call.Args, "--test-package-append")
+		require.GreaterOrEqual(t, testPackage, 0)
+		require.Less(t, testPackage+1, len(call.Args))
+		assert.Equal(t, "busybox", call.Args[testPackage+1])
 	}
 }
 
