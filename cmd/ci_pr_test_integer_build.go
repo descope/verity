@@ -75,7 +75,12 @@ func runPRMelangePackageTest(
 			"test", "--arch", request.PackageArchitecture,
 			"--repository-append", filepath.Join(request.RepoRoot, "packages", "repo"),
 			"--repository-append", "https://packages.wolfi.dev/os",
-			"--keyring-append", filepath.Join(request.RepoRoot, "melange-work", "melange.rsa.pub"),
+			"--keyring-append", filepath.Join(
+				request.RepoRoot,
+				"packages",
+				"repo",
+				"melange-"+request.PackageArchitecture+".rsa.pub",
+			),
 			"--keyring-append", "https://packages.wolfi.dev/os/wolfi-signing.rsa.pub",
 			"--pipeline-dirs", "melange-work/pipelines", "--runner", "docker",
 			filepath.ToSlash(filepath.Join("melange-work", "specs", buildDir, "build.yaml")), packageName,

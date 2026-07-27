@@ -46,7 +46,8 @@ func runPRLinkerdCanary(
 		Name: "apko", Dir: request.RepoRoot,
 		Args: []string{
 			"build", "--arch", request.Architecture, "--repository-append", "@local packages/repo",
-			"--keyring-append", "melange-work/melange.rsa.pub", config, "integer:pin-config-canary", imagePath,
+			"--keyring-append", filepath.Join("packages", "repo", "melange-"+request.PackageArchitecture+".rsa.pub"),
+			config, "integer:pin-config-canary", imagePath,
 		},
 	}); err != nil {
 		return fmt.Errorf("build pin-config canary: %w", err)

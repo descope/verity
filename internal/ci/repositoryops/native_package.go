@@ -78,7 +78,12 @@ func (s NativeService) TestPackage(ctx context.Context, request *NativePackageRe
 			"test", "--arch", request.architecture,
 			"--repository-append", filepath.Join(request.repoRoot, "packages", "repo"),
 			"--repository-append", "https://packages.wolfi.dev/os",
-			"--keyring-append", filepath.Join(request.repoRoot, "melange-work", "melange.rsa.pub"),
+			"--keyring-append", filepath.Join(
+				request.repoRoot,
+				"packages",
+				"repo",
+				"melange-"+request.architecture+".rsa.pub",
+			),
 			"--keyring-append", "https://packages.wolfi.dev/os/wolfi-signing.rsa.pub",
 			"--runner", "docker", "--pipeline-dirs", "melange-work/pipelines",
 			request.buildFile, request.packageName,
