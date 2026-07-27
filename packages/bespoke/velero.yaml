@@ -60,6 +60,10 @@ pipeline:
         "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
 
 test:
+  environment:
+    contents:
+      packages:
+        - apk-tools
   pipeline:
     - runs: |
         velero version --client-only 2>&1 | grep -F "v${{package.version}}"
