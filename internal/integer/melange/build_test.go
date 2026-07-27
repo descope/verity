@@ -84,7 +84,7 @@ func TestBuildStagesRunsAndSigns(t *testing.T) {
 	assert.Contains(t, runner.commands[1].args, "fips")
 	assert.Equal(t, "sign-index", runner.commands[2].args[0])
 
-	publicKey, err := os.ReadFile(testPath(root, "packages/repo/melange.rsa.pub"))
+	publicKey, err := os.ReadFile(testPath(root, "packages/repo/x86_64/melange.rsa.pub"))
 	require.NoError(t, err)
 	assert.Equal(t, "public", string(publicKey))
 	assert.True(t, ArtifactsExist(&paths, spec, ArchitectureX8664))

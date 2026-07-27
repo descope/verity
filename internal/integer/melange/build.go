@@ -185,6 +185,9 @@ func signPackageIndexes(ctx context.Context, options *BuildOptions) error {
 	if err := copyFile(options.Paths.Root, publicKey, filepath.Join(options.Paths.RepoDir, publicName)); err != nil {
 		return fmt.Errorf("copy public key: %w", err)
 	}
+	if err := copyFile(options.Paths.Root, publicKey, filepath.Join(options.Paths.RepoDir, string(options.Arch), "melange.rsa.pub")); err != nil {
+		return fmt.Errorf("copy architecture public key: %w", err)
+	}
 	if err := copyFile(options.Paths.Root, publicKey, filepath.Join(options.Paths.RepoDir, "melange.rsa.pub")); err != nil {
 		return fmt.Errorf("copy compatibility public key: %w", err)
 	}
