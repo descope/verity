@@ -128,6 +128,17 @@ func TestIntegerWorkflows_useExactNeeds_andReadOnlyDefaults(t *testing.T) {
 	assert.False(t, image.On.PullRequest)
 }
 
+func TestIntegerBuildImage_usesSupportedCosignAnnotationsFlag(t *testing.T) {
+	// Given: the exact image producer text.
+	workflow := readRepositoryIntegerWorkflowText(t, "integer-build-image-reusable.yaml")
+
+	// When: the keyless image-signing command is inspected.
+
+	// Then: Cosign receives its supported plural annotations flag.
+	require.Contains(t, workflow, "cosign sign --yes --annotations ")
+	require.NotContains(t, workflow, "cosign sign --yes --annotation ")
+}
+
 func TestIntegerBuildImage_usesGoOwnedPackageAndPublicationGates_beforeAttestation(t *testing.T) {
 	// Given: the exact image producer text.
 	workflow := readRepositoryIntegerWorkflowText(t, "integer-build-image-reusable.yaml")
