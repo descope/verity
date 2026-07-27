@@ -38,6 +38,10 @@ on:
         required: false
         default: ""
         type: string
+      package_targets_only:
+        required: false
+        default: false
+        type: boolean
     outputs:
       manifest_artifact_name:
         value: ${{ jobs.aggregate.outputs.manifest_artifact_name }}
@@ -150,6 +154,7 @@ jobs:
           --run-attempt "${{ inputs.run_attempt }}"
           --publication-id "${{ inputs.publication_id }}"
           --batch-id "${{ inputs.batch_id }}"
+          --package-targets-only="${{ inputs.package_targets_only }}"
           --base-sha "${{ inputs.base_sha }}"
           --head-sha "${{ inputs.source_sha }}"
           --repo-root .
@@ -168,6 +173,7 @@ jobs:
           --run-attempt "${{ inputs.run_attempt }}"
           --publication-id "${{ inputs.publication_id }}"
           --batch-id "${{ inputs.batch_id }}"
+          --package-targets-only="${{ inputs.package_targets_only }}"
           --repo-root .
           --integer-config integer.yaml
           --images-dir images
@@ -184,6 +190,7 @@ jobs:
           --run-attempt "${{ inputs.run_attempt }}"
           --publication-id "${{ inputs.publication_id }}"
           --batch-id "${{ inputs.batch_id }}"
+          --package-targets-only="${{ inputs.package_targets_only }}"
           --repo-root .
           --integer-config integer.yaml
           --images-dir images
@@ -200,6 +207,7 @@ jobs:
           --run-attempt "${{ inputs.run_attempt }}"
           --publication-id "${{ inputs.publication_id }}"
           --batch-id "${{ inputs.batch_id }}"
+          --package-targets-only="${{ inputs.package_targets_only }}"
           --only "${{ inputs.image }}"
           --repo-root .
           --integer-config integer.yaml

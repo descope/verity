@@ -130,6 +130,9 @@ test:
     - name: Fetch and verify manifest
       runs: |
         crane manifest chainguard/static | jq '.schemaVersion' | grep '2' || exit 1
+    - name: Fetch and verify config
+      runs: |
+        crane config chainguard/static:latest | jq -e '.architecture != null'
     - name: List tags for a public image
       runs: |
         crane ls chainguard/static | grep -E 'latest|v[0-9]+.[0-9]+.[0-9]+' || exit 1

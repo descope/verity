@@ -43,6 +43,10 @@ pipeline:
         "${{targets.destdir}}/usr/share/licenses/${{package.name}}/LICENSE"
 
 test:
+  environment:
+    contents:
+      packages:
+        - apk-tools
   pipeline:
     - runs: |
         /usr/bin/kor version | grep -F "kor version: v${{package.version}}"

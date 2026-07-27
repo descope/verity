@@ -125,10 +125,13 @@ func planIntegerPackages(options *IntegerProductionOptions, images []intdiscover
 		if err != nil {
 			return nil, nil, fmt.Errorf("resolve packages for %s: %w", productionImageID(image), err)
 		}
+		if options.PackageTargetsOnly && len(packages) == 0 {
+			continue
+		}
 		target := IntegerBatchTarget{
 			Name: image.Name, Version: image.Version, Type: image.Type, ArtifactKey: integerArtifactKey(image),
 			Tags: append([]string(nil), image.Tags...), Registry: image.Registry,
-			Shard: strconv.Itoa(index/integerProductionShardSize + 1), ExpectedPackages: packages,
+			Shard: strconv.Itoa(len(targets)/integerProductionShardSize + 1), ExpectedPackages: packages,
 			PublishPackages: []string{},
 		}
 		for _, name := range packages {

@@ -48,6 +48,19 @@ func Test_ActionsRunnerController_recipe_pins_fixed_source_revision(t *testing.T
 	require.Contains(t, text, "packages: ./cmd/actionsmetricsserver")
 }
 
+func Test_ActionsRunnerController_recipe_tests_ghalistener_configuration_rejection(t *testing.T) {
+	// Given: the bespoke package recipe selected by the image.
+	recipe, err := os.ReadFile(filepath.Join("..", "packages", "bespoke", "actions-runner-controller.yaml"))
+	require.NoError(t, err)
+	text := string(recipe)
+
+	// When: the listener smoke-test contract is inspected.
+
+	// Then: the non-CLI binary is exercised offline through its required configuration boundary.
+	require.Contains(t, text, `ghalistener 2>&1 | grep -F "LISTENER_CONFIG_PATH environment variable is not set"`)
+	require.NotContains(t, text, "ghalistener --help")
+}
+
 func Test_ActionsRunnerController_resolves_fixed_local_package(t *testing.T) {
 	// Given: the checked-in image template and the package produced by the bespoke recipe.
 	def, err := intconfig.LoadImage(filepath.Join("..", "images", "actions-runner-controller.yaml"))
