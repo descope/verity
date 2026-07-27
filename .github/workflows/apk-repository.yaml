@@ -1,95 +1,15 @@
-name: APK Repository
+name: APK Repository (retired)
 
 on:
-  workflow_dispatch:
-    inputs:
-      publish_pages:
-        description: "Deploy the assembled site artifact to GitHub Pages"
-        required: true
-        default: "false"
-        type: choice
-        options:
-          - "false"
-          - "true"
+  workflow_call:
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
-  assemble:
-    name: Assemble APK repository
+  retired:
+    name: Reject standalone APK publication
     runs-on: ubuntu-24.04
-    env:
-      HAS_APK_REPOSITORY_PRIVATE_KEY: ${{ secrets.APK_REPOSITORY_PRIVATE_KEY != '' }}
-    permissions:
-      contents: read
+    permissions: {}
     steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Install mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
-        with:
-          install: true
-          cache: true
-
-      - name: Prepare artifact source directory
-        run: |
-          mkdir -p apk-artifacts
-          echo "Repository assembly will scan packages/repo and apk-artifacts."
-          echo "Cross-run artifact download is intentionally not performed in this privileged workflow."
-
-      - name: Build site shell
-        working-directory: site
-        env:
-          VITE_CACHE_DIR: ${{ runner.temp }}/verity-vite-cache
-        run: npm ci && npm run build
-
-      - name: Assemble APK repository
-        env:
-          APK_REPOSITORY_PRIVATE_KEY: ${{ secrets.APK_REPOSITORY_PRIVATE_KEY }}
-        run: |
-          docker run --rm \
-            -e APK_REPOSITORY_PRIVATE_KEY \
-            -v "$PWD:/work" \
-            -w /work \
-            alpine:3.22@sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601 \
-            sh -euxc 'packages="bash findutils"; if [ -n "${APK_REPOSITORY_PRIVATE_KEY:-}" ]; then packages="$packages abuild openssl"; fi; apk add --no-cache $packages; bash .github/scripts/assemble-apk-repository.sh --output site/dist/apk apk-artifacts packages/repo'
-
-      - name: Validate APK repository
-        run: bash .github/scripts/validate-apk-repository.sh site/dist/apk
-
-      - name: Validate APK repository signatures
-        if: env.HAS_APK_REPOSITORY_PRIVATE_KEY == 'true'
-        run: bash .github/scripts/validate-apk-repository.sh --require-signature site/dist/apk
-
-      - name: Upload Pages artifact
-        uses: ./.github/actions/upload-pages-artifact
-        with:
-          path: site/dist
-          overwrite: "true"
-
-  deploy:
-    name: Deploy APK repository site
-    needs: assemble
-    if: inputs.publish_pages == 'true'
-    runs-on: ubuntu-24.04
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    permissions:
-      pages: write
-      id-token: write
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
-        id: deployment
+      - name: Fail closed before publication or secret access
+        run: exit 1

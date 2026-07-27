@@ -82,25 +82,15 @@ func Test_Pushgateway_resolves_only_fixed_local_package(t *testing.T) {
 	require.Equal(t, []string{"prometheus-pushgateway=1.11.3-r2@local"}, tmpl.Packages)
 }
 
-func Test_Pushgateway_CI_verifies_package_and_image_natively(t *testing.T) {
-	// Given: the native package and image workflow used for publish builds.
-	workflow, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "integer-build-image.yaml"))
-	require.NoError(t, err)
-	text := string(workflow)
+func Test_Pushgateway_CI_uses_reusable_image_security_gates(t *testing.T) {
+	// Given: the generated reusable Integer image workflow fixture.
+	workflow := readGeneratedWorkflowFixture(t, "integer-build-image-reusable.yaml")
 
-	// When: the Pushgateway-family gates are inspected.
+	// When: the shared package and image gates are inspected.
 
-	// Then: both native legs test the package and image with strict security and provenance checks.
-	require.Contains(t, text, "Test Pushgateway package natively (${{ matrix.arch }})")
-	require.Contains(t, text, "Test Pushgateway image natively (${{ matrix.arch }})")
-	require.Contains(t, text, "if: inputs.image == 'pushgateway'")
-	require.Contains(t, text, "melange-work/specs/pushgateway.yaml/build.yaml")
-	require.Contains(t, text, "--fail-on-severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL")
-	require.Contains(t, text, "/-/ready")
-	require.Contains(t, text, "/metrics/job/integer_pushgateway_smoke")
-	require.Contains(t, text, "printf '%s\\n'")
-	require.Contains(t, text, "prometheus-pushgateway-${expected_full_version}.spdx.json")
-	require.Contains(t, text, "licenseDeclared == \"Apache-2.0\"")
+	// Then: reusable execution keeps native package testing, strict scanning, signing, and SBOM attestation.
+	requireIntegerImageReusablePackageGate(t, workflow)
+	requireIntegerImageReusableImageGate(t, workflow)
 }
 
 func Test_Pushgateway_PR_smoke_verifies_runtime_and_provenance_natively(t *testing.T) {
@@ -111,15 +101,9 @@ func Test_Pushgateway_PR_smoke_verifies_runtime_and_provenance_natively(t *testi
 
 	// When: the Pushgateway-family native smoke gate is inspected.
 
-	// Then: PR CI runs package tests plus image health, metrics, SPDX, and strict Trivy validation.
-	const pushgatewayGate = "if [ \"$image\" = \"pushgateway\" ]; then"
-	require.GreaterOrEqual(t, strings.Count(text, pushgatewayGate), 4)
-	require.Contains(t, text, "melange test \\")
-	require.Contains(t, text, "--fail-on-severity \"UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL\"")
-	require.Contains(t, text, "/-/ready")
-	require.Contains(t, text, "/metrics/job/integer_pushgateway_smoke")
-	require.Contains(t, text, "printf '%s\\n'")
-	require.Contains(t, text, "prometheus-pushgateway-${expected_full_version}.spdx.json")
-	require.Contains(t, text, ".spdxVersion == \"SPDX-2.3\"")
-	require.Contains(t, text, "licenseDeclared == \"Apache-2.0\"")
+	// Then: both native paths delegate the complete gate to the typed PR command.
+	require.Equal(t, 2, strings.Count(text, "./verity ci pr-test integer-batch"))
+	require.Contains(t, text, "--kind smoke")
+	require.Contains(t, text, "--kind build")
+	require.NotContains(t, text, "if [ \"$image\" = \"pushgateway\" ]; then")
 }

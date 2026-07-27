@@ -1,0 +1,177 @@
+name: Orchestrator
+
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+      run_id:
+        required: true
+        type: string
+      run_attempt:
+        required: true
+        type: string
+      publication_id:
+        required: true
+        type: string
+      batch_id:
+        required: true
+        type: string
+    outputs:
+      source_sha:
+        value: ${{ jobs.chart-integration.outputs.source_sha }}
+      run_id:
+        value: ${{ jobs.chart-integration.outputs.run_id }}
+      run_attempt:
+        value: ${{ jobs.chart-integration.outputs.run_attempt }}
+      publication_id:
+        value: ${{ jobs.chart-integration.outputs.publication_id }}
+      batch_id:
+        value: ${{ jobs.chart-integration.outputs.batch_id }}
+      artifact_name:
+        value: ${{ jobs.chart-integration.outputs.artifact_name }}
+      artifact_digest:
+        value: ${{ jobs.chart-integration.outputs.artifact_digest }}
+  push:
+    paths:
+      - internal/chartgen/**
+      - cmd/chart_gen.go
+      - .github/workflows/chart-gen.yaml
+
+permissions: {}
+
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      source_sha: ${{ inputs.source_sha }}
+      run_id: ${{ inputs.run_id }}
+      run_attempt: ${{ inputs.run_attempt }}
+      publication_id: ${{ inputs.publication_id }}
+      batch_id: ${{ inputs.batch_id }}
+      artifact_name: copa-plan-${{ inputs.publication_id }}
+      artifact_digest: ${{ steps.upload.outputs.artifact-digest }}
+    steps:
+      - name: Write exact COPA producer manifest
+        env:
+          PROVENANCE_REPOSITORY: ${{ github.repository }}
+          PROVENANCE_RUN_ID: ${{ inputs.run_id }}
+          PROVENANCE_RUN_ATTEMPT: ${{ inputs.run_attempt }}
+          PROVENANCE_SOURCE_SHA: ${{ inputs.source_sha }}
+          PROVENANCE_PUBLICATION_ID: ${{ inputs.publication_id }}
+          PROVENANCE_ARTIFACT_NAME: copa-plan-${{ inputs.publication_id }}
+          PROVENANCE_MANIFEST: producer-manifest.json
+        run: ./verity ci artifact-provenance write-manifest
+      - id: upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: copa-plan-${{ inputs.publication_id }}
+          path: |
+            copa-plan.json
+            producer-manifest.json
+
+  patch:
+    needs: discover
+    if: ${{ success() }}
+    permissions:
+      actions: read
+      attestations: write
+      contents: write
+      id-token: write
+      packages: write
+    uses: ./.github/workflows/patch-image.yaml
+    with:
+      image-name: demo
+      source-ref: registry.example/demo:1
+      target-registry: registry.example/verity
+      source_sha: ${{ needs.discover.outputs.source_sha }}
+      run_id: ${{ needs.discover.outputs.run_id }}
+      run_attempt: ${{ needs.discover.outputs.run_attempt }}
+      publication_id: ${{ needs.discover.outputs.publication_id }}
+      batch_id: ${{ needs.discover.outputs.batch_id }}
+    secrets: inherit
+
+  chart:
+    needs: [discover, patch]
+    if: >-
+      ${{ needs.discover.result == 'success' &&
+          (needs.patch.result == 'success' || needs.patch.result == 'skipped') &&
+          needs.discover.outputs.source_sha == github.sha &&
+          needs.discover.outputs.run_id == github.run_id &&
+          needs.discover.outputs.run_attempt == github.run_attempt &&
+          needs.discover.outputs.publication_id != '' &&
+          needs.discover.outputs.batch_id != '' &&
+          needs.discover.outputs.artifact_name != '' &&
+          needs.discover.outputs.artifact_digest != '' }}
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+      packages: write
+    uses: ./.github/workflows/chart-gen.yaml
+    with:
+      source_sha: ${{ needs.discover.outputs.source_sha }}
+      run_id: ${{ needs.discover.outputs.run_id }}
+      run_attempt: ${{ needs.discover.outputs.run_attempt }}
+      publication_id: ${{ needs.discover.outputs.publication_id }}
+      batch_id: ${{ needs.discover.outputs.batch_id }}
+      artifact_name: ${{ needs.discover.outputs.artifact_name }}
+      artifact_digest: ${{ needs.discover.outputs.artifact_digest }}
+    secrets: inherit
+
+  chart-integration:
+    needs: [discover, chart]
+    if: >-
+      ${{ needs.chart.result == 'success' &&
+          needs.chart.outputs.source_sha == needs.discover.outputs.source_sha &&
+          needs.chart.outputs.run_id == needs.discover.outputs.run_id &&
+          needs.chart.outputs.run_attempt == needs.discover.outputs.run_attempt &&
+          needs.chart.outputs.publication_id == needs.discover.outputs.publication_id &&
+          needs.chart.outputs.batch_id == needs.discover.outputs.batch_id &&
+          needs.chart.outputs.artifact_name != '' &&
+          needs.chart.outputs.artifact_digest != '' }}
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+      packages: read
+    uses: ./.github/workflows/chart-integration.yaml
+    with:
+      source_sha: ${{ needs.chart.outputs.source_sha }}
+      run_id: ${{ needs.chart.outputs.run_id }}
+      run_attempt: ${{ needs.chart.outputs.run_attempt }}
+      publication_id: ${{ needs.chart.outputs.publication_id }}
+      batch_id: ${{ needs.chart.outputs.batch_id }}
+      artifact_name: ${{ needs.chart.outputs.artifact_name }}
+      artifact_digest: ${{ needs.chart.outputs.artifact_digest }}
+    secrets: inherit
+
+  chart-integration-privileged:
+    needs: [discover, chart]
+    if: >-
+      ${{ needs.chart.result == 'success' &&
+          needs.chart.outputs.source_sha == needs.discover.outputs.source_sha &&
+          needs.chart.outputs.run_id == needs.discover.outputs.run_id &&
+          needs.chart.outputs.run_attempt == needs.discover.outputs.run_attempt &&
+          needs.chart.outputs.publication_id == needs.discover.outputs.publication_id &&
+          needs.chart.outputs.batch_id == needs.discover.outputs.batch_id &&
+          needs.chart.outputs.artifact_name != '' &&
+          needs.chart.outputs.artifact_digest != '' }}
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+      packages: read
+    uses: ./.github/workflows/chart-integration-privileged.yaml
+    with:
+      source_sha: ${{ needs.chart.outputs.source_sha }}
+      run_id: ${{ needs.chart.outputs.run_id }}
+      run_attempt: ${{ needs.chart.outputs.run_attempt }}
+      publication_id: ${{ needs.chart.outputs.publication_id }}
+      batch_id: ${{ needs.chart.outputs.batch_id }}
+      artifact_name: ${{ needs.chart.outputs.artifact_name }}
+      artifact_digest: ${{ needs.chart.outputs.artifact_digest }}
+    secrets: inherit

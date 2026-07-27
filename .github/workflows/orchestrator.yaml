@@ -1,10 +1,75 @@
 name: Orchestrator
 
-# Discovers all images from copa-config.yaml and dispatches an independent
-# patch-image.yaml run for each image+tag combo. Fire-and-forget — does NOT
-# wait for individual patch runs to complete.
+# Exact COPA → chart → integration producer graph. Reusable jobs share one
+# run identity and exchange immutable manifests through artifact metadata.
 
 on:
+  workflow_call:
+    inputs:
+      source_sha:
+        description: "Exact source commit for every producer"
+        required: true
+        type: string
+      run_id:
+        description: "Calling workflow run ID"
+        required: true
+        type: string
+      run_attempt:
+        description: "Calling workflow run attempt"
+        required: true
+        type: string
+      publication_id:
+        description: "Exact publication identity"
+        required: true
+        type: string
+      batch_id:
+        description: "Publication batch identity"
+        required: true
+        type: string
+      image:
+        description: "Image name to patch (empty = all)"
+        required: false
+        type: string
+        default: ""
+      preflight:
+        description: "Only produce currently dirty images"
+        required: false
+        type: boolean
+        default: false
+      verity_artifact_name:
+        description: "Exact current-run Verity artifact name"
+        required: true
+        type: string
+      verity_artifact_digest:
+        description: "Exact current-run Verity artifact digest"
+        required: true
+        type: string
+      verity_build_key:
+        description: "Exact current-run Verity build key"
+        required: true
+        type: string
+    outputs:
+      source_sha:
+        description: "Integrated chart source commit"
+        value: ${{ jobs.chart-integration.outputs.source_sha }}
+      run_id:
+        description: "Integrated chart producer run ID"
+        value: ${{ jobs.chart-integration.outputs.run_id }}
+      run_attempt:
+        description: "Integrated chart producer run attempt"
+        value: ${{ jobs.chart-integration.outputs.run_attempt }}
+      publication_id:
+        description: "Integrated chart publication identity"
+        value: ${{ jobs.chart-integration.outputs.publication_id }}
+      batch_id:
+        description: "Integrated chart publication batch"
+        value: ${{ jobs.chart-integration.outputs.batch_id }}
+      artifact_name:
+        description: "Integrated immutable chart manifest artifact"
+        value: ${{ jobs.chart-integration.outputs.artifact_name }}
+      artifact_digest:
+        description: "Integrated immutable chart manifest digest"
+        value: ${{ jobs.chart-integration.outputs.artifact_digest }}
   schedule:
     - cron: '0 2 * * *'   # Nightly at 02:00 UTC
   push:
@@ -15,6 +80,9 @@ on:
       - 'verity.yaml'
       - '.github/workflows/orchestrator.yaml'
       - '.github/workflows/patch-image.yaml'
+      - 'internal/chartgen/**'
+      - 'cmd/chart_gen.go'
+      - '.github/workflows/chart-gen.yaml'
   workflow_dispatch:
     inputs:
       image:
@@ -31,10 +99,7 @@ concurrency:
   group: orchestrator-${{ github.ref }}
   cancel-in-progress: false
 
-permissions:
-  contents: read
-  packages: write
-  actions: write   # needed to dispatch patch-image.yaml
+permissions: {}
 
 env:
   TARGET_REGISTRY: ghcr.io/verity-org
@@ -43,10 +108,46 @@ env:
   BUILDKIT_IMAGE: ghcr.io/verity-org/cache/buildkit:buildx-stable-1@sha256:0039c1d47e8748b5afea56f4e85f14febaf34452bd99d9552d2daa82262b5cc5
 
 jobs:
+  build-verity:
+    name: Build Verity once
+    if: ${{ startsWith(github.workflow_ref, 'verity-org/verity/.github/workflows/orchestrator.yaml@') }}
+    permissions:
+      actions: read
+      attestations: write
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/build-verity-protected.yaml
+
+  verity:
+    name: Resolve exact Verity coordinates
+    needs: build-verity
+    if: ${{ always() && (needs.build-verity.result == 'success' || needs.build-verity.result == 'skipped') }}
+    runs-on: ubuntu-24.04
+    permissions: {}
+    outputs:
+      source-sha: ${{ inputs.source_sha || needs.build-verity.outputs.source-sha }}
+      artifact-name: ${{ inputs.verity_artifact_name || needs.build-verity.outputs.artifact-name }}
+      artifact-digest: ${{ inputs.verity_artifact_digest || needs.build-verity.outputs.artifact-digest }}
+      build-key: ${{ inputs.verity_build_key || needs.build-verity.outputs.build-key }}
+    steps:
+      - name: Reject incomplete called Verity coordinates
+        if: ${{ !startsWith(github.workflow_ref, 'verity-org/verity/.github/workflows/orchestrator.yaml@') && (inputs.source_sha == '' || inputs.verity_artifact_name == '' || inputs.verity_artifact_digest == '' || inputs.verity_build_key == '') }}
+        run: exit 1
+
+      - name: Resolve exact coordinates
+        run: ":"
+
   # ── Job 1: Warm caches on both arches + mirror BuildKit ────────────
   prepare:
     name: "Prepare (${{ matrix.runner }})"
+    needs: verity
+    if: ${{ !cancelled() && needs.verity.result == 'success' }}
     runs-on: ${{ matrix.runner }}
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+      packages: write
     strategy:
       matrix:
         include:
@@ -62,12 +163,24 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: "false"
+
+      - name: Set up exact Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.verity.outputs.source-sha }}
+          build-key: ${{ needs.verity.outputs.build-key }}
+          verify-attestation: "true"
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
 
       - name: Login to GHCR
         if: matrix.do-mirror
@@ -79,16 +192,18 @@ jobs:
 
       - name: Mirror BuildKit to GHCR
         if: matrix.do-mirror
-        run: |
-          crane copy mirror.gcr.io/moby/buildkit:buildx-stable-1 "${BUILDKIT_IMAGE}" \
-            || crane digest "${BUILDKIT_IMAGE}" > /dev/null \
-            || { echo "Error: no BuildKit available (upstream down, no GHCR mirror)"; exit 1; }
+        run: ./verity nightly copa-orchestrator mirror --source mirror.gcr.io/moby/buildkit:buildx-stable-1 --target "${BUILDKIT_IMAGE}"
 
   # ── Job 2: Detect changed images (push only) ────────────────────────
   detect:
     name: Detect Changes
-    if: github.event_name == 'push'
+    needs: verity
+    if: ${{ needs.verity.result == 'success' && github.event_name == 'push' && startsWith(github.workflow_ref, 'verity-org/verity/.github/workflows/orchestrator.yaml@') }}
     runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
     outputs:
       mode: ${{ steps.detect.outputs.mode }}
       filter: ${{ steps.detect.outputs.filter }}
@@ -101,60 +216,53 @@ jobs:
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          fetch-depth: 0
+          ref: ${{ github.sha }}
+          fetch-depth: "0"
+          persist-credentials: "false"
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
+
+      - name: Set up exact Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.verity.outputs.source-sha }}
+          build-key: ${{ needs.verity.outputs.build-key }}
+          verify-attestation: "true"
 
       - name: Detect which images changed
         id: detect
-        run: |
-          changed=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}")
-
-          if ! echo "$changed" | grep -q '^copa-config.yaml$'; then
-            echo "copa-config.yaml not changed — workflow files only, run all"
-            echo "mode=all" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          OLD_NAMES=$(git show "${{ github.event.before }}":copa-config.yaml 2>/dev/null | yq -r '.images[].name' 2>/dev/null | sort || true)
-          NEW_NAMES=$(yq -r '.images[].name' copa-config.yaml | sort)
-
-          ADDED=$(comm -13 <(echo "$OLD_NAMES") <(echo "$NEW_NAMES") | paste -sd,)
-
-          CHANGED_NAMES=""
-          while IFS= read -r name; do
-            [ -z "$name" ] && continue
-            old_block=$(git show "${{ github.event.before }}":copa-config.yaml 2>/dev/null | yq ".images[] | select(.name == \"$name\")" 2>/dev/null || true)
-            new_block=$(yq ".images[] | select(.name == \"$name\")" copa-config.yaml)
-            if [ "$old_block" != "$new_block" ]; then
-              CHANGED_NAMES="${CHANGED_NAMES:+$CHANGED_NAMES,}$name"
-            fi
-          done <<< "$NEW_NAMES"
-
-          FILTER="${ADDED}${ADDED:+${CHANGED_NAMES:+,}}${CHANGED_NAMES}"
-
-          if [ -z "$FILTER" ]; then
-            echo "No image changes detected in copa-config.yaml"
-            echo "mode=all" >> "$GITHUB_OUTPUT"
-          else
-            echo "Changed images: $FILTER"
-            echo "mode=filter" >> "$GITHUB_OUTPUT"
-            echo "filter=$FILTER" >> "$GITHUB_OUTPUT"
-          fi
+        run: ./verity nightly copa-orchestrator detect --base-sha "${{ github.event.before }}" --head-sha "${{ github.sha }}" --github-output "$GITHUB_OUTPUT"
 
   # ── Job 3: Discover image+tag combos ───────────────────────────────
   discover:
     name: Discover Images
-    needs: [prepare, detect]
-    if: always() && needs.prepare.result == 'success'
+    needs: [verity, prepare, detect]
+    if: ${{ !cancelled() && needs.verity.result == 'success' && needs.prepare.result == 'success' && (needs.detect.result == 'success' || needs.detect.result == 'skipped') }}
     runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+      packages: read
     outputs:
       images: ${{ steps.discover.outputs.images }}
       count: ${{ steps.discover.outputs.count }}
+      source_sha: ${{ needs.verity.outputs.source-sha }}
+      run_id: ${{ inputs.run_id || github.run_id }}
+      run_attempt: ${{ inputs.run_attempt || github.run_attempt }}
+      publication_id: ${{ inputs.publication_id || format('{0}-{1}', github.run_id, github.run_attempt) }}
+      batch_id: ${{ inputs.batch_id || format('{0}-{1}', github.run_id, github.run_attempt) }}
+      artifact_name: copa-plan-${{ inputs.publication_id || format('{0}-{1}', github.run_id, github.run_attempt) }}
+      artifact_digest: ${{ steps.upload-plan.outputs.artifact-digest }}
+      verity_artifact_name: ${{ needs.verity.outputs.artifact-name }}
+      verity_artifact_digest: ${{ needs.verity.outputs.artifact-digest }}
+      verity_build_key: ${{ needs.verity.outputs.build-key }}
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -163,12 +271,15 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: "false"
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
 
       - name: Cache Go modules
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -179,8 +290,14 @@ jobs:
           key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
           restore-keys: go-${{ runner.os }}-
 
-      - name: Build verity
-        run: go build -o verity .
+      - name: Set up exact Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.verity.outputs.source-sha }}
+          build-key: ${{ needs.verity.outputs.build-key }}
+          verify-attestation: "true"
 
       - name: Login to GHCR
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
@@ -191,96 +308,164 @@ jobs:
 
       - name: Plan dirty images
         id: discover
+        run: >-
+          ./verity nightly copa-orchestrator plan
+          --event-name "${{ github.event_name }}"
+          --preflight="${{ inputs.preflight || false }}"
+          --change-mode "${{ needs.detect.outputs.mode }}"
+          --change-filter "${{ needs.detect.outputs.filter }}"
+          --image "${{ inputs.image }}"
+          --config copa-config.yaml
+          --target-registry "${TARGET_REGISTRY}"
+          --output images.json
+          --github-output "$GITHUB_OUTPUT"
+
+      - name: Write exact COPA producer manifest
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DETECT_MODE: ${{ needs.detect.outputs.mode }}
-          DETECT_FILTER: ${{ needs.detect.outputs.filter }}
-          DISPATCH_IMAGE: ${{ github.event.inputs.image }}
-        run: |
-          PLAN_ARGS=(
-            nightly plan
-            --family copa
-            --config copa-config.yaml
-            --target-registry "${TARGET_REGISTRY}"
-            --output images.json
-            --github-output "$GITHUB_OUTPUT"
-          )
+          PROVENANCE_REPOSITORY: ${{ github.repository }}
+          PROVENANCE_RUN_ID: ${{ inputs.run_id || github.run_id }}
+          PROVENANCE_RUN_ATTEMPT: ${{ inputs.run_attempt || github.run_attempt }}
+          PROVENANCE_SOURCE_SHA: ${{ needs.verity.outputs.source-sha }}
+          PROVENANCE_PUBLICATION_ID: ${{ inputs.publication_id || format('{0}-{1}', github.run_id, github.run_attempt) }}
+          PROVENANCE_ARTIFACT_NAME: copa-plan-${{ inputs.publication_id || format('{0}-{1}', github.run_id, github.run_attempt) }}
+          PROVENANCE_MANIFEST: producer-manifest.json
+        run: ./verity ci artifact-provenance write-manifest
 
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$DISPATCH_IMAGE" ]; then
-            # Validate dispatch input matches safe pattern
-            if [[ ! "$DISPATCH_IMAGE" =~ ^[a-z0-9][a-z0-9./_-]*$ ]]; then
-              echo "Invalid image name: ${DISPATCH_IMAGE}" >&2
-              exit 1
-            fi
-            PLAN_ARGS+=(--only "$DISPATCH_IMAGE")
-          fi
-
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.preflight }}" != "true" ]; then
-            PLAN_ARGS+=(--force)
-          elif [ "${{ github.event_name }}" = "push" ] && [ "$DETECT_MODE" = "filter" ] && [ -n "$DETECT_FILTER" ]; then
-            PLAN_ARGS+=(--only "$DETECT_FILTER" --force)
-          fi
-
-          ./verity "${PLAN_ARGS[@]}"
-          echo "✓ Planned $(jq 'length' images.json) Copa remediation run(s)"
-          jq -r '.[] | "  - \(.name): \(.source)"' images.json
-
-  # ── Job 4: Dispatch one patch-image.yaml run per dirty image+tag ───
-  dispatch:
-    name: Dispatch Patches
-    needs: discover
-    runs-on: ubuntu-24.04
-    # GHA propagates skipped state from transitive `needs:` ancestors into
-    # this job's implicit success() check; `detect` is push-only so schedule
-    # and workflow_dispatch runs need always()+!failure()+!cancelled() to
-    # escape the skip. See PR #203 (#256).
-    if: always() && !failure() && !cancelled() && needs.discover.outputs.count != '0'
-
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+      - name: Upload immutable COPA plan
+        id: upload-plan
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          egress-policy: audit
-
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Install mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
-        with:
-          install: true
-          cache: true
-
-      - name: Cache Go modules
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
+          name: copa-plan-${{ inputs.publication_id || format('{0}-{1}', github.run_id, github.run_attempt) }}
           path: |
-            ~/dev/go/pkg/mod
-            ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
-          restore-keys: go-${{ runner.os }}-
+            images.json
+            producer-manifest.json
+          retention-days: "7"
+          if-no-files-found: error
 
-      - name: Build verity
-        run: go build -o verity .
+  # ── Job 4: Run exact reusable patch producers ─────────────────────
+  patch:
+    name: "Patch ${{ matrix.name }}"
+    needs: discover
+    if: ${{ needs.discover.outputs.count != '0' }}
+    permissions:
+      actions: read
+      attestations: write
+      contents: write
+      id-token: write
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.discover.outputs.images) }}
+    uses: ./.github/workflows/patch-image.yaml
+    with:
+      image-name: ${{ matrix.name }}
+      source-ref: ${{ matrix.source }}
+      target-registry: ${{ matrix['target-registry'] }}
+      platforms: ${{ matrix.platforms }}
+      go-vcs-url: ${{ matrix['go-vcs-url'] }}
+      source_sha: ${{ needs.discover.outputs.source_sha }}
+      run_id: ${{ needs.discover.outputs.run_id }}
+      run_attempt: ${{ needs.discover.outputs.run_attempt }}
+      publication_id: ${{ needs.discover.outputs.publication_id }}
+      batch_id: ${{ needs.discover.outputs.batch_id }}
+      verity_artifact_name: ${{ needs.discover.outputs.verity_artifact_name }}
+      verity_artifact_digest: ${{ needs.discover.outputs.verity_artifact_digest }}
+      verity_build_key: ${{ needs.discover.outputs.verity_build_key }}
+    secrets: inherit
 
-      - name: Dispatch patch-image.yaml for each image
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IMAGES: ${{ needs.discover.outputs.images }}
-        run: |
-          printf '%s' "$IMAGES" > "$RUNNER_TEMP/patch-images.json"
-          ./verity nightly dispatch \
-            --family copa \
-            --input "$RUNNER_TEMP/patch-images.json" \
-            --repo "${{ github.repository }}" \
-            --ref "${{ github.ref_name }}" \
-            --batch-id "${{ github.run_id }}-${{ github.run_attempt }}"
+  # ── Job 5: Generate charts from this exact successful COPA batch ──
+  chart:
+    name: Generate Charts
+    needs: [discover, patch]
+    if: >-
+      ${{ needs.discover.result == 'success' &&
+          (needs.patch.result == 'success' || needs.patch.result == 'skipped') &&
+          needs.discover.outputs.source_sha == github.sha &&
+          needs.discover.outputs.run_id == github.run_id &&
+          needs.discover.outputs.run_attempt == github.run_attempt &&
+          needs.discover.outputs.publication_id != '' &&
+          needs.discover.outputs.batch_id != '' &&
+          needs.discover.outputs.artifact_name != '' &&
+          needs.discover.outputs.artifact_digest != '' }}
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+      packages: write
+    uses: ./.github/workflows/chart-gen.yaml
+    with:
+      source_sha: ${{ needs.discover.outputs.source_sha }}
+      run_id: ${{ needs.discover.outputs.run_id }}
+      run_attempt: ${{ needs.discover.outputs.run_attempt }}
+      publication_id: ${{ needs.discover.outputs.publication_id }}
+      batch_id: ${{ needs.discover.outputs.batch_id }}
+      artifact_name: ${{ needs.discover.outputs.artifact_name }}
+      artifact_digest: ${{ needs.discover.outputs.artifact_digest }}
+      verity_artifact_name: ${{ needs.discover.outputs.verity_artifact_name }}
+      verity_artifact_digest: ${{ needs.discover.outputs.verity_artifact_digest }}
+      verity_build_key: ${{ needs.discover.outputs.verity_build_key }}
+    secrets: inherit
 
-      - name: Wait for this batch's patch runs
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WAIT_BRANCH: ${{ github.ref_name }}
-          WAIT_EVENT: workflow_dispatch
-          WAIT_BATCH_ID: ${{ github.run_id }}-${{ github.run_attempt }}
-          WAIT_EXPECTED_RUNS: ${{ needs.discover.outputs.count }}
-          WAIT_TIMEOUT_SECONDS: 21600
-        run: bash .github/scripts/wait-for-workflows.sh patch-image.yaml
+  # ── Jobs 6-7: Gate the exact chart artifact ───────────────────────
+  chart-integration:
+    name: Chart Integration
+    needs: [discover, chart]
+    if: >-
+      ${{ needs.chart.result == 'success' &&
+          needs.chart.outputs.source_sha == needs.discover.outputs.source_sha &&
+          needs.chart.outputs.run_id == needs.discover.outputs.run_id &&
+          needs.chart.outputs.run_attempt == needs.discover.outputs.run_attempt &&
+          needs.chart.outputs.publication_id == needs.discover.outputs.publication_id &&
+          needs.chart.outputs.batch_id == needs.discover.outputs.batch_id &&
+          needs.chart.outputs.artifact_name != '' &&
+          needs.chart.outputs.artifact_digest != '' }}
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+      packages: read
+    uses: ./.github/workflows/chart-integration.yaml
+    with:
+      source_sha: ${{ needs.chart.outputs.source_sha }}
+      run_id: ${{ needs.chart.outputs.run_id }}
+      run_attempt: ${{ needs.chart.outputs.run_attempt }}
+      publication_id: ${{ needs.chart.outputs.publication_id }}
+      batch_id: ${{ needs.chart.outputs.batch_id }}
+      artifact_name: ${{ needs.chart.outputs.artifact_name }}
+      artifact_digest: ${{ needs.chart.outputs.artifact_digest }}
+      verity_artifact_name: ${{ needs.discover.outputs.verity_artifact_name }}
+      verity_artifact_digest: ${{ needs.discover.outputs.verity_artifact_digest }}
+      verity_build_key: ${{ needs.discover.outputs.verity_build_key }}
+    secrets: inherit
+
+  chart-integration-privileged:
+    name: Privileged Chart Integration
+    needs: [discover, chart]
+    if: >-
+      ${{ needs.chart.result == 'success' &&
+          needs.chart.outputs.source_sha == needs.discover.outputs.source_sha &&
+          needs.chart.outputs.run_id == needs.discover.outputs.run_id &&
+          needs.chart.outputs.run_attempt == needs.discover.outputs.run_attempt &&
+          needs.chart.outputs.publication_id == needs.discover.outputs.publication_id &&
+          needs.chart.outputs.batch_id == needs.discover.outputs.batch_id &&
+          needs.chart.outputs.artifact_name != '' &&
+          needs.chart.outputs.artifact_digest != '' }}
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+      packages: read
+    uses: ./.github/workflows/chart-integration-privileged.yaml
+    with:
+      source_sha: ${{ needs.chart.outputs.source_sha }}
+      run_id: ${{ needs.chart.outputs.run_id }}
+      run_attempt: ${{ needs.chart.outputs.run_attempt }}
+      publication_id: ${{ needs.chart.outputs.publication_id }}
+      batch_id: ${{ needs.chart.outputs.batch_id }}
+      artifact_name: ${{ needs.chart.outputs.artifact_name }}
+      artifact_digest: ${{ needs.chart.outputs.artifact_digest }}
+      verity_artifact_name: ${{ needs.discover.outputs.verity_artifact_name }}
+      verity_artifact_digest: ${{ needs.discover.outputs.verity_artifact_digest }}
+      verity_build_key: ${{ needs.discover.outputs.verity_build_key }}
+    secrets: inherit

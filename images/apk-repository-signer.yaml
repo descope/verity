@@ -1,0 +1,17 @@
+name: apk-repository-signer
+description: "Pinned Go APK repository signer with an in-image Melange runtime"
+upstream:
+  package: apk-repository-signer
+
+types:
+  default:
+    base: wolfi-base
+    packages: ["apk-repository-signer", "melange"]
+    entrypoint: /usr/bin/apk-repository-signer
+    paths:
+      - {path: /run/verity-signing, type: directory, uid: 0, gid: 0, permissions: 0o700}
+    melange:
+      bespoke: "apk-repository-signer.yaml"
+
+versions:
+  "0": {}

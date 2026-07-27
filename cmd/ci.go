@@ -19,8 +19,21 @@ var CICommand = &cli.Command{
 	Name:  "ci",
 	Usage: "CI planning helpers",
 	Commands: []*cli.Command{
+		ciAPKRepositoryCommand,
+		newCIIntegerBatchCommand(),
+		newCIIntegerImageCommand(),
 		ciPlanCommand,
+		ciVulnerabilityCheckCommand,
 	},
+}
+
+var ciVulnerabilityCheckCommand = &cli.Command{
+	Name:  "vulncheck",
+	Usage: "Run Go vulnerability policy checks",
+	Flags: []cli.Flag{
+		&cli.StringFlag{Name: "repo-root", Usage: "Repository root", Value: "."},
+	},
+	Action: runCIVulnerabilityCheck,
 }
 
 var ciPlanCommand = &cli.Command{
@@ -100,6 +113,14 @@ func runCIPlan(_ context.Context, cmd *cli.Command) error {
 	}
 	fmt.Fprintln(os.Stdout, string(out))
 	return nil
+}
+
+func runCIVulnerabilityCheck(ctx context.Context, cmd *cli.Command) error {
+	return ci.CheckGoVulnerabilities(ctx, &ci.GoVulnerabilityCheckOptions{
+		Dir:    cmd.String("repo-root"),
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+	})
 }
 
 func readChangedFiles(path string) ([]string, error) {

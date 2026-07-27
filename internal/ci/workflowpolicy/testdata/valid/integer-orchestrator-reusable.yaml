@@ -1,0 +1,331 @@
+name: Integer Orchestrator Reusable
+
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+      verity_artifact_name:
+        required: true
+        type: string
+      verity_artifact_digest:
+        required: true
+        type: string
+      verity_build_key:
+        required: true
+        type: string
+      run_id:
+        required: true
+        type: string
+      run_attempt:
+        required: true
+        type: string
+      publication_id:
+        required: true
+        type: string
+      batch_id:
+        required: true
+        type: string
+      event:
+        required: true
+        type: string
+      base_sha:
+        required: false
+        default: ""
+        type: string
+      image:
+        required: false
+        default: ""
+        type: string
+    outputs:
+      manifest_artifact_name:
+        value: ${{ jobs.aggregate.outputs.manifest_artifact_name }}
+      manifest_artifact_digest:
+        value: ${{ jobs.aggregate.outputs.manifest_artifact_digest }}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integer-${{ github.workflow }}-${{ github.run_id }}-${{ github.run_attempt }}
+  cancel-in-progress: false
+
+jobs:
+  validate-coordinates:
+    name: Validate reusable-call coordinates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Reject incomplete Verity coordinates
+        if: >-
+          inputs.source_sha == ''
+          ||
+          inputs.verity_artifact_name == ''
+          ||
+          inputs.verity_artifact_digest == ''
+          ||
+          inputs.verity_build_key == ''
+        run: exit 1
+
+      - name: Reject incomplete orchestration metadata
+        if: >-
+          inputs.run_id == ''
+          ||
+          inputs.run_attempt == ''
+          ||
+          inputs.publication_id == ''
+          ||
+          inputs.batch_id == ''
+          ||
+          inputs.event == ''
+          ||
+          (inputs.event == 'push' && inputs.base_sha == '')
+        run: exit 1
+
+      - name: Accept complete reusable-call coordinates
+        if: >-
+          inputs.source_sha != '' &&
+          inputs.verity_artifact_name != '' &&
+          inputs.verity_artifact_digest != '' &&
+          inputs.verity_build_key != ''
+        run: "true"
+
+  plan:
+    name: Plan exact Integer batch
+    needs: validate-coordinates
+    if: needs.validate-coordinates.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+      attestations: write
+    outputs:
+      count: ${{ steps.plan-outputs.outputs.count }}
+      shard_count: ${{ steps.plan-outputs.outputs.shard_count }}
+      shards: ${{ steps.plan-outputs.outputs.shards }}
+      event: ${{ steps.plan-outputs.outputs.event }}
+      mode: ${{ steps.plan-outputs.outputs.mode }}
+      source_sha: ${{ steps.plan-outputs.outputs.source_sha }}
+      run_id: ${{ steps.plan-outputs.outputs.run_id }}
+      run_attempt: ${{ steps.plan-outputs.outputs.run_attempt }}
+      publication_id: ${{ steps.plan-outputs.outputs.publication_id }}
+      batch_id: ${{ steps.plan-outputs.outputs.batch_id }}
+      plan_artifact_name: integer-plan-${{ steps.plan-outputs.outputs.publication_id }}
+      plan_artifact_digest: ${{ steps.upload-plan.outputs.artifact-digest }}
+      verity_artifact_name: ${{ inputs.verity_artifact_name }}
+      verity_artifact_digest: ${{ inputs.verity_artifact_digest }}
+      verity_build_key: ${{ inputs.verity_build_key }}
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Check out exact source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: "0"
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: "false"
+
+      - name: Activate exact Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ inputs.verity_artifact_name }}
+          artifact-digest: ${{ inputs.verity_artifact_digest }}
+          source-sha: ${{ inputs.source_sha }}
+          build-key: ${{ inputs.verity_build_key }}
+          verify-attestation: "true"
+
+      - name: Plan committed push delta
+        if: inputs.event == 'push'
+        run: >-
+          ./verity ci integer-batch plan
+          --event push
+          --source-sha "${{ inputs.source_sha }}"
+          --run-id "${{ inputs.run_id }}"
+          --run-attempt "${{ inputs.run_attempt }}"
+          --publication-id "${{ inputs.publication_id }}"
+          --batch-id "${{ inputs.batch_id }}"
+          --base-sha "${{ inputs.base_sha }}"
+          --head-sha "${{ inputs.source_sha }}"
+          --repo-root .
+          --integer-config integer.yaml
+          --images-dir images
+          --plan-output integer-plan/plan.json
+          --expected-output integer-plan/expected.json
+
+      - name: Plan reusable-call snapshot
+        if: inputs.event == 'workflow_call'
+        run: >-
+          ./verity ci integer-batch plan
+          --event workflow_call
+          --source-sha "${{ inputs.source_sha }}"
+          --run-id "${{ inputs.run_id }}"
+          --run-attempt "${{ inputs.run_attempt }}"
+          --publication-id "${{ inputs.publication_id }}"
+          --batch-id "${{ inputs.batch_id }}"
+          --repo-root .
+          --integer-config integer.yaml
+          --images-dir images
+          --plan-output integer-plan/plan.json
+          --expected-output integer-plan/expected.json
+
+      - name: Plan scheduled snapshot
+        if: inputs.event == 'schedule'
+        run: >-
+          ./verity ci integer-batch plan
+          --event schedule
+          --source-sha "${{ inputs.source_sha }}"
+          --run-id "${{ inputs.run_id }}"
+          --run-attempt "${{ inputs.run_attempt }}"
+          --publication-id "${{ inputs.publication_id }}"
+          --batch-id "${{ inputs.batch_id }}"
+          --repo-root .
+          --integer-config integer.yaml
+          --images-dir images
+          --plan-output integer-plan/plan.json
+          --expected-output integer-plan/expected.json
+
+      - name: Plan requested snapshot
+        if: inputs.event == 'workflow_dispatch'
+        run: >-
+          ./verity ci integer-batch plan
+          --event workflow_dispatch
+          --source-sha "${{ inputs.source_sha }}"
+          --run-id "${{ inputs.run_id }}"
+          --run-attempt "${{ inputs.run_attempt }}"
+          --publication-id "${{ inputs.publication_id }}"
+          --batch-id "${{ inputs.batch_id }}"
+          --only "${{ inputs.image }}"
+          --repo-root .
+          --integer-config integer.yaml
+          --images-dir images
+          --plan-output integer-plan/plan.json
+          --expected-output integer-plan/expected.json
+
+      - name: Expose exact Go-planned metadata
+        id: plan-outputs
+        run: >-
+          ./verity ci integer-batch outputs
+          --plan integer-plan/plan.json
+          --github-output "$GITHUB_OUTPUT"
+
+      - name: Attest exact Integer plan
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: integer-plan/plan.json
+
+      - name: Upload exact Integer plan
+        id: upload-plan
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: integer-plan-${{ steps.plan-outputs.outputs.publication_id }}
+          path: integer-plan/
+          if-no-files-found: error
+          retention-days: "7"
+
+  build-shards:
+    name: Shard ${{ matrix.shard }} (${{ matrix.count }} targets)
+    needs: plan
+    if: needs.plan.outputs.count != '0'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.shards) }}
+    uses: ./.github/workflows/integer-build-shard.yaml
+    permissions:
+      actions: read
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    with:
+      source_sha: ${{ needs.plan.outputs.source_sha }}
+      verity_artifact_name: ${{ needs.plan.outputs.verity_artifact_name }}
+      verity_artifact_digest: ${{ needs.plan.outputs.verity_artifact_digest }}
+      verity_build_key: ${{ needs.plan.outputs.verity_build_key }}
+      run_id: ${{ needs.plan.outputs.run_id }}
+      run_attempt: ${{ needs.plan.outputs.run_attempt }}
+      publication_id: ${{ needs.plan.outputs.publication_id }}
+      batch_id: ${{ needs.plan.outputs.batch_id }}
+      event: ${{ needs.plan.outputs.event }}
+      mode: ${{ needs.plan.outputs.mode }}
+      shard: ${{ matrix.shard }}
+      entries: ${{ matrix.entries }}
+      component_count: ${{ matrix.component_count }}
+      plan_artifact_name: ${{ needs.plan.outputs.plan_artifact_name }}
+      plan_artifact_digest: ${{ needs.plan.outputs.plan_artifact_digest }}
+
+  aggregate:
+    name: Aggregate exact Integer manifest
+    needs: [plan, build-shards]
+    if: >-
+      always() && needs.plan.result == 'success' &&
+      (needs.build-shards.result == 'success' ||
+      (needs.plan.outputs.count == '0' && needs.build-shards.result == 'skipped'))
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+      attestations: write
+    outputs:
+      manifest_artifact_name: integer-manifest-${{ needs.plan.outputs.publication_id }}
+      manifest_artifact_digest: ${{ steps.upload-manifest.outputs.artifact-digest }}
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.plan.outputs.source_sha }}
+          persist-credentials: "false"
+
+      - name: Activate exact Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.plan.outputs.verity_artifact_name }}
+          artifact-digest: ${{ needs.plan.outputs.verity_artifact_digest }}
+          source-sha: ${{ needs.plan.outputs.source_sha }}
+          build-key: ${{ needs.plan.outputs.verity_build_key }}
+          verify-attestation: "true"
+
+      - name: Download exact Integer plan
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.plan.outputs.plan_artifact_name }}
+          path: integer-plan
+
+      - name: Download exact shard manifests
+        if: needs.plan.outputs.count != '0'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: integer-shard-manifest-${{ needs.plan.outputs.publication_id }}-*
+          path: integer-shards
+
+      - name: Aggregate exact snapshot or delta manifest
+        run: >-
+          ./verity ci integer-batch aggregate
+          --plan integer-plan/plan.json
+          --shards-dir integer-shards
+          --output integer-manifest.json
+
+      - name: Attest exact Integer manifest
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: integer-manifest.json
+
+      - name: Upload exact Integer manifest
+        id: upload-manifest
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: integer-manifest-${{ needs.plan.outputs.publication_id }}
+          path: integer-manifest.json
+          if-no-files-found: error
+          retention-days: "7"

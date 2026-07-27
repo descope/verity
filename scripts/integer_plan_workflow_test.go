@@ -15,7 +15,9 @@ func TestPRWorkflowProvidesBaseDefinitionsToIntegerPlanner(t *testing.T) {
 	require.NoError(t, err)
 	workflow := string(data)
 
-	// Then: changed base definitions are materialized and passed to the planner.
-	assert.Contains(t, workflow, `git show "${BASE_SHA}:${file}" > "$RUNNER_TEMP/base-images/$relative"`)
-	assert.Contains(t, workflow, `--base-images-dir "$RUNNER_TEMP/base-images"`)
+	// Then: the typed planner owns base-definition materialization.
+	assert.Contains(t, workflow, "./verity ci pr-test plan-integer")
+	assert.Contains(t, workflow, `--base-sha "$BASE_SHA"`)
+	assert.Contains(t, workflow, `--head-sha "$HEAD_SHA"`)
+	assert.Contains(t, workflow, `--temp-dir "$RUNNER_TEMP"`)
 }

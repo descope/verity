@@ -33,16 +33,14 @@ func Test_SealedSecrets_CI_runs_native_package_image_runtime_spdx_and_strict_tri
 	require.NoError(t, err)
 	imageScript, err := os.ReadFile(filepath.Join("..", ".github", "scripts", "test-sealed-secrets-image.sh"))
 	require.NoError(t, err)
-	buildWorkflow, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "integer-build-image.yaml"))
-	require.NoError(t, err)
 	prWorkflow, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "pr-test.yaml"))
 	require.NoError(t, err)
 
 	// When: the Sealed Secrets family gates are inspected.
 	packageText := string(packageScript)
 	imageText := string(imageScript)
-	buildText := string(buildWorkflow)
 	prText := string(prWorkflow)
+	buildText := readGeneratedWorkflowFixture(t, "integer-build-image-reusable.yaml")
 
 	// Then: both native legs execute package and image proof before accepting zero findings.
 	require.Contains(t, packageText, "case \"$arch\" in")
@@ -55,13 +53,9 @@ func Test_SealedSecrets_CI_runs_native_package_image_runtime_spdx_and_strict_tri
 	require.Contains(t, imageText, "ca-certificates-bundle")
 	require.Contains(t, imageText, ".spdxVersion == \"SPDX-2.3\"")
 	require.Contains(t, imageText, "licenseDeclared == \"Apache-2.0\"")
-	require.Contains(t, buildText, "Test Sealed Secrets package natively (${{ matrix.arch }})")
-	require.Contains(t, buildText, "Test Sealed Secrets image natively (${{ matrix.arch }})")
-	require.Contains(t, buildText, "image_ref=\"integer:local-$IMAGE_ARCH\"")
-	require.Contains(t, buildText, "--fail-on-severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL")
-	require.Contains(t, prText, "if [ \"$image\" = \"sealed-secrets\" ]; then")
-	require.Contains(t, prText, "test-sealed-secrets-(package|image)\\.sh")
-	require.Contains(t, prText, "test-sealed-secrets-package.sh")
-	require.Contains(t, prText, "test-sealed-secrets-image.sh")
-	require.Contains(t, prText, "--severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL")
+	requireIntegerImageReusablePackageGate(t, buildText)
+	requireIntegerImageReusableImageGate(t, buildText)
+	require.Contains(t, prText, "./verity ci pr-test integer-batch")
+	require.NotContains(t, prText, "test-sealed-secrets-package.sh")
+	require.NotContains(t, prText, "test-sealed-secrets-image.sh")
 }

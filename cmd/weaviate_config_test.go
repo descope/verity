@@ -90,36 +90,24 @@ func Test_Weaviate_resolves_fixed_local_package(t *testing.T) {
 	require.Equal(t, []string{"weaviate=1.38.4-r1@local"}, tmpl.Packages)
 }
 
-func Test_Weaviate_CI_tests_package_natively(t *testing.T) {
-	// Given: the Integer package workflow used by both architecture runners.
-	workflow, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "integer-build-image.yaml"))
-	require.NoError(t, err)
-	text := string(workflow)
+func Test_Weaviate_CI_uses_reusable_image_package_gate(t *testing.T) {
+	// Given: the generated reusable Integer image workflow fixture.
+	workflow := readGeneratedWorkflowFixture(t, "integer-build-image-reusable.yaml")
 
-	// When: the Weaviate-family package test gate is inspected.
+	// When: the shared package test gate is inspected.
 
-	// Then: each native package leg runs the recipe's runtime and provenance tests.
-	require.Contains(t, text, "Test Weaviate package natively (${{ matrix.arch }})")
-	require.Contains(t, text, "if: inputs.image == 'weaviate'")
-	require.Contains(t, text, "--pipeline-dirs melange-work/pipelines")
-	require.Contains(t, text, "melange-work/specs/weaviate.yaml/build.yaml")
+	// Then: both architecture paths test staged packages through the reusable implementation.
+	requireIntegerImageReusablePackageGate(t, workflow)
 }
 
-func Test_Weaviate_CI_tests_image_natively(t *testing.T) {
-	// Given: the Integer package workflow used by both architecture runners.
-	workflow, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "integer-build-image.yaml"))
-	require.NoError(t, err)
-	text := string(workflow)
+func Test_Weaviate_CI_uses_reusable_image_publish_gate(t *testing.T) {
+	// Given: the generated reusable Integer image workflow fixture.
+	workflow := readGeneratedWorkflowFixture(t, "integer-build-image-reusable.yaml")
 
-	// When: the Weaviate-family native image gate is inspected.
+	// When: the shared image publication gate is inspected.
 
-	// Then: each native runner builds, scans, starts, and validates SPDX for its image.
-	require.Contains(t, text, "Test Weaviate image natively (${{ matrix.arch }})")
-	require.Contains(t, text, "--fail-on-severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL")
-	require.Contains(t, text, "docker run --detach --rm --name")
-	require.Contains(t, text, "/v1/.well-known/ready")
-	require.Contains(t, text, "weaviate-1.38.4-r1.spdx.json")
-	require.Contains(t, text, "licenseDeclared == \"BSD-3-Clause\"")
+	// Then: the reusable path keeps strict scanning, signing, and SBOM attestation.
+	requireIntegerImageReusableImageGate(t, workflow)
 }
 
 func Test_Weaviate_PR_smoke_tests_runtime_and_provenance_natively(t *testing.T) {
@@ -130,21 +118,8 @@ func Test_Weaviate_PR_smoke_tests_runtime_and_provenance_natively(t *testing.T) 
 
 	// When: the Weaviate-family native smoke gate is inspected.
 
-	// Then: PR CI runs package tests plus bounded image health and SPDX validation.
-	require.Contains(t, text, "if [ \"$image\" = \"weaviate\" ]; then")
-	require.Contains(t, text, "expected_version=$(yq -r '.package.version'")
-	require.Contains(t, text, "expected_full_version=$(yq -r '.package.version + \"-r\" + (.package.epoch | tostring)'")
-	require.Contains(t, text, "melange test \\")
-	require.Contains(t, text, "/v1/.well-known/ready")
-	require.Contains(t, text, "jq -e --arg version \"$expected_version\"")
-	require.Contains(t, text, ".version == $version")
-	require.NotContains(t, text, "docker exec \"$container\" /usr/bin/weaviate --help")
-	require.Contains(t, text, "--format '{{.Architecture}} {{.Config.User}}'")
-	require.Contains(t, text, "test \"$runtime_user\" = 65532")
-	require.Contains(t, text, "trap 'docker rm --force \"$container\"")
-	require.Contains(t, text, "weaviate-${expected_full_version}.spdx.json")
-	require.Contains(t, text, "--arg full_version \"$expected_full_version\"")
-	require.Contains(t, text, ".spdxVersion == \"SPDX-2.3\"")
-	require.Contains(t, text, ".versionInfo == $full_version")
-	require.Contains(t, text, "licenseDeclared == \"BSD-3-Clause\"")
+	// Then: PR CI delegates the bounded image health and SPDX validation to Go.
+	require.Contains(t, text, "./verity ci pr-test integer-batch")
+	require.Contains(t, text, "--kind smoke")
+	require.NotContains(t, text, "if [ \"$image\" = \"weaviate\" ]; then")
 }

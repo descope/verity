@@ -5,53 +5,75 @@ Verity can assemble Melange `.apk` artifacts into a static APK repository under
 
 ## Artifact sources
 
-Integer image builds already create Melange package artifacts in
-`.github/workflows/integer-build-image.yaml`:
-
-- `melange-packages-x86_64`
-- `melange-packages-aarch64`
-
-Each artifact contains a `packages/repo/` tree with architecture-specific
-subdirectories. The repository assembly scripts scan `packages/repo/` and
-`apk-artifacts/` for those layouts.
-
-The privileged Pages workflow does **not** download artifacts from arbitrary
-workflow runs. Doing so would allow artifact poisoning if a caller selected an
-untrusted run. A follow-up should add a trusted handoff (for example, a same-run
-build-and-assemble job chain, provenance checks, or a protected package storage
-decision) before cross-run artifacts are published automatically.
+Integer image builds upload `apk-repository-<batch>-*` artifacts only after the
+strict zero-CVE build and registry scan pass. Each APK receives a GitHub OIDC
+build-provenance attestation. The Pages workflow downloads artifacts only from
+the exact successful scheduled Integer run selected by `wait-for-workflows.sh`,
+then verifies every attestation against the reusable Integer builder identity
+before any signing secret is exposed.
 
 ## Signing
 
-Set `APK_REPOSITORY_PRIVATE_KEY` as a GitHub Actions secret containing the PEM
-private key used to sign `APKINDEX.tar.gz`. The workflow derives and publishes
-`verity-apk-repository.rsa.pub` next to the repository root.
+`APK_REPOSITORY_PRIVATE_KEY` is an `apk-signing` environment secret restricted
+to deployments from `main`. The environment has no reviewer or wait-timer gate,
+so protected `main` publication remains autonomous.
+The matching public key is committed at `keys/apk/verity.rsa.pub` and published
+byte-for-byte at `https://verity.supply/apk/verity.rsa.pub`. Publication fails if
+the private key does not match the committed key.
 
-If the secret is absent, the workflow still assembles unsigned indexes and runs
-non-signature validation. This keeps repository scaffolding safe for branches and
-forks while making signed publishing available on protected environments.
+Approved packages are re-signed with Melange using RSA/SHA-256, and indexes are
+signed explicitly with `abuild-sign -t RSA256`.
+
+## Update discipline
+
+Every scheduled publication builds a complete candidate repository from one
+successful Integer batch. It also restores the latest retained main-branch Pages
+artifact and cryptographically verifies both repositories.
+
+A merged recipe change reaches the APK repository through the next successful
+scheduled Integer batch. Failed or partial batches never mutate the published
+repository.
+
+Publication compares the path and SHA-256 digest of every signed APK, public key,
+and `repository-format` marker:
+
+- If the state is identical, the previously published APKs and indexes are
+  copied byte-for-byte. A nightly rebuild must not create repository churn.
+- If package contents, package paths, the trust root, or the repository format
+  change, the complete candidate replaces the previous repository.
+- Recipe removal is therefore handled safely: the removed package is absent
+  from the complete candidate and disappears from the rolling repository.
+- Site-only and workflow-only changes do not reissue APK indexes unless they
+  intentionally bump `repository-format`.
+
+The Pages artifact is retained for 30 days so daily runs have authenticated
+previous state. A missing prior artifact is a first-publication bootstrap, not
+permission to merge a partial package set.
 
 ## Guarded empty behavior
 
-If no `.apk` artifacts are available, assembly writes `site/dist/apk/.no-apks-found`
-and exits successfully. This prevents scheduled site deploys from failing while
-the package retention and repository-size policy is still being decided.
+Local unsigned assembly may write `site/dist/apk/.no-apks-found`. Protected Pages
+publication fails earlier if the trusted Integer run produced no approved APKs.
 
 ## Local validation
 
 Non-empty repository assembly requires Alpine `apk` tooling. Signed assembly also
-requires `abuild-sign` and `openssl`. On non-Alpine hosts, run the same pinned
-container used by CI:
+invokes Melange and `abuild-sign`; key parsing, key matching, archive validation,
+and publication policy remain inside the Verity Go CLI. On non-Alpine hosts, run
+the same pinned container used by CI:
 
 ```bash
+CGO_ENABLED=0 go build -o verity .
 docker run --rm \
   -e APK_REPOSITORY_PRIVATE_KEY \
   -v "$PWD:/work" \
+  -v "$(command -v melange):/usr/local/bin/melange:ro" \
   -w /work \
   alpine:3.22@sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601 \
-  sh -euxc 'packages="bash findutils"; if [ -n "${APK_REPOSITORY_PRIVATE_KEY:-}" ]; then packages="$packages abuild openssl"; fi; apk add --no-cache $packages; bash .github/scripts/assemble-apk-repository.sh --output site/dist/apk packages/repo apk-artifacts'
+  sh -euxc 'apk add --no-cache abuild gcompat; /work/verity ci apk-repository assemble --output site/dist/apk packages/repo apk-artifacts'
 
-bash .github/scripts/validate-apk-repository.sh site/dist/apk
+./verity ci apk-repository validate site/dist/apk
 ```
 
-Use `--require-signature` once `APK_REPOSITORY_PRIVATE_KEY` is configured.
+Run `verity ci apk-repository validate --verify-crypto` inside the same Alpine
+image for the publication-grade package and fresh-client index checks.

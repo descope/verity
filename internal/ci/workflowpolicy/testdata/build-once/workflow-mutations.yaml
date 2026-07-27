@@ -1,0 +1,24 @@
+- name: build key output misbound
+  old: "value: ${{ jobs.build.outputs.build-key }}"
+  replacement: "value: ${{ jobs.build.outputs.artifact-name }}"
+  want: workflow_call outputs
+- name: source SHA output misbound
+  old: "value: ${{ jobs.build.outputs.source-sha }}"
+  replacement: "value: ${{ inputs.source_sha }}"
+  want: workflow_call outputs
+- name: build omits current run attempt
+  old: "--run-attempt \"$VERITY_RUN_ATTEMPT\""
+  replacement: "--run-attempt \"1\""
+  want: current run identity
+- name: duplicate production build
+  old: "go run ./.github/actions/setup-verity/cmd/setup-verity build"
+  replacement: "go run ./.github/actions/setup-verity/cmd/setup-verity build && go build -o duplicate-verity ."
+  want: exactly one Verity build
+- name: unpinned checkout action
+  old: "actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0"
+  replacement: "actions/checkout@v7"
+  want: full commit SHA
+- name: secret exposure
+  old: "VERITY_SOURCE_SHA: ${{ inputs.source_sha }}"
+  replacement: "VERITY_SOURCE_SHA: ${{ secrets.SOURCE_SHA }}"
+  want: secret exposure

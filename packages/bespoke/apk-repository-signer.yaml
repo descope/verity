@@ -1,0 +1,41 @@
+package:
+  name: apk-repository-signer
+  version: "0.0.0"
+  epoch: 0
+  description: "Verity APK repository signer worker"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    packages:
+      - ca-certificates-bundle
+      - go-1.26=1.26.5-r1
+  environment:
+    CGO_ENABLED: "0"
+    GOTOOLCHAIN: local
+
+# Bootstrap source is pinned to this PR branch so pre-merge Integer validation
+# can build it. Rotate branch and expected-commit to protected main before the
+# signer lock becomes runnable.
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/verity-org/verity
+      branch: apk-repository-publish
+      expected-commit: 69b4bec7ee2a1f89162dd4e4250b953c6e654a29
+
+  - uses: go/build
+    with:
+      packages: .
+      output: apk-repository-signer
+      go-package: go-1.26
+      ldflags: -s -w
+
+  - uses: strip
+
+update:
+  enabled: false

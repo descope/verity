@@ -1,0 +1,100 @@
+name: chart-integration-privileged
+
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+      run_id:
+        required: true
+        type: string
+      run_attempt:
+        required: true
+        type: string
+      publication_id:
+        required: true
+        type: string
+      batch_id:
+        required: true
+        type: string
+      artifact_name:
+        required: true
+        type: string
+      artifact_digest:
+        required: true
+        type: string
+    outputs:
+      source_sha:
+        value: ${{ jobs.result.outputs.source_sha }}
+      run_id:
+        value: ${{ jobs.result.outputs.run_id }}
+      run_attempt:
+        value: ${{ jobs.result.outputs.run_attempt }}
+      publication_id:
+        value: ${{ jobs.result.outputs.publication_id }}
+      batch_id:
+        value: ${{ jobs.result.outputs.batch_id }}
+      artifact_name:
+        value: ${{ jobs.result.outputs.artifact_name }}
+      artifact_digest:
+        value: ${{ jobs.result.outputs.artifact_digest }}
+
+permissions: {}
+
+jobs:
+  chart-test:
+    if: ${{ inputs.source_sha == github.sha }}
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: .producer/chart
+          run-id: ${{ inputs.run_id }}
+          repository: ${{ github.repository }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify exact producer artifact
+        env:
+          PROVENANCE_API_AUTH: ${{ secrets.GITHUB_TOKEN }}
+          PROVENANCE_REPOSITORY: ${{ github.repository }}
+          PROVENANCE_RUN_ID: ${{ inputs.run_id }}
+          PROVENANCE_RUN_ATTEMPT: ${{ inputs.run_attempt }}
+          PROVENANCE_SOURCE_SHA: ${{ inputs.source_sha }}
+          PROVENANCE_PUBLICATION_ID: ${{ inputs.publication_id }}
+          PROVENANCE_ARTIFACT_NAME: ${{ inputs.artifact_name }}
+          PROVENANCE_ARTIFACT_DIGEST: ${{ inputs.artifact_digest }}
+          PROVENANCE_MANIFEST: .producer/chart/producer-manifest.json
+        run: ./verity ci artifact-provenance verify-download
+
+  result:
+    needs: chart-test
+    if: ${{ needs.chart-test.result == 'success' }}
+    runs-on: ubuntu-24.04
+    permissions: {}
+    outputs:
+      source_sha: ${{ steps.aggregate.outputs.source_sha }}
+      run_id: ${{ steps.aggregate.outputs.run_id }}
+      run_attempt: ${{ steps.aggregate.outputs.run_attempt }}
+      publication_id: ${{ steps.aggregate.outputs.publication_id }}
+      batch_id: ${{ steps.aggregate.outputs.batch_id }}
+      artifact_name: ${{ steps.aggregate.outputs.artifact_name }}
+      artifact_digest: ${{ steps.aggregate.outputs.artifact_digest }}
+    steps:
+      - id: aggregate
+        env:
+          CHART_SOURCE_SHA: ${{ inputs.source_sha }}
+          CHART_RUN_ID: ${{ inputs.run_id }}
+          CHART_RUN_ATTEMPT: ${{ inputs.run_attempt }}
+          CHART_PUBLICATION_ID: ${{ inputs.publication_id }}
+          CHART_BATCH_ID: ${{ inputs.batch_id }}
+          CHART_ARTIFACT_NAME: ${{ inputs.artifact_name }}
+          CHART_ARTIFACT_DIGEST: ${{ inputs.artifact_digest }}
+        run: >-
+          ./verity ci workflowops aggregate-chart-results
+          --profile privileged
+          --result chart-test=${{ needs.chart-test.result }}

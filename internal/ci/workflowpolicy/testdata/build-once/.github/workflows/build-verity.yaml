@@ -1,0 +1,70 @@
+name: Build Verity
+
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        description: Exact source commit to build
+        required: true
+        type: string
+    outputs:
+      artifact-name:
+        description: Immutable Verity artifact name
+        value: ${{ jobs.build.outputs.artifact-name }}
+      artifact-digest:
+        description: Immutable Verity artifact archive digest
+        value: ${{ jobs.build.outputs.artifact-digest }}
+      source-sha:
+        description: Exact source commit embedded in Verity
+        value: ${{ jobs.build.outputs.source-sha }}
+      build-key:
+        description: Exact production build key embedded in Verity
+        value: ${{ jobs.build.outputs.build-key }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      artifact-name: ${{ steps.build.outputs.artifact-name }}
+      artifact-digest: ${{ format('sha256:{0}', steps.upload.outputs.artifact-digest) }}
+      source-sha: ${{ steps.build.outputs.source-sha }}
+      build-key: ${{ steps.build.outputs.build-key }}
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: "false"
+      - name: Set up toolchain
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d
+        with:
+          cache: "false"
+      - name: Build canonical Verity artifact
+        id: build
+        env:
+          VERITY_SOURCE_SHA: ${{ inputs.source_sha }}
+          VERITY_ARTIFACT_DIR: ${{ runner.temp }}/verity-artifact
+          VERITY_RUN_ID: ${{ github.run_id }}
+          VERITY_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: >-
+          go run ./.github/actions/setup-verity/cmd/setup-verity build
+          --source-sha "$VERITY_SOURCE_SHA"
+          --run-id "$VERITY_RUN_ID"
+          --run-attempt "$VERITY_RUN_ATTEMPT"
+          --artifact-directory "$VERITY_ARTIFACT_DIR"
+          --github-output "$GITHUB_OUTPUT"
+      - name: Upload exact Verity artifact
+        id: upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ${{ steps.build.outputs.artifact-name }}
+          path: ${{ runner.temp }}/verity-artifact/
+          if-no-files-found: error
+          compression-level: "0"
+          overwrite: "false"
+          include-hidden-files: "false"

@@ -88,15 +88,13 @@ func Test_StepCA_runs_package_smoke_in_native_dual_arch_workflows(t *testing.T) 
 	// Given: the shared package-test script, reusable image workflow, and pull-request smoke workflow.
 	testScript, err := os.ReadFile(filepath.Join("..", ".github", "scripts", "test-step-ca-package.sh"))
 	require.NoError(t, err)
-	buildWorkflow, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "integer-build-image.yaml"))
-	require.NoError(t, err)
 	prWorkflow, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "pr-test.yaml"))
 	require.NoError(t, err)
 
 	// When: their Step CA package-test gates are inspected.
 	scriptText := string(testScript)
-	buildText := string(buildWorkflow)
 	prText := string(prWorkflow)
+	buildText := readGeneratedWorkflowFixture(t, "integer-build-image-reusable.yaml")
 
 	// Then: both native architecture paths call one bounded checked-in Melange test entrypoint.
 	require.Contains(t, scriptText, "case \"$arch\" in")
@@ -107,9 +105,7 @@ func Test_StepCA_runs_package_smoke_in_native_dual_arch_workflows(t *testing.T) 
 	testCommandIndex := strings.Index(scriptText, "timeout --signal=TERM --kill-after=1m 30m melange test")
 	require.NotEqual(t, -1, workingDirectoryIndex)
 	require.Less(t, workingDirectoryIndex, testCommandIndex)
-	require.Contains(t, buildText, "Test Step CA package natively (${{ matrix.arch }})")
-	require.Contains(t, buildText, "if: inputs.image == 'step-ca'")
-	require.Contains(t, buildText, "bash .github/scripts/test-step-ca-package.sh \"$BUILD_ARCH\"")
-	require.Contains(t, prText, "if [ \"$image\" = \"step-ca\" ]; then")
-	require.Contains(t, prText, "bash .github/scripts/test-step-ca-package.sh \"$INTEGER_PACKAGE_ARCH\"")
+	requireIntegerImageReusablePackageGate(t, buildText)
+	require.Contains(t, prText, "./verity ci pr-test integer-batch")
+	require.NotContains(t, prText, "test-step-ca-package.sh")
 }

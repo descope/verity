@@ -1,0 +1,24 @@
+- name: protected source gate removed
+  old: "${{ github.repository == 'verity-org/verity' && github.ref == 'refs/heads/main' && github.ref_protected == true }}"
+  replacement: "${{ github.repository == 'verity-org/verity' }}"
+  want: exact protected gate
+- name: protected source becomes caller controlled
+  old: "VERITY_SOURCE_SHA: ${{ github.sha }}"
+  replacement: "VERITY_SOURCE_SHA: ${{ inputs.source_sha }}"
+  want: current run identity
+- name: attestation loses dependency
+  old: "needs: build"
+  replacement: "needs: []"
+  want: depend only on the protected build
+- name: attestation write removed
+  old: "attestations: write"
+  replacement: "attestations: read"
+  want: attestation writes
+- name: attestation artifact digest misbound
+  old: "artifact-digest: ${{ needs.build.outputs.artifact-digest }}"
+  replacement: "artifact-digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  want: exact protected binary
+- name: unpinned attestation action
+  old: "actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373"
+  replacement: "actions/attest-build-provenance@v4"
+  want: full commit SHA

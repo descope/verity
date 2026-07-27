@@ -39,20 +39,13 @@ fmt:
 # Check for Go vulnerabilities
 lint-vuln:
 	@which govulncheck > /dev/null || (echo "govulncheck not found. Run: make install-tools" && exit 1)
-	govulncheck ./...
+	go run . ci vulncheck
 
 # Lint workflows
-lint-workflows:
+lint-workflows: build
 	@which actionlint > /dev/null || (echo "actionlint not found. Run: make install-tools" && exit 1)
 	actionlint
-	python3 .github/scripts/validate-patch-image-workflow.py
-	bash .github/scripts/validate-metrics-json_test.sh
-	python3 .github/scripts/validate-integer-build-image-workflow.py
-	python3 .github/scripts/validate-chart-integration-workflow.py
-	python3 .github/scripts/validate-nightly-workflows.py
-	python3 .github/scripts/validate-renovate-coverage.py
-	bash .github/scripts/validate-wait-for-workflows.sh
-	bash .github/scripts/validate-retry-helpers.sh
+	./verity ci workflow validate .github/workflows
 
 # Lint YAML files
 lint-yaml:

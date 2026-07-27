@@ -41,6 +41,10 @@ var ChartGenCommand = &cli.Command{
 			Name:  "exclude-names",
 			Usage: "Comma-separated image names to exclude (e.g., Integer/Wolfi image names)",
 		},
+		&cli.StringFlag{
+			Name:  "exclude-images-dir",
+			Usage: "Directory whose top-level YAML filenames are image names to exclude",
+		},
 		&cli.BoolFlag{
 			Name:  "dry-run",
 			Usage: "Output JSON plan without pushing charts",
@@ -51,12 +55,22 @@ var ChartGenCommand = &cli.Command{
 		},
 	},
 	Action: func(_ context.Context, cmd *cli.Command) error {
+		excludeNames := parseNameSet(cmd.String("exclude-names"))
+		if dir := cmd.String("exclude-images-dir"); dir != "" {
+			discovered, err := chartgen.ImageDefinitionNames(dir)
+			if err != nil {
+				return fmt.Errorf("load chart exclusions: %w", err)
+			}
+			for name := range discovered {
+				excludeNames[name] = struct{}{}
+			}
+		}
 		cfg := &chartgen.Config{
 			ChartsFile:     cmd.String("charts-file"),
 			VerityConfig:   cmd.String("verity-config"),
 			TargetRegistry: cmd.String("target-registry"),
 			ChartRegistry:  cmd.String("chart-registry"),
-			ExcludeNames:   parseNameSet(cmd.String("exclude-names")),
+			ExcludeNames:   excludeNames,
 			DryRun:         cmd.Bool("dry-run"),
 			Strict:         cmd.Bool("strict"),
 		}

@@ -1,26 +1,112 @@
 name: chart-integration-privileged
 
 on:
-  workflow_run:
-    workflows: ['Chart Generation']
-    types: [completed]
-    branches: [main]
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      source_sha:
+        description: "Exact chart producer source commit"
+        required: true
+        type: string
+      run_id:
+        description: "Exact chart producer run ID"
+        required: true
+        type: string
+      run_attempt:
+        description: "Exact chart producer run attempt"
+        required: true
+        type: string
+      publication_id:
+        description: "Exact chart publication identity"
+        required: true
+        type: string
+      batch_id:
+        description: "Exact chart publication batch"
+        required: true
+        type: string
+      artifact_name:
+        description: "Exact immutable chart publication artifact"
+        required: true
+        type: string
+      artifact_digest:
+        description: "Exact immutable chart publication digest"
+        required: true
+        type: string
+      verity_artifact_name:
+        description: "Exact current-run Verity artifact name"
+        required: true
+        type: string
+      verity_artifact_digest:
+        description: "Exact current-run Verity artifact digest"
+        required: true
+        type: string
+      verity_build_key:
+        description: "Exact current-run Verity build key"
+        required: true
+        type: string
+    outputs:
+      source_sha:
+        description: "Privileged-tested chart source commit"
+        value: ${{ jobs.chart-integration-result.outputs.source_sha }}
+      run_id:
+        description: "Privileged-tested chart producer run ID"
+        value: ${{ jobs.chart-integration-result.outputs.run_id }}
+      run_attempt:
+        description: "Privileged-tested chart producer run attempt"
+        value: ${{ jobs.chart-integration-result.outputs.run_attempt }}
+      publication_id:
+        description: "Privileged-tested chart publication identity"
+        value: ${{ jobs.chart-integration-result.outputs.publication_id }}
+      batch_id:
+        description: "Privileged-tested chart publication batch"
+        value: ${{ jobs.chart-integration-result.outputs.batch_id }}
+      artifact_name:
+        description: "Privileged-tested immutable chart artifact"
+        value: ${{ jobs.chart-integration-result.outputs.artifact_name }}
+      artifact_digest:
+        description: "Privileged-tested immutable chart digest"
+        value: ${{ jobs.chart-integration-result.outputs.artifact_digest }}
 
-permissions:
-  contents: read
-  packages: read
+permissions: {}
 
 concurrency:
   group: chart-integration-privileged-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  verity:
+    name: Resolve exact caller Verity coordinates
+    if: >-
+      github.repository == 'verity-org/verity' &&
+      github.ref == 'refs/heads/main' &&
+      github.ref_protected == true &&
+      inputs.source_sha == github.sha
+    runs-on: ubuntu-24.04
+    permissions: {}
+    outputs:
+      matrix: '["verity"]'
+      source-sha: ${{ inputs.source_sha }}
+      artifact-name: ${{ inputs.verity_artifact_name }}
+      artifact-digest: ${{ inputs.verity_artifact_digest }}
+      build-key: ${{ inputs.verity_build_key }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: "false"
+
+      - name: Activate exact caller Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ inputs.verity_artifact_name }}
+          artifact-digest: ${{ inputs.verity_artifact_digest }}
+          source-sha: ${{ inputs.source_sha }}
+          build-key: ${{ inputs.verity_build_key }}
+          verify-attestation: "true"
+
   chart-test:
     name: ${{ matrix.chart }} privileged
-    if: |
-      github.event_name != 'workflow_run' ||
-      github.event.workflow_run.conclusion == 'success'
+    needs: [verity]
+    if: ${{ inputs.source_sha == github.sha }}
     runs-on:
       - self-hosted
       - linux
@@ -28,6 +114,11 @@ jobs:
       - chart-integration-privileged
       - bpf
     timeout-minutes: 90
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+      packages: read
     strategy:
       fail-fast: false
       matrix:
@@ -46,13 +137,14 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          ref: ${{ github.event.repository.default_branch }}
+          ref: ${{ needs.verity.outputs.source-sha }}
+          persist-credentials: "false"
 
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          install: true
-          cache: true
+          install: "true"
+          cache: "true"
 
       - name: Cache Go modules
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -63,48 +155,61 @@ jobs:
           key: chart-it-privileged-${{ runner.os }}-${{ hashFiles('go.sum') }}
           restore-keys: chart-it-privileged-${{ runner.os }}-
 
+      - name: Set up exact Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.verity.outputs.source-sha }}
+          build-key: ${{ needs.verity.outputs.build-key }}
+          verify-attestation: "true"
+
+      - name: Download exact chart publication manifest
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: .producer/chart
+          repository: ${{ github.repository }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ inputs.run_id }}
+
+      - name: Verify exact chart producer artifact
+        env:
+          PROVENANCE_API_AUTH: ${{ secrets.GITHUB_TOKEN }}
+          PROVENANCE_REPOSITORY: ${{ github.repository }}
+          PROVENANCE_RUN_ID: ${{ inputs.run_id }}
+          PROVENANCE_RUN_ATTEMPT: ${{ inputs.run_attempt }}
+          PROVENANCE_SOURCE_SHA: ${{ inputs.source_sha }}
+          PROVENANCE_PUBLICATION_ID: ${{ inputs.publication_id }}
+          PROVENANCE_ARTIFACT_NAME: ${{ inputs.artifact_name }}
+          PROVENANCE_ARTIFACT_DIGEST: ${{ inputs.artifact_digest }}
+          PROVENANCE_MANIFEST: .producer/chart/producer-manifest.json
+        run: ./verity ci artifact-provenance verify-download
+
       - name: Log in to GHCR
-        run: |
-          set -euo pipefail
-          for attempt in 1 2 3 4 5; do
-            if printf '%s' "${{ secrets.GITHUB_TOKEN }}" \
-              | docker login ghcr.io -u "${{ github.actor }}" --password-stdin; then
-              exit 0
-            fi
-            if [ "$attempt" -eq 5 ]; then
-              echo "GHCR login failed after ${attempt} attempts" >&2
-              exit 1
-            fi
-            sleep $((attempt * 10))
-          done
+        env:
+          DOCKER_REGISTRY: ghcr.io
+          DOCKER_USERNAME: ${{ github.actor }}
+          DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_LOGIN_ATTEMPTS: "5"
+        run: ./verity ci workflowops retry-docker-login --jitter-seconds 0
 
       - name: Harness compile and unit-test gate
         env:
           VERITY_IT_SKIP_CLUSTER: "1"
           TEST_REGEX: Test(KindConfigPath|KindCreateWait|ShouldSkipChart|LoadSkips|IsSkipped|ProductionSKIPSYAMLIsValid)
-        run: |
-          go test -tags=integration \
-            -run "$TEST_REGEX" \
-            -v ./test/chart-integration/...
+        run: >-
+          go test -tags=integration -run "$TEST_REGEX" -v ./test/chart-integration/...
 
       - name: Run privileged chart smoke test
         id: smoke
-        run: make chart-integration
+        run: go test -tags=integration -v -timeout=4h ./test/chart-integration/...
 
       - name: Record shard outcome
         if: always()
-        run: |
-          set -euo pipefail
-          outcome="${{ steps.smoke.outcome }}"
-          {
-            if [ "$outcome" = "success" ]; then
-              echo "## ✅ ${{ matrix.chart }} privileged: success"
-            else
-              echo "## ❌ ${{ matrix.chart }} privileged: ${outcome}"
-              echo ""
-              echo "Inspect diagnostics-${{ matrix.chart }}-privileged for cluster-info and kind logs."
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          CHART_TEST_OUTCOME: ${{ steps.smoke.outcome }}
+        run: ./verity ci workflowops write-chart-summary --profile privileged
 
       - name: Upload diagnostics on failure
         if: always() && steps.smoke.outcome == 'failure'
@@ -114,5 +219,59 @@ jobs:
           path: |
             _dump-${{ matrix.chart }}
             _kind-logs-${{ matrix.chart }}
-          retention-days: 7
+          retention-days: "7"
           if-no-files-found: ignore
+
+  chart-integration-result:
+    name: Privileged Chart Integration
+    needs: chart-test
+    if: ${{ needs.chart-test.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+    outputs:
+      source_sha: ${{ steps.aggregate.outputs.source_sha }}
+      run_id: ${{ steps.aggregate.outputs.run_id }}
+      run_attempt: ${{ steps.aggregate.outputs.run_attempt }}
+      publication_id: ${{ steps.aggregate.outputs.publication_id }}
+      batch_id: ${{ steps.aggregate.outputs.batch_id }}
+      artifact_name: ${{ steps.aggregate.outputs.artifact_name }}
+      artifact_digest: ${{ steps.aggregate.outputs.artifact_digest }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: "false"
+
+      - name: Install mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          install: "true"
+          cache: "true"
+
+      - name: Set up exact Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ inputs.verity_artifact_name }}
+          artifact-digest: ${{ inputs.verity_artifact_digest }}
+          source-sha: ${{ inputs.source_sha }}
+          build-key: ${{ inputs.verity_build_key }}
+          verify-attestation: "true"
+
+      - name: Aggregate privileged chart shard results
+        id: aggregate
+        env:
+          CHART_SOURCE_SHA: ${{ inputs.source_sha }}
+          CHART_RUN_ID: ${{ inputs.run_id }}
+          CHART_RUN_ATTEMPT: ${{ inputs.run_attempt }}
+          CHART_PUBLICATION_ID: ${{ inputs.publication_id }}
+          CHART_BATCH_ID: ${{ inputs.batch_id }}
+          CHART_ARTIFACT_NAME: ${{ inputs.artifact_name }}
+          CHART_ARTIFACT_DIGEST: ${{ inputs.artifact_digest }}
+        run: >-
+          ./verity ci workflowops aggregate-chart-results
+          --profile privileged
+          --result chart-test=${{ needs.chart-test.result }}

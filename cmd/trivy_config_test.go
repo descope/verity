@@ -77,23 +77,15 @@ func Test_Trivy_resolves_fixed_local_package(t *testing.T) {
 	require.Equal(t, []string{"trivy=0.72.0-r4@local"}, tmpl.Packages)
 }
 
-func Test_Trivy_CI_records_external_pinned_scanner(t *testing.T) {
+func Test_Trivy_CI_uses_reusable_image_security_gate(t *testing.T) {
 	// Given: the repository tool pin and Integer publish workflow.
 	toolConfig, err := os.ReadFile(filepath.Join("..", "mise.toml"))
 	require.NoError(t, err)
-	workflow, err := os.ReadFile(filepath.Join("..", ".github", "workflows", "integer-build-image.yaml"))
-	require.NoError(t, err)
+	workflow := readGeneratedWorkflowFixture(t, "integer-build-image-reusable.yaml")
 
 	// When: the Trivy-family scan gate is inspected.
 
 	// Then: CI records the independent pinned scanner before it validates the produced image.
 	require.Contains(t, string(toolConfig), "trivy = \"0.72.0\"")
-	require.Contains(t, string(workflow), "Test Trivy package natively (${{ matrix.arch }})")
-	require.Contains(t, string(workflow), "if: inputs.image == 'trivy'")
-	require.Contains(t, string(workflow), "melange test \\")
-	require.Contains(t, string(workflow), "melange-work/specs/trivy.yaml/build.yaml")
-	require.Contains(t, string(workflow), "Repository-pinned external scanner")
-	require.Contains(t, string(workflow), "trivy --version")
-	require.Contains(t, string(workflow), "trivy image \\")
-	require.Contains(t, string(workflow), "--severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL")
+	requireIntegerImageReusableImageGate(t, workflow)
 }
