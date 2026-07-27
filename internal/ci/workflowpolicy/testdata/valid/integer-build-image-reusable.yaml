@@ -400,7 +400,7 @@ jobs:
           INPUT_REGISTRY: ${{ inputs.registry }}
           DIGEST: ${{ steps.build.outputs.digest }}
           PUBLICATION_ID: ${{ needs.melange-prep.outputs.publication_id }}
-        run: cosign sign --yes --annotation "verity.publication_id=${PUBLICATION_ID}" "${INPUT_REGISTRY}/${INPUT_IMAGE}@${DIGEST}"
+        run: cosign sign --yes --annotations "verity.publication_id=${PUBLICATION_ID}" "${INPUT_REGISTRY}/${INPUT_IMAGE}@${DIGEST}"
 
       - name: Attest SBOM
         if: hashFiles('sbom-amd64.spdx.json') != ''
