@@ -35,3 +35,14 @@ func TestPublishWorkflow_triggersOnlyRelevantProtectedChanges(t *testing.T) {
 	}
 	assert.NotContains(t, paths, "**")
 }
+
+func TestBuildSite_passesTypedBooleanPreflightInput(t *testing.T) {
+	// Given: the exact Build Site reusable caller text.
+	workflow := readRepositoryIntegerWorkflowText(t, "build-site.yaml")
+
+	// When: the chart producer's boolean input is inspected.
+
+	// Then: GitHub receives a boolean scalar rather than a rejected string.
+	require.Contains(t, workflow, "      preflight: false\n")
+	require.NotContains(t, workflow, "      preflight: \"false\"\n")
+}
