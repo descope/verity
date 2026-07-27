@@ -80,8 +80,8 @@ func PublishIntegerImage(ctx context.Context, options *IntegerImagePublishOption
 		apkoArgs = append(
 			apkoArgs,
 			"--repository-append", "@local "+filepath.Join(options.Workspace, "packages", "repo"),
-			"--keyring-append", filepath.Join(options.Workspace, "packages", "repo", "melange-x86_64.rsa.pub"),
-			"--keyring-append", filepath.Join(options.Workspace, "packages", "repo", "melange-aarch64.rsa.pub"),
+			"--keyring-append", filepath.Join(options.Workspace, "packages", "repo", "x86_64", "melange.rsa.pub"),
+			"--keyring-append", filepath.Join(options.Workspace, "packages", "repo", "aarch64", "melange.rsa.pub"),
 		)
 	}
 	apkoArgs = append(apkoArgs, configPath, stagingRef)
