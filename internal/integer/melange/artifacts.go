@@ -208,7 +208,7 @@ func artifactOutputDigests(paths *Paths, arch Architecture) (map[string]string, 
 	}
 	outputs := map[string]string{}
 	for _, file := range files {
-		if file == artifactMarkerName || file == "melange.rsa.pub" {
+		if file == artifactMarkerName {
 			continue
 		}
 		data, err := readRegularFile(archDir, file)
@@ -221,7 +221,8 @@ func artifactOutputDigests(paths *Paths, arch Architecture) (map[string]string, 
 	if _, ok := outputs["package/APKINDEX.tar.gz"]; !ok {
 		return nil, errNoPackageIndex
 	}
-	keyData, err := readRegularFile(archDir, "melange.rsa.pub")
+	publicName := "melange-" + string(arch) + ".rsa.pub"
+	keyData, err := readRegularFile(paths.RepoDir, publicName)
 	if err != nil {
 		return nil, fmt.Errorf("verify public key: %w", err)
 	}

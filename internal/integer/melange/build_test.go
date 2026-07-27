@@ -77,14 +77,14 @@ func TestBuildStagesRunsAndSigns(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, runner.commands, 3)
-	assert.Equal(t, recordedCommand{name: "melange", args: []string{"keygen", "melange-work/melange.rsa"}}, runner.commands[0])
+	assert.Equal(t, recordedCommand{name: "melange", args: []string{"keygen", "melange-work/melange-x86_64.rsa"}}, runner.commands[0])
 	assert.Contains(t, runner.commands[1].args, "--env-file")
 	assert.Contains(t, runner.commands[1].args, "packages/overrides/fips.env")
 	assert.Contains(t, runner.commands[1].args, "--build-option")
 	assert.Contains(t, runner.commands[1].args, "fips")
 	assert.Equal(t, "sign-index", runner.commands[2].args[0])
 
-	publicKey, err := os.ReadFile(testPath(root, "packages/repo/x86_64/melange.rsa.pub"))
+	publicKey, err := os.ReadFile(testPath(root, "packages/repo/melange.rsa.pub"))
 	require.NoError(t, err)
 	assert.Equal(t, "public", string(publicKey))
 	assert.True(t, ArtifactsExist(&paths, spec, ArchitectureX8664))
@@ -101,8 +101,8 @@ func TestBuildSignsOnlyRequestedArchitectureIndex(t *testing.T) {
   "pipeline_files":{}
 }`, testSHA(recipe)))
 	writeTestFile(t, testPath(paths.WorkDir, "specs/caddy/build.yaml"), recipe)
-	writeTestFile(t, filepath.Join(paths.WorkDir, "melange.rsa"), "private")
-	writeTestFile(t, filepath.Join(paths.WorkDir, "melange.rsa.pub"), "public")
+	writeTestFile(t, filepath.Join(paths.WorkDir, "melange-x86_64.rsa"), "private")
+	writeTestFile(t, filepath.Join(paths.WorkDir, "melange-x86_64.rsa.pub"), "public")
 	writeTestFile(t, testPath(root, "packages/repo/aarch64/APKINDEX.tar.gz"), "arm-index")
 	runner := &fakeRunner{}
 
@@ -124,11 +124,11 @@ func TestBuildSignsOnlyRequestedArchitectureIndex(t *testing.T) {
 	assert.Equal(t, []string{"packages/repo/x86_64/APKINDEX.tar.gz"}, signedIndexes)
 }
 
-func TestPrepareRestrictsGeneratedPrivateKeyPermissions(t *testing.T) {
+func TestPrepareStages_withoutGeneratingSigningKey(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, testPath(root, "packages/bespoke/custom.yaml"), "package:\n  name: custom\n")
 	writeTestFile(t, testPath(root, "packages/upstream.lock.json"), `{"packages":{},"pipeline_files":{}}`)
-	runner := &fakeRunner{keyMode: 0o666}
+	runner := &fakeRunner{}
 
 	err := Prepare(context.Background(), &BuildOptions{
 		Paths:  testPaths(root),
@@ -137,13 +137,12 @@ func TestPrepareRestrictsGeneratedPrivateKeyPermissions(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	info, err := os.Stat(testPath(root, "melange-work/melange.rsa"))
-	require.NoError(t, err)
-	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+	assert.Empty(t, runner.commands)
+	assert.NoFileExists(t, testPath(root, "melange-work/melange.rsa"))
 }
 
-func TestPrepareReusesExistingSigningKeyPair(t *testing.T) {
-	// Given: one workspace used to build packages for multiple architectures.
+func TestPrepareStagesIdempotently_withoutSigningKeys(t *testing.T) {
+	// Given: one workspace whose recipes will be built independently per architecture.
 	root := t.TempDir()
 	writeTestFile(t, testPath(root, "packages/bespoke/custom.yaml"), "package:\n  name: custom\n")
 	writeTestFile(t, testPath(root, "packages/upstream.lock.json"), `{"packages":{},"pipeline_files":{}}`)
@@ -154,18 +153,11 @@ func TestPrepareReusesExistingSigningKeyPair(t *testing.T) {
 		Runner: runner,
 	}
 
-	// When: preparation runs once per architecture.
+	// When: preparation runs repeatedly before architecture builds.
 	require.NoError(t, Prepare(context.Background(), options))
 	require.NoError(t, Prepare(context.Background(), options))
-
-	// Then: both architecture indexes will share the same signing key.
-	var keygenCount int
-	for _, command := range runner.commands {
-		if len(command.args) > 0 && command.args[0] == "keygen" {
-			keygenCount++
-		}
-	}
-	assert.Equal(t, 1, keygenCount)
+	assert.Empty(t, runner.commands)
+	assert.NoFileExists(t, testPath(root, "melange-work/melange.rsa"))
 }
 
 func TestBuildRejectsUnsafeArchitectureBeforeRemovingOutput(t *testing.T) {
@@ -192,8 +184,8 @@ func TestBuildRejectsSymlinkedRepositoryAncestorBeforeRemovingOutput(t *testing.
 	writeTestFile(t, sentinel, "keep")
 	require.NoError(t, os.Symlink(backing, testPath(root, "packages")))
 	writeTestFile(t, testPath(paths.WorkDir, "specs/custom/build.yaml"), "package:\n  name: custom\n")
-	writeTestFile(t, filepath.Join(paths.WorkDir, "melange.rsa"), "private")
-	writeTestFile(t, filepath.Join(paths.WorkDir, "melange.rsa.pub"), "public")
+	writeTestFile(t, filepath.Join(paths.WorkDir, "melange-x86_64.rsa"), "private")
+	writeTestFile(t, filepath.Join(paths.WorkDir, "melange-x86_64.rsa.pub"), "public")
 
 	err := Build(context.Background(), &BuildOptions{
 		Paths:  paths,
@@ -217,15 +209,15 @@ func TestBuildStagedRestrictsPrivateKeyPermissions(t *testing.T) {
   "pipeline_files":{}
 }`, testSHA(recipe)))
 	writeTestFile(t, testPath(paths.WorkDir, "specs/caddy/build.yaml"), "package:\n  name: caddy\n")
-	writeTestFile(t, filepath.Join(paths.WorkDir, "melange.rsa"), "private")
-	writeTestFile(t, filepath.Join(paths.WorkDir, "melange.rsa.pub"), "public")
-	require.NoError(t, os.Chmod(filepath.Join(paths.WorkDir, "melange.rsa"), 0o644))
+	writeTestFile(t, filepath.Join(paths.WorkDir, "melange-x86_64.rsa"), "private")
+	writeTestFile(t, filepath.Join(paths.WorkDir, "melange-x86_64.rsa.pub"), "public")
+	require.NoError(t, os.Chmod(filepath.Join(paths.WorkDir, "melange-x86_64.rsa"), 0o644))
 	var mode os.FileMode
 	runner := &fakeRunner{beforeRun: func(command Command) {
 		if len(command.Args) == 0 || command.Args[0] != "build" {
 			return
 		}
-		info, err := os.Stat(filepath.Join(paths.WorkDir, "melange.rsa"))
+		info, err := os.Stat(filepath.Join(paths.WorkDir, "melange-x86_64.rsa"))
 		require.NoError(t, err)
 		mode = info.Mode().Perm()
 	}}

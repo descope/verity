@@ -213,6 +213,7 @@ func Test_buildAndSign_helpers_stop_on_runner_and_path_errors(t *testing.T) {
 
 	index := filepath.Join(paths.RepoDir, string(ArchitectureX8664), "APKINDEX.tar.gz")
 	writeTestFile(t, index, "index")
+	writeTestFile(t, filepath.Join(paths.WorkDir, "melange-x86_64.rsa.pub"), "public")
 	signRunner := &orchestrationRunner{failVerb: "sign-index"}
 	signErr := signPackageIndexes(context.Background(), &BuildOptions{
 		Paths:  paths,

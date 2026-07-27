@@ -15,6 +15,14 @@ type ExecRunner struct{}
 
 var errIncompleteSigningKeyPair = errors.New("incomplete ephemeral signing key pair")
 
+func signingKeyName(options *BuildOptions) string {
+	return "melange-" + string(options.Arch) + ".rsa"
+}
+
+func signingKeyPath(options *BuildOptions) string {
+	return filepath.ToSlash(filepath.Join("melange-work", signingKeyName(options)))
+}
+
 func (ExecRunner) Run(ctx context.Context, command *Command, stdout, stderr io.Writer) error {
 	cmd := exec.CommandContext(ctx, command.Name, command.Args...)
 	cmd.Dir = command.Dir
@@ -32,22 +40,16 @@ func Prepare(ctx context.Context, options *BuildOptions) error {
 	if err := Stage(&options.Paths, options.Spec); err != nil {
 		return err
 	}
-	keyPairExists, err := signingKeyPairExists(&options.Paths)
-	if err != nil {
-		return err
-	}
-	if keyPairExists {
-		return restrictStagedPrivateKey(&options.Paths)
-	}
-	if err := runMelange(ctx, options, "keygen", "melange-work/melange.rsa"); err != nil {
-		return err
-	}
-	return restrictStagedPrivateKey(&options.Paths)
+	return nil
 }
 
 func signingKeyPairExists(paths *Paths) (bool, error) {
+	return signingKeyPairExistsNamed(paths, "melange.rsa")
+}
+
+func signingKeyPairExistsNamed(paths *Paths, privateName string) (bool, error) {
 	found := 0
-	for _, name := range []string{"melange.rsa", "melange.rsa.pub"} {
+	for _, name := range []string{privateName, privateName + ".pub"} {
 		path := filepath.Join(paths.WorkDir, name)
 		info, err := os.Lstat(path)
 		if os.IsNotExist(err) {
@@ -84,7 +86,7 @@ func Build(ctx context.Context, options *BuildOptions) (err error) {
 	}
 	if generatedKey {
 		defer func() {
-			err = errors.Join(err, removeEphemeralSigningKey(&options.Paths))
+			err = errors.Join(err, removeEphemeralSigningKeyNamed(&options.Paths, signingKeyName(options)))
 		}()
 	}
 	if err := clearBuildOutput(&options.Paths, options.Arch); err != nil {
@@ -114,26 +116,30 @@ func clearBuildOutput(paths *Paths, arch Architecture) error {
 
 func prepareBuildInputs(ctx context.Context, options *BuildOptions) (bool, error) {
 	if !options.Staged {
-		if err := Prepare(ctx, options); err != nil {
+		if err := Stage(&options.Paths, options.Spec); err != nil {
 			return false, err
 		}
-		return false, nil
 	}
-	keyPairExists, err := signingKeyPairExists(&options.Paths)
+	privateName := signingKeyName(options)
+	keyPairExists, err := signingKeyPairExistsNamed(&options.Paths, privateName)
 	if err != nil {
 		return false, err
 	}
 	if keyPairExists {
-		return false, restrictStagedPrivateKey(&options.Paths)
+		return false, restrictStagedPrivateKeyNamed(&options.Paths, privateName)
 	}
-	if err := runMelange(ctx, options, "keygen", "melange-work/melange.rsa"); err != nil {
+	if err := runMelange(ctx, options, "keygen", signingKeyPath(options)); err != nil {
 		return false, fmt.Errorf("generate ephemeral package signing key: %w", err)
 	}
-	return true, restrictStagedPrivateKey(&options.Paths)
+	return true, restrictStagedPrivateKeyNamed(&options.Paths, privateName)
 }
 
 func restrictStagedPrivateKey(paths *Paths) error {
-	privateKey := filepath.Join(paths.WorkDir, "melange.rsa")
+	return restrictStagedPrivateKeyNamed(paths, "melange.rsa")
+}
+
+func restrictStagedPrivateKeyNamed(paths *Paths, privateName string) error {
+	privateKey := filepath.Join(paths.WorkDir, privateName)
 	info, err := os.Lstat(privateKey)
 	if err != nil {
 		return fmt.Errorf("staged signing key: %w", err)
@@ -148,8 +154,12 @@ func restrictStagedPrivateKey(paths *Paths) error {
 }
 
 func removeEphemeralSigningKey(paths *Paths) error {
+	return removeEphemeralSigningKeyNamed(paths, "melange.rsa")
+}
+
+func removeEphemeralSigningKeyNamed(paths *Paths, privateName string) error {
 	var result error
-	for _, name := range []string{"melange.rsa", "melange.rsa.pub"} {
+	for _, name := range []string{privateName, privateName + ".pub"} {
 		path := filepath.Join(paths.WorkDir, name)
 		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 			result = errors.Join(result, fmt.Errorf("remove ephemeral signing key %q: %w", path, err))
@@ -180,13 +190,13 @@ func buildStagedRecipes(ctx context.Context, options *BuildOptions, builds []str
 }
 
 func signPackageIndexes(ctx context.Context, options *BuildOptions) error {
-	publicKey := filepath.Join(options.Paths.WorkDir, "melange.rsa.pub")
-	publicName := "melange-" + string(options.Arch) + ".rsa.pub"
-	if err := copyFile(options.Paths.Root, publicKey, filepath.Join(options.Paths.RepoDir, publicName)); err != nil {
-		return fmt.Errorf("copy public key: %w", err)
-	}
-	if err := copyFile(options.Paths.Root, publicKey, filepath.Join(options.Paths.RepoDir, string(options.Arch), "melange.rsa.pub")); err != nil {
-		return fmt.Errorf("copy architecture public key: %w", err)
+	privateKey := signingKeyPath(options)
+	publicKey := filepath.Join(options.Paths.Root, filepath.FromSlash(privateKey+".pub"))
+	publicName := filepath.Base(privateKey) + ".pub"
+	if publicName != "melange.rsa.pub" {
+		if err := copyFile(options.Paths.Root, publicKey, filepath.Join(options.Paths.RepoDir, publicName)); err != nil {
+			return fmt.Errorf("copy public key: %w", err)
+		}
 	}
 	if err := copyFile(options.Paths.Root, publicKey, filepath.Join(options.Paths.RepoDir, "melange.rsa.pub")); err != nil {
 		return fmt.Errorf("copy compatibility public key: %w", err)
@@ -204,7 +214,7 @@ func signPackageIndexes(ctx context.Context, options *BuildOptions) error {
 		if err != nil {
 			return err
 		}
-		if err := runMelange(ctx, options, "sign-index", "--signing-key", "melange-work/melange.rsa", filepath.ToSlash(relative), "--force"); err != nil {
+		if err := runMelange(ctx, options, "sign-index", "--signing-key", privateKey, filepath.ToSlash(relative), "--force"); err != nil {
 			return fmt.Errorf("sign package index: %w", err)
 		}
 	}
@@ -222,7 +232,7 @@ func runBuild(ctx context.Context, options *BuildOptions, buildFile string) erro
 	args := []string{
 		"build", filepath.ToSlash(relative),
 		"--arch", string(options.Arch),
-		"--signing-key", "melange-work/melange.rsa",
+		"--signing-key", signingKeyPath(options),
 		"--out-dir", "packages/repo",
 		"--repository-append", RepositoryURL,
 		"--keyring-append", KeyringURL,
