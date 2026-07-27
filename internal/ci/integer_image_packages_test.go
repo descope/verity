@@ -30,7 +30,7 @@ func TestTestIntegerPackages_runsEveryStagedRecipeNatively(t *testing.T) {
 	for _, call := range runner.calls {
 		assert.Contains(t, call.Args, "aarch64")
 		assert.Contains(t, call.Args, filepath.Join(root, "packages", "repo"))
-		assert.Contains(t, call.Args, filepath.Join(root, "melange-work", "melange.rsa.pub"))
+		assert.Contains(t, call.Args, filepath.Join(root, "packages", "repo", "melange-aarch64.rsa.pub"))
 		assert.Contains(t, call.Args, "melange-work/pipelines")
 	}
 }
