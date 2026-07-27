@@ -57,7 +57,11 @@ func Test_ActionsRunnerController_recipe_tests_ghalistener_configuration_rejecti
 	// When: the listener smoke-test contract is inspected.
 
 	// Then: the non-CLI binary is exercised offline through its required configuration boundary.
-	require.Contains(t, text, `ghalistener 2>&1 | grep -F "LISTENER_CONFIG_PATH environment variable is not set"`)
+	require.Contains(t, text, `if output="$(ghalistener 2>&1)"; then
+          exit 1
+        fi
+        printf '%s\n' "$output" | grep -F "LISTENER_CONFIG_PATH environment variable is not set"`)
+	require.NotContains(t, text, `ghalistener 2>&1 | grep`)
 	require.NotContains(t, text, "ghalistener --help")
 }
 
