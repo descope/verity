@@ -12,9 +12,28 @@ import (
 )
 
 var (
-	apkTestCommand  = regexp.MustCompile(`(^|[[:space:];|&()])apk(\s|$)`)
-	wgetTestCommand = regexp.MustCompile(`(^|[[:space:];|&()])wget(\s|$)`)
+	apkTestCommand  = regexp.MustCompile(`(^|[[:space:];|&()])([^[:space:];|&()]*/)?apk(\s|$)`)
+	wgetTestCommand = regexp.MustCompile(`(^|[[:space:];|&()])([^[:space:];|&()]*/)?wget(\s|$)`)
 )
+
+func TestNativeTestCommandPatterns_matchExecutablePaths(t *testing.T) {
+	tests := []struct {
+		name    string
+		pattern *regexp.Regexp
+		script  string
+	}{
+		{name: "apk name", pattern: apkTestCommand, script: "apk info package"},
+		{name: "apk absolute path", pattern: apkTestCommand, script: "/sbin/apk info package"},
+		{name: "apk relative path", pattern: apkTestCommand, script: "./tools/apk info package"},
+		{name: "wget name", pattern: wgetTestCommand, script: "wget -qO- http://127.0.0.1"},
+		{name: "wget absolute path", pattern: wgetTestCommand, script: "/usr/bin/wget -qO- http://127.0.0.1"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.True(t, test.pattern.MatchString(test.script))
+		})
+	}
+}
 
 func TestNativePackageRecipes_includeInvokedTestTools(t *testing.T) {
 	// Given: every native package recipe and its isolated Melange tests.
