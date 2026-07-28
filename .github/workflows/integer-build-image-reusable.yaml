@@ -79,7 +79,7 @@ permissions:
 
 jobs:
   validate-coordinates:
-    name: Validate reusable-call coordinates
+    name: "Validate ${{ inputs.image }}:${{ inputs.version }}-${{ inputs.type }} coordinates"
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -120,7 +120,7 @@ jobs:
         run: "true"
 
   melange-prep:
-    name: Melange prep
+    name: "Prepare ${{ inputs.image }}:${{ inputs.version }}-${{ inputs.type }} recipe"
     needs: validate-coordinates
     if: needs.validate-coordinates.result == 'success'
     runs-on: ubuntu-latest
@@ -183,7 +183,7 @@ jobs:
           retention-days: "1"
 
   melange-build:
-    name: "Melange build (${{ matrix.arch }})"
+    name: "Build ${{ inputs.image }}:${{ inputs.version }}-${{ inputs.type }} APKs (${{ matrix.arch }})"
     needs: [melange-prep]
     if: needs.melange-prep.outputs.needed == 'true'
     permissions:
@@ -264,7 +264,7 @@ jobs:
           retention-days: "1"
 
   build:
-    name: "Build ${{ inputs.image }}:${{ inputs.version }}-${{ inputs.type }}"
+    name: "Publish ${{ inputs.image }}:${{ inputs.version }}-${{ inputs.type }}"
     needs: [melange-prep, melange-build]
     if: >-
       always() &&
