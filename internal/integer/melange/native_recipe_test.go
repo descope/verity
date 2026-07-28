@@ -3,47 +3,80 @@ package melange
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
+var (
+	apkTestCommand  = regexp.MustCompile(`(^|[[:space:];|&()])apk(\s|$)`)
+	wgetTestCommand = regexp.MustCompile(`(^|[[:space:];|&()])wget(\s|$)`)
+)
+
 func TestNativePackageRecipes_includeInvokedTestTools(t *testing.T) {
-	// Given: native package recipes whose test pipelines invoke external tools.
-	tests := []struct {
-		recipe string
-		tool   string
-	}{
-		{recipe: "velero.yaml", tool: "apk-tools"},
-		{recipe: "thanos.yaml", tool: "apk-tools"},
-		{recipe: "tempo-2.10.yaml", tool: "wget"},
-		{recipe: "hydra.yaml", tool: "apk-tools"},
-		{recipe: "external-secrets-operator.yaml", tool: "apk-tools"},
-		{recipe: "kor.yaml", tool: "apk-tools"},
-	}
+	// Given: every native package recipe and its isolated Melange tests.
 	paths := repositoryTestPaths(t)
+	var recipes []string
+	require.NoError(t, filepath.WalkDir(paths.BespokeDir, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !entry.IsDir() && filepath.Ext(path) == ".yaml" {
+			recipes = append(recipes, path)
+		}
+		return nil
+	}))
 
-	for _, test := range tests {
-		t.Run(test.recipe, func(t *testing.T) {
-			data, err := os.ReadFile(filepath.Join(paths.BespokeDir, test.recipe))
-			require.NoError(t, err)
-			var recipe struct {
-				Test struct {
-					Environment struct {
-						Contents struct {
-							Packages []string `yaml:"packages"`
-						} `yaml:"contents"`
-					} `yaml:"environment"`
-				} `yaml:"test"`
-			}
-
-			// When: the Melange test environment is parsed.
+	for _, path := range recipes {
+		relative, err := filepath.Rel(paths.BespokeDir, path)
+		require.NoError(t, err)
+		t.Run(relative, func(t *testing.T) {
+			data, readErr := os.ReadFile(path)
+			require.NoError(t, readErr)
+			var recipe nativeRecipeTestContract
 			require.NoError(t, yaml.Unmarshal(data, &recipe))
 
-			// Then: every command invoked by the test is installed explicitly.
-			require.Contains(t, recipe.Test.Environment.Contents.Packages, test.tool)
+			// When: every top-level and subpackage test pipeline is inspected.
+			requireNativeTestTools(t, "package", recipe.Test)
+			for _, subpackage := range recipe.Subpackages {
+				requireNativeTestTools(t, subpackage.Name, subpackage.Test)
+			}
 		})
+	}
+}
+
+type nativeRecipeTestContract struct {
+	Test        nativeTestContract `yaml:"test"`
+	Subpackages []struct {
+		Name string             `yaml:"name"`
+		Test nativeTestContract `yaml:"test"`
+	} `yaml:"subpackages"`
+}
+
+type nativeTestContract struct {
+	Environment struct {
+		Contents struct {
+			Packages []string `yaml:"packages"`
+		} `yaml:"contents"`
+	} `yaml:"environment"`
+	Pipeline []struct {
+		Uses string `yaml:"uses"`
+		Runs string `yaml:"runs"`
+	} `yaml:"pipeline"`
+}
+
+func requireNativeTestTools(t *testing.T, name string, test nativeTestContract) {
+	t.Helper()
+	for _, step := range test.Pipeline {
+		if apkTestCommand.MatchString(step.Runs) || step.Uses == "test/virtualpackage" || step.Uses == "test/emptypackage" {
+			assert.Contains(t, test.Environment.Contents.Packages, "apk-tools", name)
+		}
+		if wgetTestCommand.MatchString(step.Runs) {
+			assert.Contains(t, test.Environment.Contents.Packages, "wget", name)
+		}
 	}
 }
 
