@@ -38,6 +38,22 @@ func Test_NativeBootstrapRecipes_useReliableOfflineSmokeCommands(t *testing.T) {
 			required:  []string{`grep -F "Permission is hereby granted, free of charge"`},
 			forbidden: []string{`grep -F "MIT License"`},
 		},
+		testCase{
+			name:     "etcd waits for readiness and preserves server logs",
+			filename: "locked/etcd-3.6.yaml",
+			required: []string{
+				`DATA_DIR=$(mktemp -d)`,
+				`LOG_FILE=$(mktemp)`,
+				`wait "$ETCD_PID" 2>/dev/null || true`,
+				`for attempt in $(seq 1 30)`,
+				`cat "$LOG_FILE"`,
+				`--endpoints="$ENDPOINT" put`,
+			},
+			forbidden: []string{
+				`sleep 5 # Wait for etcd to start`,
+				`> /dev/null 2>&1 &`,
+			},
+		},
 	)
 	for _, version := range []string{"1.14", "1.15", "1.16", "1.17", "1.18"} {
 		tests = append(tests, testCase{
