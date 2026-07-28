@@ -20,8 +20,8 @@ type intTrivyResult struct {
 }
 
 type intTrivyFake struct {
-	attempts func() int
-	args     func() []string
+	attempts    func() int
+	invocations func() [][]string
 }
 
 func intFakeTrivySequence(t *testing.T, results []intTrivyResult) intTrivyFake {
@@ -37,7 +37,7 @@ func intFakeTrivySequence(t *testing.T, results []intTrivyResult) intTrivyFake {
 	script.WriteString("if [ -f \"$count_file\" ]; then attempt=$(cat \"$count_file\"); fi\n")
 	script.WriteString("attempt=$((attempt + 1))\n")
 	script.WriteString("printf '%s\\n' \"$attempt\" > \"$count_file\"\n")
-	script.WriteString("printf '%s\\n' \"$@\" > \"$0.args\"\n")
+	script.WriteString("printf '%s\\n' \"$*\" >> \"$0.args\"\n")
 	script.WriteString("case \"$attempt\" in\n")
 	for index, result := range results {
 		fmt.Fprintf(&script, "%d) printf '%%s\\n' %q >&2; exit %d ;;\n", index+1, result.output, result.exitCode)
@@ -58,11 +58,16 @@ func intFakeTrivySequence(t *testing.T, results []intTrivyResult) intTrivyFake {
 			require.NoError(t, err)
 			return attempts
 		},
-		args: func() []string {
+		invocations: func() [][]string {
 			t.Helper()
 			data, err := os.ReadFile(scriptPath + ".args")
 			require.NoError(t, err)
-			return strings.Fields(string(data))
+			lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+			invocations := make([][]string, 0, len(lines))
+			for _, line := range lines {
+				invocations = append(invocations, strings.Fields(line))
+			}
+			return invocations
 		},
 	}
 }
@@ -81,6 +86,7 @@ func TestIntegerTrivyGate_Retries_WhenVulnerabilityDBDownloadFails(t *testing.T)
 			fake := intFakeTrivySequence(t, []intTrivyResult{
 				{output: tt.output, exitCode: 1},
 				{exitCode: 0},
+				{exitCode: 0},
 			})
 			var sleeps int
 
@@ -90,15 +96,21 @@ func TestIntegerTrivyGate_Retries_WhenVulnerabilityDBDownloadFails(t *testing.T)
 			})
 
 			require.NoError(t, err)
-			assert.Equal(t, 2, fake.attempts())
+			assert.Equal(t, 3, fake.attempts())
 			assert.Equal(t, 1, sleeps)
-			assert.Equal(t, []string{"image", "--input", "image.tar", "--exit-code", "1", "--severity", "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL", "--vuln-type", "os,library", "--format", "table"}, fake.args())
+			assert.Equal(t, [][]string{
+				{"image", "--download-db-only"},
+				{"image", "--download-db-only"},
+				{"image", "--skip-db-update", "--input", "image.tar", "--exit-code", "1", "--severity", "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL", "--vuln-type", "os,library", "--format", "table"},
+			}, fake.invocations())
 		})
 	}
 }
 
 func TestIntegerTrivyGate_FailsWithoutRetry_WhenVulnerabilitiesFound(t *testing.T) {
 	fake := intFakeTrivySequence(t, []intTrivyResult{{
+		exitCode: 0,
+	}, {
 		output:   "Total: 1 (UNKNOWN: 0, LOW: 0, MEDIUM: 0, HIGH: 1, CRITICAL: 0)",
 		exitCode: 1,
 	}})
@@ -110,7 +122,23 @@ func TestIntegerTrivyGate_FailsWithoutRetry_WhenVulnerabilitiesFound(t *testing.
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "refusing to publish")
-	assert.Equal(t, 1, fake.attempts())
+	assert.Equal(t, 2, fake.attempts())
+}
+
+func TestIntegerTrivyGate_DoesNotRetryScanOutputThatMentionsDatabase(t *testing.T) {
+	fake := intFakeTrivySequence(t, []intTrivyResult{
+		{exitCode: 0},
+		{output: "failed to download vulnerability DB: attacker-controlled scan output", exitCode: 1},
+	})
+
+	err := integerTrivyGateWithSleeper(context.Background(), "image.tar", "HIGH,CRITICAL", func(context.Context, time.Duration) error {
+		t.Fatal("sleeper called for a scan failure")
+		return nil
+	})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "refusing to publish")
+	assert.Equal(t, 2, fake.attempts())
 }
 
 func TestIntegerTrivyGate_FailsAfterBoundedRetries_WhenVulnerabilityDBRemainsUnavailable(t *testing.T) {

@@ -1,13 +1,10 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 )
 
@@ -31,18 +28,36 @@ func integerTrivyGateWithSleeper(ctx context.Context, tarPath, severity string, 
 	if err != nil {
 		return fmt.Errorf("trivy not found in PATH (install via mise): %w", err)
 	}
+	if err := integerDownloadTrivyDatabase(ctx, trivyPath, sleep); err != nil {
+		return err
+	}
 
-	for attempt := 1; ; attempt++ {
-		output, err := integerRunTrivy(ctx, trivyPath, tarPath, severity)
-		if err == nil {
+	command := exec.CommandContext(
+		ctx, trivyPath, "image",
+		"--skip-db-update",
+		"--input", tarPath,
+		"--exit-code", "1",
+		"--severity", severity,
+		"--vuln-type", "os,library",
+		"--format", "table",
+	)
+	command.Stdout = os.Stderr
+	command.Stderr = os.Stderr
+	if err := command.Run(); err != nil {
+		return fmt.Errorf("trivy gate: image has %s vulnerabilities — refusing to publish: %w", severity, err)
+	}
+	return nil
+}
+
+func integerDownloadTrivyDatabase(ctx context.Context, trivyPath string, sleep integerTrivySleeper) error {
+	for attempt := 1; attempt <= integerTrivyMaxAttempts; attempt++ {
+		command := exec.CommandContext(ctx, trivyPath, "image", "--download-db-only")
+		command.Stdout = os.Stderr
+		command.Stderr = os.Stderr
+		if err := command.Run(); err == nil {
 			return nil
-		}
-		databaseUnavailable := integerTrivyVulnerabilityDBDownloadFailure(output)
-		if databaseUnavailable && attempt == integerTrivyMaxAttempts {
+		} else if attempt == integerTrivyMaxAttempts {
 			return fmt.Errorf("trivy gate: vulnerability database unavailable after %d attempts: %w", attempt, err)
-		}
-		if !databaseUnavailable {
-			return fmt.Errorf("trivy gate: image has %s vulnerabilities — refusing to publish: %w", severity, err)
 		}
 		if err := ctx.Err(); err != nil {
 			return fmt.Errorf("trivy gate: retrying vulnerability database download: %w", err)
@@ -51,27 +66,7 @@ func integerTrivyGateWithSleeper(ctx context.Context, tarPath, severity string, 
 			return fmt.Errorf("trivy gate: retrying vulnerability database download: %w", err)
 		}
 	}
-}
-
-func integerRunTrivy(ctx context.Context, trivyPath, tarPath, severity string) (string, error) {
-	var captured bytes.Buffer
-	output := io.MultiWriter(os.Stderr, &captured)
-	command := exec.CommandContext(
-		ctx, trivyPath, "image",
-		"--input", tarPath,
-		"--exit-code", "1",
-		"--severity", severity,
-		"--vuln-type", "os,library",
-		"--format", "table",
-	)
-	command.Stdout = output
-	command.Stderr = output
-	err := command.Run()
-	return captured.String(), err
-}
-
-func integerTrivyVulnerabilityDBDownloadFailure(output string) bool {
-	return strings.Contains(strings.ToLower(output), "failed to download vulnerability db")
+	return nil
 }
 
 func integerTrivySleep(ctx context.Context, delay time.Duration) error {
