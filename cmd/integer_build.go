@@ -244,27 +244,3 @@ func integerRunApkoBuild(ctx context.Context, configFile, output, arch string, e
 	}
 	return nil
 }
-
-// integerTrivyGate scans a locally-built image tarball and returns a non-nil
-// error if Trivy finds vulnerabilities at any of the comma-separated
-// severities. This is the publish gate: the caller MUST stop before pushing
-// the image when this returns an error ("not clean, no go").
-func integerTrivyGate(ctx context.Context, tarPath, severity string) error {
-	trivyPath, err := exec.LookPath("trivy")
-	if err != nil {
-		return fmt.Errorf("trivy not found in PATH (install via mise): %w", err)
-	}
-	c := exec.CommandContext(ctx, trivyPath, "image",
-		"--input", tarPath,
-		"--exit-code", "1",
-		"--severity", severity,
-		"--vuln-type", "os,library",
-		"--format", "table",
-	)
-	c.Stdout = os.Stderr
-	c.Stderr = os.Stderr
-	if err := c.Run(); err != nil {
-		return fmt.Errorf("trivy gate: image has %s vulnerabilities — refusing to publish: %w", severity, err)
-	}
-	return nil
-}
