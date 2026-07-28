@@ -95,6 +95,10 @@ subpackages:
           mkdir -p "${{targets.contextdir}}"/etc/ssh
           touch "${{targets.contextdir}}"/etc/ssh/ssh_known_hosts
     test:
+      environment:
+        contents:
+          packages:
+            - apk-tools
       pipeline:
         - uses: test/virtualpackage
           with:
@@ -123,6 +127,10 @@ subpackages:
       provides:
         - argo-cd-compat=${{package.full-version}}
     test:
+      environment:
+        contents:
+          packages:
+            - apk-tools
       pipeline:
         - uses: test/virtualpackage
           with:

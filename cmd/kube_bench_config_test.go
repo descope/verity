@@ -34,16 +34,17 @@ func Test_KubeBench_recipe_pins_fixed_source_revision(t *testing.T) {
 
 	// When: its package, source, dependency, build, test, and license metadata are inspected.
 
-	// Then: approved revision r15 rebuilds immutable Apache-2.0 v0.15.0 source with fixed Go.
+	// Then: approved revision r16 rebuilds immutable Apache-2.0 v0.15.0 source with fixed Go dependencies.
 	require.Contains(t, text, "name: kube-bench")
 	require.Contains(t, text, "version: \"0.15.0\"")
-	require.Contains(t, text, "epoch: 15")
+	require.Contains(t, text, "epoch: 16")
 	require.Contains(t, text, "license: Apache-2.0")
 	require.Contains(t, text, "Adapted from wolfi-dev/os@f27a9a5190075207acb9d5244fa982b58423e812")
 	require.Contains(t, text, "8a7204d42f0bea44db453c545db052c29f58a9cc.tar.gz")
 	require.Contains(t, text, "expected-sha256: 47dd0f0c95134c103bbd1dae7ccf4295fc343f0ebb6ba9aac1184a2c781a5e58")
 	require.Contains(t, text, "github.com/jackc/pgx/v5@v5.9.2")
 	require.Contains(t, text, "golang.org/x/net@v0.55.0")
+	require.Contains(t, text, "golang.org/x/text@v0.39.0")
 	require.Contains(t, text, "go-package: go-1.26")
 	require.Contains(t, text, "packages: .")
 	require.Contains(t, text, "output: kube-bench")
@@ -62,14 +63,14 @@ func Test_KubeBench_resolves_fixed_local_packages(t *testing.T) {
 
 	// When: local Melange artifacts are pinned for the image build.
 	err = pinLocalPackageVersions(&tmpl, "0", []apkindex.Package{
-		{Name: "kube-bench", Version: "0.15.0-r15"},
-		{Name: "kube-bench-configs", Version: "0.15.0-r15"},
+		{Name: "kube-bench", Version: "0.15.0-r16"},
+		{Name: "kube-bench-configs", Version: "0.15.0-r16"},
 	})
 
 	// Then: apko can only select the approved fixed locally built revisions.
 	require.NoError(t, err)
 	require.Equal(t, []string{
-		"kube-bench=0.15.0-r15@local",
-		"kube-bench-configs=0.15.0-r15@local",
+		"kube-bench=0.15.0-r16@local",
+		"kube-bench-configs=0.15.0-r16@local",
 	}, tmpl.Packages)
 }
