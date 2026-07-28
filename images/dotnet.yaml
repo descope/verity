@@ -6,7 +6,7 @@ upstream:
 types:
   default:
     base: wolfi-base
-    packages: ["dotnet-{{version}}-runtime"]
+    packages: ["dotnet-{{version}}", "dotnet-{{version}}-runtime"]
     entrypoint: /usr/bin/dotnet
     cmd: --info
     work-dir: /app
@@ -30,7 +30,7 @@ types:
 
   aspnet:
     base: wolfi-base
-    packages: ["dotnet-{{version}}-runtime", "aspnet-{{version}}-runtime"]
+    packages: ["dotnet-{{version}}", "dotnet-{{version}}-runtime", "aspnet-{{version}}-runtime"]
     entrypoint: /usr/bin/dotnet
     work-dir: /app
     environment:
@@ -65,7 +65,14 @@ types:
       - {path: /app, type: directory, uid: 65532, gid: 65532, permissions: 0o755}
 
 versions:
-  "8": {}
+  "8":
+    melange:
+      default:
+        bespoke: "dotnet-8.yaml"
+      sdk:
+        bespoke: "dotnet-8.yaml"
+      aspnet:
+        bespoke: "dotnet-8.yaml"
   "9":
     melange:
       sdk-fips:

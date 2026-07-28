@@ -11,31 +11,47 @@ import (
 	intconfig "github.com/verity-org/verity/internal/integer/config"
 )
 
-func Test_Dotnet8SDKFIPS_resolves_fixed_local_packages(t *testing.T) {
+func Test_Dotnet8Variants_resolve_fixed_local_packages(t *testing.T) {
 	// Given: the checked-in .NET image definition and locally rebuilt packages.
 	def, err := intconfig.LoadImage(filepath.Join("..", "images", "dotnet.yaml"))
 	require.NoError(t, err)
-	tmpl := def.Types["sdk-fips"]
-
-	// When: the version-scoped Melange config and local package revisions are resolved.
-	spec := def.MelangeFor("8", "sdk-fips")
-	require.NotNil(t, spec)
-	err = pinLocalPackageVersions(&tmpl, "8", []apkindex.Package{
+	packages := []apkindex.Package{
 		{Name: "dotnet-8", Version: "8.0.129-r1"},
 		{Name: "dotnet-8-sdk", Version: "8.0.129-r1"},
+		{Name: "dotnet-8-runtime", Version: "8.0.129-r1"},
+		{Name: "aspnet-8-runtime", Version: "8.0.129-r1"},
 		{Name: "openssl-provider-fips", Version: "3.1.2-r1"},
-	})
+	}
+	tests := []struct {
+		imageType string
+		bespoke   intconfig.StringList
+		want      []string
+	}{
+		{imageType: "default", bespoke: intconfig.StringList{"dotnet-8.yaml"}, want: []string{"dotnet-8=8.0.129-r1@local", "dotnet-8-runtime=8.0.129-r1@local"}},
+		{imageType: "sdk", bespoke: intconfig.StringList{"dotnet-8.yaml"}, want: []string{"dotnet-8=8.0.129-r1@local", "dotnet-8-sdk=8.0.129-r1@local"}},
+		{imageType: "aspnet", bespoke: intconfig.StringList{"dotnet-8.yaml"}, want: []string{"dotnet-8=8.0.129-r1@local", "dotnet-8-runtime=8.0.129-r1@local", "aspnet-8-runtime=8.0.129-r1@local"}},
+		{imageType: "sdk-fips", bespoke: intconfig.StringList{"dotnet-8.yaml", "openssl-provider-fips.yaml"}, want: []string{"dotnet-8=8.0.129-r1@local", "dotnet-8-sdk=8.0.129-r1@local", "openssl-provider-fips=3.1.2-r1@local"}},
+	}
 
-	// Then: only .NET 8 FIPS builds both local recipes and pins every requested artifact.
-	require.NoError(t, err)
-	require.Equal(t, intconfig.StringList{"dotnet-8.yaml", "openssl-provider-fips.yaml"}, spec.Bespoke)
+	// When: every .NET 8 variant resolves its version-scoped recipe and local package revisions.
+	for _, test := range tests {
+		t.Run(test.imageType, func(t *testing.T) {
+			spec := def.MelangeFor("8", test.imageType)
+			require.NotNil(t, spec)
+			require.Equal(t, test.bespoke, spec.Bespoke)
+			tmpl := def.Types[test.imageType]
+			require.NoError(t, pinLocalPackageVersions(&tmpl, "8", packages))
+			require.Equal(t, test.want, tmpl.Packages)
+		})
+	}
+
+	// Then: versions 9 and 10 keep public .NET packages while retaining only the FIPS provider override.
+	for _, imageType := range []string{"default", "sdk", "aspnet"} {
+		require.Nil(t, def.MelangeFor("9", imageType))
+		require.Nil(t, def.MelangeFor("10", imageType))
+	}
 	require.Equal(t, intconfig.StringList{"openssl-provider-fips.yaml"}, def.MelangeFor("9", "sdk-fips").Bespoke)
 	require.Equal(t, intconfig.StringList{"openssl-provider-fips.yaml"}, def.MelangeFor("10", "sdk-fips").Bespoke)
-	require.Equal(t, []string{
-		"dotnet-8=8.0.129-r1@local",
-		"dotnet-8-sdk=8.0.129-r1@local",
-		"openssl-provider-fips=3.1.2-r1@local",
-	}, tmpl.Packages)
 }
 
 func Test_Dotnet8_recipe_preserves_source_build_and_subpackage_contract(t *testing.T) {
