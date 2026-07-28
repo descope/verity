@@ -2,8 +2,8 @@ package:
   name: kube-rbac-proxy
   # renovate: datasource=github-tags depName=kube-rbac-proxy/kube-rbac-proxy versioning=semver-coerced
   version: "0.22.1"
-  # Direct revision r1 rebuilds the fixed v0.22.1 source.
-  epoch: 1
+  # Direct revision r3 fixes CVE-2026-56852 in golang.org/x/text.
+  epoch: 3
   description: Kubernetes RBAC authorizing HTTP proxy for a single upstream
   copyright:
     - license: Apache-2.0
@@ -28,6 +28,10 @@ pipeline:
     with:
       uri: https://github.com/kube-rbac-proxy/kube-rbac-proxy/archive/refs/tags/v${{package.version}}.tar.gz
       expected-sha256: f8c6d4bc140ae04f20d6d0fedb077e8c233b72bab681500d32cc07c65208c41a
+
+  - uses: go/bump
+    with:
+      deps: golang.org/x/text@v0.39.0
 
   - uses: go/build
     with:
