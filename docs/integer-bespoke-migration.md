@@ -47,7 +47,7 @@ Exact local pinning then exposed six additional stale recipes that had previousl
 Local validation completed on the rebased branch before pilot dispatch:
 
 - `go test ./...` passed.
-- `python3 .github/scripts/validate-integer-build-image-workflow.py` passed.
+- `go run . ci workflow validate .github/workflows` passed.
 - `actionlint` and the PR workflow validator passed.
 - Grep validation stayed clean for legacy live recipe-fetch markers.
 
