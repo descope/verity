@@ -57,10 +57,17 @@ func Test_NativeBootstrapRecipes_useReliableOfflineSmokeCommands(t *testing.T) {
 	)
 	for _, version := range []string{"1.14", "1.15", "1.16", "1.17", "1.18"} {
 		tests = append(tests, testCase{
-			name:      "kyverno " + version + " uses root help",
-			filename:  "kyverno-" + version + ".yaml",
-			required:  []string{"kyverno --help"},
-			forbidden: []string{"kyverno version --help"},
+			name:     "kyverno " + version + " tests only its package binary",
+			filename: "kyverno-" + version + ".yaml",
+			required: []string{"kyverno --help"},
+			forbidden: []string{
+				"kyverno version --help",
+				"/usr/bin/background-controller",
+				"/usr/bin/cleanup-controller",
+				"/usr/bin/reports-controller",
+				"/usr/bin/kubectl-kyverno",
+				"/usr/bin/kyvernopre",
+			},
 		})
 	}
 
