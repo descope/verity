@@ -40,10 +40,10 @@ func Test_Distribution_recipe_pins_fixed_source_revision(t *testing.T) {
 
 	// When: its package, source, dependency, and license metadata are inspected.
 
-	// Then: approved revision r7 is rebuilt from immutable Apache-2.0 v3.1.1 source.
+	// Then: approved revision r9 is rebuilt from immutable Apache-2.0 v3.1.1 source.
 	require.Contains(t, text, "name: distribution")
 	require.Contains(t, text, "version: \"3.1.1\"")
-	require.Contains(t, text, "epoch: 7")
+	require.Contains(t, text, "epoch: 9")
 	require.Contains(t, text, "license: Apache-2.0")
 	require.Contains(t, text, "Adapted from wolfi-dev/os@572ee9ed3e434cc0991a8b6967873896381e76b8")
 	require.Contains(t, text, "repository: https://github.com/distribution/distribution")
@@ -52,6 +52,7 @@ func Test_Distribution_recipe_pins_fixed_source_revision(t *testing.T) {
 	require.Contains(t, text, "uses: go/bump")
 	require.Contains(t, text, "golang.org/x/net@v0.55.0")
 	require.Contains(t, text, "golang.org/x/crypto@v0.51.0")
+	require.Contains(t, text, "golang.org/x/text@v0.39.0")
 	require.Contains(t, text, "go-package: go-1.26")
 	require.Contains(t, text, "packages: ./cmd/registry")
 	require.Contains(t, text, "/version.version=v${{package.version}}")
@@ -76,10 +77,10 @@ func Test_Distribution_resolves_fixed_local_package(t *testing.T) {
 	// When: local Melange artifacts are pinned for the image build.
 	err = pinLocalPackageVersions(&tmpl, "0", []apkindex.Package{{
 		Name:    "distribution",
-		Version: "3.1.1-r7",
+		Version: "3.1.1-r9",
 	}})
 
 	// Then: apko can only select the approved fixed locally built revision.
 	require.NoError(t, err)
-	require.Equal(t, []string{"distribution=3.1.1-r7@local"}, tmpl.Packages)
+	require.Equal(t, []string{"distribution=3.1.1-r9@local"}, tmpl.Packages)
 }

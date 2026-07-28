@@ -1,6 +1,6 @@
 package:
   name: cosign
-  version: "3.1.1"
+  version: "3.1.2"
   epoch: 2
   description: Container Signing
   copyright:
@@ -21,9 +21,15 @@ environment:
 pipeline:
   - uses: git-checkout
     with:
-      expected-commit: 7914231b348c4057891edeb321772aad3ed04fce
+      expected-commit: 193d2153431f8bb0d945a4c1ee721872f73add67
       repository: https://github.com/sigstore/cosign
       tag: v${{package.version}}
+
+  - uses: go/bump
+    with:
+      deps: |-
+        google.golang.org/grpc@v1.82.1
+        golang.org/x/text@v0.39.0
 
   - uses: go/build
     with:
