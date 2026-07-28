@@ -2,49 +2,78 @@ package melange
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+	"mvdan.cc/sh/v3/expand"
+	"mvdan.cc/sh/v3/syntax"
 )
 
-var (
-	apkTestCommand  = nativeTestCommandPattern("apk")
-	wgetTestCommand = nativeTestCommandPattern("wget")
-)
+var melangeTemplateExpression = regexp.MustCompile(`\$\{\{[^{}]+\}\}`)
 
-func nativeTestCommandPattern(command string) *regexp.Regexp {
-	return regexp.MustCompile(`(^|[\s;|&()<>])["']?([^\s;|&()<>'"]*/)?` + regexp.QuoteMeta(command) + `["']?($|[\s;|&()<>])`)
-}
-
-func TestNativeTestCommandPatterns_matchExecutablePaths(t *testing.T) {
+func TestNativeTestCommandDetection_handlesShellSyntax(t *testing.T) {
 	tests := []struct {
 		name    string
-		pattern *regexp.Regexp
+		command string
 		script  string
+		want    bool
 	}{
-		{name: "apk name", pattern: apkTestCommand, script: "apk info package"},
-		{name: "apk absolute path", pattern: apkTestCommand, script: "/sbin/apk info package"},
-		{name: "apk relative path", pattern: apkTestCommand, script: "./tools/apk info package"},
-		{name: "apk semicolon delimiter", pattern: apkTestCommand, script: "apk; next"},
-		{name: "apk pipe delimiter", pattern: apkTestCommand, script: "apk|next"},
-		{name: "apk closing group delimiter", pattern: apkTestCommand, script: "(apk)"},
-		{name: "apk and delimiter", pattern: apkTestCommand, script: "apk&&next"},
-		{name: "apk redirection delimiter", pattern: apkTestCommand, script: "apk>/tmp/out"},
-		{name: "apk quoted absolute path", pattern: apkTestCommand, script: `"/sbin/apk" info package`},
-		{name: "apk quoted relative path", pattern: apkTestCommand, script: `'./tools/apk' info package`},
-		{name: "wget name", pattern: wgetTestCommand, script: "wget -qO- http://127.0.0.1"},
-		{name: "wget absolute path", pattern: wgetTestCommand, script: "/usr/bin/wget -qO- http://127.0.0.1"},
-		{name: "wget relative path", pattern: wgetTestCommand, script: "./tools/wget -qO- http://127.0.0.1"},
+		{name: "apk name", command: "apk", script: "apk info package", want: true},
+		{name: "apk absolute path", command: "apk", script: "/sbin/apk info package", want: true},
+		{name: "apk relative path", command: "apk", script: "./tools/apk info package", want: true},
+		{name: "apk semicolon delimiter", command: "apk", script: "apk; next", want: true},
+		{name: "apk pipe delimiter", command: "apk", script: "apk|next", want: true},
+		{name: "apk closing group delimiter", command: "apk", script: "(apk)", want: true},
+		{name: "apk and delimiter", command: "apk", script: "apk&&next", want: true},
+		{name: "apk redirection delimiter", command: "apk", script: "apk>/tmp/out", want: true},
+		{name: "apk quoted absolute path", command: "apk", script: `"/sbin/apk" info package`, want: true},
+		{name: "apk quoted relative path", command: "apk", script: `'./tools/apk' info package`, want: true},
+		{name: "apk argument", command: "apk", script: "echo apk info", want: false},
+		{name: "apk quoted argument", command: "apk", script: `printf '%s\n' "/sbin/apk info"`, want: false},
+		{name: "apk prefix", command: "apk", script: "apktool info", want: false},
+		{name: "wget name", command: "wget", script: "wget -qO- http://127.0.0.1", want: true},
+		{name: "wget absolute path", command: "wget", script: "/usr/bin/wget -qO- http://127.0.0.1", want: true},
+		{name: "wget relative path", command: "wget", script: "./tools/wget -qO- http://127.0.0.1", want: true},
+		{name: "wget argument", command: "wget", script: "echo wget -qO-", want: false},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			assert.True(t, test.pattern.MatchString(test.script))
+			got, err := nativeTestInvokes(test.script, test.command)
+			require.NoError(t, err)
+			assert.Equal(t, test.want, got)
 		})
 	}
+}
+
+func nativeTestInvokes(script, command string) (bool, error) {
+	normalized := melangeTemplateExpression.ReplaceAllString(script, "melange")
+	file, err := syntax.NewParser(syntax.Variant(syntax.LangBash)).Parse(strings.NewReader(normalized), "")
+	if err != nil {
+		return false, err
+	}
+
+	found := false
+	syntax.Walk(file, func(node syntax.Node) bool {
+		if found {
+			return false
+		}
+		call, ok := node.(*syntax.CallExpr)
+		if !ok || len(call.Args) == 0 {
+			return true
+		}
+		executable, expandErr := expand.Literal(nil, call.Args[0])
+		if expandErr == nil && path.Base(executable) == command {
+			found = true
+		}
+		return true
+	})
+	return found, nil
 }
 
 func TestNativePackageRecipes_includeInvokedTestTools(t *testing.T) {
@@ -102,10 +131,14 @@ type nativeTestContract struct {
 func requireNativeTestTools(t *testing.T, name string, test nativeTestContract) {
 	t.Helper()
 	for _, step := range test.Pipeline {
-		if apkTestCommand.MatchString(step.Runs) || step.Uses == "test/virtualpackage" || step.Uses == "test/emptypackage" {
+		invokesAPK, err := nativeTestInvokes(step.Runs, "apk")
+		require.NoError(t, err, name)
+		if invokesAPK || step.Uses == "test/virtualpackage" || step.Uses == "test/emptypackage" {
 			assert.Contains(t, test.Environment.Contents.Packages, "apk-tools", name)
 		}
-		if wgetTestCommand.MatchString(step.Runs) {
+		invokesWget, err := nativeTestInvokes(step.Runs, "wget")
+		require.NoError(t, err, name)
+		if invokesWget {
 			assert.Contains(t, test.Environment.Contents.Packages, "wget", name)
 		}
 	}
