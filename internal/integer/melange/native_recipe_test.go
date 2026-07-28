@@ -12,9 +12,13 @@ import (
 )
 
 var (
-	apkTestCommand  = regexp.MustCompile(`(^|[[:space:];|&()])([^[:space:];|&()]*/)?apk(\s|$)`)
-	wgetTestCommand = regexp.MustCompile(`(^|[[:space:];|&()])([^[:space:];|&()]*/)?wget(\s|$)`)
+	apkTestCommand  = nativeTestCommandPattern("apk")
+	wgetTestCommand = nativeTestCommandPattern("wget")
 )
+
+func nativeTestCommandPattern(command string) *regexp.Regexp {
+	return regexp.MustCompile(`(^|[\s;|&()<>])["']?([^\s;|&()<>'"]*/)?` + regexp.QuoteMeta(command) + `["']?($|[\s;|&()<>])`)
+}
 
 func TestNativeTestCommandPatterns_matchExecutablePaths(t *testing.T) {
 	tests := []struct {
@@ -25,8 +29,16 @@ func TestNativeTestCommandPatterns_matchExecutablePaths(t *testing.T) {
 		{name: "apk name", pattern: apkTestCommand, script: "apk info package"},
 		{name: "apk absolute path", pattern: apkTestCommand, script: "/sbin/apk info package"},
 		{name: "apk relative path", pattern: apkTestCommand, script: "./tools/apk info package"},
+		{name: "apk semicolon delimiter", pattern: apkTestCommand, script: "apk; next"},
+		{name: "apk pipe delimiter", pattern: apkTestCommand, script: "apk|next"},
+		{name: "apk closing group delimiter", pattern: apkTestCommand, script: "(apk)"},
+		{name: "apk and delimiter", pattern: apkTestCommand, script: "apk&&next"},
+		{name: "apk redirection delimiter", pattern: apkTestCommand, script: "apk>/tmp/out"},
+		{name: "apk quoted absolute path", pattern: apkTestCommand, script: `"/sbin/apk" info package`},
+		{name: "apk quoted relative path", pattern: apkTestCommand, script: `'./tools/apk' info package`},
 		{name: "wget name", pattern: wgetTestCommand, script: "wget -qO- http://127.0.0.1"},
 		{name: "wget absolute path", pattern: wgetTestCommand, script: "/usr/bin/wget -qO- http://127.0.0.1"},
+		{name: "wget relative path", pattern: wgetTestCommand, script: "./tools/wget -qO- http://127.0.0.1"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
