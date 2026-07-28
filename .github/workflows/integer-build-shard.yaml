@@ -105,6 +105,7 @@ jobs:
     if: needs.validate-coordinates.result == 'success'
     strategy:
       fail-fast: false
+      max-parallel: 16
       matrix:
         include: ${{ fromJSON(inputs.entries) }}
     uses: ./.github/workflows/integer-build-image-reusable.yaml

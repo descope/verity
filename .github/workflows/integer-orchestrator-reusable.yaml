@@ -242,6 +242,7 @@ jobs:
     if: needs.plan.outputs.count != '0'
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix:
         include: ${{ fromJSON(needs.plan.outputs.shards) }}
     uses: ./.github/workflows/integer-build-shard.yaml

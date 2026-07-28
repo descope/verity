@@ -12,8 +12,6 @@ import (
 	intdiscovery "github.com/verity-org/verity/internal/integer/discovery"
 )
 
-const integerProductionShardSize = 250
-
 func PlanIntegerProduction(options *IntegerProductionOptions) (IntegerBatchPlan, error) {
 	if err := validateIntegerProductionOptions(options); err != nil {
 		return IntegerBatchPlan{}, err
@@ -131,7 +129,7 @@ func planIntegerPackages(options *IntegerProductionOptions, images []intdiscover
 		target := IntegerBatchTarget{
 			Name: image.Name, Version: image.Version, Type: image.Type, ArtifactKey: integerArtifactKey(image),
 			Tags: append([]string(nil), image.Tags...), Registry: image.Registry,
-			Shard: strconv.Itoa(len(targets)/integerProductionShardSize + 1), ExpectedPackages: packages,
+			Shard: strconv.Itoa(IntegerMatrixShard(len(targets))), ExpectedPackages: packages,
 			PublishPackages: []string{},
 		}
 		for _, name := range packages {

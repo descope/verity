@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -103,6 +104,25 @@ func TestCIIntegerBatchOutputsCommand_readsValidatedPlanAndWritesExactMetadata(t
 	assert.Contains(t, string(outputs), "publication_id=integer-publication-42-3")
 	assert.Contains(t, string(outputs), "batch_id=42-3")
 	assert.Contains(t, string(outputs), "count=1")
+}
+
+func TestIntegerPlanShards_capsPublicationMatricesAt64Targets(t *testing.T) {
+	// Given
+	targets := make([]ci.IntegerBatchTarget, 0, 65)
+	for index := range 65 {
+		targets = append(targets, ci.IntegerBatchTarget{
+			Name: "image-" + strconv.Itoa(index), Version: "1", Type: "default",
+			Shard: strconv.Itoa(ci.IntegerMatrixShard(index)),
+		})
+	}
+
+	// When
+	shards, err := integerPlanShards(targets)
+
+	// Then
+	require.NoError(t, err)
+	require.Len(t, shards, 2)
+	assert.Equal(t, []int{64, 1}, []int{shards[0].Count, shards[1].Count})
 }
 
 func TestCIIntegerBatchCommand_runsMockedExactBatchArtifactFlow(t *testing.T) {

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/verity-org/verity/internal/ci"
 )
 
 func aggregateFailures(input parsedInput, options *Options) []Failure {
@@ -19,7 +21,7 @@ func aggregateFailures(input parsedInput, options *Options) []Failure {
 	for index, entry := range input.plan {
 		key := identity(entry.Name, entry.Version, entry.Type)
 		expected[key] = struct{}{}
-		set := expectedReports{entry: entry, shard: index/shardSize + 1, reports: byIdentity[key]}
+		set := expectedReports{entry: entry, shard: ci.IntegerMatrixShard(index), reports: byIdentity[key]}
 		failures = append(failures, set.failures(options)...)
 	}
 	for index := range input.reports {
