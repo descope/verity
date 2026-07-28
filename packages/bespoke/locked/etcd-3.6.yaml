@@ -164,22 +164,36 @@ test:
         etcdctl --help
         etcdutl version
         etcdutl --help
-    - name: Start etcd server and perform health check
+    - name: Exercise etcd runtime
       runs: |
-        # Start etcd in the background
-        etcd > /dev/null 2>&1 &
+        set -euo pipefail
+        ENDPOINT="http://127.0.0.1:12379"
+        PEER_ENDPOINT="http://127.0.0.1:12380"
+        DATA_DIR=$(mktemp -d)
+        LOG_FILE=$(mktemp)
+
+        etcd \
+          --name default \
+          --data-dir "$DATA_DIR" \
+          --listen-client-urls "$ENDPOINT" \
+          --advertise-client-urls "$ENDPOINT" \
+          --listen-peer-urls "$PEER_ENDPOINT" \
+          --initial-advertise-peer-urls "$PEER_ENDPOINT" \
+          --initial-cluster "default=$PEER_ENDPOINT" \
+          > "$LOG_FILE" 2>&1 &
         ETCD_PID=$!
-        sleep 5 # Wait for etcd to start
-        # Perform a health check
-        etcdctl endpoint health
-        kill $ETCD_PID
-    - name: Set and get a key-value pair
-      runs: |
-        etcd > /dev/null 2>&1 &
-        ETCD_PID=$!
-        sleep 5 # Wait for etcd to start
-        # Set a key-value pair
-        etcdctl put mykey "Hello, etcd"
-        # Get the value
-        etcdctl get mykey | grep -q "Hello, etcd"
-        kill $ETCD_PID
+        trap 'kill "$ETCD_PID" 2>/dev/null || true; wait "$ETCD_PID" 2>/dev/null || true; rm -rf "$DATA_DIR" "$LOG_FILE"' EXIT
+
+        for attempt in $(seq 1 30); do
+          if etcdctl --endpoints="$ENDPOINT" endpoint health; then
+            break
+          fi
+          if ! kill -0 "$ETCD_PID" 2>/dev/null || [ "$attempt" -eq 30 ]; then
+            cat "$LOG_FILE"
+            exit 1
+          fi
+          sleep 1
+        done
+
+        etcdctl --endpoints="$ENDPOINT" put mykey "Hello, etcd"
+        test "$(etcdctl --endpoints="$ENDPOINT" get mykey --print-value-only)" = "Hello, etcd"
