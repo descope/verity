@@ -12,6 +12,18 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	prMelangeBuildTimeoutDefault = 30 * time.Minute
+	prMelangeBuildTimeoutDotnet8 = 90 * time.Minute
+)
+
+func prMelangeBuildTimeout(entry prIntegerEntry) time.Duration {
+	if entry.Image == "dotnet" && entry.Version == "8" {
+		return prMelangeBuildTimeoutDotnet8
+	}
+	return prMelangeBuildTimeoutDefault
+}
+
 func runPRMelangeBuild(
 	ctx context.Context,
 	deps *prIntegerDependencies,
@@ -26,7 +38,7 @@ func runPRMelangeBuild(
 	if staged {
 		args = append(args, "--staged")
 	}
-	commandContext, cancel := context.WithTimeout(ctx, 30*time.Minute)
+	commandContext, cancel := context.WithTimeout(ctx, prMelangeBuildTimeout(entry))
 	defer cancel()
 	_, err := runPRIntegerCommand(commandContext, deps, &prCommandRequest{
 		Name: request.VerityPath, Args: args, Dir: request.RepoRoot, TermGrace: time.Minute,
