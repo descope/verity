@@ -140,6 +140,25 @@ func TestValidateRunsOnRepository_rejectsDuplicateVerificationOverride(t *testin
 	assert.Contains(t, violationRules(violations), RuleRunsOnBoundary)
 }
 
+func TestValidateRunsOnRepository_rejectsJobContinueOnError(t *testing.T) {
+	// Given the production canary job configured to tolerate any failure.
+	repositoryRoot := filepath.Join("..", "..", "..")
+	workflows, err := loadWorkflows(filepath.Join(repositoryRoot, ".github", "workflows"))
+	require.NoError(t, err)
+	canary := mustWorkflow(t, workflows, runsOnSmokeWorkflowName)
+	job := canary.Workflow.Jobs[runsOnCanaryJobName]
+	job.ContinueOnError = scalarValue{set: true, value: "true"}
+	canary.Workflow.Jobs[runsOnCanaryJobName] = job
+	workflows = replaceWorkflow(workflows, &canary)
+
+	// When the RunsOn contract is evaluated.
+	violations := validateRunsOnRepository(repositoryRoot, workflows)
+
+	// Then the job cannot neutralize host-verification failures.
+	require.NotEmpty(t, violations)
+	assert.Contains(t, violationRules(violations), RuleRunsOnBoundary)
+}
+
 func copyRunsOnConfig(t *testing.T) string {
 	t.Helper()
 	repositoryRoot := t.TempDir()

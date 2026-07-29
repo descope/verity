@@ -88,7 +88,7 @@ func validateRunsOnBuildJob(job *workflowJob) []Violation {
 	if job.Uses != "./.github/workflows/build-verity.yaml" ||
 		!buildOnceExactPermissions(job.Permissions, expectedPermissions) ||
 		len(job.With) != 1 || normalizeExpression(job.With["source_sha"]) != "${{github.sha}}" ||
-		job.Secrets.set || len(job.Steps) != 0 || len(job.RunsOn) != 0 || job.If != "" {
+		job.Secrets.set || len(job.Steps) != 0 || len(job.RunsOn) != 0 || job.If != "" || job.ContinueOnError.set {
 		return []Violation{runsOnViolation("build-verity", "producer must remain the exact unprivileged current-run Verity build")}
 	}
 	return nil
@@ -105,7 +105,7 @@ func validateRunsOnCanaryJob(job *workflowJob) []Violation {
 	}
 	if len(job.Needs) != 1 || job.Needs[0] != "build-verity" ||
 		!buildOnceExactPermissions(job.Permissions, expectedPermissions) || job.Secrets.set ||
-		job.Uses != "" || job.Container.Image != "" || len(job.Services) != 0 || job.If != "" {
+		job.Uses != "" || job.Container.Image != "" || len(job.Services) != 0 || job.If != "" || job.ContinueOnError.set {
 		violations = append(violations, runsOnViolation(runsOnCanaryJobName, "job must remain secret-free and actions/contents read-only"))
 	}
 	violations = append(violations, validateRunsOnSteps(job.Steps)...)
