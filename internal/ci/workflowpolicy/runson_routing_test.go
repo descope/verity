@@ -147,3 +147,33 @@ func TestRepositoryWorkflows_doNotUseGitHubHostedRunners(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateRunsOnRepository_rejectsOrdinarySelfHostedRunner(t *testing.T) {
+	repositoryRoot := filepath.Join("..", "..", "..")
+	workflows, err := loadWorkflows(filepath.Join(repositoryRoot, ".github", "workflows"))
+	require.NoError(t, err)
+	workflow := mustWorkflow(t, workflows, "ci.yaml")
+	job := workflow.Workflow.Jobs["changes"]
+	job.RunsOn = stringList{"self-hosted"}
+	workflow.Workflow.Jobs["changes"] = job
+
+	violations := validateRunsOnRepository(repositoryRoot, replaceWorkflow(workflows, &workflow))
+
+	require.NotEmpty(t, violations)
+	assert.Contains(t, violationRules(violations), RuleRunsOnBoundary)
+}
+
+func TestValidateRunsOnRepository_rejectsPrivilegedRunnerLabelMutation(t *testing.T) {
+	repositoryRoot := filepath.Join("..", "..", "..")
+	workflows, err := loadWorkflows(filepath.Join(repositoryRoot, ".github", "workflows"))
+	require.NoError(t, err)
+	workflow := mustWorkflow(t, workflows, "chart-integration-privileged.yaml")
+	job := workflow.Workflow.Jobs["chart-test"]
+	job.RunsOn = stringList{"self-hosted", "linux", "x64", "unreviewed"}
+	workflow.Workflow.Jobs["chart-test"] = job
+
+	violations := validateRunsOnRepository(repositoryRoot, replaceWorkflow(workflows, &workflow))
+
+	require.NotEmpty(t, violations)
+	assert.Contains(t, violationRules(violations), RuleRunsOnBoundary)
+}

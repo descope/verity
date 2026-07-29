@@ -1,6 +1,9 @@
 package workflowpolicy
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 const (
 	runsOnJobNamespace          = "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}"
@@ -44,6 +47,12 @@ var approvedRunsOnRoutes = map[runsOnRoute]string{
 	{workflow: "orchestrator.yaml", job: "prepare"}:                       runsOnBuildKitProfileRoute,
 }
 
+var approvedSelfHostedRoutes = map[runsOnRoute]stringList{
+	{workflow: "chart-integration-privileged.yaml", job: "chart-test"}: {
+		"self-hosted", "linux", "x64", "chart-integration-privileged", "bpf",
+	},
+}
+
 func validateRunsOnRouting(workflows []workflowFile) []Violation {
 	violations := make([]Violation, 0)
 	seen := make(map[runsOnRoute]bool, len(approvedRunsOnRoutes))
@@ -57,13 +66,17 @@ func validateRunsOnRouting(workflows []workflowFile) []Violation {
 			route := runsOnRoute{workflow: file.Name, job: jobName}
 			expectation, approved := expectedRunsOnRoute(route, &job)
 			if !approved {
+				if len(job.RunsOn) == 0 {
+					continue
+				}
+				if labels, exists := approvedSelfHostedRoutes[route]; exists && slices.Equal(job.RunsOn, labels) {
+					continue
+				}
 				if len(job.RunsOn) == 1 && isGitHubHostedRunner(job.RunsOn[0]) {
 					violations = append(violations, runsOnRouteViolation(file.Name, jobName, "GitHub-hosted runners are forbidden"))
 					continue
 				}
-				if len(job.RunsOn) == 1 && strings.Contains(job.RunsOn[0], "runs-on=") {
-					violations = append(violations, runsOnRouteViolation(file.Name, jobName, "job is not approved to use RunsOn"))
-				}
+				violations = append(violations, runsOnRouteViolation(file.Name, jobName, "job must use an approved RunsOn route or the exact privileged self-hosted route"))
 				continue
 			}
 			if expectation.label == runsOnControlX64Route && controlRouteRequiresTrust(file, jobName) {
