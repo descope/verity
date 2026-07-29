@@ -31,6 +31,7 @@ type triggers struct {
 	WorkflowInputs    map[string]workflowCallInput
 	WorkflowOutputs   map[string]workflowCallOutput
 	WorkflowSecrets   map[string]workflowCallSecret
+	DispatchInputs    map[string]workflowDispatchInput
 }
 
 type pushTrigger struct {
@@ -49,6 +50,12 @@ type workflowCallOutput struct {
 
 type workflowCallSecret struct {
 	Required bool `yaml:"required"`
+}
+
+type workflowDispatchInput struct {
+	Required bool        `yaml:"required"`
+	Type     string      `yaml:"type"`
+	Default  scalarValue `yaml:"default"`
 }
 
 func (t *triggers) UnmarshalYAML(node *yaml.Node) error {
@@ -100,12 +107,27 @@ func (t *triggers) addEvent(name string, config *yaml.Node) error {
 	case "workflow_call":
 		return t.addWorkflowCall(config)
 	case "workflow_dispatch":
-		t.WorkflowDispatch = true
+		return t.addWorkflowDispatch(config)
 	case "workflow_run":
 		t.WorkflowRun = true
 	default:
 		t.OtherEvent = true
 	}
+	return nil
+}
+
+func (t *triggers) addWorkflowDispatch(config *yaml.Node) error {
+	t.WorkflowDispatch = true
+	if config == nil || config.Tag == "!!null" {
+		return nil
+	}
+	var dispatch struct {
+		Inputs map[string]workflowDispatchInput `yaml:"inputs"`
+	}
+	if err := config.Decode(&dispatch); err != nil {
+		return fmt.Errorf("decode workflow_dispatch inputs: %w", err)
+	}
+	t.DispatchInputs = dispatch.Inputs
 	return nil
 }
 

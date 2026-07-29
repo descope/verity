@@ -22,6 +22,7 @@ var CICommand = &cli.Command{
 		ciAPKRepositoryCommand,
 		newCIIntegerBatchCommand(),
 		newCIIntegerImageCommand(),
+		newCIRunsOnCommand(),
 		ciPlanCommand,
 		ciVulnerabilityCheckCommand,
 	},

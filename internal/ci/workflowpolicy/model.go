@@ -17,6 +17,7 @@ type workflow struct {
 type workflowJob struct {
 	Permissions permissions              `yaml:"permissions"`
 	Needs       stringList               `yaml:"needs"`
+	RunsOn      stringList               `yaml:"runs-on"`
 	If          string                   `yaml:"if"`
 	Uses        string                   `yaml:"uses"`
 	With        scalarMap                `yaml:"with"`

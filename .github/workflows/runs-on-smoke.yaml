@@ -1,0 +1,73 @@
+name: RunsOn Capability Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_aws_account:
+        description: Expected twelve-digit AWS account ID
+        required: true
+        type: string
+      expected_aws_region:
+        description: Expected AWS region for the RunsOn stack
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  build-verity:
+    name: Build Verity once
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build-verity.yaml
+    with:
+      source_sha: ${{ github.sha }}
+
+  canary:
+    name: Verify RunsOn x64 capability
+    needs: build-verity
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.job }}/runner=canary-x64"
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Activate RunsOn telemetry
+        uses: runs-on/action@4e5f72399b6b17f2e79c511c1b38a315a64d22dc # v2.2.0
+        with:
+          show_env: "false"
+          show_costs: summary
+          metrics: cpu,memory,disk,io,network
+
+      - name: Check out exact source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: "false"
+
+      - name: Activate same-run Verity
+        uses: ./.github/actions/setup-verity
+        with:
+          artifact-name: ${{ needs.build-verity.outputs.artifact-name }}
+          artifact-digest: ${{ needs.build-verity.outputs.artifact-digest }}
+          source-sha: ${{ needs.build-verity.outputs.source-sha }}
+          build-key: ${{ needs.build-verity.outputs.build-key }}
+          verify-attestation: "false"
+
+      - name: Verify RunsOn host boundary
+        env:
+          EXPECTED_AWS_ACCOUNT: ${{ inputs.expected_aws_account }}
+          EXPECTED_AWS_REGION: ${{ inputs.expected_aws_region }}
+        run: >-
+          ./verity ci runs-on verify
+          --expected-account "$EXPECTED_AWS_ACCOUNT"
+          --expected-region "$EXPECTED_AWS_REGION"
+          --expected-arch amd64
+          --minimum-cpu 4
+          --minimum-memory-gib 7
+          --minimum-disk-gib 30
