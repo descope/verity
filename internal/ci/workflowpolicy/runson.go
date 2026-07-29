@@ -2,6 +2,7 @@ package workflowpolicy
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -87,7 +88,7 @@ func validateRunsOnBuildJob(job *workflowJob) []Violation {
 	if job.Uses != "./.github/workflows/build-verity.yaml" ||
 		!buildOnceExactPermissions(job.Permissions, expectedPermissions) ||
 		len(job.With) != 1 || normalizeExpression(job.With["source_sha"]) != "${{github.sha}}" ||
-		job.Secrets.set || len(job.Steps) != 0 || len(job.RunsOn) != 0 {
+		job.Secrets.set || len(job.Steps) != 0 || len(job.RunsOn) != 0 || job.If != "" {
 		return []Violation{runsOnViolation("build-verity", "producer must remain the exact unprivileged current-run Verity build")}
 	}
 	return nil
@@ -104,7 +105,7 @@ func validateRunsOnCanaryJob(job *workflowJob) []Violation {
 	}
 	if len(job.Needs) != 1 || job.Needs[0] != "build-verity" ||
 		!buildOnceExactPermissions(job.Permissions, expectedPermissions) || job.Secrets.set ||
-		job.Uses != "" || job.Container.Image != "" || len(job.Services) != 0 {
+		job.Uses != "" || job.Container.Image != "" || len(job.Services) != 0 || job.If != "" {
 		violations = append(violations, runsOnViolation(runsOnCanaryJobName, "job must remain secret-free and actions/contents read-only"))
 	}
 	violations = append(violations, validateRunsOnSteps(job.Steps)...)
@@ -137,16 +138,18 @@ func validateRunsOnSteps(steps []workflowStep) []Violation {
 }
 
 func exactRunsOnHardenStep(step *workflowStep) bool {
-	return step.Uses == hardenRunnerReference && len(step.With) == 1 && step.With["egress-policy"] == "audit"
+	return step.Uses == hardenRunnerReference && len(step.With) == 1 && step.With["egress-policy"] == "audit" &&
+		!step.ContinueOnError.set && step.If == ""
 }
 
 func exactRunsOnCheckoutStep(step *workflowStep) bool {
 	return step.Uses == checkoutReference && len(step.With) == 2 &&
-		normalizeExpression(step.With["ref"]) == "${{github.sha}}" && step.With["persist-credentials"] == "false"
+		normalizeExpression(step.With["ref"]) == "${{github.sha}}" && step.With["persist-credentials"] == "false" &&
+		!step.ContinueOnError.set && step.If == ""
 }
 
 func exactRunsOnSetupStep(step *workflowStep) bool {
-	if step.Uses != "./.github/actions/setup-verity" || len(step.With) != 5 {
+	if step.Uses != "./.github/actions/setup-verity" || len(step.With) != 5 || step.ContinueOnError.set || step.If != "" {
 		return false
 	}
 	expected := map[string]string{
@@ -168,6 +171,7 @@ func exactRunsOnVerifyStep(step *workflowStep) bool {
 	return step.Uses == "" && len(step.Env) == 2 &&
 		normalizeExpression(step.Env["EXPECTED_AWS_ACCOUNT"]) == "${{inputs.expected_aws_account}}" &&
 		normalizeExpression(step.Env["EXPECTED_AWS_REGION"]) == "${{inputs.expected_aws_region}}" &&
+		!step.ContinueOnError.set && step.If == "" && step.Shell == "" && step.WorkingDirectory == "" &&
 		exactRunsOnVerifyArguments(step.Run)
 }
 
@@ -197,7 +201,8 @@ func inspectRunsOnSteps(steps []workflowStep) (runsOnStepIndexes, []Violation) {
 
 func exactRunsOnAction(step *workflowStep) bool {
 	return step.Uses == runsOnActionReference && len(step.With) == 3 && step.With["show_env"] == "false" &&
-		step.With["show_costs"] == "summary" && step.With["metrics"] == "cpu,memory,disk,io,network"
+		step.With["show_costs"] == "summary" && step.With["metrics"] == "cpu,memory,disk,io,network" &&
+		!step.ContinueOnError.set && step.If == ""
 }
 
 func usesForbiddenRunsOnFeature(step *workflowStep) bool {
@@ -207,15 +212,16 @@ func usesForbiddenRunsOnFeature(step *workflowStep) bool {
 }
 
 func exactRunsOnVerifyArguments(run string) bool {
-	for _, marker := range []string{
-		`--expected-account "$EXPECTED_AWS_ACCOUNT"`, `--expected-region "$EXPECTED_AWS_REGION"`,
-		"--expected-arch amd64", "--minimum-cpu 4", "--minimum-memory-gib 7", "--minimum-disk-gib 30",
-	} {
-		if !strings.Contains(run, marker) {
-			return false
-		}
+	expected := []string{
+		"./verity", "ci", "runs-on", "verify",
+		"--expected-account", `"$EXPECTED_AWS_ACCOUNT"`,
+		"--expected-region", `"$EXPECTED_AWS_REGION"`,
+		"--expected-arch", "amd64",
+		"--minimum-cpu", "4",
+		"--minimum-memory-gib", "7",
+		"--minimum-disk-gib", "30",
 	}
-	return true
+	return slices.Equal(strings.Fields(run), expected)
 }
 
 func runsOnViolation(job, detail string) Violation {

@@ -30,13 +30,18 @@ var (
 func systemVerifier() Verifier {
 	return Verifier{
 		metadataEndpoint: "http://169.254.169.254",
-		client:           &http.Client{Timeout: 5 * time.Second},
-		getenv:           os.Getenv,
-		architecture:     func() string { return runtime.GOARCH },
-		cpuCount:         runtime.NumCPU,
-		memoryBytes:      readSystemMemory,
-		diskBytes:        readRootDisk,
-		execute:          executeCommand,
+		client: &http.Client{
+			Timeout: 5 * time.Second,
+			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+		getenv:       os.Getenv,
+		architecture: func() string { return runtime.GOARCH },
+		cpuCount:     runtime.NumCPU,
+		memoryBytes:  readSystemMemory,
+		diskBytes:    readRootDisk,
+		execute:      executeCommand,
 	}
 }
 
@@ -45,7 +50,7 @@ func (v Verifier) readInstanceIdentity(ctx context.Context) (instanceIdentity, e
 	if err != nil {
 		return instanceIdentity{}, verificationError("IMDSv2", err.Error())
 	}
-	document, err := v.metadataRequest(ctx, http.MethodGet, "/latest/dynamic/instance-identity/document", string(token))
+	document, err := v.metadataRequest(ctx, http.MethodGet, "/latest/dynamic/instance-identity/document", strings.TrimSpace(string(token)))
 	if err != nil {
 		return instanceIdentity{}, verificationError("instance identity", err.Error())
 	}
@@ -134,12 +139,16 @@ func executeCommand(ctx context.Context, name string, arguments ...string) ([]by
 	if err := command.Run(); err != nil {
 		return nil, fmt.Errorf("run %s: %w: %s", name, err, strings.TrimSpace(stderr.String()))
 	}
+	if stdout.truncated || stderr.truncated {
+		return nil, errOutputLimit
+	}
 	return stdout.Bytes(), nil
 }
 
 type limitedBuffer struct {
-	buffer bytes.Buffer
-	limit  int
+	buffer    bytes.Buffer
+	limit     int
+	truncated bool
 }
 
 func (buffer *limitedBuffer) Write(data []byte) (int, error) {
@@ -148,10 +157,14 @@ func (buffer *limitedBuffer) Write(data []byte) (int, error) {
 	}
 	remaining := buffer.limit - buffer.buffer.Len()
 	if remaining <= 0 {
+		buffer.truncated = true
 		return len(data), nil
 	}
 	if len(data) > remaining {
-		_, _ = buffer.buffer.Write(data[:remaining])
+		if _, err := buffer.buffer.Write(data[:remaining]); err != nil {
+			return 0, err
+		}
+		buffer.truncated = true
 		return len(data), nil
 	}
 	return buffer.buffer.Write(data)

@@ -6,7 +6,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
-	"strings"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,7 +18,7 @@ var errUnexpectedTestCommand = errors.New("unexpected test command")
 func TestVerifier_Verify_acceptsCompliantHost(t *testing.T) {
 	// Given a RunsOn host with the expected identity, capacity, Docker, and encrypted EBS.
 	metadata := newMetadataServer(t)
-	verifier := verifierFixture(metadata.URL, true)
+	verifier := verifierFixture(t, metadata.URL, true)
 	requirements, err := NewRequirements(RequirementInput{
 		ExpectedAccount:  "123456789012",
 		ExpectedRegion:   "us-east-1",
@@ -43,7 +43,7 @@ func TestVerifier_Verify_acceptsCompliantHost(t *testing.T) {
 func TestVerifier_Verify_rejectsUnencryptedVolume(t *testing.T) {
 	// Given a RunsOn host with one unencrypted attached EBS volume.
 	metadata := newMetadataServer(t)
-	verifier := verifierFixture(metadata.URL, false)
+	verifier := verifierFixture(t, metadata.URL, false)
 	requirements, err := NewRequirements(RequirementInput{
 		ExpectedAccount:  "123456789012",
 		ExpectedRegion:   "us-east-1",
@@ -118,7 +118,8 @@ func newMetadataServer(t *testing.T) *httptest.Server {
 	}))
 }
 
-func verifierFixture(metadataEndpoint string, encrypted bool) Verifier {
+func verifierFixture(t *testing.T, metadataEndpoint string, encrypted bool) Verifier {
+	t.Helper()
 	return Verifier{
 		metadataEndpoint: metadataEndpoint,
 		client:           http.DefaultClient,
@@ -135,24 +136,22 @@ func verifierFixture(metadataEndpoint string, encrypted bool) Verifier {
 		execute: func(_ context.Context, name string, arguments ...string) ([]byte, error) {
 			switch name {
 			case "docker":
+				require.Equal(t, []string{"info", "--format", "{{.ServerVersion}}"}, arguments)
 				return []byte("27.5.1\n"), nil
 			case "aws":
-				joined := strings.Join(arguments, " ")
-				if strings.Contains(joined, "sts get-caller-identity") {
+				if len(arguments) > 1 && arguments[0] == "sts" {
+					require.Equal(t, []string{"sts", "get-caller-identity", "--region", "us-east-1", "--output", "json"}, arguments)
 					return []byte(`{"Account":"123456789012","Arn":"arn:aws:sts::123456789012:assumed-role/runs-on/i-0123456789abcdef0"}`), nil
 				}
-				if strings.Contains(joined, "ec2 describe-volumes") {
-					return []byte(`{"Volumes":[{"VolumeId":"vol-0123456789abcdef0","Encrypted":` + boolString(encrypted) + `}]}`), nil
+				if len(arguments) > 1 && arguments[0] == "ec2" {
+					require.Equal(t, []string{
+						"ec2", "describe-volumes", "--filters", "Name=attachment.instance-id,Values=i-0123456789abcdef0",
+						"--region", "us-east-1", "--output", "json",
+					}, arguments)
+					return []byte(`{"Volumes":[{"VolumeId":"vol-0123456789abcdef0","Encrypted":` + strconv.FormatBool(encrypted) + `}]}`), nil
 				}
 			}
 			return nil, errUnexpectedTestCommand
 		},
 	}
-}
-
-func boolString(value bool) string {
-	if value {
-		return "true"
-	}
-	return "false"
 }

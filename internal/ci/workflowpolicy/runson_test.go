@@ -102,6 +102,44 @@ func TestValidateRunsOnRepository_rejectsOptionalIdentityInput(t *testing.T) {
 	assert.Contains(t, violationRules(violations), RuleRunsOnBoundary)
 }
 
+func TestValidateRunsOnRepository_rejectsVerificationContinueOnError(t *testing.T) {
+	// Given the production canary with host verification allowed to fail.
+	repositoryRoot := filepath.Join("..", "..", "..")
+	workflows, err := loadWorkflows(filepath.Join(repositoryRoot, ".github", "workflows"))
+	require.NoError(t, err)
+	canary := mustWorkflow(t, workflows, runsOnSmokeWorkflowName)
+	job := canary.Workflow.Jobs[runsOnCanaryJobName]
+	job.Steps[4].ContinueOnError = scalarValue{set: true, value: "true"}
+	canary.Workflow.Jobs[runsOnCanaryJobName] = job
+	workflows = replaceWorkflow(workflows, &canary)
+
+	// When the RunsOn contract is evaluated.
+	violations := validateRunsOnRepository(repositoryRoot, workflows)
+
+	// Then verification remains a mandatory fail-closed boundary.
+	require.NotEmpty(t, violations)
+	assert.Contains(t, violationRules(violations), RuleRunsOnBoundary)
+}
+
+func TestValidateRunsOnRepository_rejectsDuplicateVerificationOverride(t *testing.T) {
+	// Given the production canary with a later flag weakening the disk minimum.
+	repositoryRoot := filepath.Join("..", "..", "..")
+	workflows, err := loadWorkflows(filepath.Join(repositoryRoot, ".github", "workflows"))
+	require.NoError(t, err)
+	canary := mustWorkflow(t, workflows, runsOnSmokeWorkflowName)
+	job := canary.Workflow.Jobs[runsOnCanaryJobName]
+	job.Steps[4].Run += " --minimum-disk-gib 1"
+	canary.Workflow.Jobs[runsOnCanaryJobName] = job
+	workflows = replaceWorkflow(workflows, &canary)
+
+	// When the RunsOn contract is evaluated.
+	violations := validateRunsOnRepository(repositoryRoot, workflows)
+
+	// Then the reviewed command must match exactly.
+	require.NotEmpty(t, violations)
+	assert.Contains(t, violationRules(violations), RuleRunsOnBoundary)
+}
+
 func copyRunsOnConfig(t *testing.T) string {
 	t.Helper()
 	repositoryRoot := t.TempDir()
