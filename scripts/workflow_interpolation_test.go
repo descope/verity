@@ -142,7 +142,7 @@ func TestPRWorkflowRequiresDualArchitectureIntegerSecurityCompletion(t *testing.
 	assert.Contains(t, workflow, "expected-matrix: ${{ steps.detect.outputs.expected-matrix }}")
 	assert.Contains(t, workflow, "expected-smoke-matrix: ${{ steps.detect.outputs.expected-smoke-matrix }}")
 	assert.NotContains(t, workflow, `for package_arch in x86_64 aarch64; do`)
-	assert.Equal(t, 2, strings.Count(workflow, `runner=integer-${{ matrix.arch }}`))
+	assert.Equal(t, 2, strings.Count(workflow, `cpu=32/ram=64/image=ubuntu24-full-${{ matrix.arch == 'amd64' && 'x64' || 'arm64' }}/volume=200gb:gp3`))
 	assert.NotContains(t, workflow, `runs-on: ${{ matrix.runner }}`)
 	assert.Equal(t, 2, strings.Count(workflow, "./verity ci pr-test integer-batch"))
 	assert.NotContains(t, workflow, "name: Set up QEMU for dual-architecture verification")

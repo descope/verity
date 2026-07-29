@@ -199,7 +199,7 @@ jobs:
       (github.event_name == 'pull_request' || inputs.source_sha == github.sha) &&
       needs.discover-charts.outputs.matrix != '[]' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=chart-x64"
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/cpu=16/ram=32/image=ubuntu24-full-x64/volume=150gb:gp3/extras=otel/spot=false"
     timeout-minutes: 60
     permissions:
       actions: read

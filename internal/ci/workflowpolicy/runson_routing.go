@@ -2,7 +2,18 @@ package workflowpolicy
 
 import "strings"
 
-const buildVerityTrustedRunnerRoute = "${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && format('runs-on={0}-{1}-{2}/runner=ci-large-x64', github.run_id, github.run_attempt, github.job) || 'ubuntu-24.04' }}"
+const (
+	runsOnJobNamespace            = "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}"
+	runsOnCILargeX64Route         = runsOnJobNamespace + "/cpu=16/ram=32/image=ubuntu24-full-x64/volume=100gb:gp3/extras=otel/spot=false"
+	runsOnBuildKitX64Route        = runsOnJobNamespace + "/cpu=16/ram=32/image=ubuntu24-full-x64/volume=150gb:gp3/extras=otel/spot=false"
+	runsOnChartX64Route           = runsOnBuildKitX64Route
+	runsOnIntegerAMD64Route       = runsOnJobNamespace + "/cpu=32/ram=64/image=ubuntu24-full-x64/volume=200gb:gp3/extras=otel/spot=false"
+	runsOnPRIntegerRoute          = runsOnJobNamespace + "/cpu=32/ram=64/image=ubuntu24-full-${{ matrix.arch == 'amd64' && 'x64' || 'arm64' }}/volume=200gb:gp3/extras=otel/spot=false"
+	runsOnMelangeRoute            = runsOnJobNamespace + "/cpu=32/ram=64/image=ubuntu24-full-${{ matrix.arch == 'x86_64' && 'x64' || 'arm64' }}/volume=200gb:gp3/extras=otel/spot=false"
+	runsOnBuildKitPlatformRoute   = runsOnJobNamespace + "/cpu=16/ram=32/image=ubuntu24-full-${{ matrix.platform == 'linux/amd64' && 'x64' || 'arm64' }}/volume=150gb:gp3/extras=otel/spot=false"
+	runsOnBuildKitProfileRoute    = runsOnJobNamespace + "/cpu=16/ram=32/image=ubuntu24-full-${{ matrix.runner_profile == 'buildkit-x64' && 'x64' || 'arm64' }}/volume=150gb:gp3/extras=otel/spot=false"
+	buildVerityTrustedRunnerRoute = "${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && format('runs-on={0}-{1}-{2}/cpu=16/ram=32/image=ubuntu24-full-x64/volume=100gb:gp3/extras=otel/spot=false', github.run_id, github.run_attempt, github.job) || 'ubuntu-24.04' }}"
+)
 
 type runsOnRoute struct {
 	workflow string
@@ -16,18 +27,18 @@ type runsOnRouteExpectation struct {
 }
 
 var approvedRunsOnRoutes = map[runsOnRoute]string{
-	{workflow: "build-verity-protected.yaml", job: "build"}:               "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=ci-large-x64",
-	{workflow: "ci.yaml", job: "test"}:                                    "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=ci-large-x64",
-	{workflow: "chart-integration.yaml", job: "chart-test"}:               "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=chart-x64",
-	{workflow: "pr-test.yaml", job: "integer-smoke-test"}:                 "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=integer-${{ matrix.arch }}",
-	{workflow: "pr-test.yaml", job: "integer-build-changed"}:              "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=integer-${{ matrix.arch }}",
-	{workflow: "pr-test.yaml", job: "copa-patching-changed"}:              "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=buildkit-x64",
-	{workflow: "pr-test.yaml", job: "copa-patching-regression"}:           "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=buildkit-x64",
-	{workflow: "integer-build-image-reusable.yaml", job: "melange-build"}: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=${{ matrix.runner_profile }}",
-	{workflow: "integer-build-image-reusable.yaml", job: "build"}:         "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=integer-amd64",
-	{workflow: "patch-image.yaml", job: "scan"}:                           "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=buildkit-x64",
-	{workflow: "patch-image.yaml", job: "patch"}:                          "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=${{ matrix.runner_profile }}",
-	{workflow: "orchestrator.yaml", job: "prepare"}:                       "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=${{ matrix.runner_profile }}",
+	{workflow: "build-verity-protected.yaml", job: "build"}:               runsOnCILargeX64Route,
+	{workflow: "ci.yaml", job: "test"}:                                    runsOnCILargeX64Route,
+	{workflow: "chart-integration.yaml", job: "chart-test"}:               runsOnChartX64Route,
+	{workflow: "pr-test.yaml", job: "integer-smoke-test"}:                 runsOnPRIntegerRoute,
+	{workflow: "pr-test.yaml", job: "integer-build-changed"}:              runsOnPRIntegerRoute,
+	{workflow: "pr-test.yaml", job: "copa-patching-changed"}:              runsOnBuildKitX64Route,
+	{workflow: "pr-test.yaml", job: "copa-patching-regression"}:           runsOnBuildKitX64Route,
+	{workflow: "integer-build-image-reusable.yaml", job: "melange-build"}: runsOnMelangeRoute,
+	{workflow: "integer-build-image-reusable.yaml", job: "build"}:         runsOnIntegerAMD64Route,
+	{workflow: "patch-image.yaml", job: "scan"}:                           runsOnBuildKitX64Route,
+	{workflow: "patch-image.yaml", job: "patch"}:                          runsOnBuildKitPlatformRoute,
+	{workflow: "orchestrator.yaml", job: "prepare"}:                       runsOnBuildKitProfileRoute,
 }
 
 var fallbackRunsOnRoutes = map[runsOnRoute]string{

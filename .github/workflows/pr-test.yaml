@@ -168,7 +168,7 @@ jobs:
       needs.changes.outputs.integer == 'true' &&
       needs.detect-changed-images.outputs.smoke-has-changes == 'true' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=integer-${{ matrix.arch }}"
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/cpu=32/ram=64/image=ubuntu24-full-${{ matrix.arch == 'amd64' && 'x64' || 'arm64' }}/volume=200gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -342,7 +342,7 @@ jobs:
       needs.changes.outputs.integer == 'true' &&
       needs.detect-changed-images.outputs.has-changes == 'true' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=integer-${{ matrix.arch }}"
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/cpu=32/ram=64/image=ubuntu24-full-${{ matrix.arch == 'amd64' && 'x64' || 'arm64' }}/volume=200gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -522,7 +522,7 @@ jobs:
       needs.changes.outputs.copa == 'true' &&
       needs.detect-copa-changes.outputs.has-changes == 'true' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=buildkit-x64"
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/cpu=16/ram=32/image=ubuntu24-full-x64/volume=150gb:gp3/extras=otel/spot=false"
     continue-on-error: true  # Go binary patching is experimental — don't block PR
     permissions:
       actions: read
@@ -677,7 +677,7 @@ jobs:
     if: >-
       needs.changes.outputs.copa == 'true' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=buildkit-x64"
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/cpu=16/ram=32/image=ubuntu24-full-x64/volume=150gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read

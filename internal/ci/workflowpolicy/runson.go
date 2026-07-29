@@ -12,7 +12,7 @@ const (
 	runsOnProfileName       = "canary-x64"
 	runsOnActionName        = "runs-on/action"
 	runsOnActionReference   = "runs-on/action@4e5f72399b6b17f2e79c511c1b38a315a64d22dc"
-	runsOnCanaryLabel       = "runs-on=${{ github.run_id }}-${{ github.job }}/runner=canary-x64"
+	runsOnCanaryLabel       = runsOnJobNamespace + "/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
 	runsOnTrustedIf         = "github.repository == 'verity-org/verity' && github.ref == 'refs/heads/main'"
 	runsOnTrustedExecution  = "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository"
 	hardenRunnerReference   = "step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920"

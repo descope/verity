@@ -199,7 +199,7 @@ jobs:
             runner_profile: integer-amd64
           - arch: aarch64
             runner_profile: integer-arm64
-    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=${{ matrix.runner_profile }}"
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/cpu=32/ram=64/image=ubuntu24-full-${{ matrix.arch == 'x86_64' && 'x64' || 'arm64' }}/volume=200gb:gp3/extras=otel/spot=false"
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -280,7 +280,7 @@ jobs:
       needs.melange-prep.result == 'success' &&
       (needs.melange-build.result == 'success' || needs.melange-build.result == 'skipped') &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=integer-amd64"
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/cpu=32/ram=64/image=ubuntu24-full-x64/volume=200gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read

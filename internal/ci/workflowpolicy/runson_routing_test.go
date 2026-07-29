@@ -115,7 +115,21 @@ func TestBuildVerityWorkflows_routeTrustedCompilationToRunsOn(t *testing.T) {
 
 	protectedBuild := mustWorkflow(t, workflows, "build-verity-protected.yaml")
 	require.Equal(t,
-		stringList{"runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=ci-large-x64"},
+		stringList{runsOnCILargeX64Route},
 		protectedBuild.Workflow.Jobs["build"].RunsOn,
 	)
+}
+
+func TestRunsOnRoutes_doNotDependOnDefaultBranchProfiles(t *testing.T) {
+	repositoryRoot := filepath.Join("..", "..", "..")
+	workflows, err := loadWorkflows(filepath.Join(repositoryRoot, ".github", "workflows"))
+	require.NoError(t, err)
+
+	for _, workflow := range workflows {
+		for jobName, job := range workflow.Workflow.Jobs {
+			for _, label := range job.RunsOn {
+				assert.NotContains(t, label, "/runner=", workflow.Name+":"+jobName)
+			}
+		}
+	}
 }

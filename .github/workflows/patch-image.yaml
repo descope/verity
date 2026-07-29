@@ -173,7 +173,7 @@ jobs:
     if: >-
       !cancelled() && needs.verity.result == 'success' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=buildkit-x64"
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/cpu=16/ram=32/image=ubuntu24-full-x64/volume=150gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       attestations: read
@@ -305,7 +305,7 @@ jobs:
     if: >-
       needs.scan.outputs.needs-patch == 'true' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=${{ matrix.runner_profile }}"
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/cpu=16/ram=32/image=ubuntu24-full-${{ matrix.platform == 'linux/amd64' && 'x64' || 'arm64' }}/volume=150gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       attestations: read
