@@ -19,7 +19,8 @@ jobs:
   changes:
     name: Detect PR test scope
     needs: build-verity
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -55,6 +56,7 @@ jobs:
 
   build-verity:
     name: Build Verity once
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     permissions:
       contents: read
     uses: ./.github/workflows/build-verity.yaml
@@ -65,8 +67,10 @@ jobs:
   discover:
     name: Discover Images
     needs: [changes, build-verity]
-    if: needs.changes.outputs.copa == 'true'
-    runs-on: ubuntu-24.04
+    if: >-
+      needs.changes.outputs.copa == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -117,8 +121,10 @@ jobs:
   validate:
     name: Validate image configs
     needs: [changes, build-verity]
-    if: needs.changes.outputs.integer == 'true'
-    runs-on: ubuntu-latest
+    if: >-
+      needs.changes.outputs.integer == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -274,8 +280,10 @@ jobs:
   detect-changed-images:
     name: Detect changed images
     needs: [changes, build-verity]
-    if: needs.changes.outputs.integer == 'true'
-    runs-on: ubuntu-latest
+    if: >-
+      needs.changes.outputs.integer == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -448,8 +456,10 @@ jobs:
   detect-copa-changes:
     name: Detect changed images
     needs: [changes, build-verity]
-    if: needs.changes.outputs.copa == 'true'
-    runs-on: ubuntu-24.04
+    if: >-
+      needs.changes.outputs.copa == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -842,8 +852,10 @@ jobs:
       - detect-copa-changes
       - copa-patching-changed
       - copa-patching-regression
-    if: always()
-    runs-on: ubuntu-latest
+    if: >-
+      always() &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read

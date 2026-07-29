@@ -151,7 +151,7 @@ jobs:
     name: Resolve exact Verity coordinates
     needs: build-verity
     if: ${{ always() && (needs.build-verity.result == 'success' || needs.build-verity.result == 'skipped') }}
-    runs-on: ubuntu-24.04
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions: {}
     outputs:
       source-sha: ${{ inputs.source_sha || needs.build-verity.outputs.source-sha }}
@@ -483,7 +483,7 @@ jobs:
     name: "Finalize ${{ inputs.image-name }}"
     needs: [scan, patch, verity]
     if: needs.scan.outputs.needs-patch == 'true' && needs.patch.result == 'success'
-    runs-on: ubuntu-24.04
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     outputs:
       metrics-artifact-name: ${{ steps.metrics-json.outputs.artifact-name }}
       metrics-run-id: ${{ steps.metrics-json.outputs.run-id }}
@@ -761,7 +761,7 @@ jobs:
     name: "Metrics on Failure: ${{ inputs.image-name }}"
     needs: [scan, patch, verity]
     if: ${{ !cancelled() && needs.scan.outputs.needs-patch == 'true' && needs.patch.result == 'failure' }}
-    runs-on: ubuntu-24.04
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     outputs:
       metrics-artifact-name: ${{ steps.metrics-json.outputs.artifact-name }}
       metrics-run-id: ${{ steps.metrics-json.outputs.run-id }}

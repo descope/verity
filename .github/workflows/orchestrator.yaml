@@ -122,7 +122,7 @@ jobs:
     name: Resolve exact Verity coordinates
     needs: build-verity
     if: ${{ always() && (needs.build-verity.result == 'success' || needs.build-verity.result == 'skipped') }}
-    runs-on: ubuntu-24.04
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions: {}
     outputs:
       source-sha: ${{ inputs.source_sha || needs.build-verity.outputs.source-sha }}
@@ -208,7 +208,7 @@ jobs:
     name: Detect Changes
     needs: verity
     if: ${{ needs.verity.result == 'success' && github.event_name == 'push' && startsWith(github.workflow_ref, 'verity-org/verity/.github/workflows/orchestrator.yaml@') }}
-    runs-on: ubuntu-24.04
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       attestations: read
@@ -253,7 +253,7 @@ jobs:
     name: Discover Images
     needs: [verity, prepare, detect]
     if: ${{ !cancelled() && needs.verity.result == 'success' && needs.prepare.result == 'success' && (needs.detect.result == 'success' || needs.detect.result == 'skipped') }}
-    runs-on: ubuntu-24.04
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       attestations: read

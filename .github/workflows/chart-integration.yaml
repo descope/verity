@@ -81,7 +81,9 @@ concurrency:
 jobs:
   build-verity:
     name: Build Verity once
-    if: ${{ startsWith(github.workflow_ref, 'verity-org/verity/.github/workflows/chart-integration.yaml@') }}
+    if: >-
+      startsWith(github.workflow_ref, 'verity-org/verity/.github/workflows/chart-integration.yaml@') &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     permissions:
       contents: read
     uses: ./.github/workflows/build-verity.yaml
@@ -91,8 +93,11 @@ jobs:
   verity:
     name: Resolve exact Verity coordinates
     needs: build-verity
-    if: ${{ !cancelled() && (needs.build-verity.result == 'success' || needs.build-verity.result == 'skipped') }}
-    runs-on: ubuntu-24.04
+    if: >-
+      !cancelled() &&
+      (needs.build-verity.result == 'success' || needs.build-verity.result == 'skipped') &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions: {}
     outputs:
       matrix: '["verity"]'
@@ -118,8 +123,11 @@ jobs:
   discover-charts:
     name: discover charts
     needs: verity
-    runs-on: ubuntu-24.04
-    if: ${{ (github.event_name == 'pull_request' || inputs.source_sha == github.sha) && needs.verity.outputs.matrix != '[]' }}
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
+    if: >-
+      (github.event_name == 'pull_request' || inputs.source_sha == github.sha) &&
+      needs.verity.outputs.matrix != '[]' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     timeout-minutes: 15
     permissions:
       actions: read
@@ -354,7 +362,7 @@ jobs:
     # the way #905 did.
     needs: [discover-charts, chart-test]
     if: ${{ needs.discover-charts.result == 'success' && (needs.chart-test.result == 'success' || needs.chart-test.result == 'skipped') }}
-    runs-on: ubuntu-24.04
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     timeout-minutes: 5
     permissions:
       actions: read

@@ -80,7 +80,7 @@ permissions:
 jobs:
   validate-coordinates:
     name: "Validate ${{ inputs.image }}:${{ inputs.version }}-${{ inputs.type }} coordinates"
-    runs-on: ubuntu-latest
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       contents: read
     steps:
@@ -123,7 +123,7 @@ jobs:
     name: "Prepare ${{ inputs.image }}:${{ inputs.version }}-${{ inputs.type }} recipe"
     needs: validate-coordinates
     if: needs.validate-coordinates.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read

@@ -111,7 +111,7 @@ func TestBuildVerityWorkflows_routeTrustedCompilationToRunsOn(t *testing.T) {
 	require.NoError(t, err)
 
 	buildVerity := mustWorkflow(t, workflows, "build-verity.yaml")
-	require.Equal(t, stringList{buildVerityTrustedRunnerRoute}, buildVerity.Workflow.Jobs["build"].RunsOn)
+	require.Equal(t, stringList{runsOnCILargeX64Route}, buildVerity.Workflow.Jobs["build"].RunsOn)
 
 	protectedBuild := mustWorkflow(t, workflows, "build-verity-protected.yaml")
 	require.Equal(t,
@@ -129,6 +129,20 @@ func TestRunsOnRoutes_doNotDependOnDefaultBranchProfiles(t *testing.T) {
 		for jobName, job := range workflow.Workflow.Jobs {
 			for _, label := range job.RunsOn {
 				assert.NotContains(t, label, "/runner=", workflow.Name+":"+jobName)
+			}
+		}
+	}
+}
+
+func TestRepositoryWorkflows_doNotUseGitHubHostedRunners(t *testing.T) {
+	repositoryRoot := filepath.Join("..", "..", "..")
+	workflows, err := loadWorkflows(filepath.Join(repositoryRoot, ".github", "workflows"))
+	require.NoError(t, err)
+
+	for _, workflow := range workflows {
+		for jobName, job := range workflow.Workflow.Jobs {
+			for _, label := range job.RunsOn {
+				assert.False(t, isGitHubHostedRunner(label), workflow.Name+":"+jobName)
 			}
 		}
 	}
