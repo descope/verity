@@ -62,6 +62,69 @@ func TestVerifier_Verify_rejectsUnencryptedVolume(t *testing.T) {
 	assert.ErrorIs(t, err, ErrVerificationFailed)
 }
 
+func TestVerifier_Verify_rejectsEmptyIMDSv2Token(t *testing.T) {
+	// Given a metadata endpoint that returns an empty token but accepts IMDSv1 requests.
+	metadata := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case "/latest/api/token":
+			_, err := writer.Write(nil)
+			require.NoError(t, err)
+		case "/latest/dynamic/instance-identity/document":
+			_, err := writer.Write([]byte(`{"accountId":"123456789012","region":"us-east-1","instanceId":"i-0123456789abcdef0"}`))
+			require.NoError(t, err)
+		default:
+			http.NotFound(writer, request)
+		}
+	}))
+	t.Cleanup(metadata.Close)
+	verifier := verifierFixture(t, metadata.URL, true)
+	requirements, err := NewRequirements(RequirementInput{
+		ExpectedAccount:  "123456789012",
+		ExpectedRegion:   "us-east-1",
+		ExpectedArch:     "amd64",
+		MinimumCPU:       4,
+		MinimumMemoryGiB: 7,
+		MinimumDiskGiB:   30,
+	})
+	require.NoError(t, err)
+
+	// When host verification requests an IMDSv2 token.
+	_, err = verifier.Verify(context.Background(), requirements)
+
+	// Then an empty token cannot degrade to a tokenless metadata request.
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrVerificationFailed)
+}
+
+func TestVerifier_Verify_rejectsMismatchedRunnerIdentity(t *testing.T) {
+	metadata := newMetadataServer(t)
+	verifier := verifierFixture(t, metadata.URL, true)
+	verifier.getenv = func(name string) string {
+		switch name {
+		case "RUNS_ON_RUNNER_NAME":
+			return "runs-on-sentinel"
+		case "RUNNER_NAME":
+			return "different-runner"
+		default:
+			return ""
+		}
+	}
+	requirements, err := NewRequirements(RequirementInput{
+		ExpectedAccount:  "123456789012",
+		ExpectedRegion:   "us-east-1",
+		ExpectedArch:     "amd64",
+		MinimumCPU:       4,
+		MinimumMemoryGiB: 7,
+		MinimumDiskGiB:   30,
+	})
+	require.NoError(t, err)
+
+	_, err = verifier.Verify(context.Background(), requirements)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrVerificationFailed)
+}
+
 func TestNewRequirements_rejectsInvalidAWSAccount(t *testing.T) {
 	// Given an invalid account identifier.
 	input := RequirementInput{
@@ -124,7 +187,7 @@ func verifierFixture(t *testing.T, metadataEndpoint string, encrypted bool) Veri
 		metadataEndpoint: metadataEndpoint,
 		client:           http.DefaultClient,
 		getenv: func(name string) string {
-			if name == "RUNS_ON_RUNNER_NAME" {
+			if name == "RUNS_ON_RUNNER_NAME" || name == "RUNNER_NAME" {
 				return "runs-on-verity-canary"
 			}
 			return ""

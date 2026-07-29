@@ -159,6 +159,59 @@ func TestValidateRunsOnRepository_rejectsJobContinueOnError(t *testing.T) {
 	assert.Contains(t, violationRules(violations), RuleRunsOnBoundary)
 }
 
+func TestValidateRunsOnRepository_rejectsAmbientEnvironment(t *testing.T) {
+	tests := map[string]func(*workflowFile){
+		"workflow": func(canary *workflowFile) {
+			canary.Workflow.Env = scalarMap{"TOKEN": testSecretExpression}
+		},
+		"build job": func(canary *workflowFile) {
+			job := canary.Workflow.Jobs["build-verity"]
+			job.Env = scalarMap{"TOKEN": testSecretExpression}
+			canary.Workflow.Jobs["build-verity"] = job
+		},
+		"canary job": func(canary *workflowFile) {
+			job := canary.Workflow.Jobs[runsOnCanaryJobName]
+			job.Env = scalarMap{"TOKEN": testSecretExpression}
+			canary.Workflow.Jobs[runsOnCanaryJobName] = job
+		},
+	}
+
+	for name, mutate := range tests {
+		t.Run(name, func(t *testing.T) {
+			repositoryRoot := filepath.Join("..", "..", "..")
+			workflows, err := loadWorkflows(filepath.Join(repositoryRoot, ".github", "workflows"))
+			require.NoError(t, err)
+			canary := mustWorkflow(t, workflows, runsOnSmokeWorkflowName)
+			mutate(&canary)
+
+			violations := validateRunsOnRepository(repositoryRoot, replaceWorkflow(workflows, &canary))
+
+			require.NotEmpty(t, violations)
+			assert.Contains(t, violationRules(violations), RuleRunsOnBoundary)
+		})
+	}
+}
+
+func TestValidateRunsOnRepository_rejectsRunsOnOutsideCanary(t *testing.T) {
+	repositoryRoot := filepath.Join("..", "..", "..")
+	workflows, err := loadWorkflows(filepath.Join(repositoryRoot, ".github", "workflows"))
+	require.NoError(t, err)
+	workflows = append(workflows, workflowFile{
+		Name: "untrusted.yaml",
+		Workflow: workflow{
+			On: triggers{PullRequest: true},
+			Jobs: map[string]workflowJob{
+				"probe": {RunsOn: stringList{runsOnCanaryLabel}},
+			},
+		},
+	})
+
+	violations := validateRunsOnRepository(repositoryRoot, workflows)
+
+	require.NotEmpty(t, violations)
+	assert.Contains(t, violationRules(violations), RuleRunsOnBoundary)
+}
+
 func copyRunsOnConfig(t *testing.T) string {
 	t.Helper()
 	repositoryRoot := t.TempDir()

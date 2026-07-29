@@ -36,11 +36,31 @@ func runsOnRepositoryRoot(directory string) (string, bool) {
 
 func validateRunsOnRepository(repositoryRoot string, workflows []workflowFile) []Violation {
 	violations := validateRunsOnCatalog(repositoryRoot)
+	violations = append(violations, validateRunsOnExclusivity(workflows)...)
 	canary, exists := findWorkflow(workflows, runsOnSmokeWorkflowName)
 	if !exists {
 		return append(violations, runsOnViolation("", "required capability canary is missing"))
 	}
 	violations = append(violations, validateRunsOnWorkflow(&canary)...)
+	return violations
+}
+
+func validateRunsOnExclusivity(workflows []workflowFile) []Violation {
+	violations := make([]Violation, 0)
+	for fileIndex := range workflows {
+		file := &workflows[fileIndex]
+		for jobName := range file.Workflow.Jobs {
+			for _, label := range file.Workflow.Jobs[jobName].RunsOn {
+				if strings.HasPrefix(label, "runs-on=") &&
+					(file.Name != runsOnSmokeWorkflowName || jobName != runsOnCanaryJobName) {
+					violations = append(violations, Violation{
+						Rule: RuleRunsOnBoundary, Workflow: file.Name, Job: jobName,
+						Detail: "RunsOn is reserved for the reviewed capability canary",
+					})
+				}
+			}
+		}
+	}
 	return violations
 }
 
@@ -52,6 +72,9 @@ func validateRunsOnWorkflow(file *workflowFile) []Violation {
 	}
 	if !buildOnceExactPermissions(workflow.Permissions, map[permissionScope]permissionLevel{}) {
 		violations = append(violations, runsOnViolation("", "workflow permissions must be empty"))
+	}
+	if len(workflow.Env) != 0 {
+		violations = append(violations, runsOnViolation("", "workflow environment must be empty"))
 	}
 	if len(workflow.Jobs) != 2 {
 		violations = append(violations, runsOnViolation("", "canary workflow must contain only build-verity and canary jobs"))
@@ -88,7 +111,8 @@ func validateRunsOnBuildJob(job *workflowJob) []Violation {
 	if job.Uses != "./.github/workflows/build-verity.yaml" ||
 		!buildOnceExactPermissions(job.Permissions, expectedPermissions) ||
 		len(job.With) != 1 || normalizeExpression(job.With["source_sha"]) != "${{github.sha}}" ||
-		job.Secrets.set || len(job.Steps) != 0 || len(job.RunsOn) != 0 || job.If != "" || job.ContinueOnError.set {
+		job.Secrets.set || len(job.Env) != 0 || len(job.Steps) != 0 || len(job.RunsOn) != 0 ||
+		job.If != "" || job.ContinueOnError.set {
 		return []Violation{runsOnViolation("build-verity", "producer must remain the exact unprivileged current-run Verity build")}
 	}
 	return nil
@@ -105,7 +129,8 @@ func validateRunsOnCanaryJob(job *workflowJob) []Violation {
 	}
 	if len(job.Needs) != 1 || job.Needs[0] != "build-verity" ||
 		!buildOnceExactPermissions(job.Permissions, expectedPermissions) || job.Secrets.set ||
-		job.Uses != "" || job.Container.Image != "" || len(job.Services) != 0 || job.If != "" || job.ContinueOnError.set {
+		len(job.Env) != 0 || job.Uses != "" || job.Container.Image != "" || len(job.Services) != 0 ||
+		job.If != "" || job.ContinueOnError.set {
 		violations = append(violations, runsOnViolation(runsOnCanaryJobName, "job must remain secret-free and actions/contents read-only"))
 	}
 	violations = append(violations, validateRunsOnSteps(job.Steps)...)

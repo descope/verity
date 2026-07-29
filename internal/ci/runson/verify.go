@@ -122,8 +122,9 @@ func NewVerifier() Verifier {
 
 func (v Verifier) Verify(ctx context.Context, requirements Requirements) (Report, error) {
 	runnerName := strings.TrimSpace(v.getenv("RUNS_ON_RUNNER_NAME"))
-	if runnerName == "" {
-		return Report{}, verificationError("runner identity", "RUNS_ON_RUNNER_NAME is empty")
+	githubRunnerName := strings.TrimSpace(v.getenv("RUNNER_NAME"))
+	if runnerName == "" || githubRunnerName == "" || runnerName != githubRunnerName {
+		return Report{}, verificationError("runner identity", "RunsOn and GitHub runner names do not match")
 	}
 	capacity, err := v.observeCapacity()
 	if err != nil {

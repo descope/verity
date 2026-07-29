@@ -50,7 +50,11 @@ func (v Verifier) readInstanceIdentity(ctx context.Context) (instanceIdentity, e
 	if err != nil {
 		return instanceIdentity{}, verificationError("IMDSv2", err.Error())
 	}
-	document, err := v.metadataRequest(ctx, http.MethodGet, "/latest/dynamic/instance-identity/document", strings.TrimSpace(string(token)))
+	trimmedToken := strings.TrimSpace(string(token))
+	if trimmedToken == "" {
+		return instanceIdentity{}, verificationError("IMDSv2", "token is empty")
+	}
+	document, err := v.metadataRequest(ctx, http.MethodGet, "/latest/dynamic/instance-identity/document", trimmedToken)
 	if err != nil {
 		return instanceIdentity{}, verificationError("instance identity", err.Error())
 	}
