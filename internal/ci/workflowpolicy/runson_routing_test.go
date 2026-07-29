@@ -104,3 +104,18 @@ func TestRunsOnCatalog_containsPRIntegerArchitectureProfiles(t *testing.T) {
 		assert.True(t, exists, architecture)
 	}
 }
+
+func TestBuildVerityWorkflows_routeTrustedCompilationToRunsOn(t *testing.T) {
+	repositoryRoot := filepath.Join("..", "..", "..")
+	workflows, err := loadWorkflows(filepath.Join(repositoryRoot, ".github", "workflows"))
+	require.NoError(t, err)
+
+	buildVerity := mustWorkflow(t, workflows, "build-verity.yaml")
+	require.Equal(t, stringList{buildVerityTrustedRunnerRoute}, buildVerity.Workflow.Jobs["build"].RunsOn)
+
+	protectedBuild := mustWorkflow(t, workflows, "build-verity-protected.yaml")
+	require.Equal(t,
+		stringList{"runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=ci-large-x64"},
+		protectedBuild.Workflow.Jobs["build"].RunsOn,
+	)
+}

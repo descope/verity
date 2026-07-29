@@ -211,9 +211,14 @@ func inspectRunsOnSteps(steps []workflowStep) (runsOnStepIndexes, []Violation) {
 }
 
 func exactRunsOnAction(step *workflowStep) bool {
+	return exactRunsOnActionWithIf(step, "")
+}
+
+func exactRunsOnActionWithIf(step *workflowStep, expectedIf string) bool {
 	return step.Uses == runsOnActionReference && len(step.With) == 3 && step.With["show_env"] == "false" &&
 		step.With["show_costs"] == "summary" && step.With["metrics"] == "cpu,memory,disk,io,network" &&
-		len(step.Env) == 0 && !step.ContinueOnError.set && step.If == ""
+		len(step.Env) == 0 && !step.ContinueOnError.set &&
+		normalizeExpression(step.If) == normalizeExpression(expectedIf)
 }
 
 func usesForbiddenRunsOnFeature(step *workflowStep) bool {
