@@ -20,4 +20,5 @@ func TestSetupVerityAction_usesOneAttestationIdentitySelector(t *testing.T) {
 
 	// Then it selects the exact workflow without combining mutually exclusive identity flags.
 	require.Equal(t, 0, strings.Count(action, "--signer-repo"))
+	require.NotContains(t, action, "--deny-self-hosted-runners")
 }

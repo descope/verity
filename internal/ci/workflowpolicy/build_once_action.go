@@ -189,7 +189,7 @@ func validateAttestationStep(name string, step *workflowStep) []Violation {
 	markers := []string{
 		`--repo "$GITHUB_REPOSITORY"`,
 		`--signer-workflow "` + setupSignerWorkflow + `"`,
-		`--signer-digest "$VERITY_SOURCE_SHA"`, `--source-digest "$VERITY_SOURCE_SHA"`, `--deny-self-hosted-runners`,
+		`--signer-digest "$VERITY_SOURCE_SHA"`, `--source-digest "$VERITY_SOURCE_SHA"`,
 		`--predicate-type "https://slsa.dev/provenance/v1"`,
 	}
 	for _, marker := range markers {
@@ -200,6 +200,9 @@ func validateAttestationStep(name string, step *workflowStep) []Violation {
 	}
 	if strings.Contains(step.Run, "--signer-repo") {
 		violations = append(violations, buildOnceViolation(name, "composite", "mutually exclusive attestation identity selectors are forbidden"))
+	}
+	if strings.Contains(step.Run, "--deny-self-hosted-runners") {
+		violations = append(violations, buildOnceViolation(name, "composite", "RunsOn producer attestations must remain verifiable"))
 	}
 	return violations
 }
