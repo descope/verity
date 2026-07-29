@@ -170,8 +170,10 @@ jobs:
   scan:
     name: "Scan ${{ inputs.image-name }}"
     needs: verity
-    if: ${{ !cancelled() && needs.verity.result == 'success' }}
-    runs-on: ubuntu-24.04
+    if: >-
+      !cancelled() && needs.verity.result == 'success' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=buildkit-x64"
     permissions:
       actions: read
       attestations: read
@@ -197,6 +199,13 @@ jobs:
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
+
+      - name: Activate RunsOn telemetry
+        uses: runs-on/action@4e5f72399b6b17f2e79c511c1b38a315a64d22dc # v2.2.0
+        with:
+          show_env: "false"
+          show_costs: summary
+          metrics: cpu,memory,disk,io,network
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -293,8 +302,10 @@ jobs:
   patch:
     name: "Patch ${{ inputs.image-name }} (${{ matrix.platform }})"
     needs: [scan, verity]
-    if: needs.scan.outputs.needs-patch == 'true'
-    runs-on: ${{ matrix.runner }}
+    if: >-
+      needs.scan.outputs.needs-patch == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=${{ matrix.runner_profile }}"
     permissions:
       actions: read
       attestations: read
@@ -305,9 +316,9 @@ jobs:
       matrix:
         include:
           - platform: linux/amd64
-            runner: ubuntu-24.04
+            runner_profile: buildkit-x64
           - platform: linux/arm64
-            runner: ubuntu-24.04-arm
+            runner_profile: buildkit-arm64
     # Filter to only requested platforms
     # (uses the include list but skips platforms not in inputs.platforms)
 
@@ -316,6 +327,13 @@ jobs:
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
+
+      - name: Activate RunsOn telemetry
+        uses: runs-on/action@4e5f72399b6b17f2e79c511c1b38a315a64d22dc # v2.2.0
+        with:
+          show_env: "false"
+          show_costs: summary
+          metrics: cpu,memory,disk,io,network
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         id: checkout

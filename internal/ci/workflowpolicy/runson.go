@@ -14,6 +14,7 @@ const (
 	runsOnActionReference   = "runs-on/action@4e5f72399b6b17f2e79c511c1b38a315a64d22dc"
 	runsOnCanaryLabel       = "runs-on=${{ github.run_id }}-${{ github.job }}/runner=canary-x64"
 	runsOnTrustedIf         = "github.repository == 'verity-org/verity' && github.ref == 'refs/heads/main'"
+	runsOnTrustedExecution  = "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository"
 	hardenRunnerReference   = "step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920"
 	checkoutReference       = "actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0"
 )
@@ -37,31 +38,12 @@ func runsOnRepositoryRoot(directory string) (string, bool) {
 
 func validateRunsOnRepository(repositoryRoot string, workflows []workflowFile) []Violation {
 	violations := validateRunsOnCatalog(repositoryRoot)
-	violations = append(violations, validateRunsOnExclusivity(workflows)...)
+	violations = append(violations, validateRunsOnRouting(workflows)...)
 	canary, exists := findWorkflow(workflows, runsOnSmokeWorkflowName)
 	if !exists {
 		return append(violations, runsOnViolation("", "required capability canary is missing"))
 	}
 	violations = append(violations, validateRunsOnWorkflow(&canary)...)
-	return violations
-}
-
-func validateRunsOnExclusivity(workflows []workflowFile) []Violation {
-	violations := make([]Violation, 0)
-	for fileIndex := range workflows {
-		file := &workflows[fileIndex]
-		for jobName := range file.Workflow.Jobs {
-			for _, label := range file.Workflow.Jobs[jobName].RunsOn {
-				if strings.HasPrefix(label, "runs-on=") &&
-					(file.Name != runsOnSmokeWorkflowName || jobName != runsOnCanaryJobName) {
-					violations = append(violations, Violation{
-						Rule: RuleRunsOnBoundary, Workflow: file.Name, Job: jobName,
-						Detail: "RunsOn is reserved for the reviewed capability canary",
-					})
-				}
-			}
-		}
-	}
 	return violations
 }
 

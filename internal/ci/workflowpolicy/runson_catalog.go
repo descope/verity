@@ -24,6 +24,23 @@ type runsOnProfile struct {
 	Spot   *bool    `yaml:"spot"`
 }
 
+type expectedRunsOnProfile struct {
+	cpu    int
+	ram    int
+	image  string
+	volume string
+}
+
+var expectedRunsOnProfiles = map[string]expectedRunsOnProfile{
+	"canary-x64":     {cpu: 4, ram: 8, image: "ubuntu24-full-x64", volume: "40gb:gp3"},
+	"ci-large-x64":   {cpu: 16, ram: 32, image: "ubuntu24-full-x64", volume: "100gb:gp3"},
+	"integer-x64":    {cpu: 32, ram: 64, image: "ubuntu24-full-x64", volume: "200gb:gp3"},
+	"integer-arm64":  {cpu: 32, ram: 64, image: "ubuntu24-full-arm64", volume: "200gb:gp3"},
+	"buildkit-x64":   {cpu: 16, ram: 32, image: "ubuntu24-full-x64", volume: "150gb:gp3"},
+	"buildkit-arm64": {cpu: 16, ram: 32, image: "ubuntu24-full-arm64", volume: "150gb:gp3"},
+	"chart-x64":      {cpu: 16, ram: 32, image: "ubuntu24-full-x64", volume: "150gb:gp3"},
+}
+
 func validateRunsOnCatalog(repositoryRoot string) []Violation {
 	path := filepath.Join(repositoryRoot, ".github", "runs-on.yml")
 	info, err := os.Lstat(path)
@@ -41,12 +58,14 @@ func validateRunsOnCatalog(repositoryRoot string) []Violation {
 	if err != nil {
 		return []Violation{runsOnViolation("", "decode .github/runs-on.yml: "+err.Error())}
 	}
-	if len(catalog.Runners) != 1 {
-		return []Violation{runsOnViolation("", "profile catalog must contain only canary-x64 during bootstrap")}
+	if len(catalog.Runners) != len(expectedRunsOnProfiles) {
+		return []Violation{runsOnViolation("", "profile catalog must contain the exact reviewed capacity profiles")}
 	}
-	profile, exists := catalog.Runners[runsOnProfileName]
-	if !exists || !exactRunsOnCanaryProfile(&profile) {
-		return []Violation{runsOnViolation("", "canary-x64 must remain on-demand, cache-free, x64, 4 CPU, 8 GiB, and 40 GiB gp3")}
+	for name, expected := range expectedRunsOnProfiles {
+		profile, exists := catalog.Runners[name]
+		if !exists || !exactRunsOnProfile(&profile, expected) {
+			return []Violation{runsOnViolation("", name+" must match its reviewed on-demand capacity profile")}
+		}
 	}
 	return nil
 }
@@ -67,8 +86,8 @@ func decodeRunsOnCatalog(data []byte) (runsOnCatalog, error) {
 	return catalog, nil
 }
 
-func exactRunsOnCanaryProfile(profile *runsOnProfile) bool {
-	return profile.CPU == 4 && profile.RAM == 8 && profile.Image == "ubuntu24-full-x64" &&
-		profile.Volume == "40gb:gp3" && len(profile.Extras) == 1 && profile.Extras[0] == "otel" &&
+func exactRunsOnProfile(profile *runsOnProfile, expected expectedRunsOnProfile) bool {
+	return profile.CPU == expected.cpu && profile.RAM == expected.ram && profile.Image == expected.image &&
+		profile.Volume == expected.volume && len(profile.Extras) == 1 && profile.Extras[0] == "otel" &&
 		profile.Spot != nil && !*profile.Spot
 }

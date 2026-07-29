@@ -164,8 +164,11 @@ jobs:
   integer-smoke-test:
     name: "Integer smoke batch ${{ matrix.batch_id }} (${{ matrix.arch }})"
     needs: [changes, build-verity, detect-changed-images]
-    if: needs.changes.outputs.integer == 'true' && needs.detect-changed-images.outputs.smoke-has-changes == 'true'
-    runs-on: ${{ matrix.runner }}
+    if: >-
+      needs.changes.outputs.integer == 'true' &&
+      needs.detect-changed-images.outputs.smoke-has-changes == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=integer-${{ matrix.arch }}"
     permissions:
       actions: read
       contents: read
@@ -183,6 +186,13 @@ jobs:
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
+
+      - name: Activate RunsOn telemetry
+        uses: runs-on/action@4e5f72399b6b17f2e79c511c1b38a315a64d22dc # v2.2.0
+        with:
+          show_env: "false"
+          show_costs: summary
+          metrics: cpu,memory,disk,io,network
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -328,8 +338,11 @@ jobs:
   integer-build-changed:
     name: "Integer build batch ${{ matrix.batch_id }} (${{ matrix.arch }})"
     needs: [changes, build-verity, detect-changed-images]
-    if: needs.changes.outputs.integer == 'true' && needs.detect-changed-images.outputs.has-changes == 'true'
-    runs-on: ${{ matrix.runner }}
+    if: >-
+      needs.changes.outputs.integer == 'true' &&
+      needs.detect-changed-images.outputs.has-changes == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=integer-${{ matrix.arch }}"
     permissions:
       actions: read
       contents: read
@@ -347,6 +360,13 @@ jobs:
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
+
+      - name: Activate RunsOn telemetry
+        uses: runs-on/action@4e5f72399b6b17f2e79c511c1b38a315a64d22dc # v2.2.0
+        with:
+          show_env: "false"
+          show_costs: summary
+          metrics: cpu,memory,disk,io,network
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -498,8 +518,11 @@ jobs:
   copa-patching-changed:
     name: "Copa Patch: ${{ matrix.name }}:${{ matrix.tag }}"
     needs: [changes, build-verity, detect-copa-changes]
-    if: needs.changes.outputs.copa == 'true' && needs.detect-copa-changes.outputs.has-changes == 'true'
-    runs-on: ubuntu-24.04
+    if: >-
+      needs.changes.outputs.copa == 'true' &&
+      needs.detect-copa-changes.outputs.has-changes == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=buildkit-x64"
     continue-on-error: true  # Go binary patching is experimental — don't block PR
     permissions:
       actions: read
@@ -514,6 +537,13 @@ jobs:
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
+
+      - name: Activate RunsOn telemetry
+        uses: runs-on/action@4e5f72399b6b17f2e79c511c1b38a315a64d22dc # v2.2.0
+        with:
+          show_env: "false"
+          show_costs: summary
+          metrics: cpu,memory,disk,io,network
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -644,8 +674,10 @@ jobs:
   copa-patching-regression:
     name: "Copa Patch: ${{ matrix.name }}:${{ matrix.tag }}"
     needs: [changes, build-verity]
-    if: needs.changes.outputs.copa == 'true'
-    runs-on: ubuntu-24.04
+    if: >-
+      needs.changes.outputs.copa == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=buildkit-x64"
     permissions:
       actions: read
       contents: read
@@ -666,6 +698,13 @@ jobs:
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
+
+      - name: Activate RunsOn telemetry
+        uses: runs-on/action@4e5f72399b6b17f2e79c511c1b38a315a64d22dc # v2.2.0
+        with:
+          show_env: "false"
+          show_costs: summary
+          metrics: cpu,memory,disk,io,network
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:

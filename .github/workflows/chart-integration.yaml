@@ -195,8 +195,11 @@ jobs:
   chart-test:
     name: ${{ matrix.chart }}
     needs: discover-charts
-    if: ${{ (github.event_name == 'pull_request' || inputs.source_sha == github.sha) && needs.discover-charts.outputs.matrix != '[]' }}
-    runs-on: ubuntu-24.04
+    if: >-
+      (github.event_name == 'pull_request' || inputs.source_sha == github.sha) &&
+      needs.discover-charts.outputs.matrix != '[]' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=chart-x64"
     timeout-minutes: 60
     permissions:
       actions: read
@@ -214,6 +217,13 @@ jobs:
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
+
+      - name: Activate RunsOn telemetry
+        uses: runs-on/action@4e5f72399b6b17f2e79c511c1b38a315a64d22dc # v2.2.0
+        with:
+          show_env: "false"
+          show_costs: summary
+          metrics: cpu,memory,disk,io,network
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
