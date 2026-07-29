@@ -13,6 +13,7 @@ const (
 	runsOnActionName        = "runs-on/action"
 	runsOnActionReference   = "runs-on/action@4e5f72399b6b17f2e79c511c1b38a315a64d22dc"
 	runsOnCanaryLabel       = "runs-on=${{ github.run_id }}-${{ github.job }}/runner=canary-x64"
+	runsOnTrustedIf         = "github.repository == 'verity-org/verity' && github.ref == 'refs/heads/main'"
 	hardenRunnerReference   = "step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920"
 	checkoutReference       = "actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0"
 )
@@ -112,7 +113,8 @@ func validateRunsOnBuildJob(job *workflowJob) []Violation {
 		!buildOnceExactPermissions(job.Permissions, expectedPermissions) ||
 		len(job.With) != 1 || normalizeExpression(job.With["source_sha"]) != "${{github.sha}}" ||
 		job.Secrets.set || len(job.Env) != 0 || len(job.Steps) != 0 || len(job.RunsOn) != 0 ||
-		job.Environment.Kind != 0 || job.Strategy.Present || job.If != "" || job.ContinueOnError.set {
+		job.Environment.Kind != 0 || job.Strategy.Present ||
+		normalizeExpression(job.If) != normalizeExpression(runsOnTrustedIf) || job.ContinueOnError.set {
 		return []Violation{runsOnViolation("build-verity", "producer must remain the exact unprivileged current-run Verity build")}
 	}
 	return nil
@@ -130,7 +132,8 @@ func validateRunsOnCanaryJob(job *workflowJob) []Violation {
 	if len(job.Needs) != 1 || job.Needs[0] != "build-verity" ||
 		!buildOnceExactPermissions(job.Permissions, expectedPermissions) || job.Secrets.set ||
 		len(job.Env) != 0 || job.Uses != "" || job.Container.Image != "" || len(job.Services) != 0 ||
-		job.Environment.Kind != 0 || job.Strategy.Present || job.If != "" || job.ContinueOnError.set {
+		job.Environment.Kind != 0 || job.Strategy.Present ||
+		normalizeExpression(job.If) != normalizeExpression(runsOnTrustedIf) || job.ContinueOnError.set {
 		violations = append(violations, runsOnViolation(runsOnCanaryJobName, "job must remain secret-free and actions/contents read-only"))
 	}
 	violations = append(violations, validateRunsOnSteps(job.Steps)...)

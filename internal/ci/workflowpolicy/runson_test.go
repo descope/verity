@@ -266,6 +266,25 @@ func TestValidateRunsOnRepository_rejectsBootstrapStepEnvironment(t *testing.T) 
 	}
 }
 
+func TestValidateRunsOnRepository_rejectsUntrustedDispatchGuard(t *testing.T) {
+	for _, jobName := range []string{"build-verity", runsOnCanaryJobName} {
+		t.Run(jobName, func(t *testing.T) {
+			repositoryRoot := filepath.Join("..", "..", "..")
+			workflows, err := loadWorkflows(filepath.Join(repositoryRoot, ".github", "workflows"))
+			require.NoError(t, err)
+			canary := mustWorkflow(t, workflows, runsOnSmokeWorkflowName)
+			job := canary.Workflow.Jobs[jobName]
+			job.If = "github.repository == 'attacker/fork'"
+			canary.Workflow.Jobs[jobName] = job
+
+			violations := validateRunsOnRepository(repositoryRoot, replaceWorkflow(workflows, &canary))
+
+			require.NotEmpty(t, violations)
+			assert.Contains(t, violationRules(violations), RuleRunsOnBoundary)
+		})
+	}
+}
+
 func copyRunsOnConfig(t *testing.T) string {
 	t.Helper()
 	repositoryRoot := t.TempDir()

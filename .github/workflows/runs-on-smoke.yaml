@@ -17,6 +17,7 @@ permissions: {}
 jobs:
   build-verity:
     name: Build Verity once
+    if: github.repository == 'verity-org/verity' && github.ref == 'refs/heads/main'
     permissions:
       contents: read
     uses: ./.github/workflows/build-verity.yaml
@@ -25,6 +26,7 @@ jobs:
 
   canary:
     name: Verify RunsOn x64 capability
+    if: github.repository == 'verity-org/verity' && github.ref == 'refs/heads/main'
     needs: build-verity
     runs-on: "runs-on=${{ github.run_id }}-${{ github.job }}/runner=canary-x64"
     timeout-minutes: 20
