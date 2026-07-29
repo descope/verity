@@ -25,7 +25,7 @@ var writePermissionMarkers = map[permissionScope][]string{
 	contentsScope:     {"git push", "gh release", "create-pull-request", "patch-image.yaml", "push-reports.sh", "metrics-finalize.yaml"},
 	actionsScope:      {"gh workflow run", "gh run cancel"},
 	attestationsScope: {"actions/attest-build-provenance@", "actions/attest@", "gh attestation", "patch-image.yaml"},
-	securityScope:     {"github/codeql-action/upload-sarif@"},
+	securityScope:     {"github/codeql-action/analyze@", "github/codeql-action/upload-sarif@"},
 	pullRequestsScope: {"gh pr ", "create-pull-request"},
 	issuesScope:       {"gh issue "},
 }

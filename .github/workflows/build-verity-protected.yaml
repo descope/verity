@@ -21,7 +21,7 @@ permissions: {}
 jobs:
   build:
     if: ${{ github.repository == 'verity-org/verity' && github.ref == 'refs/heads/main' && github.ref_protected == true }}
-    runs-on: ubuntu-24.04
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i+m8i/cpu=16/ram=32/image=ubuntu24-full-x64/volume=100gb:gp3/extras=otel/spot=false"
     permissions:
       contents: read
     outputs:
@@ -30,6 +30,18 @@ jobs:
       source-sha: ${{ steps.build.outputs.source-sha }}
       build-key: ${{ steps.build.outputs.build-key }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Activate RunsOn telemetry
+        uses: runs-on/action@4e5f72399b6b17f2e79c511c1b38a315a64d22dc # v2.2.0
+        with:
+          show_env: "false"
+          show_costs: summary
+          metrics: cpu,memory,disk,io,network
+
       - name: Check out exact protected source
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -69,7 +81,7 @@ jobs:
 
   attest:
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read

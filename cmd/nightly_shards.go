@@ -7,10 +7,9 @@ import (
 	"io"
 	"os"
 
+	"github.com/verity-org/verity/internal/ci"
 	intdiscovery "github.com/verity-org/verity/internal/integer/discovery"
 )
-
-const integerMatrixShardSize = 250
 
 type integerMatrixShard struct {
 	Shard   int    `json:"shard"`
@@ -19,9 +18,9 @@ type integerMatrixShard struct {
 }
 
 func shardIntegerImages(images []intdiscovery.DiscoveredImage) ([]integerMatrixShard, error) {
-	shards := make([]integerMatrixShard, 0, (len(images)+integerMatrixShardSize-1)/integerMatrixShardSize)
-	for start := 0; start < len(images); start += integerMatrixShardSize {
-		end := min(start+integerMatrixShardSize, len(images))
+	shards := make([]integerMatrixShard, 0, (len(images)+ci.IntegerMatrixShardSize-1)/ci.IntegerMatrixShardSize)
+	for start := 0; start < len(images); start += ci.IntegerMatrixShardSize {
+		end := min(start+ci.IntegerMatrixShardSize, len(images))
 		entries, err := json.Marshal(images[start:end])
 		if err != nil {
 			return nil, fmt.Errorf("marshalling Integer matrix shard %d: %w", len(shards)+1, err)

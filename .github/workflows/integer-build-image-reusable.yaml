@@ -80,7 +80,7 @@ permissions:
 jobs:
   validate-coordinates:
     name: "Validate ${{ inputs.image }}:${{ inputs.version }}-${{ inputs.type }} coordinates"
-    runs-on: ubuntu-latest
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       contents: read
     steps:
@@ -123,7 +123,7 @@ jobs:
     name: "Prepare ${{ inputs.image }}:${{ inputs.version }}-${{ inputs.type }} recipe"
     needs: validate-coordinates
     if: needs.validate-coordinates.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -185,7 +185,9 @@ jobs:
   melange-build:
     name: "Build ${{ inputs.image }}:${{ inputs.version }}-${{ inputs.type }} APKs (${{ matrix.arch }})"
     needs: [melange-prep]
-    if: needs.melange-prep.outputs.needed == 'true'
+    if: >-
+      needs.melange-prep.outputs.needed == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     permissions:
       actions: read
       contents: read
@@ -194,15 +196,22 @@ jobs:
       matrix:
         include:
           - arch: x86_64
-            runner: ubuntu-latest
+            runner_profile: integer-amd64
           - arch: aarch64
-            runner: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runner }}
+            runner_profile: integer-arm64
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=${{ matrix.arch == 'x86_64' && 'c8i+m8i' || 'c8g+m8g' }}/cpu=32/ram=64/image=ubuntu24-full-${{ matrix.arch == 'x86_64' && 'x64' || 'arm64' }}/volume=200gb:gp3/extras=otel/spot=false"
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
+
+      - name: Activate RunsOn telemetry
+        uses: runs-on/action@4e5f72399b6b17f2e79c511c1b38a315a64d22dc # v2.2.0
+        with:
+          show_env: "false"
+          show_costs: summary
+          metrics: cpu,memory,disk,io,network
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -269,8 +278,9 @@ jobs:
     if: >-
       always() &&
       needs.melange-prep.result == 'success' &&
-      (needs.melange-build.result == 'success' || needs.melange-build.result == 'skipped')
-    runs-on: ubuntu-latest
+      (needs.melange-build.result == 'success' || needs.melange-build.result == 'skipped') &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i+m8i/cpu=32/ram=64/image=ubuntu24-full-x64/volume=200gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -285,6 +295,13 @@ jobs:
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
+
+      - name: Activate RunsOn telemetry
+        uses: runs-on/action@4e5f72399b6b17f2e79c511c1b38a315a64d22dc # v2.2.0
+        with:
+          show_env: "false"
+          show_costs: summary
+          metrics: cpu,memory,disk,io,network
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:

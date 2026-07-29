@@ -11,7 +11,12 @@ import (
 	"github.com/verity-org/verity/internal/ci"
 )
 
-const prIntegerBatchSize = 16
+const (
+	prIntegerBatchSize         = 16
+	prIntegerArchitectureCount = 2
+	prIntegerMaxMatrixJobs     = 256
+	prIntegerMaxEntries        = prIntegerBatchSize * prIntegerMaxMatrixJobs / prIntegerArchitectureCount
+)
 
 type prIntegerEntry struct {
 	Image   string `json:"image"`
@@ -28,7 +33,6 @@ type prIntegerBatch struct {
 	Entries             []prIntegerEntry `json:"entries"`
 	Architecture        string           `json:"arch"`
 	PackageArchitecture string           `json:"package_arch"`
-	Runner              string           `json:"runner"`
 }
 
 type prIntegerBatchMatrix struct {
@@ -36,6 +40,14 @@ type prIntegerBatchMatrix struct {
 }
 
 func newPRIntegerBatchMatrix(matrix ci.Matrix) (prIntegerBatchMatrix, error) {
+	if len(matrix.Include) > prIntegerMaxEntries {
+		return prIntegerBatchMatrix{}, fmt.Errorf(
+			"%w: %d Integer entries exceed the %d-job matrix limit",
+			errPRCommandFailed,
+			len(matrix.Include),
+			prIntegerMaxMatrixJobs,
+		)
+	}
 	entries := make([]prIntegerEntry, 0, len(matrix.Include))
 	for index, raw := range matrix.Include {
 		entry := prIntegerEntry{
@@ -57,11 +69,11 @@ func newPRIntegerBatchMatrix(matrix ci.Matrix) (prIntegerBatchMatrix, error) {
 			result.Include,
 			prIntegerBatch{
 				BatchID: batchID, Entries: batchEntries, Architecture: "amd64",
-				PackageArchitecture: "x86_64", Runner: "ubuntu-latest",
+				PackageArchitecture: "x86_64",
 			},
 			prIntegerBatch{
 				BatchID: batchID, Entries: batchEntries, Architecture: "arm64",
-				PackageArchitecture: "aarch64", Runner: "ubuntu-24.04-arm",
+				PackageArchitecture: "aarch64",
 			},
 		)
 	}

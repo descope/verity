@@ -19,7 +19,8 @@ jobs:
   changes:
     name: Detect PR test scope
     needs: build-verity
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -55,6 +56,7 @@ jobs:
 
   build-verity:
     name: Build Verity once
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     permissions:
       contents: read
     uses: ./.github/workflows/build-verity.yaml
@@ -65,8 +67,10 @@ jobs:
   discover:
     name: Discover Images
     needs: [changes, build-verity]
-    if: needs.changes.outputs.copa == 'true'
-    runs-on: ubuntu-24.04
+    if: >-
+      needs.changes.outputs.copa == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -117,8 +121,10 @@ jobs:
   validate:
     name: Validate image configs
     needs: [changes, build-verity]
-    if: needs.changes.outputs.integer == 'true'
-    runs-on: ubuntu-latest
+    if: >-
+      needs.changes.outputs.integer == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -164,8 +170,11 @@ jobs:
   integer-smoke-test:
     name: "Integer smoke batch ${{ matrix.batch_id }} (${{ matrix.arch }})"
     needs: [changes, build-verity, detect-changed-images]
-    if: needs.changes.outputs.integer == 'true' && needs.detect-changed-images.outputs.smoke-has-changes == 'true'
-    runs-on: ${{ matrix.runner }}
+    if: >-
+      needs.changes.outputs.integer == 'true' &&
+      needs.detect-changed-images.outputs.smoke-has-changes == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=${{ matrix.arch == 'amd64' && 'c8i+m8i' || 'c8g+m8g' }}/cpu=32/ram=64/image=ubuntu24-full-${{ matrix.arch == 'amd64' && 'x64' || 'arm64' }}/volume=200gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -183,6 +192,13 @@ jobs:
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
+
+      - name: Activate RunsOn telemetry
+        uses: runs-on/action@4e5f72399b6b17f2e79c511c1b38a315a64d22dc # v2.2.0
+        with:
+          show_env: "false"
+          show_costs: summary
+          metrics: cpu,memory,disk,io,network
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -264,8 +280,10 @@ jobs:
   detect-changed-images:
     name: Detect changed images
     needs: [changes, build-verity]
-    if: needs.changes.outputs.integer == 'true'
-    runs-on: ubuntu-latest
+    if: >-
+      needs.changes.outputs.integer == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -328,8 +346,11 @@ jobs:
   integer-build-changed:
     name: "Integer build batch ${{ matrix.batch_id }} (${{ matrix.arch }})"
     needs: [changes, build-verity, detect-changed-images]
-    if: needs.changes.outputs.integer == 'true' && needs.detect-changed-images.outputs.has-changes == 'true'
-    runs-on: ${{ matrix.runner }}
+    if: >-
+      needs.changes.outputs.integer == 'true' &&
+      needs.detect-changed-images.outputs.has-changes == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=${{ matrix.arch == 'amd64' && 'c8i+m8i' || 'c8g+m8g' }}/cpu=32/ram=64/image=ubuntu24-full-${{ matrix.arch == 'amd64' && 'x64' || 'arm64' }}/volume=200gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -347,6 +368,13 @@ jobs:
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
+
+      - name: Activate RunsOn telemetry
+        uses: runs-on/action@4e5f72399b6b17f2e79c511c1b38a315a64d22dc # v2.2.0
+        with:
+          show_env: "false"
+          show_costs: summary
+          metrics: cpu,memory,disk,io,network
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -428,8 +456,10 @@ jobs:
   detect-copa-changes:
     name: Detect changed images
     needs: [changes, build-verity]
-    if: needs.changes.outputs.copa == 'true'
-    runs-on: ubuntu-24.04
+    if: >-
+      needs.changes.outputs.copa == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -498,8 +528,11 @@ jobs:
   copa-patching-changed:
     name: "Copa Patch: ${{ matrix.name }}:${{ matrix.tag }}"
     needs: [changes, build-verity, detect-copa-changes]
-    if: needs.changes.outputs.copa == 'true' && needs.detect-copa-changes.outputs.has-changes == 'true'
-    runs-on: ubuntu-24.04
+    if: >-
+      needs.changes.outputs.copa == 'true' &&
+      needs.detect-copa-changes.outputs.has-changes == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i+m8i/cpu=16/ram=32/image=ubuntu24-full-x64/volume=150gb:gp3/extras=otel/spot=false"
     continue-on-error: true  # Go binary patching is experimental — don't block PR
     permissions:
       actions: read
@@ -514,6 +547,13 @@ jobs:
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
+
+      - name: Activate RunsOn telemetry
+        uses: runs-on/action@4e5f72399b6b17f2e79c511c1b38a315a64d22dc # v2.2.0
+        with:
+          show_env: "false"
+          show_costs: summary
+          metrics: cpu,memory,disk,io,network
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -644,8 +684,10 @@ jobs:
   copa-patching-regression:
     name: "Copa Patch: ${{ matrix.name }}:${{ matrix.tag }}"
     needs: [changes, build-verity]
-    if: needs.changes.outputs.copa == 'true'
-    runs-on: ubuntu-24.04
+    if: >-
+      needs.changes.outputs.copa == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i+m8i/cpu=16/ram=32/image=ubuntu24-full-x64/volume=150gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -666,6 +708,13 @@ jobs:
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
+
+      - name: Activate RunsOn telemetry
+        uses: runs-on/action@4e5f72399b6b17f2e79c511c1b38a315a64d22dc # v2.2.0
+        with:
+          show_env: "false"
+          show_costs: summary
+          metrics: cpu,memory,disk,io,network
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -803,8 +852,10 @@ jobs:
       - detect-copa-changes
       - copa-patching-changed
       - copa-patching-regression
-    if: always()
-    runs-on: ubuntu-latest
+    if: >-
+      always() &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read

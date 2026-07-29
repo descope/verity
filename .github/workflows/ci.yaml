@@ -19,6 +19,7 @@ permissions: {}
 jobs:
   build-verity:
     name: Build Verity once
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     permissions:
       contents: read
     uses: ./.github/workflows/build-verity.yaml
@@ -28,7 +29,8 @@ jobs:
   changes:
     name: Detect CI scope
     needs: build-verity
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -67,8 +69,10 @@ jobs:
   test:
     name: Unit Tests
     needs: [changes, build-verity]
-    if: github.event_name != 'pull_request' || needs.changes.outputs.tests == 'true'
-    runs-on: ubuntu-latest
+    if: >-
+      (github.event_name != 'pull_request' || needs.changes.outputs.tests == 'true') &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i+m8i/cpu=16/ram=32/image=ubuntu24-full-x64/volume=100gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -77,6 +81,13 @@ jobs:
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
+
+      - name: Activate RunsOn telemetry
+        uses: runs-on/action@4e5f72399b6b17f2e79c511c1b38a315a64d22dc # v2.2.0
+        with:
+          show_env: "false"
+          show_costs: summary
+          metrics: cpu,memory,disk,io,network
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -117,8 +128,10 @@ jobs:
   go-lint:
     name: Go Lint
     needs: [changes, build-verity]
-    if: github.event_name != 'pull_request' || needs.changes.outputs.go == 'true'
-    runs-on: ubuntu-latest
+    if: >-
+      (github.event_name != 'pull_request' || needs.changes.outputs.go == 'true') &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -158,8 +171,10 @@ jobs:
   static-lint:
     name: Static Analysis
     needs: [changes, build-verity]
-    if: github.event_name != 'pull_request' || needs.changes.outputs.static == 'true'
-    runs-on: ubuntu-latest
+    if: >-
+      (github.event_name != 'pull_request' || needs.changes.outputs.static == 'true') &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -208,8 +223,10 @@ jobs:
   node-lint:
     name: Node Lint
     needs: changes
-    if: github.event_name != 'pull_request' || needs.changes.outputs.node == 'true'
-    runs-on: ubuntu-latest
+    if: >-
+      (github.event_name != 'pull_request' || needs.changes.outputs.node == 'true') &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       contents: read
     steps:

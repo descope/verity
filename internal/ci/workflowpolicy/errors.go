@@ -43,6 +43,7 @@ const (
 	RuleProtectedDispatch  Rule = "protected-dispatch"
 	RulePrivateKeyArtifact Rule = "private-key-artifact"
 	RuleSignerProvenance   Rule = "signer-provenance"
+	RuleRunsOnBoundary     Rule = "runs-on-boundary"
 )
 
 type Violation struct {

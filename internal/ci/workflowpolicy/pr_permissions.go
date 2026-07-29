@@ -8,7 +8,9 @@ type prWriteGrant struct {
 	scope    permissionScope
 }
 
-var authorizedPRWriteGrants = map[prWriteGrant]struct{}{}
+var authorizedPRWriteGrants = map[prWriteGrant]struct{}{
+	{workflow: "codeql.yaml", job: "analyze", scope: securityScope}: {},
+}
 
 func validatePRWrites(file *workflowFile) []Violation {
 	if !file.Workflow.On.PullRequest && !file.Workflow.On.PullRequestTarget {

@@ -162,13 +162,21 @@ func expectedIntegrationResultGate(workflowName string, needs []string) string {
 func expectedIntegrationConsumerGate(file *workflowFile, consumer *workflowJob) string {
 	sourceGate := "inputs.source_sha == github.sha"
 	if !file.Workflow.On.PullRequest {
-		return sourceGate
+		return appendRunsOnTrustGate(sourceGate, consumer)
 	}
 	pullRequestGate := "github.event_name == 'pull_request' || " + sourceGate
 	if len(consumer.Needs) == 0 {
-		return pullRequestGate
+		return appendRunsOnTrustGate(pullRequestGate, consumer)
 	}
-	return fmt.Sprintf("(%s) && needs.%s.outputs.matrix != '[]'", pullRequestGate, consumer.Needs[0])
+	gate := fmt.Sprintf("(%s) && needs.%s.outputs.matrix != '[]'", pullRequestGate, consumer.Needs[0])
+	return appendRunsOnTrustGate(gate, consumer)
+}
+
+func appendRunsOnTrustGate(gate string, job *workflowJob) string {
+	if len(job.RunsOn) != 1 || !strings.HasPrefix(job.RunsOn[0], "runs-on=") {
+		return gate
+	}
+	return fmt.Sprintf("(%s) && (%s)", gate, runsOnTrustedExecution)
 }
 
 func integrationOutputJob(file *workflowFile) (string, workflowJob, bool) {

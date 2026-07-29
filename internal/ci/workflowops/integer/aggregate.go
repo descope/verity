@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 	"strings"
-)
 
-const shardSize = 250
+	"github.com/verity-org/verity/internal/ci"
+)
 
 func (aggregator Aggregator) Aggregate(ctx context.Context, options *Options) (Result, error) {
 	if err := validateOptions(options); err != nil {
@@ -20,7 +20,7 @@ func (aggregator Aggregator) Aggregate(ctx context.Context, options *Options) (R
 	failures := aggregateFailures(input, options)
 	result := Result{
 		ExpectedCount: len(input.plan),
-		ShardCount:    (len(input.plan) + shardSize - 1) / shardSize,
+		ShardCount:    (len(input.plan) + ci.IntegerMatrixShardSize - 1) / ci.IntegerMatrixShardSize,
 		Failures:      failures,
 	}
 	if len(input.plan) == 0 && len(failures) == 0 {

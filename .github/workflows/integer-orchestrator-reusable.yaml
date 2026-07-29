@@ -58,7 +58,7 @@ concurrency:
 jobs:
   validate-coordinates:
     name: Validate reusable-call coordinates
-    runs-on: ubuntu-latest
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       contents: read
     steps:
@@ -100,7 +100,7 @@ jobs:
     name: Plan exact Integer batch
     needs: validate-coordinates
     if: needs.validate-coordinates.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read
@@ -242,6 +242,7 @@ jobs:
     if: needs.plan.outputs.count != '0'
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix:
         include: ${{ fromJSON(needs.plan.outputs.shards) }}
     uses: ./.github/workflows/integer-build-shard.yaml
@@ -275,7 +276,7 @@ jobs:
       always() && needs.plan.result == 'success' &&
       (needs.build-shards.result == 'success' ||
       (needs.plan.outputs.count == '0' && needs.build-shards.result == 'skipped'))
-    runs-on: ubuntu-latest
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=c8i/cpu=4/ram=8/image=ubuntu24-full-x64/volume=40gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       contents: read

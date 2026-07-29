@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/verity-org/verity/internal/ci"
 	intdiscovery "github.com/verity-org/verity/internal/integer/discovery"
 )
 
@@ -25,8 +26,8 @@ func TestShardIntegerImages_preserves673EntriesInStableBoundedOrder(t *testing.T
 
 	// Then
 	require.Equal(t, first, second)
-	require.Len(t, first, 3)
-	assert.Equal(t, []int{250, 250, 173}, []int{first[0].Count, first[1].Count, first[2].Count})
+	require.Len(t, first, 11)
+	assert.Equal(t, []int{64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 33}, shardCounts(first))
 
 	flattened := flattenIntegerShards(t, first)
 	require.Equal(t, images, flattened)
@@ -41,7 +42,7 @@ func TestShardIntegerImages_preserves673EntriesInStableBoundedOrder(t *testing.T
 }
 
 func TestShardIntegerImages_preservesExistingSmallerMatrices(t *testing.T) {
-	for _, count := range []int{0, 1, 249, 250} {
+	for _, count := range []int{0, 1, 63, 64} {
 		t.Run(fmt.Sprintf("count_%d", count), func(t *testing.T) {
 			// Given
 			images := syntheticIntegerImages(count)
@@ -81,7 +82,7 @@ func TestShardIntegerImages_keepsWorkflowDispatchImageFilterScoped(t *testing.T)
 func TestAppendGitHubShardOutputTo_writesBoundedShardMatrix(t *testing.T) {
 	// Given
 	writer := &closeBuffer{}
-	shards, err := shardIntegerImages(syntheticIntegerImages(251))
+	shards, err := shardIntegerImages(syntheticIntegerImages(65))
 	require.NoError(t, err)
 	data, err := json.Marshal(shards)
 	require.NoError(t, err)
@@ -92,8 +93,16 @@ func TestAppendGitHubShardOutputTo_writesBoundedShardMatrix(t *testing.T) {
 	// Then
 	require.NoError(t, err)
 	assert.True(t, bytes.HasPrefix(writer.Bytes(), []byte("shard_count=2\nshards<<__VERITY_INTEGER_SHARDS__\n")))
-	assert.Contains(t, writer.String(), `"count":250`)
+	assert.Contains(t, writer.String(), `"count":64`)
 	assert.Contains(t, writer.String(), `"count":1`)
+}
+
+func shardCounts(shards []integerMatrixShard) []int {
+	counts := make([]int, 0, len(shards))
+	for _, shard := range shards {
+		counts = append(counts, shard.Count)
+	}
+	return counts
 }
 
 func syntheticIntegerImages(count int) []intdiscovery.DiscoveredImage {
@@ -118,7 +127,7 @@ func flattenIntegerShards(t *testing.T, shards []integerMatrixShard) []intdiscov
 	}
 	flattened := make([]intdiscovery.DiscoveredImage, 0, capacity)
 	for _, shard := range shards {
-		assert.LessOrEqual(t, shard.Count, integerMatrixShardSize)
+		assert.LessOrEqual(t, shard.Count, ci.IntegerMatrixShardSize)
 		var entries []intdiscovery.DiscoveredImage
 		require.NoError(t, json.Unmarshal([]byte(shard.Entries), &entries))
 		require.Len(t, entries, shard.Count)

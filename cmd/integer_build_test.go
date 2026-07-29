@@ -629,7 +629,7 @@ func intFakeTrivy(t *testing.T, exitCode int) {
 	t.Helper()
 	tmpDir := t.TempDir()
 	script := filepath.Join(tmpDir, "trivy")
-	content := "#!/bin/sh\nexit " + string(rune('0'+exitCode)) + "\n"
+	content := "#!/bin/sh\nif [ \"$2\" = \"--download-db-only\" ]; then exit 0; fi\nexit " + string(rune('0'+exitCode)) + "\n"
 	require.NoError(t, os.WriteFile(script, []byte(content), 0o755))
 	t.Setenv("PATH", tmpDir+":"+os.Getenv("PATH"))
 }

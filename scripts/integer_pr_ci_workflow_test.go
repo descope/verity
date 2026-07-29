@@ -19,7 +19,8 @@ func TestPRWorkflowIntegerJobsRetainSecurityCoverageAndCacheTrivyDatabase(t *tes
 	parsed := loadPRWorkflow(t)
 
 	// Then: both matrices still execute on their native architecture runners.
-	assert.Equal(t, 2, strings.Count(workflow, `runs-on: ${{ matrix.runner }}`))
+	assert.Equal(t, 2, strings.Count(workflow, `family=${{ matrix.arch == 'amd64' && 'c8i+m8i' || 'c8g+m8g' }}/cpu=32/ram=64/image=ubuntu24-full-${{ matrix.arch == 'amd64' && 'x64' || 'arm64' }}/volume=200gb:gp3`))
+	assert.NotContains(t, workflow, `runs-on: ${{ matrix.runner }}`)
 	assert.Contains(t, workflow, "needs.detect-changed-images.outputs.smoke-has-changes == 'true'")
 
 	for _, test := range []struct {

@@ -54,11 +54,32 @@ func TestNewPRIntegerBatchMatrix_preserves_both_native_architectures(t *testing.
 	require.Equal(t, 0, matrix.Include[0].BatchID)
 	require.Equal(t, "amd64", matrix.Include[0].Architecture)
 	require.Equal(t, "x86_64", matrix.Include[0].PackageArchitecture)
-	require.Equal(t, "ubuntu-latest", matrix.Include[0].Runner)
 	require.Len(t, matrix.Include[0].Entries, 16)
 	require.Equal(t, "arm64", matrix.Include[1].Architecture)
 	require.Equal(t, "aarch64", matrix.Include[1].PackageArchitecture)
-	require.Equal(t, "ubuntu-24.04-arm", matrix.Include[1].Runner)
 	require.Equal(t, 1, matrix.Include[2].BatchID)
 	require.Len(t, matrix.Include[2].Entries, 1)
+}
+
+func TestNewPRIntegerBatchMatrix_rejects_more_than_GitHub_matrix_limit(t *testing.T) {
+	include := make([]map[string]string, 2049)
+	for index := range include {
+		include[index] = map[string]string{"image": "image", "version": "version", "type": "default"}
+	}
+
+	_, err := newPRIntegerBatchMatrix(ci.Matrix{Include: include})
+
+	require.ErrorContains(t, err, "256-job matrix limit")
+}
+
+func TestNewPRIntegerBatchMatrix_accepts_exact_GitHub_matrix_limit(t *testing.T) {
+	include := make([]map[string]string, 2048)
+	for index := range include {
+		include[index] = map[string]string{"image": "image", "version": "version", "type": "default"}
+	}
+
+	matrix, err := newPRIntegerBatchMatrix(ci.Matrix{Include: include})
+
+	require.NoError(t, err)
+	require.Len(t, matrix.Include, 256)
 }

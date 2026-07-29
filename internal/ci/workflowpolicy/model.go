@@ -15,22 +15,37 @@ type workflow struct {
 }
 
 type workflowJob struct {
-	Permissions permissions              `yaml:"permissions"`
-	Needs       stringList               `yaml:"needs"`
-	If          string                   `yaml:"if"`
-	Uses        string                   `yaml:"uses"`
-	With        scalarMap                `yaml:"with"`
-	Outputs     scalarMap                `yaml:"outputs"`
-	Env         scalarMap                `yaml:"env"`
-	Secrets     reusableJobSecrets       `yaml:"secrets"`
-	Container   containerSpec            `yaml:"container"`
-	Services    map[string]containerSpec `yaml:"services"`
-	Strategy    workflowStrategy         `yaml:"strategy"`
-	Steps       []workflowStep           `yaml:"steps"`
+	Permissions     permissions              `yaml:"permissions"`
+	Needs           stringList               `yaml:"needs"`
+	RunsOn          stringList               `yaml:"runs-on"`
+	If              string                   `yaml:"if"`
+	ContinueOnError scalarValue              `yaml:"continue-on-error"`
+	Environment     yaml.Node                `yaml:"environment"`
+	Uses            string                   `yaml:"uses"`
+	With            scalarMap                `yaml:"with"`
+	Outputs         scalarMap                `yaml:"outputs"`
+	Env             scalarMap                `yaml:"env"`
+	Secrets         reusableJobSecrets       `yaml:"secrets"`
+	Container       containerSpec            `yaml:"container"`
+	Services        map[string]containerSpec `yaml:"services"`
+	Strategy        workflowStrategy         `yaml:"strategy"`
+	Steps           []workflowStep           `yaml:"steps"`
 }
 
 type workflowStrategy struct {
-	Matrix yaml.Node `yaml:"matrix"`
+	Present bool      `yaml:"-"`
+	Matrix  yaml.Node `yaml:"matrix"`
+}
+
+func (strategy *workflowStrategy) UnmarshalYAML(node *yaml.Node) error {
+	type rawStrategy workflowStrategy
+	var raw rawStrategy
+	if err := node.Decode(&raw); err != nil {
+		return fmt.Errorf("decode workflow strategy: %w", err)
+	}
+	*strategy = workflowStrategy(raw)
+	strategy.Present = true
+	return nil
 }
 
 type workflowStep struct {
