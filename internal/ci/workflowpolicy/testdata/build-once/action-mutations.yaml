@@ -38,6 +38,10 @@
   old: "--predicate-type \"https://slsa.dev/provenance/v1\""
   replacement: "--predicate-type \"https://example.test/weak\""
   want: signer workflow
+- name: reject GitHub-hosted-only attestation policy
+  old: "--predicate-type \"https://slsa.dev/provenance/v1\""
+  replacement: "--predicate-type \"https://slsa.dev/provenance/v1\"\n        --deny-self-hosted-runners"
+  want: RunsOn producer attestations
 - name: mutable download path
   old: "path: ${{ runner.temp }}/setup-verity/${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/download"
   replacement: "path: ${{ inputs.artifact-name }}"
