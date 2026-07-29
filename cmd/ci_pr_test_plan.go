@@ -11,7 +11,12 @@ import (
 	"github.com/verity-org/verity/internal/ci"
 )
 
-const prIntegerBatchSize = 16
+const (
+	prIntegerBatchSize         = 16
+	prIntegerArchitectureCount = 2
+	prIntegerMaxMatrixJobs     = 256
+	prIntegerMaxEntries        = prIntegerBatchSize * prIntegerMaxMatrixJobs / prIntegerArchitectureCount
+)
 
 type prIntegerEntry struct {
 	Image   string `json:"image"`
@@ -35,6 +40,14 @@ type prIntegerBatchMatrix struct {
 }
 
 func newPRIntegerBatchMatrix(matrix ci.Matrix) (prIntegerBatchMatrix, error) {
+	if len(matrix.Include) > prIntegerMaxEntries {
+		return prIntegerBatchMatrix{}, fmt.Errorf(
+			"%w: %d Integer entries exceed the %d-job matrix limit",
+			errPRCommandFailed,
+			len(matrix.Include),
+			prIntegerMaxMatrixJobs,
+		)
+	}
 	entries := make([]prIntegerEntry, 0, len(matrix.Include))
 	for index, raw := range matrix.Include {
 		entry := prIntegerEntry{

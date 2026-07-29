@@ -60,3 +60,26 @@ func TestNewPRIntegerBatchMatrix_preserves_both_native_architectures(t *testing.
 	require.Equal(t, 1, matrix.Include[2].BatchID)
 	require.Len(t, matrix.Include[2].Entries, 1)
 }
+
+func TestNewPRIntegerBatchMatrix_rejects_more_than_GitHub_matrix_limit(t *testing.T) {
+	include := make([]map[string]string, 2049)
+	for index := range include {
+		include[index] = map[string]string{"image": "image", "version": "version", "type": "default"}
+	}
+
+	_, err := newPRIntegerBatchMatrix(ci.Matrix{Include: include})
+
+	require.ErrorContains(t, err, "256-job matrix limit")
+}
+
+func TestNewPRIntegerBatchMatrix_accepts_exact_GitHub_matrix_limit(t *testing.T) {
+	include := make([]map[string]string, 2048)
+	for index := range include {
+		include[index] = map[string]string{"image": "image", "version": "version", "type": "default"}
+	}
+
+	matrix, err := newPRIntegerBatchMatrix(ci.Matrix{Include: include})
+
+	require.NoError(t, err)
+	require.Len(t, matrix.Include, 256)
+}
