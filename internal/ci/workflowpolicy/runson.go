@@ -112,7 +112,7 @@ func validateRunsOnBuildJob(job *workflowJob) []Violation {
 		!buildOnceExactPermissions(job.Permissions, expectedPermissions) ||
 		len(job.With) != 1 || normalizeExpression(job.With["source_sha"]) != "${{github.sha}}" ||
 		job.Secrets.set || len(job.Env) != 0 || len(job.Steps) != 0 || len(job.RunsOn) != 0 ||
-		job.If != "" || job.ContinueOnError.set {
+		job.Environment.Kind != 0 || job.Strategy.Present || job.If != "" || job.ContinueOnError.set {
 		return []Violation{runsOnViolation("build-verity", "producer must remain the exact unprivileged current-run Verity build")}
 	}
 	return nil
@@ -130,7 +130,7 @@ func validateRunsOnCanaryJob(job *workflowJob) []Violation {
 	if len(job.Needs) != 1 || job.Needs[0] != "build-verity" ||
 		!buildOnceExactPermissions(job.Permissions, expectedPermissions) || job.Secrets.set ||
 		len(job.Env) != 0 || job.Uses != "" || job.Container.Image != "" || len(job.Services) != 0 ||
-		job.If != "" || job.ContinueOnError.set {
+		job.Environment.Kind != 0 || job.Strategy.Present || job.If != "" || job.ContinueOnError.set {
 		violations = append(violations, runsOnViolation(runsOnCanaryJobName, "job must remain secret-free and actions/contents read-only"))
 	}
 	violations = append(violations, validateRunsOnSteps(job.Steps)...)
@@ -164,17 +164,18 @@ func validateRunsOnSteps(steps []workflowStep) []Violation {
 
 func exactRunsOnHardenStep(step *workflowStep) bool {
 	return step.Uses == hardenRunnerReference && len(step.With) == 1 && step.With["egress-policy"] == "audit" &&
-		!step.ContinueOnError.set && step.If == ""
+		len(step.Env) == 0 && !step.ContinueOnError.set && step.If == ""
 }
 
 func exactRunsOnCheckoutStep(step *workflowStep) bool {
 	return step.Uses == checkoutReference && len(step.With) == 2 &&
 		normalizeExpression(step.With["ref"]) == "${{github.sha}}" && step.With["persist-credentials"] == "false" &&
-		!step.ContinueOnError.set && step.If == ""
+		len(step.Env) == 0 && !step.ContinueOnError.set && step.If == ""
 }
 
 func exactRunsOnSetupStep(step *workflowStep) bool {
-	if step.Uses != "./.github/actions/setup-verity" || len(step.With) != 5 || step.ContinueOnError.set || step.If != "" {
+	if step.Uses != "./.github/actions/setup-verity" || len(step.With) != 5 || len(step.Env) != 0 ||
+		step.ContinueOnError.set || step.If != "" {
 		return false
 	}
 	expected := map[string]string{
@@ -227,7 +228,7 @@ func inspectRunsOnSteps(steps []workflowStep) (runsOnStepIndexes, []Violation) {
 func exactRunsOnAction(step *workflowStep) bool {
 	return step.Uses == runsOnActionReference && len(step.With) == 3 && step.With["show_env"] == "false" &&
 		step.With["show_costs"] == "summary" && step.With["metrics"] == "cpu,memory,disk,io,network" &&
-		!step.ContinueOnError.set && step.If == ""
+		len(step.Env) == 0 && !step.ContinueOnError.set && step.If == ""
 }
 
 func usesForbiddenRunsOnFeature(step *workflowStep) bool {

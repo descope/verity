@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 func TestValidateRunsOnRepository_acceptsProductionCanary(t *testing.T) {
@@ -210,6 +211,59 @@ func TestValidateRunsOnRepository_rejectsRunsOnOutsideCanary(t *testing.T) {
 
 	require.NotEmpty(t, violations)
 	assert.Contains(t, violationRules(violations), RuleRunsOnBoundary)
+}
+
+func TestValidateRunsOnRepository_rejectsEnvironment(t *testing.T) {
+	repositoryRoot := filepath.Join("..", "..", "..")
+	workflows, err := loadWorkflows(filepath.Join(repositoryRoot, ".github", "workflows"))
+	require.NoError(t, err)
+	canary := mustWorkflow(t, workflows, runsOnSmokeWorkflowName)
+	job := canary.Workflow.Jobs[runsOnCanaryJobName]
+	job.Environment = yaml.Node{Kind: yaml.ScalarNode, Value: "production"}
+	canary.Workflow.Jobs[runsOnCanaryJobName] = job
+
+	violations := validateRunsOnRepository(repositoryRoot, replaceWorkflow(workflows, &canary))
+
+	require.NotEmpty(t, violations)
+	assert.Contains(t, violationRules(violations), RuleRunsOnBoundary)
+}
+
+func TestValidateRunsOnRepository_rejectsStrategy(t *testing.T) {
+	for _, jobName := range []string{"build-verity", runsOnCanaryJobName} {
+		t.Run(jobName, func(t *testing.T) {
+			repositoryRoot := filepath.Join("..", "..", "..")
+			workflows, err := loadWorkflows(filepath.Join(repositoryRoot, ".github", "workflows"))
+			require.NoError(t, err)
+			canary := mustWorkflow(t, workflows, runsOnSmokeWorkflowName)
+			job := canary.Workflow.Jobs[jobName]
+			job.Strategy = workflowStrategy{Present: true}
+			canary.Workflow.Jobs[jobName] = job
+
+			violations := validateRunsOnRepository(repositoryRoot, replaceWorkflow(workflows, &canary))
+
+			require.NotEmpty(t, violations)
+			assert.Contains(t, violationRules(violations), RuleRunsOnBoundary)
+		})
+	}
+}
+
+func TestValidateRunsOnRepository_rejectsBootstrapStepEnvironment(t *testing.T) {
+	for stepIndex := range 4 {
+		t.Run(string(rune('0'+stepIndex)), func(t *testing.T) {
+			repositoryRoot := filepath.Join("..", "..", "..")
+			workflows, err := loadWorkflows(filepath.Join(repositoryRoot, ".github", "workflows"))
+			require.NoError(t, err)
+			canary := mustWorkflow(t, workflows, runsOnSmokeWorkflowName)
+			job := canary.Workflow.Jobs[runsOnCanaryJobName]
+			job.Steps[stepIndex].Env = scalarMap{"TOKEN": testSecretExpression}
+			canary.Workflow.Jobs[runsOnCanaryJobName] = job
+
+			violations := validateRunsOnRepository(repositoryRoot, replaceWorkflow(workflows, &canary))
+
+			require.NotEmpty(t, violations)
+			assert.Contains(t, violationRules(violations), RuleRunsOnBoundary)
+		})
+	}
 }
 
 func copyRunsOnConfig(t *testing.T) string {

@@ -20,6 +20,7 @@ type workflowJob struct {
 	RunsOn          stringList               `yaml:"runs-on"`
 	If              string                   `yaml:"if"`
 	ContinueOnError scalarValue              `yaml:"continue-on-error"`
+	Environment     yaml.Node                `yaml:"environment"`
 	Uses            string                   `yaml:"uses"`
 	With            scalarMap                `yaml:"with"`
 	Outputs         scalarMap                `yaml:"outputs"`
@@ -32,7 +33,19 @@ type workflowJob struct {
 }
 
 type workflowStrategy struct {
-	Matrix yaml.Node `yaml:"matrix"`
+	Present bool      `yaml:"-"`
+	Matrix  yaml.Node `yaml:"matrix"`
+}
+
+func (strategy *workflowStrategy) UnmarshalYAML(node *yaml.Node) error {
+	type rawStrategy workflowStrategy
+	var raw rawStrategy
+	if err := node.Decode(&raw); err != nil {
+		return fmt.Errorf("decode workflow strategy: %w", err)
+	}
+	*strategy = workflowStrategy(raw)
+	strategy.Present = true
+	return nil
 }
 
 type workflowStep struct {
