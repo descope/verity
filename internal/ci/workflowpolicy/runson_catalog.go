@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"gopkg.in/yaml.v3"
 )
@@ -18,6 +19,7 @@ type runsOnCatalog struct {
 type runsOnProfile struct {
 	CPU    int      `yaml:"cpu"`
 	RAM    int      `yaml:"ram"`
+	Family []string `yaml:"family"`
 	Image  string   `yaml:"image"`
 	Volume string   `yaml:"volume"`
 	Extras []string `yaml:"extras"`
@@ -27,18 +29,19 @@ type runsOnProfile struct {
 type expectedRunsOnProfile struct {
 	cpu    int
 	ram    int
+	family []string
 	image  string
 	volume string
 }
 
 var expectedRunsOnProfiles = map[string]expectedRunsOnProfile{
-	"canary-x64":     {cpu: 4, ram: 8, image: "ubuntu24-full-x64", volume: "40gb:gp3"},
-	"ci-large-x64":   {cpu: 16, ram: 32, image: "ubuntu24-full-x64", volume: "100gb:gp3"},
-	"integer-amd64":  {cpu: 32, ram: 64, image: "ubuntu24-full-x64", volume: "200gb:gp3"},
-	"integer-arm64":  {cpu: 32, ram: 64, image: "ubuntu24-full-arm64", volume: "200gb:gp3"},
-	"buildkit-x64":   {cpu: 16, ram: 32, image: "ubuntu24-full-x64", volume: "150gb:gp3"},
-	"buildkit-arm64": {cpu: 16, ram: 32, image: "ubuntu24-full-arm64", volume: "150gb:gp3"},
-	"chart-x64":      {cpu: 16, ram: 32, image: "ubuntu24-full-x64", volume: "150gb:gp3"},
+	"canary-x64":     {cpu: 4, ram: 8, family: []string{"c8i", "m8i"}, image: "ubuntu24-full-x64", volume: "40gb:gp3"},
+	"ci-large-x64":   {cpu: 16, ram: 32, family: []string{"c8i", "m8i"}, image: "ubuntu24-full-x64", volume: "100gb:gp3"},
+	"integer-amd64":  {cpu: 32, ram: 64, family: []string{"c8i", "m8i"}, image: "ubuntu24-full-x64", volume: "200gb:gp3"},
+	"integer-arm64":  {cpu: 32, ram: 64, family: []string{"c8g", "m8g"}, image: "ubuntu24-full-arm64", volume: "200gb:gp3"},
+	"buildkit-x64":   {cpu: 16, ram: 32, family: []string{"c8i", "m8i"}, image: "ubuntu24-full-x64", volume: "150gb:gp3"},
+	"buildkit-arm64": {cpu: 16, ram: 32, family: []string{"c8g", "m8g"}, image: "ubuntu24-full-arm64", volume: "150gb:gp3"},
+	"chart-x64":      {cpu: 16, ram: 32, family: []string{"c8i", "m8i"}, image: "ubuntu24-full-x64", volume: "150gb:gp3"},
 }
 
 func validateRunsOnCatalog(repositoryRoot string) []Violation {
@@ -87,7 +90,7 @@ func decodeRunsOnCatalog(data []byte) (runsOnCatalog, error) {
 }
 
 func exactRunsOnProfile(profile *runsOnProfile, expected expectedRunsOnProfile) bool {
-	return profile.CPU == expected.cpu && profile.RAM == expected.ram && profile.Image == expected.image &&
+	return profile.CPU == expected.cpu && profile.RAM == expected.ram && slices.Equal(profile.Family, expected.family) && profile.Image == expected.image &&
 		profile.Volume == expected.volume && len(profile.Extras) == 1 && profile.Extras[0] == "otel" &&
 		profile.Spot != nil && !*profile.Spot
 }

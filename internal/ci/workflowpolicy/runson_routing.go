@@ -4,15 +4,15 @@ import "strings"
 
 const (
 	runsOnJobNamespace            = "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}"
-	runsOnCILargeX64Route         = runsOnJobNamespace + "/cpu=16/ram=32/image=ubuntu24-full-x64/volume=100gb:gp3/extras=otel/spot=false"
-	runsOnBuildKitX64Route        = runsOnJobNamespace + "/cpu=16/ram=32/image=ubuntu24-full-x64/volume=150gb:gp3/extras=otel/spot=false"
+	runsOnCILargeX64Route         = runsOnJobNamespace + "/family=c8i+m8i/cpu=16/ram=32/image=ubuntu24-full-x64/volume=100gb:gp3/extras=otel/spot=false"
+	runsOnBuildKitX64Route        = runsOnJobNamespace + "/family=c8i+m8i/cpu=16/ram=32/image=ubuntu24-full-x64/volume=150gb:gp3/extras=otel/spot=false"
 	runsOnChartX64Route           = runsOnBuildKitX64Route
-	runsOnIntegerAMD64Route       = runsOnJobNamespace + "/cpu=32/ram=64/image=ubuntu24-full-x64/volume=200gb:gp3/extras=otel/spot=false"
-	runsOnPRIntegerRoute          = runsOnJobNamespace + "/cpu=32/ram=64/image=ubuntu24-full-${{ matrix.arch == 'amd64' && 'x64' || 'arm64' }}/volume=200gb:gp3/extras=otel/spot=false"
-	runsOnMelangeRoute            = runsOnJobNamespace + "/cpu=32/ram=64/image=ubuntu24-full-${{ matrix.arch == 'x86_64' && 'x64' || 'arm64' }}/volume=200gb:gp3/extras=otel/spot=false"
-	runsOnBuildKitPlatformRoute   = runsOnJobNamespace + "/cpu=16/ram=32/image=ubuntu24-full-${{ matrix.platform == 'linux/amd64' && 'x64' || 'arm64' }}/volume=150gb:gp3/extras=otel/spot=false"
-	runsOnBuildKitProfileRoute    = runsOnJobNamespace + "/cpu=16/ram=32/image=ubuntu24-full-${{ matrix.runner_profile == 'buildkit-x64' && 'x64' || 'arm64' }}/volume=150gb:gp3/extras=otel/spot=false"
-	buildVerityTrustedRunnerRoute = "${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && format('runs-on={0}-{1}-{2}/cpu=16/ram=32/image=ubuntu24-full-x64/volume=100gb:gp3/extras=otel/spot=false', github.run_id, github.run_attempt, github.job) || 'ubuntu-24.04' }}"
+	runsOnIntegerAMD64Route       = runsOnJobNamespace + "/family=c8i+m8i/cpu=32/ram=64/image=ubuntu24-full-x64/volume=200gb:gp3/extras=otel/spot=false"
+	runsOnPRIntegerRoute          = runsOnJobNamespace + "/family=${{ matrix.arch == 'amd64' && 'c8i+m8i' || 'c8g+m8g' }}/cpu=32/ram=64/image=ubuntu24-full-${{ matrix.arch == 'amd64' && 'x64' || 'arm64' }}/volume=200gb:gp3/extras=otel/spot=false"
+	runsOnMelangeRoute            = runsOnJobNamespace + "/family=${{ matrix.arch == 'x86_64' && 'c8i+m8i' || 'c8g+m8g' }}/cpu=32/ram=64/image=ubuntu24-full-${{ matrix.arch == 'x86_64' && 'x64' || 'arm64' }}/volume=200gb:gp3/extras=otel/spot=false"
+	runsOnBuildKitPlatformRoute   = runsOnJobNamespace + "/family=${{ matrix.platform == 'linux/amd64' && 'c8i+m8i' || 'c8g+m8g' }}/cpu=16/ram=32/image=ubuntu24-full-${{ matrix.platform == 'linux/amd64' && 'x64' || 'arm64' }}/volume=150gb:gp3/extras=otel/spot=false"
+	runsOnBuildKitProfileRoute    = runsOnJobNamespace + "/family=${{ matrix.runner_profile == 'buildkit-x64' && 'c8i+m8i' || 'c8g+m8g' }}/cpu=16/ram=32/image=ubuntu24-full-${{ matrix.runner_profile == 'buildkit-x64' && 'x64' || 'arm64' }}/volume=150gb:gp3/extras=otel/spot=false"
+	buildVerityTrustedRunnerRoute = "${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && format('runs-on={0}-{1}-{2}/family=c8i+m8i/cpu=16/ram=32/image=ubuntu24-full-x64/volume=100gb:gp3/extras=otel/spot=false', github.run_id, github.run_attempt, github.job) || 'ubuntu-24.04' }}"
 )
 
 type runsOnRoute struct {

@@ -81,7 +81,7 @@ func TestValidateRunsOnRepository_rejectsProfileCapacityMutation(t *testing.T) {
 	configPath := filepath.Join(repositoryRoot, ".github", "runs-on.yml")
 	data, err := os.ReadFile(configPath)
 	require.NoError(t, err)
-	mutated := strings.Replace(string(data), "  ci-large-x64:\n    cpu: 16", "  ci-large-x64:\n    cpu: 8", 1)
+	mutated := strings.Replace(string(data), "  ci-large-x64:\n    family: [c8i, m8i]\n    cpu: 16", "  ci-large-x64:\n    family: [c8i, m8i]\n    cpu: 8", 1)
 	require.NotEqual(t, string(data), mutated)
 	require.NoError(t, os.WriteFile(configPath, []byte(mutated), 0o600))
 	workflows, err := loadWorkflows(filepath.Join("..", "..", "..", ".github", "workflows"))

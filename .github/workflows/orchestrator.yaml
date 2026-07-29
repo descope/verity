@@ -144,7 +144,7 @@ jobs:
     if: >-
       !cancelled() && needs.verity.result == 'success' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/cpu=16/ram=32/image=ubuntu24-full-${{ matrix.runner_profile == 'buildkit-x64' && 'x64' || 'arm64' }}/volume=150gb:gp3/extras=otel/spot=false"
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/family=${{ matrix.runner_profile == 'buildkit-x64' && 'c8i+m8i' || 'c8g+m8g' }}/cpu=16/ram=32/image=ubuntu24-full-${{ matrix.runner_profile == 'buildkit-x64' && 'x64' || 'arm64' }}/volume=150gb:gp3/extras=otel/spot=false"
     permissions:
       actions: read
       attestations: read
