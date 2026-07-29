@@ -125,6 +125,63 @@ func TestVerifier_Verify_rejectsMismatchedRunnerIdentity(t *testing.T) {
 	assert.ErrorIs(t, err, ErrVerificationFailed)
 }
 
+func TestVerifier_Verify_rejectsHostBoundaryFailures(t *testing.T) {
+	tests := map[string]func(*Verifier){
+		"capacity": func(verifier *Verifier) {
+			verifier.cpuCount = func() int { return 3 }
+		},
+		"STS identity": func(verifier *Verifier) {
+			execute := verifier.execute
+			verifier.execute = func(ctx context.Context, name string, arguments ...string) ([]byte, error) {
+				if name == "aws" && len(arguments) > 1 && arguments[0] == "sts" {
+					return []byte(`{}`), nil
+				}
+				return execute(ctx, name, arguments...)
+			}
+		},
+		"EBS volumes": func(verifier *Verifier) {
+			execute := verifier.execute
+			verifier.execute = func(ctx context.Context, name string, arguments ...string) ([]byte, error) {
+				if name == "aws" && len(arguments) > 1 && arguments[0] == "ec2" {
+					return []byte(`{"Volumes":[]}`), nil
+				}
+				return execute(ctx, name, arguments...)
+			}
+		},
+		"Docker": func(verifier *Verifier) {
+			execute := verifier.execute
+			verifier.execute = func(ctx context.Context, name string, arguments ...string) ([]byte, error) {
+				if name == "docker" {
+					return nil, errUnexpectedTestCommand
+				}
+				return execute(ctx, name, arguments...)
+			}
+		},
+	}
+
+	for name, mutate := range tests {
+		t.Run(name, func(t *testing.T) {
+			metadata := newMetadataServer(t)
+			verifier := verifierFixture(t, metadata.URL, true)
+			mutate(&verifier)
+			requirements, err := NewRequirements(RequirementInput{
+				ExpectedAccount:  "123456789012",
+				ExpectedRegion:   "us-east-1",
+				ExpectedArch:     "amd64",
+				MinimumCPU:       4,
+				MinimumMemoryGiB: 7,
+				MinimumDiskGiB:   30,
+			})
+			require.NoError(t, err)
+
+			_, err = verifier.Verify(context.Background(), requirements)
+
+			require.Error(t, err)
+			assert.ErrorIs(t, err, ErrVerificationFailed)
+		})
+	}
+}
+
 func TestNewRequirements_rejectsInvalidAWSAccount(t *testing.T) {
 	// Given an invalid account identifier.
 	input := RequirementInput{
