@@ -34,7 +34,7 @@ type expectedRunsOnProfile struct {
 var expectedRunsOnProfiles = map[string]expectedRunsOnProfile{
 	"canary-x64":     {cpu: 4, ram: 8, image: "ubuntu24-full-x64", volume: "40gb:gp3"},
 	"ci-large-x64":   {cpu: 16, ram: 32, image: "ubuntu24-full-x64", volume: "100gb:gp3"},
-	"integer-x64":    {cpu: 32, ram: 64, image: "ubuntu24-full-x64", volume: "200gb:gp3"},
+	"integer-amd64":  {cpu: 32, ram: 64, image: "ubuntu24-full-x64", volume: "200gb:gp3"},
 	"integer-arm64":  {cpu: 32, ram: 64, image: "ubuntu24-full-arm64", volume: "200gb:gp3"},
 	"buildkit-x64":   {cpu: 16, ram: 32, image: "ubuntu24-full-x64", volume: "150gb:gp3"},
 	"buildkit-arm64": {cpu: 16, ram: 32, image: "ubuntu24-full-arm64", volume: "150gb:gp3"},

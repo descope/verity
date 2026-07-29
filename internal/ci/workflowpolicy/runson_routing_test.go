@@ -25,6 +25,21 @@ func TestValidateRunsOnRepository_rejectsProductionRouteMutation(t *testing.T) {
 	assert.Contains(t, violationRules(violations), RuleRunsOnBoundary)
 }
 
+func TestValidateRunsOnRepository_rejectsProductionRouteFallback(t *testing.T) {
+	repositoryRoot := filepath.Join("..", "..", "..")
+	workflows, err := loadWorkflows(filepath.Join(repositoryRoot, ".github", "workflows"))
+	require.NoError(t, err)
+	workflow := mustWorkflow(t, workflows, "ci.yaml")
+	job := workflow.Workflow.Jobs["test"]
+	job.RunsOn = stringList{"ubuntu-latest"}
+	workflow.Workflow.Jobs["test"] = job
+
+	violations := validateRunsOnRepository(repositoryRoot, replaceWorkflow(workflows, &workflow))
+
+	require.NotEmpty(t, violations)
+	assert.Contains(t, violationRules(violations), RuleRunsOnBoundary)
+}
+
 func TestValidateRunsOnRepository_rejectsProductionRouteWithoutTrustGuard(t *testing.T) {
 	repositoryRoot := filepath.Join("..", "..", "..")
 	workflows, err := loadWorkflows(filepath.Join(repositoryRoot, ".github", "workflows"))
@@ -76,4 +91,16 @@ func TestValidateRunsOnRepository_rejectsProfileCapacityMutation(t *testing.T) {
 
 	require.NotEmpty(t, violations)
 	assert.Contains(t, violationRules(violations), RuleRunsOnBoundary)
+}
+
+func TestRunsOnCatalog_containsPRIntegerArchitectureProfiles(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", ".github", "runs-on.yml"))
+	require.NoError(t, err)
+	catalog, err := decodeRunsOnCatalog(data)
+	require.NoError(t, err)
+
+	for _, architecture := range []string{"amd64", "arm64"} {
+		_, exists := catalog.Runners["integer-"+architecture]
+		assert.True(t, exists, architecture)
+	}
 }

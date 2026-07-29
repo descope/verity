@@ -196,7 +196,7 @@ jobs:
       matrix:
         include:
           - arch: x86_64
-            runner_profile: integer-x64
+            runner_profile: integer-amd64
           - arch: aarch64
             runner_profile: integer-arm64
     runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=${{ matrix.runner_profile }}"
@@ -280,7 +280,7 @@ jobs:
       needs.melange-prep.result == 'success' &&
       (needs.melange-build.result == 'success' || needs.melange-build.result == 'skipped') &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=integer-x64"
+    runs-on: "runs-on=${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/runner=integer-amd64"
     permissions:
       actions: read
       contents: read
